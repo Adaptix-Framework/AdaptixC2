@@ -291,7 +291,7 @@ void Theme::initializePalette() {
 
   // Tooltips - use contrasting colors for visibility.
   palette.setColor(QPalette::ColorGroup::All, QPalette::ColorRole::ToolTipBase, backgroundColorMain4);
-  palette.setColor(QPalette::ColorGroup::All, QPalette::ColorRole::ToolTipText, secondaryColorForeground);
+  palette.setColor(QPalette::ColorGroup::All, QPalette::ColorRole::ToolTipText, secondaryColor);
 
   // Highlight.
   palette.setColor(QPalette::ColorGroup::All, QPalette::ColorRole::Highlight, primaryColor);

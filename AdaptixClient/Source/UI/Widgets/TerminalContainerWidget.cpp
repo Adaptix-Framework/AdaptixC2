@@ -12,7 +12,15 @@
 #include <Utils/FontManager.h>
 #include <MainAdaptix.h>
 
+#include <QRandomGenerator>
+#include <QTimer>
+#include <QPointer>
+
 REGISTER_DOCK_WIDGET(TerminalContainerWidget, "Remote Terminal", false)
+
+namespace {
+constexpr int kTerminalConnectTimeoutMs = 30000;
+}
 
 TerminalTab::TerminalTab(Agent* a, AdaptixWidget* w, TerminalMode mode, QWidget* parent) : QWidget(parent)
 {
@@ -38,8 +46,27 @@ TerminalTab::TerminalTab(Agent* a, AdaptixWidget* w, TerminalMode mode, QWidget*
 
 TerminalTab::~TerminalTab()
 {
-    if (terminalWorker)
-        QMetaObject::invokeMethod(terminalWorker, "stop", Qt::QueuedConnection);
+    ++otpGeneration;
+    cancelStartTimeout();
+
+    auto* worker = terminalWorker;
+    auto* thread = terminalThread;
+    terminalWorker = nullptr;
+    terminalThread = nullptr;
+
+    if (worker) {
+        disconnect(worker, nullptr, this, nullptr);
+        if (thread)
+            disconnect(thread, nullptr, this, nullptr);
+        QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
+    }
+
+    if (thread && thread->isRunning()) {
+        if (!thread->wait(5000)) {
+            thread->quit();
+            thread->wait(2000);
+        }
+    }
 }
 
 void TerminalTab::createUI()
@@ -174,16 +201,45 @@ void TerminalTab::setStatus(const QString &text)
 {
     this->statusLabel->setText(text);
 
-    bool isWaiting = (text == "Waiting..." || text == "Connecting...");
+    const bool isWaiting = (text == QStringLiteral("Waiting...") || text == QStringLiteral("Connecting...") || text == QStringLiteral("Stopping..."));
     loadingSpinner->setVisible(isWaiting);
     loadingSpinner->setSpinning(isWaiting);
 
-    if (text == "Stopped") {
+    if (!terminalWorker && !terminalThread && !isWaiting && text != QStringLiteral("Running") && text != QStringLiteral("Connected")) {
         programInput->setEnabled(programComboBox->currentText() == "Custom program");
         programComboBox->setEnabled(true);
         startButton->setEnabled(true);
         stopButton->setEnabled(false);
     }
+}
+
+void TerminalTab::cancelStartTimeout()
+{
+    if (startTimeoutTimer) {
+        startTimeoutTimer->stop();
+        startTimeoutTimer->deleteLater();
+        startTimeoutTimer = nullptr;
+    }
+}
+
+void TerminalTab::armStartTimeout(TerminalWorker* worker)
+{
+    cancelStartTimeout();
+    startTimeoutTimer = new QTimer(this);
+    startTimeoutTimer->setSingleShot(true);
+
+    connect(startTimeoutTimer, &QTimer::timeout, this, [this, worker]() {
+        if (terminalWorker != worker)
+            return;
+
+        const QString st = statusLabel ? statusLabel->text() : QString();
+        if (st == QStringLiteral("Connecting...") || st == QStringLiteral("Waiting...")) {
+            pendingStatus = QStringLiteral("Connection timeout");
+            onStop();
+        }
+    });
+
+    startTimeoutTimer->start(kTerminalConnectTimeoutMs);
 }
 
 QTermWidget* TerminalTab::Konsole() { return this->termWidget; }
@@ -284,28 +340,106 @@ void TerminalTab::SetKeys()
     connect(clearShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::clear);
 }
 
+void TerminalTab::clearSessionState()
+{
+    shellInputBuffer.clear();
+    outputBuffer.clear();
+    lastSentCommand.clear();
+    lastPrompt.clear();
+    filterPhase = 0;
+}
+
+void TerminalTab::bindWorkerLifecycle(TerminalWorker* worker, QThread* thread)
+{
+    connect(thread, &QThread::started, worker, &TerminalWorker::start);
+
+    connect(worker, &TerminalWorker::finished, worker, &QObject::deleteLater);
+    connect(worker, &TerminalWorker::finished, thread, &QThread::quit);
+    connect(thread, &QThread::finished, thread, &QObject::deleteLater);
+
+    connect(thread, &QThread::finished, this, [this, worker, thread]() {
+        cancelStartTimeout();
+        if (terminalWorker == worker)
+            terminalWorker = nullptr;
+        if (terminalThread == thread)
+            terminalThread = nullptr;
+
+        const QString status = pendingStatus.isEmpty() ? QStringLiteral("Stopped") : pendingStatus;
+        pendingStatus.clear();
+        setStatus(status);
+    }, Qt::QueuedConnection);
+
+    connect(worker, &TerminalWorker::connectedToTerminal, this, [this, worker]() {
+        cancelStartTimeout();
+        setStatus(QStringLiteral("Connected"));
+        QTimer::singleShot(1500, this, [this, worker]() {
+            if (terminalWorker != worker)
+                return;
+            if (statusLabel && statusLabel->text() == QStringLiteral("Connected"))
+                setStatus(QStringLiteral("Running"));
+        });
+    }, Qt::QueuedConnection);
+
+    connect(worker, &TerminalWorker::terminalReady, this, [this]() {
+        cancelStartTimeout();
+        setStatus(QStringLiteral("Running"));
+    }, Qt::QueuedConnection);
+
+    connect(worker, &TerminalWorker::binaryMessageToTerminal, this, &TerminalTab::recvDataFromSocket, Qt::QueuedConnection);
+
+    connect(worker, &TerminalWorker::statusMessage, this, [this](const QString& status) {
+        if (!status.isEmpty())
+            pendingStatus = status;
+    }, Qt::QueuedConnection);
+
+    connect(worker, &TerminalWorker::errorStop, this, [this](const QString& reason) {
+        cancelStartTimeout();
+        if (!reason.isEmpty())
+            pendingStatus = reason;
+        stopButton->setEnabled(false);
+    }, Qt::QueuedConnection);
+
+    connect(termWidget, SIGNAL(sendData(const char*,int)), this, SLOT(sendDataToSocket(const char*,int)), Qt::UniqueConnection);
+}
+
 void TerminalTab::onStart()
 {
-    if ( !adaptixWidget )
+    if (!adaptixWidget || !agent)
+        return;
+
+    if (terminalWorker || terminalThread || !startButton->isEnabled())
         return;
 
     programInput->setEnabled(false);
     programComboBox->setEnabled(false);
     startButton->setEnabled(false);
     stopButton->setEnabled(true);
-    this->setStatus("Waiting...");
+    pendingStatus.clear();
+    clearSessionState();
+    this->setStatus(QStringLiteral("Connecting..."));
 
-    auto profile = adaptixWidget->GetProfile();
+    auto* profile = adaptixWidget->GetProfile();
+    if (!profile) {
+        startButton->setEnabled(true);
+        stopButton->setEnabled(false);
+        programComboBox->setEnabled(true);
+        programInput->setEnabled(programComboBox->currentText() == "Custom program");
+        setStatus(QStringLiteral("OTP error"));
+        return;
+    }
 
     QString urlTemplate = "wss://%1:%2%3/channel";
-    QString sUrl = urlTemplate.arg( profile->GetHost() ).arg( profile->GetPort() ).arg( profile->GetEndpoint() );
+    QString sUrl = urlTemplate.arg(profile->GetHost()).arg(profile->GetPort()).arg(profile->GetEndpoint());
 
-    QString agentId = this->agent->data.Id;
-    QString terminalId = GenerateRandomString(8, "hex");
-    QString program    = programInput->text();
-    int sizeW  = this->termWidget->columns();
-    int sizeH  = this->termWidget->lines();
-    int OecmCP = this->agent->data.OemCP;
+    qint64 agentId = this->agent->data.Id;
+    qint64 terminalId = 0;
+    while (terminalId == 0)
+        terminalId = static_cast<qint64>(QRandomGenerator::global()->generate());
+
+    QString program = programInput->text();
+    int sizeW = this->termWidget->columns();
+    int sizeH = this->termWidget->lines();
+    int oemCP = this->agent->data.OemCP;
 
     if (sizeW <= 0 || sizeH <= 0) {
         sizeW = 80;
@@ -313,67 +447,82 @@ void TerminalTab::onStart()
     }
 
     QJsonObject otpData;
-    otpData["agent_id"]     = agentId;
-    otpData["terminal_id"]  = terminalId;
-    otpData["program"]      = program;
-    otpData["size_h"]       = sizeH;
-    otpData["size_w"]       = sizeW;
-    otpData["oem_cp"]       = OecmCP;
+    otpData["agent_id"]    = toJsonI64(agentId);
+    otpData["terminal_id"] = toJsonI64(terminalId);
+    otpData["program"]     = program;
+    otpData["size_h"]      = sizeH;
+    otpData["size_w"]      = sizeW;
+    otpData["oem_cp"]      = oemCP;
 
-    QString otp;
-    bool otpResult = HttpReqGetOTP("channel_terminal", otpData, profile->GetURL(), profile->GetAccessToken(), &otp);
-    if (!otpResult) {
-        programInput->setEnabled(true);
-        programComboBox->setEnabled(true);
-        startButton->setEnabled(true);
-        stopButton->setEnabled(false);
-        this->setStatus("OTP error");
-        return;
-    }
+    const quint64 gen = ++otpGeneration;
 
-    terminalThread = new QThread;
-    terminalWorker = new TerminalWorker(this, otp, sUrl);
-    terminalWorker->moveToThread(terminalThread);
+    QPointer<TerminalTab> self = this;
+    HttpReqGetOTPAsync("channel_terminal", otpData, *profile,
+        [self, sUrl, gen](bool success, const QString& message, const QJsonObject& response) {
+            if (!self)
+                return;
 
-    connect(terminalThread, &QThread::started,         terminalWorker, &TerminalWorker::start);
-    connect(terminalWorker, &TerminalWorker::finished, terminalThread, &QThread::quit);
-    connect(terminalWorker, &TerminalWorker::finished, terminalWorker, &TerminalWorker::deleteLater);
-    connect(terminalThread, &QThread::finished,        terminalThread, &QThread::deleteLater);
+            if (gen != self->otpGeneration)
+                return;
 
-    connect(terminalWorker, &TerminalWorker::finished, this, [this]() { setStatus("Stopped"); }, Qt::QueuedConnection);
-    connect(terminalWorker, &TerminalWorker::errorStop, this, [this]() { onStop(); }, Qt::QueuedConnection);
+            if (self->terminalWorker || self->terminalThread)
+                return;
 
-    connect(terminalWorker, &TerminalWorker::connectedToTerminal,     this, [this]() { setStatus("Running"); }, Qt::QueuedConnection);
-    connect(terminalWorker, &TerminalWorker::binaryMessageToTerminal, this, &TerminalTab::recvDataFromSocket, Qt::QueuedConnection);
+            auto resetIdle = [self](const QString& status) {
+                self->programInput->setEnabled(self->programComboBox->currentText() == "Custom program");
+                self->programComboBox->setEnabled(true);
+                self->startButton->setEnabled(true);
+                self->stopButton->setEnabled(false);
+                self->setStatus(status);
+            };
 
-    connect(termWidget, SIGNAL(sendData(const char*,int)), this, SLOT(sendDataToSocket(const char*,int)), Qt::UniqueConnection);
+            if (!success || !response.value("ok").toBool()) {
+                const QString err = response.contains("message") ? response["message"].toString() : message;
+                resetIdle(err.isEmpty() ? QStringLiteral("OTP error") : err);
+                return;
+            }
 
-    terminalThread->start();
+            const QString otp = response.value("message").toString();
+            if (otp.isEmpty()) {
+                resetIdle(QStringLiteral("OTP error"));
+                return;
+            }
+
+            auto* thread = new QThread;
+            auto* worker = new TerminalWorker(otp, sUrl);
+            worker->moveToThread(thread);
+
+            self->terminalThread = thread;
+            self->terminalWorker = worker;
+
+            self->bindWorkerLifecycle(worker, thread);
+            self->armStartTimeout(worker);
+            self->setStatus(QStringLiteral("Waiting..."));
+            thread->start();
+        });
 }
 
 void TerminalTab::onStop()
 {
-    if (!terminalWorker || !terminalThread)
+    ++otpGeneration;
+    cancelStartTimeout();
+
+    if (!terminalWorker) {
+        programInput->setEnabled(programComboBox->currentText() == "Custom program");
+        programComboBox->setEnabled(true);
+        startButton->setEnabled(true);
+        stopButton->setEnabled(false);
+        setStatus(QStringLiteral("Stopped"));
         return;
+    }
 
-    auto worker = terminalWorker;
-    auto thread = terminalThread;
+    stopButton->setEnabled(false);
+    const QString st = statusLabel ? statusLabel->text() : QString();
+    if (st == QStringLiteral("Running") || st == QStringLiteral("Connected") || st == QStringLiteral("Waiting...") || st == QStringLiteral("Connecting...")) {
+        setStatus(QStringLiteral("Stopping..."));
+    }
 
-    terminalWorker = nullptr;
-    terminalThread = nullptr;
-
-    connect(worker, &TerminalWorker::finished, this, [this, thread]() {
-        if (thread->isRunning()) {
-            thread->quit();
-            thread->wait();
-        }
-
-        thread->deleteLater();
-
-        setStatus("Stopped");
-    });
-
-    QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
+    QMetaObject::invokeMethod(terminalWorker, "stop", Qt::QueuedConnection);
 }
 
 void TerminalTab::onProgramChanged()
@@ -434,7 +583,7 @@ QByteArray TerminalTab::processSmartOutput(const QByteArray &data)
     QByteArray result;
 
     bool emptyCommandMode = (lastSentCommand == QByteArray("\x01"));
-    
+
     while (true) {
         int nlPos = outputBuffer.indexOf('\n');
         if (nlPos == -1) {
@@ -467,15 +616,15 @@ QByteArray TerminalTab::processSmartOutput(const QByteArray &data)
             }
             break;
         }
-        
+
         QByteArray line = outputBuffer.left(nlPos + 1);
         outputBuffer.remove(0, nlPos + 1);
-        
+
         QByteArray trimmedLine = line.trimmed();
-        
+
         // Build pattern: ">command" to detect "prompt>command" line
         QByteArray promptCmdPattern = ">" + lastSentCommand;
-        
+
         switch (filterPhase) {
             case 0:
                 // Phase 0: Skip echo of command
@@ -486,7 +635,7 @@ QByteArray TerminalTab::processSmartOutput(const QByteArray &data)
                     result.append(line);
                 }
                 break;
-                
+
             case 1:
                 if (emptyCommandMode) {
                     // Empty command mode - skip prompts with newline, keep only last one (without \n)
@@ -508,7 +657,7 @@ QByteArray TerminalTab::processSmartOutput(const QByteArray &data)
                     }
                 }
                 break;
-                
+
             case 2:
                 // Phase 2: Skip duplicates until clean prompt (ends with > but no command after)
                 if (trimmedLine.endsWith(">") && !trimmedLine.contains(promptCmdPattern)) {
@@ -516,65 +665,78 @@ QByteArray TerminalTab::processSmartOutput(const QByteArray &data)
                     filterPhase = 3;
                 }
                 break;
-                
+
             default:
                 result.append(line);
                 break;
         }
     }
-    
+
     return result;
 }
 
 void TerminalTab::sendDataToSocket(const char* data, int size)
 {
-    if (!terminalWorker)
+    if (!terminalWorker || size <= 0)
         return;
 
+    QPointer<TerminalWorker> w = terminalWorker;
+
     if (terminalMode == TerminalModeShell) {
+        const bool windowsAgent = agent && agent->data.Os == OS_WINDOWS;
+
         for (int i = 0; i < size; i++) {
             char ch = data[i];
 
             if (ch == '\r' || ch == '\n') {
-                shellInputBuffer.append('\n');
+                shellInputBuffer.append(windowsAgent ? "\r\n" : "\n");
                 termWidget->recvData("\r\n", 2);
 
                 if (!shellInputBuffer.isEmpty()) {
                     QByteArray payload = shellInputBuffer;
-                    
+
                     if (smartOutputEnabled) {
-                        QByteArray trimmedCmd = shellInputBuffer.trimmed();
+                        QByteArray trimmedCmd = payload;
+                        while (trimmedCmd.endsWith('\n') || trimmedCmd.endsWith('\r'))
+                            trimmedCmd.chop(1);
+                        trimmedCmd = trimmedCmd.trimmed();
                         if (!trimmedCmd.isEmpty()) {
                             lastSentCommand = trimmedCmd;
                             filterPhase = 0;
                         } else {
-                            // Empty command - use special marker to filter duplicate prompts
-                            lastSentCommand = QByteArray("\x01");  // Special marker for empty command
+                            lastSentCommand = QByteArray("\x01");
                             filterPhase = 1;
                         }
                         outputBuffer.clear();
                         lastPrompt.clear();
                     }
-                    
+
                     shellInputBuffer.clear();
-                    terminalWorker->sendData(payload);
+                    if (w) {
+                        QMetaObject::invokeMethod(w, [w, payload]() {
+                            if (w)
+                                w->sendData(payload);
+                        }, Qt::QueuedConnection);
+                    }
                 }
             }
             else if (ch == 0x03) {
                 shellInputBuffer.clear();
                 termWidget->recvData("^C\r\n", 4);
                 QByteArray ctrlC(1, 0x03);
-                terminalWorker->sendData(ctrlC);
+                if (w) {
+                    QMetaObject::invokeMethod(w, [w, ctrlC]() {
+                        if (w)
+                            w->sendData(ctrlC);
+                    }, Qt::QueuedConnection);
+                }
             }
             else if (ch == 0x7f || ch == '\b') {
                 if (!shellInputBuffer.isEmpty()) {
-                    // Remove full UTF-8 character (may be multiple bytes)
-                    // UTF-8 continuation bytes: 10xxxxxx (0x80-0xBF)
                     int bytesToRemove = 1;
                     while (shellInputBuffer.size() > bytesToRemove) {
                         unsigned char prevByte = static_cast<unsigned char>(shellInputBuffer[shellInputBuffer.size() - bytesToRemove]);
                         if ((prevByte & 0xC0) == 0x80) {
-                            // This is a continuation byte, need to remove more
                             bytesToRemove++;
                         } else {
                             break;
@@ -595,7 +757,12 @@ void TerminalTab::sendDataToSocket(const char* data, int size)
     }
     else {
         QByteArray payload(data, size);
-        terminalWorker->sendData(payload);
+        if (w) {
+            QMetaObject::invokeMethod(w, [w, payload]() {
+                if (w)
+                    w->sendData(payload);
+            }, Qt::QueuedConnection);
+        }
     }
 }
 
@@ -643,15 +810,14 @@ void TerminalContainerWidget::addNewTerminal()
 
 void TerminalContainerWidget::closeTab(int index)
 {
+    TerminalTab* tab = qobject_cast<TerminalTab*>(tabWidget->widget(index));
+    if (tab)
+        tab->onStop();
+
     if (tabWidget->count() > 1) {
-        TerminalTab* tab = qobject_cast<TerminalTab*>(tabWidget->widget(index));
-        if (tab) {
-            tab->onStop();
-        }
         tabWidget->removeTab(index);
-        if (tab) {
+        if (tab)
             tab->deleteLater();
-        }
     }
 }
 

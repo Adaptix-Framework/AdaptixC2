@@ -1,6 +1,6 @@
 package extender
 
-import "github.com/Adaptix-Framework/axc2"
+import "github.com/Adaptix-Framework/axc2/v2"
 
 func (ex *AdaptixExtender) ExListenerCreate(listenerName string, configType string, config string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error) {
 	module, err := ex.getListenerModule(configType)
@@ -13,7 +13,7 @@ func (ex *AdaptixExtender) ExListenerCreate(listenerName string, configType stri
 		return listenerData, customData, err
 	}
 
-	ex.activeListeners[listenerName] = listener
+	ex.activeListeners.Put(listenerName, listener)
 
 	return listenerData, customData, nil
 }
@@ -41,9 +41,12 @@ func (ex *AdaptixExtender) ExListenerStop(listenerName string) error {
 	}
 
 	err = listener.Stop()
-	delete(ex.activeListeners, listenerName)
+	if err != nil {
+		return err
+	}
+	ex.activeListeners.Delete(listenerName)
 
-	return err
+	return nil
 }
 
 func (ex *AdaptixExtender) ExListenerPause(listenerName string) error {
@@ -70,10 +73,10 @@ func (ex *AdaptixExtender) ExListenerGetProfile(listenerName string) ([]byte, er
 	return listener.GetProfile()
 }
 
-func (ex *AdaptixExtender) ExListenerInternalHandler(listenerName string, data []byte) (string, error) {
+func (ex *AdaptixExtender) ExListenerInternalHandler(listenerName string, data []byte) (int64, error) {
 	listener, err := ex.getActiveListener(listenerName)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	return listener.InternalHandler(data)
 }

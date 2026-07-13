@@ -12,23 +12,23 @@ func (ts *Teamserver) CreateOTP(otpType string, data interface{}) (string, error
 	switch otpType {
 
 	case "download":
-		id, ok := data.(string)
-		if !ok || id == "" {
-			return "", errors.New("Invalid FileId")
+		id, ok := data.(int64)
+		if !ok || id == 0 {
+			return "", errors.New("FileId already registered")
 		}
 		_, err := ts.TsDownloadGet(id)
 		if err != nil {
-			return "", errors.New("Invalid FileId")
+			return "", errors.New("FileId already registered")
 		}
 		storeValue = id
 
 	case "tmp_upload":
-		id, ok := data.(string)
-		if !ok || id == "" {
-			return "", errors.New("Invalid FileId")
+		id, ok := data.(int64)
+		if !ok || id == 0 {
+			return "", errors.New("FileId already registered")
 		}
 		if ts.tmp_uploads.Contains(id) {
-			return "", errors.New("Invalid FileId")
+			return "", errors.New("FileId already registered")
 		}
 
 		filename, err := krypt.GenerateUID(20)

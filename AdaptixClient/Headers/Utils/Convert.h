@@ -37,6 +37,7 @@ QString GenerateRandomString(const int length, const QString &setName);
 
 int GenerateRandomInt(const int min, const int max);
 
-QString GenerateHash(const QString &algorithm, int length, const QString &inputString);
+// algorithm: "md5" | "sha1" | "sha256" | "sha512" (case-insensitive).
+QString GenerateHash(const QString &algorithm, int length, const QByteArray &input);
 
 #endif

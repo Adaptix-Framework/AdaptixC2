@@ -67,7 +67,7 @@ void DialogSubscriptions::createUI()
     }
 
     realtimeListWidget->addItem(makeSectionHeader("Data"));
-    for (const QString &cat : {"chat_realtime", "downloads_realtime", "screenshot_realtime", "credentials_realtime", "targets_realtime", "notifications", "tunnels"}) {
+    for (const QString &cat : {"chat_realtime", "chat_todo", "downloads_realtime", "screenshot_realtime", "credentials_realtime", "targets_realtime", "notifications", "tunnels"}) {
         auto *item = new QListWidgetItem(cat);
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
         item->setCheckState(Qt::Unchecked);

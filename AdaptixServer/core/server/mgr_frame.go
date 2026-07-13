@@ -1,16 +1,19 @@
 package server
 
 import (
-	"AdaptixServer/core/utils/logs"
+	"context"
 	"sync"
 	"time"
 
 	"math/rand/v2"
+
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 const (
 	frameModeByteOffset = 0
 	frameModeChunkIndex = 1
+	frameModeStream     = 2
 )
 
 type FrameConfig struct {
@@ -27,11 +30,12 @@ type FrameManager struct {
 	ts *Teamserver
 
 	mu           sync.Mutex
-	upSessions   map[string]*upSession   // id → upstream reassembly
-	upDoneCache  map[string]*upDoneEntry // id → dedup for completed uploads
-	downSessions map[string]*downSession // id → downstream chunked delivery
+	upSessions   map[int64]*upSession   // SID → upstream reassembly
+	upDoneCache  map[int64]*upDoneEntry // SID → dedup for completed uploads
+	downSessions map[int64]*downSession // SID → downstream chunked delivery
 
-	active bool
+	ctx    context.Context
+	cancel context.CancelFunc
 
 	maxUploadSize   uint32
 	maxDownloadSize uint32
@@ -57,11 +61,19 @@ type upSession struct {
 	// --- Chunk-index mode---
 	chunkCount uint16            // total expected chunks
 	chunks     map[uint16][]byte // received chunks by index
+
+	// --- Stream mode ---
+	streamBuf     []byte            // appended data in arrival order
+	streamSeqNext uint32            // next expected seqNum
+	streamOOO     map[uint32][]byte // out-of-order chunks keyed by seqNum
+	streamIsLast  bool              // whether the final chunk has been seen
+	streamLastSeq uint32            // seqNum of the final chunk (valid only when streamIsLast)
 }
 
 type upDoneEntry struct {
 	totalSize  uint32
 	chunkCount uint16
+	streamDone bool
 	doneAt     time.Time
 }
 
@@ -69,7 +81,6 @@ type downSession struct {
 	buf       []byte
 	total     uint32
 	taskNonce uint32
-	createdAt time.Time
 	lastChunk time.Time
 	attempts  int
 }
@@ -88,12 +99,15 @@ const (
 )
 
 func NewFrameManager(ts *Teamserver, config *FrameConfig) *FrameManager {
+	ctx, cancel := context.WithCancel(context.Background())
+
 	fm := &FrameManager{
 		ts:           ts,
-		upSessions:   make(map[string]*upSession),
-		upDoneCache:  make(map[string]*upDoneEntry),
-		downSessions: make(map[string]*downSession),
-		active:       true,
+		upSessions:   make(map[int64]*upSession),
+		upDoneCache:  make(map[int64]*upDoneEntry),
+		downSessions: make(map[int64]*downSession),
+		ctx:          ctx,
+		cancel:       cancel,
 
 		maxUploadSize:   fmDefaultMaxUpload,
 		maxDownloadSize: fmDefaultMaxDownload,
@@ -131,13 +145,11 @@ func NewFrameManager(ts *Teamserver, config *FrameConfig) *FrameManager {
 }
 
 func (fm *FrameManager) Stop() {
-	fm.mu.Lock()
-	fm.active = false
-	fm.mu.Unlock()
+	fm.cancel()
 }
 
-func (fm *FrameManager) Put(sid string, index uint32, data []byte, totalSize uint32, chunkCount uint16) (complete bool, nextExpected uint32, received uint32, sackBitmap uint32, assembled []byte) {
-	if sid == "" || (totalSize == 0 && chunkCount == 0) {
+func (fm *FrameManager) Put(sid int64, index uint32, data []byte, totalSize uint32, chunkCount uint16) (complete bool, nextExpected uint32, received uint32, sackBitmap uint32, assembled []byte) {
+	if sid == 0 || (totalSize == 0 && chunkCount == 0) {
 		return
 	}
 	if chunkCount > 0 {
@@ -146,15 +158,9 @@ func (fm *FrameManager) Put(sid string, index uint32, data []byte, totalSize uin
 	return fm.putByteOffset(sid, totalSize, index, data)
 }
 
-func (fm *FrameManager) putByteOffset(sid string, totalSize uint32, offset uint32, data []byte) (complete bool, nextExpected uint32, received uint32, sackBitmap uint32, assembled []byte) {
+func (fm *FrameManager) putByteOffset(sid int64, totalSize uint32, offset uint32, data []byte) (complete bool, nextExpected uint32, received uint32, sackBitmap uint32, assembled []byte) {
 	if totalSize > fm.maxUploadSize {
 		return false, 0, 0, 0, nil
-	}
-
-	if offset == 0 && totalSize <= uint32(len(data)) {
-		result := make([]byte, totalSize)
-		copy(result, data[:totalSize])
-		return true, totalSize, totalSize, 0, result
 	}
 
 	fm.mu.Lock()
@@ -162,6 +168,14 @@ func (fm *FrameManager) putByteOffset(sid string, totalSize uint32, offset uint3
 	if done, exists := fm.upDoneCache[sid]; exists && done.totalSize == totalSize {
 		fm.mu.Unlock()
 		return true, totalSize, totalSize, 0, nil
+	}
+
+	if offset == 0 && totalSize <= uint32(len(data)) {
+		result := make([]byte, totalSize)
+		copy(result, data[:totalSize])
+		fm.upDoneCache[sid] = &upDoneEntry{totalSize: totalSize, doneAt: time.Now()}
+		fm.mu.Unlock()
+		return true, totalSize, totalSize, 0, result
 	}
 
 	s, ok := fm.upSessions[sid]
@@ -219,7 +233,7 @@ func (fm *FrameManager) putByteOffset(sid string, totalSize uint32, offset uint3
 	return complete, nextExp, filled, 0, completeBuf
 }
 
-func (fm *FrameManager) putChunkIndex(sid string, chunkIdx uint16, chunkCount uint16, data []byte) (complete bool, nextExpected uint32, received uint32, sackBitmap uint32, assembled []byte) {
+func (fm *FrameManager) putChunkIndex(sid int64, chunkIdx uint16, chunkCount uint16, data []byte) (complete bool, nextExpected uint32, received uint32, sackBitmap uint32, assembled []byte) {
 	if chunkCount == 0 {
 		return
 	}
@@ -274,6 +288,15 @@ func (fm *FrameManager) putChunkIndex(sid string, chunkIdx uint16, chunkCount ui
 	}
 
 	if complete {
+		var totalLen int
+		for i := uint16(0); i < chunkCount; i++ {
+			totalLen += len(s.chunks[i])
+		}
+		if uint32(totalLen) > fm.maxUploadSize {
+			delete(fm.upSessions, sid)
+			fm.mu.Unlock()
+			return false, 0, 0, 0, nil
+		}
 		for i := uint16(0); i < chunkCount; i++ {
 			assembled = append(assembled, s.chunks[i]...)
 		}
@@ -286,8 +309,72 @@ func (fm *FrameManager) putChunkIndex(sid string, chunkIdx uint16, chunkCount ui
 	return complete, uint32(nextExp), uint32(receivedCount), sackBitmap, assembled
 }
 
-func (fm *FrameManager) GetChunk(sid string, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (total uint32, chunkOffset uint32, data []byte, taskNonce uint32, isEmpty bool) {
-	if sid == "" || maxChunkSize <= 0 {
+func (fm *FrameManager) PutStream(sid int64, seqNum uint32, data []byte, isLast bool) (complete bool, assembled []byte) {
+	if sid == 0 {
+		return
+	}
+
+	fm.mu.Lock()
+	defer fm.mu.Unlock()
+
+	if done, exists := fm.upDoneCache[sid]; exists && done.streamDone {
+		return true, nil
+	}
+
+	s, ok := fm.upSessions[sid]
+	if !ok || s.mode != frameModeStream {
+		s = &upSession{
+			mode:       frameModeStream,
+			streamBuf:  nil,
+			streamOOO:  make(map[uint32][]byte),
+			lastUpdate: time.Now(),
+		}
+		fm.upSessions[sid] = s
+	}
+
+	if seqNum < s.streamSeqNext {
+		return false, nil
+	}
+
+	if _, exists := s.streamOOO[seqNum]; !exists {
+		chunk := make([]byte, len(data))
+		copy(chunk, data)
+		s.streamOOO[seqNum] = chunk
+	}
+	s.lastUpdate = time.Now()
+
+	if isLast {
+		s.streamIsLast = true
+		s.streamLastSeq = seqNum
+	}
+
+	for {
+		chunk, exists := s.streamOOO[s.streamSeqNext]
+		if !exists {
+			break
+		}
+		s.streamBuf = append(s.streamBuf, chunk...)
+		if uint32(len(s.streamBuf)) > fm.maxUploadSize {
+			delete(fm.upSessions, sid)
+			return false, nil
+		}
+		delete(s.streamOOO, s.streamSeqNext)
+		s.streamSeqNext++
+	}
+
+	if s.streamIsLast && s.streamSeqNext > s.streamLastSeq {
+		result := make([]byte, len(s.streamBuf))
+		copy(result, s.streamBuf)
+		fm.upDoneCache[sid] = &upDoneEntry{streamDone: true, doneAt: time.Now()}
+		delete(fm.upSessions, sid)
+		return true, result
+	}
+
+	return false, nil
+}
+
+func (fm *FrameManager) GetChunk(sid int64, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (total uint32, chunkOffset uint32, data []byte, taskNonce uint32, isEmpty bool) {
+	if sid == 0 || maxChunkSize <= 0 {
 		return 0, 0, nil, 0, true
 	}
 
@@ -319,7 +406,6 @@ func (fm *FrameManager) GetChunk(sid string, reqOffset uint32, maxChunkSize int,
 			buf:       payload,
 			total:     uint32(len(payload)),
 			taskNonce: nonce,
-			createdAt: time.Now(),
 			lastChunk: time.Now(),
 		}
 
@@ -333,6 +419,12 @@ func (fm *FrameManager) GetChunk(sid string, reqOffset uint32, maxChunkSize int,
 
 	ds.lastChunk = time.Now()
 	ds.attempts++
+
+	if ds.attempts > fm.maxAttempts {
+		delete(fm.downSessions, sid)
+		fm.mu.Unlock()
+		return 0, 0, nil, 0, false
+	}
 
 	if reqOffset >= ds.total {
 		fm.mu.Unlock()
@@ -355,7 +447,7 @@ func (fm *FrameManager) GetChunk(sid string, reqOffset uint32, maxChunkSize int,
 	return t, reqOffset, chunk, nonce, false
 }
 
-func (fm *FrameManager) HasPending(sid string) bool {
+func (fm *FrameManager) HasPending(sid int64) bool {
 	fm.mu.Lock()
 	ds := fm.downSessions[sid]
 	fm.mu.Unlock()
@@ -364,14 +456,15 @@ func (fm *FrameManager) HasPending(sid string) bool {
 		return true
 	}
 
-	agent, err := fm.ts.getAgent(sid)
-	if err != nil {
+	agent, ok := fm.ts.Agents.Get(sid)
+	if !ok {
 		return false
 	}
-	return agent.HostedQueue.Len() > 0 || (agent.PivotChilds.Len() > 0 && fm.ts.TsTasksPivotExists(sid, true))
+	return agent.HostedQueue.Len() > 0 ||
+		(agent.PivotChilds.Len() > 0 && fm.ts.TsTasksPivotExists(sid, true))
 }
 
-func (fm *FrameManager) AckDelivery(sid string, ackOffset uint32, ackNonce uint32) {
+func (fm *FrameManager) AckDelivery(sid int64, ackOffset uint32, ackNonce uint32) {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 
@@ -382,18 +475,19 @@ func (fm *FrameManager) AckDelivery(sid string, ackOffset uint32, ackNonce uint3
 	if ackNonce != 0 && ds.taskNonce != ackNonce {
 		return
 	}
+	ds.attempts = 0
 	if ackOffset >= ds.total {
 		delete(fm.downSessions, sid)
 	}
 }
 
-func (fm *FrameManager) ResetUpstream(sid string) {
+func (fm *FrameManager) ResetUpstream(sid int64) {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 	delete(fm.upSessions, sid)
 }
 
-func (fm *FrameManager) ResetDownstream(sid string) {
+func (fm *FrameManager) ResetDownstream(sid int64) {
 	fm.mu.Lock()
 	defer fm.mu.Unlock()
 	delete(fm.downSessions, sid)
@@ -416,14 +510,14 @@ func (fm *FrameManager) cleanupLoop() {
 	defer ticker.Stop()
 
 	for {
-		<-ticker.C
-		fm.mu.Lock()
-		if !fm.active {
-			fm.mu.Unlock()
+		select {
+		case <-fm.ctx.Done():
 			return
+		case <-ticker.C:
+			fm.mu.Lock()
+			fm.cleanupStale()
+			fm.mu.Unlock()
 		}
-		fm.cleanupStale()
-		fm.mu.Unlock()
 	}
 }
 
@@ -432,6 +526,7 @@ func (fm *FrameManager) cleanupStale() {
 
 	for sid, s := range fm.upSessions {
 		if now.Sub(s.lastUpdate) > fm.staleTimeout {
+			fm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:frame_manager", "cleanup stale upSession sid=%d mode=%d", sid, s.mode)
 			delete(fm.upSessions, sid)
 		}
 	}
@@ -444,6 +539,7 @@ func (fm *FrameManager) cleanupStale() {
 
 	for sid, ds := range fm.downSessions {
 		if now.Sub(ds.lastChunk) > fm.downTimeout || ds.attempts > fm.maxAttempts {
+			fm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:frame_manager", "cleanup downSession sid=%d attempts=%d", sid, ds.attempts)
 			delete(fm.downSessions, sid)
 		}
 	}

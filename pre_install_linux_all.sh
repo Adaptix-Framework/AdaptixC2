@@ -5,7 +5,7 @@ YELLOW=$(printf '\033[1;33m')
 RED=$(printf '\033[1;31m')
 NC=$(printf '\033[0m')
 
-GO_VERSION='1.25.4'
+GO_VERSION='1.26.5'
 
 ERROR_FILE="$(date "+%d.%m.%Y_%H-%M-%S")-error.log"
 

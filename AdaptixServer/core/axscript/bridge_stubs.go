@@ -164,12 +164,6 @@ func registerMenuStubs(engine *ScriptEngine) {
 	menuObj.Set("add_targets", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
 	menuObj.Set("add_credentials", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
 
-	// Main menu
-	menuObj.Set("add_main", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
-	menuObj.Set("add_main_projects", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
-	menuObj.Set("add_main_axscript", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
-	menuObj.Set("add_main_settings", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
-
 	rt.Set("menu", menuObj)
 }
 

@@ -28,8 +28,8 @@ public:
 
     QString connType     = QString();
     QString listenerType = QString();
-    QString parentId     = QString();
-    QVector<QString> childsId;
+    qint64  parentId     = 0;
+    QVector<qint64> childsId;
 
     GraphItem* graphItem  = nullptr;
     QImage     graphImage = QImage();
@@ -63,8 +63,8 @@ public:
     void    Update(const QJsonObject &jsonObjAgentData);
     void    MarkItem(const QString &mark);
     void    UpdateImage();
-    void TasksCancel(const QStringList &tasks) const;
-    void TasksDelete(const QStringList &tasks) const;
+    void TasksCancel(const QList<qint64> &tasks) const;
+    void TasksDelete(const QList<qint64> &tasks) const;
 
     void SetParent(const PivotData &pivotData);
     void UnsetParent(const PivotData &pivotData);

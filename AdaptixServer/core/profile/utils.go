@@ -3,6 +3,8 @@ package profile
 type AdaptixProfile struct {
 	Server     *TsProfile    `yaml:"Teamserver"`
 	HttpServer *TsHttpServer `yaml:"HttpServer"`
+
+	ts Teamserver `yaml:"-"`
 }
 
 type TsProfile struct {

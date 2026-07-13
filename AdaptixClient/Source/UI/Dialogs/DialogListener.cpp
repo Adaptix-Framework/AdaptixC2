@@ -13,6 +13,7 @@ DialogListener::DialogListener(QWidget *parent) : QDialog(parent)
     connect(listenerCombobox,     &QComboBox::currentTextChanged,           this, &DialogListener::changeConfig);
     connect(listenerTypeCombobox, &QComboBox::currentTextChanged,           this, &DialogListener::changeType);
     connect(buttonCreate,         &QPushButton::clicked,                    this, &DialogListener::onButtonCreate );
+    connect(cancelButton,         &QPushButton::clicked,                    this, &QDialog::close );
     connect(buttonNewProfile,     &QPushButton::clicked,                    this, &DialogListener::onButtonNewProfile );
     connect(buttonLoad,           &QPushButton::clicked,                    this, &DialogListener::onButtonLoad );
     connect(buttonSave,           &QPushButton::clicked,                    this, &DialogListener::onButtonSave );
@@ -28,107 +29,40 @@ void DialogListener::createUI()
     this->setWindowTitle("Create Listener");
     this->setProperty("Main", "base");
 
-    listenerNameLabel = new QLabel(this);
-    listenerNameLabel->setText("Name:");
-
-    inputListenerName = new QLineEdit(this);
-    inputListenerName->setToolTip("Listener name");
-
-    profileLabel = new QLabel(this);
-    profileLabel->setText("Profile:");
-
-    inputProfileName = new QLineEdit(this);
-    inputProfileName->setToolTip("Profile name");
-
-    actionSaveProfile = new QAction(this);
-    actionSaveProfile->setCheckable(true);
-    actionSaveProfile->setChecked(true);
-    actionSaveProfile->setToolTip("Click to toggle: Save as profile");
-    actionSaveProfile->setIcon(QIcon(":/icons/check"));
-    inputProfileName->addAction(actionSaveProfile, QLineEdit::TrailingPosition);
-
-    listenerTypeLabel = new QLabel(this);
-    listenerTypeLabel->setText("Protocol:");
+    listenerTypeLabel = new QLabel("Protocol:", this);
     listenerTypeCombobox = new QComboBox(this);
 
-    listenerLabel = new QLabel(this);
-    listenerLabel->setText("Config:");
+    listenerLabel = new QLabel("Config:", this);
     listenerCombobox = new QComboBox(this);
 
-    menuContext = new oclero::qlementine::Menu(this);
-    menuContext->addAction("Rename", this, &DialogListener::onProfileRename);
-    menuContext->addAction("Remove", this, &DialogListener::onProfileRemove);
-
-    label_Profiles = new QLabel(this);
-    label_Profiles->setAlignment(Qt::AlignCenter);
-    label_Profiles->setText("Profiles");
-
-    cardWidget = new CardListWidget(this);
-    cardWidget->setFixedWidth(220);
-    cardWidget->setContextMenuPolicy(Qt::CustomContextMenu);
-    cardWidget->addAction(menuContext->menuAction());
-    cardWidget->setSelectionMode(QAbstractItemView::SingleSelection);
-    cardWidget->setFocusPolicy(Qt::NoFocus);
-
-    buttonNewProfile = new QPushButton(this);
-    buttonNewProfile->setText("New Profile");
-    buttonNewProfile->setMinimumSize(QSize(10, 30));
-
-    buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
-    buttonLoad->setIconSize(QSize(20, 20));
-    buttonLoad->setFixedSize(QSize(30, 30));
-    buttonLoad->setToolTip("Load profile from file");
-
-    buttonSave = new QPushButton(QIcon(":/icons/save_as"), "", this);
-    buttonSave->setIconSize(QSize(20, 20));
-    buttonSave->setFixedSize(QSize(30, 30));
-    buttonSave->setToolTip("Save profile to file");
-
-    auto profileButtonsLayout = new QHBoxLayout();
-    profileButtonsLayout->addWidget(buttonNewProfile);
-    profileButtonsLayout->addWidget(buttonLoad);
-    profileButtonsLayout->addWidget(buttonSave);
-    profileButtonsLayout->setSpacing(5);
-    profileButtonsLayout->setContentsMargins(0, 0, 0, 0);
-
-    auto profileButtonsWidget = new QWidget(this);
-    profileButtonsWidget->setLayout(profileButtonsLayout);
-
+    listenerNameLabel = new QLabel("Name:", this);
+    inputListenerName = new QLineEdit(this);
+    inputListenerName->setToolTip("Listener name");
 
     configStackWidget = new QStackedWidget(this);
 
     stackGridLayout = new QGridLayout(this);
     stackGridLayout->setHorizontalSpacing(0);
-    stackGridLayout->setContentsMargins(0, 0, 0, 0 );
-    stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1 );
+    stackGridLayout->setContentsMargins(0, 0, 0, 0);
+    stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1);
 
-    listenerConfigGroupbox = new QGroupBox(this);
-    listenerConfigGroupbox->setTitle("Listener config");
-    listenerConfigGroupbox->setAlignment(Qt::AlignHCenter);
+    listenerConfigGroupbox = new QGroupBox("Listener Configuration", this);
     listenerConfigGroupbox->setLayout(stackGridLayout);
-
-    buttonCreate = new QPushButton(this);
-    buttonCreate->setDefault(true);
-    buttonCreate->setText("Create");
-    buttonCreate->setFixedWidth(160);
-    buttonCreate->setFocus();
 
     auto leftPanelLayout = new QGridLayout();
     leftPanelLayout->setVerticalSpacing(8);
     leftPanelLayout->setHorizontalSpacing(8);
     leftPanelLayout->setContentsMargins(5, 5, 5, 5);
 
-    leftPanelLayout->addWidget( listenerNameLabel,      0, 0);
-    leftPanelLayout->addWidget( inputListenerName,      0, 1);
-    leftPanelLayout->addWidget( profileLabel,           0, 2);
-    leftPanelLayout->addWidget( inputProfileName,       0, 3);
+    leftPanelLayout->addWidget(listenerTypeLabel,      0, 0);
+    leftPanelLayout->addWidget(listenerTypeCombobox,   0, 1);
+    leftPanelLayout->addWidget(listenerLabel,          0, 2);
+    leftPanelLayout->addWidget(listenerCombobox,       0, 3);
 
-    leftPanelLayout->addWidget( listenerTypeLabel,      1, 0);
-    leftPanelLayout->addWidget( listenerTypeCombobox,   1, 1);
-    leftPanelLayout->addWidget( listenerLabel,          1, 2);
-    leftPanelLayout->addWidget( listenerCombobox,       1, 3);
+    leftPanelLayout->addWidget(listenerNameLabel,      1, 0);
+    leftPanelLayout->addWidget(inputListenerName,      1, 1, 1, 3);
 
-    leftPanelLayout->addWidget( listenerConfigGroupbox, 2, 0, 1, 4);
+    leftPanelLayout->addWidget(listenerConfigGroupbox, 2, 0, 1, 4);
 
     leftPanelLayout->setRowStretch(0, 0);
     leftPanelLayout->setRowStretch(1, 0);
@@ -138,17 +72,10 @@ void DialogListener::createUI()
     leftPanelLayout->setColumnStretch(2, 0);
     leftPanelLayout->setColumnStretch(3, 1);
 
-    auto actionButtonsLayout = new QHBoxLayout();
-    actionButtonsLayout->addStretch();
-    actionButtonsLayout->addWidget(buttonCreate);
-    actionButtonsLayout->addStretch();
-
     auto formLayout = new QVBoxLayout();
     formLayout->setContentsMargins(10, 10, 10, 10);
-    formLayout->setSpacing(10);
-    formLayout->addLayout(leftPanelLayout);
-    formLayout->addStretch(1);
-    formLayout->addLayout(actionButtonsLayout);
+    formLayout->setSpacing(8);
+    formLayout->addLayout(leftPanelLayout, 1);
 
     auto formWidget = new QWidget(this);
     formWidget->setLayout(formLayout);
@@ -157,22 +84,103 @@ void DialogListener::createUI()
     separatorLine->setFrameShape(QFrame::VLine);
     separatorLine->setFrameShadow(QFrame::Sunken);
 
-    mainGridLayout = new QGridLayout(this);
+    menuContext = new oclero::qlementine::Menu(this);
+    menuContext->addAction("Rename", this, &DialogListener::onProfileRename);
+    menuContext->addAction("Remove", this, &DialogListener::onProfileRemove);
+
+    label_Profiles = new QLabel("Profiles", this);
+    label_Profiles->setObjectName("ProfilesHeader");
+    label_Profiles->setStyleSheet("QLabel#ProfilesHeader { color: palette(placeholderText); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }");
+
+    inputProfileName = new QLineEdit(this);
+    inputProfileName->setToolTip("Profile name");
+    inputProfileName->setPlaceholderText("Profile name...");
+
+    actionSaveProfile = new QAction(this);
+    actionSaveProfile->setCheckable(true);
+    actionSaveProfile->setChecked(true);
+    actionSaveProfile->setToolTip("Click to toggle: Save as profile");
+    actionSaveProfile->setIcon(QIcon(":/icons/check"));
+    inputProfileName->addAction(actionSaveProfile, QLineEdit::TrailingPosition);
+
+    cardWidget = new CardListWidget(this);
+    cardWidget->setContextMenuPolicy(Qt::CustomContextMenu);
+    cardWidget->addAction(menuContext->menuAction());
+    cardWidget->setSelectionMode(QAbstractItemView::SingleSelection);
+    cardWidget->setFocusPolicy(Qt::NoFocus);
+
+    auto profileSeparator = new QFrame(this);
+    profileSeparator->setFrameShape(QFrame::HLine);
+    profileSeparator->setFrameShadow(QFrame::Sunken);
+
+    buttonNewProfile = new QPushButton("New", this);
+    buttonNewProfile->setMinimumSize(QSize(10, 28));
+
+    buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
+    buttonLoad->setIconSize(QSize(18, 18));
+    buttonLoad->setFixedSize(QSize(28, 28));
+    buttonLoad->setToolTip("Load profile from file");
+
+    buttonSave = new QPushButton(QIcon(":/icons/save_as"), "", this);
+    buttonSave->setIconSize(QSize(18, 18));
+    buttonSave->setFixedSize(QSize(28, 28));
+    buttonSave->setToolTip("Save profile to file");
+
+    auto profileButtonsLayout = new QHBoxLayout();
+    profileButtonsLayout->setContentsMargins(0, 0, 0, 0);
+    profileButtonsLayout->setSpacing(4);
+    profileButtonsLayout->addWidget(buttonNewProfile, 1);
+    profileButtonsLayout->addWidget(buttonLoad);
+    profileButtonsLayout->addWidget(buttonSave);
+
+    auto profilesLayout = new QVBoxLayout();
+    profilesLayout->setContentsMargins(10, 10, 10, 10);
+    profilesLayout->setSpacing(6);
+    profilesLayout->addWidget(label_Profiles);
+    profilesLayout->addWidget(inputProfileName);
+    profilesLayout->addWidget(profileSeparator);
+    profilesLayout->addWidget(cardWidget, 1);
+    profilesLayout->addLayout(profileButtonsLayout);
+
+    auto profilesPanel = new QWidget(this);
+    profilesPanel->setFixedWidth(220);
+    profilesPanel->setLayout(profilesLayout);
+
+    cancelButton = new QPushButton("Cancel", this);
+    cancelButton->setFixedHeight(30);
+
+    buttonCreate = new QPushButton("Create", this);
+    buttonCreate->setDefault(true);
+    buttonCreate->setFixedHeight(30);
+    buttonCreate->setFixedWidth(120);
+    buttonCreate->setFocus();
+
+    auto footerLayout = new QHBoxLayout();
+    footerLayout->setContentsMargins(10, 0, 10, 0);
+    footerLayout->setSpacing(8);
+    footerLayout->addStretch();
+    footerLayout->addWidget(cancelButton);
+    footerLayout->addWidget(buttonCreate);
+
+    auto footerWidget = new QWidget(this);
+    footerWidget->setObjectName("DialogFooter");
+    footerWidget->setFixedHeight(46);
+    footerWidget->setStyleSheet("QWidget#DialogFooter { border-top: 1px solid palette(mid); }");
+    footerWidget->setLayout(footerLayout);
+
+    auto bodyLayout = new QHBoxLayout();
+    bodyLayout->setContentsMargins(0, 0, 0, 0);
+    bodyLayout->setSpacing(0);
+    bodyLayout->addWidget(formWidget, 1);
+    bodyLayout->addWidget(separatorLine);
+    bodyLayout->addWidget(profilesPanel);
+
+    mainGridLayout = new QVBoxLayout(this);
     mainGridLayout->setContentsMargins(5, 5, 5, 5);
-    mainGridLayout->addWidget(formWidget,            0, 0, 3, 1);
-    mainGridLayout->addWidget(separatorLine,         0, 1, 3, 1);
-    mainGridLayout->addWidget(label_Profiles,        0, 2, 1, 1);
-    mainGridLayout->addWidget(cardWidget,            1, 2, 1, 1);
-    mainGridLayout->addWidget(profileButtonsWidget,  2, 2, 1, 1);
+    mainGridLayout->setSpacing(0);
+    mainGridLayout->addLayout(bodyLayout, 1);
+    mainGridLayout->addWidget(footerWidget);
 
-    mainGridLayout->setRowStretch(0, 0);
-    mainGridLayout->setRowStretch(1, 1);
-    mainGridLayout->setRowStretch(2, 0);
-    mainGridLayout->setColumnStretch(0, 1);
-    mainGridLayout->setColumnStretch(1, 0);
-    mainGridLayout->setColumnStretch(2, 0);
-
-    this->setLayout(mainGridLayout);
     this->setMinimumWidth(800);
 }
 
@@ -383,8 +391,10 @@ void DialogListener::onButtonSave()
     QString tmpFilename = configName + "_listener_config.json";
     QString baseDir     = authProfile.GetProjectDir();
     QString initialPath = QDir(baseDir).filePath(tmpFilename);
+    QPointer<DialogListener> safeThis = this;
     NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "JSON files (*.json)",
-        [this, fileContent](const QString& filePath) {
+        [safeThis, fileContent](const QString& filePath) {
+            if (!safeThis) return;
             if (filePath.isEmpty())
                 return;
 

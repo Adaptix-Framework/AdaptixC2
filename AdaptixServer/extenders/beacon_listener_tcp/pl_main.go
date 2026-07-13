@@ -8,26 +8,21 @@ import (
 	"encoding/json"
 	"fmt"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
-
-type Teamserver interface {
-	TsAgentIsExists(agentId string) bool
-	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
-}
 
 type PluginListener struct{}
 
 var (
 	ModuleDir       string
 	ListenerDataDir string
-	Ts              Teamserver
+	Ts              adaptix.Teamserver
 )
 
 func InitPlugin(ts any, moduleDir string, listenerDir string) adaptix.PluginListener {
 	ModuleDir = moduleDir
 	ListenerDataDir = listenerDir
-	Ts = ts.(Teamserver)
+	Ts = ts.(adaptix.Teamserver)
 	return &PluginListener{}
 }
 
@@ -158,33 +153,41 @@ func (l *Listener) GetProfile() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (l *Listener) InternalHandler(data []byte) (string, error) {
-	var agentId = ""
+func (l *Listener) InternalHandler(data []byte) (int64, error) {
+	var agentId int64 = 0
 
 	/// START CODE HERE
 
 	encKey, err := hex.DecodeString(l.transport.Config.EncryptKey)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 	rc4crypt, err := rc4.NewCipher(encKey)
 	if err != nil {
-		return "", err
+		return 0, err
 	}
 
 	agentInfo := make([]byte, len(data))
 	rc4crypt.XORKeyStream(agentInfo, data)
 
+	if len(agentInfo) < 8 {
+		return 0, fmt.Errorf("invalid agent info length")
+	}
+
 	agentType := fmt.Sprintf("%08x", uint(binary.BigEndian.Uint32(agentInfo[:4])))
 	agentInfo = agentInfo[4:]
-	agentId = fmt.Sprintf("%08x", uint(binary.BigEndian.Uint32(agentInfo[:4])))
+	agentUid := make([]byte, 4)
+	binary.BigEndian.PutUint32(agentUid, binary.BigEndian.Uint32(agentInfo[:4]))
 	agentInfo = agentInfo[4:]
 
-	if !Ts.TsAgentIsExists(agentId) {
-		_, err = Ts.TsAgentCreate(agentType, agentId, agentInfo, l.transport.Name, "", false)
-		if err != nil {
-			return agentId, err
+	var exists bool
+	agentId, exists = Ts.TsAgentIdByUID(agentUid)
+	if !exists {
+		ad, errCreate := Ts.TsAgentCreate(agentType, agentUid, agentInfo, l.transport.Name, "", false)
+		if errCreate != nil {
+			return 0, errCreate
 		}
+		agentId = ad.Id
 	}
 
 	/// END CODE HERE

@@ -3,6 +3,17 @@
 double LayoutTreeLeft::X_SEP = 380;
 double LayoutTreeLeft::Y_SEP = 160;
 
+static inline QVector<GraphItem*> visibleChildren(const GraphItem* item)
+{
+    QVector<GraphItem*> out;
+    if (!item)
+        return out;
+    for (GraphItem* child : item->childItems)
+        if (child && child->isVisible())
+            out.append(child);
+    return out;
+}
+
 void LayoutTreeLeft::draw( GraphItem* item )
 {
     LayoutTreeLeft::NullTree( item );
@@ -16,7 +27,7 @@ void LayoutTreeLeft::NullTree( GraphItem* item )
     item->Thread = nullptr;
     item->Ancestor = item;
 
-    for ( GraphItem* child : item->childItems)
+    for ( GraphItem* child : visibleChildren(item))
         LayoutTreeLeft::NullTree( child );
 }
 
@@ -24,40 +35,50 @@ void LayoutTreeLeft::DFS( GraphItem* item, double m, double depth )
 {
     item->setPos( ( depth * X_SEP ) + 100, item->Prelim + m );
 
-    for ( GraphItem* child : item->childItems )
+    for ( GraphItem* child : visibleChildren(item) )
         LayoutTreeLeft::DFS( child, m + item->Modifier, depth + 1 );
 }
 
 void LayoutTreeLeft::ReingoldTilford( GraphItem* item )
 {
-    if ( item->childItems.empty() ) {
-        if ( item->parentItem && item != item->parentItem->childItems[0] ) {
-            QVector<GraphItem*> children = item->parentItem->childItems;
-            GraphItem* sibling = *std::prev( std::ranges::find(std::as_const(children), item ) );
+    const auto children = visibleChildren(item);
 
-            item->Prelim = sibling->Prelim + Y_SEP;
+    if ( children.empty() ) {
+        if ( item->parentItem ) {
+            const auto siblings = visibleChildren(item->parentItem);
+            const auto it = std::ranges::find(std::as_const(siblings), item);
+            if ( it != siblings.end() && it != siblings.begin() ) {
+                GraphItem* sibling = *std::prev( it );
+                item->Prelim = sibling->Prelim + Y_SEP;
+            } else {
+                item->Prelim = 0;
+            }
         } else {
             item->Prelim = 0;
         }
     } else {
-        GraphItem* defaultAncestor = item->childItems[ 0 ];
+        GraphItem* defaultAncestor = children[ 0 ];
 
-        for(int i=0; i < item->childItems.size(); i++ ) {
-            GraphItem* child = item->childItems[i];
+        for(int i=0; i < children.size(); i++ ) {
+            GraphItem* child = children[i];
             LayoutTreeLeft::ReingoldTilford( child );
             LayoutTreeLeft::apportion( child, defaultAncestor );
         }
 
         LayoutTreeLeft::executeShifts( item );
 
-        const double midpoint = ( item->childItems[ 0 ]->Prelim + item->childItems.back()->Prelim ) / 2;
+        const double midpoint = ( children[ 0 ]->Prelim + children.back()->Prelim ) / 2;
 
-        if ( item->parentItem && item != item->parentItem->childItems[ 0 ] ) {
-            QVector<GraphItem*> children = item->parentItem->childItems;
-            GraphItem* sibling = *std::prev( std::ranges::find(std::as_const(children), item ) );
-
-            item->Prelim   = sibling->Prelim + Y_SEP;
-            item->Modifier = item->Prelim - midpoint;
+        if ( item->parentItem ) {
+            const auto siblings = visibleChildren(item->parentItem);
+            const auto it = std::ranges::find(std::as_const(siblings), item);
+            if ( it != siblings.end() && it != siblings.begin() ) {
+                GraphItem* sibling = *std::prev( it );
+                item->Prelim   = sibling->Prelim + Y_SEP;
+                item->Modifier = item->Prelim - midpoint;
+            } else {
+                item->Prelim = midpoint;
+            }
         } else {
             item->Prelim = midpoint;
         }
@@ -66,29 +87,32 @@ void LayoutTreeLeft::ReingoldTilford( GraphItem* item )
 
 void LayoutTreeLeft::apportion( GraphItem* item, GraphItem*& defaultAncestor )
 {
-    if ( item != item->parentItem->childItems[ 0 ] ) {
-        QVector<GraphItem*> children = item->parentItem->childItems;
-        GraphItem* sibling = *std::prev( std::ranges::find(std::as_const(children), item ) );
+    const auto siblings = visibleChildren(item->parentItem);
+    const auto it = std::ranges::find(std::as_const(siblings), item);
+    if ( it == siblings.end() || it == siblings.begin() )
+        return;
 
-        GraphItem* vip = item;
-        GraphItem* vop = item;
-        GraphItem* vim = sibling;
-        GraphItem* vom = vip->parentItem->childItems[ 0 ];
+    GraphItem* sibling = *std::prev( it );
 
-        double sip = vip->Modifier;
-        double sop = vop->Modifier;
-        double sim = vim->Modifier;
-        double som = vom->Modifier;
+    GraphItem* vip = item;
+    GraphItem* vop = item;
+    GraphItem* vim = sibling;
+    GraphItem* vom = visibleChildren(item->parentItem)[ 0 ];
 
-        while ( LayoutTreeLeft::nextRight( vim ) && LayoutTreeLeft::nextLeft( vip ) ) {
-            vim = LayoutTreeLeft::nextRight( vim );
-            vip = LayoutTreeLeft::nextLeft( vip );
-            vom = LayoutTreeLeft::nextLeft( vom );
-            vop = LayoutTreeLeft::nextRight( vop );
+    double sip = vip->Modifier;
+    double sop = vop->Modifier;
+    double sim = vim->Modifier;
+    double som = vom->Modifier;
 
-            vop->Ancestor = item;
+    while ( LayoutTreeLeft::nextRight( vim ) && LayoutTreeLeft::nextLeft( vip ) ) {
+        vim = LayoutTreeLeft::nextRight( vim );
+        vip = LayoutTreeLeft::nextLeft( vip );
+        vom = LayoutTreeLeft::nextLeft( vom );
+        vop = LayoutTreeLeft::nextRight( vop );
 
-            double shift = ( vim->Prelim + sim ) - ( vip->Prelim + sip ) + Y_SEP;
+        vop->Ancestor = item;
+
+        double shift = ( vim->Prelim + sim ) - ( vip->Prelim + sip ) + Y_SEP;
 
         if ( shift > 0 ) {
             LayoutTreeLeft::moveSubtree( LayoutTreeLeft::ancestor( vim, item, defaultAncestor ), item, shift );
@@ -96,33 +120,34 @@ void LayoutTreeLeft::apportion( GraphItem* item, GraphItem*& defaultAncestor )
             sop += shift;
         }
 
-            sim += vim->Modifier;
-            sip += vip->Modifier;
-            som += vom->Modifier;
-            sop += vop->Modifier;
-        }
+        sim += vim->Modifier;
+        sip += vip->Modifier;
+        som += vom->Modifier;
+        sop += vop->Modifier;
+    }
 
-        if ( LayoutTreeLeft::nextRight( vim ) && ! LayoutTreeLeft::nextRight( vop ) ) {
-            vop->Thread = LayoutTreeLeft::nextRight( vim );
-            vop->Modifier += sim - sop;
-        }
+    if ( LayoutTreeLeft::nextRight( vim ) && ! LayoutTreeLeft::nextRight( vop ) ) {
+        vop->Thread = LayoutTreeLeft::nextRight( vim );
+        vop->Modifier += sim - sop;
+    }
 
-        if ( LayoutTreeLeft::nextLeft( vip ) && ! LayoutTreeLeft::nextLeft( vom ) ) {
-            vom->Thread = nextLeft( vip );
-            vom->Modifier += sip - som;
-            defaultAncestor = item;
-        }
+    if ( LayoutTreeLeft::nextLeft( vip ) && ! LayoutTreeLeft::nextLeft( vom ) ) {
+        vom->Thread = nextLeft( vip );
+        vom->Modifier += sip - som;
+        defaultAncestor = item;
     }
 }
 
 GraphItem* LayoutTreeLeft::nextRight(GraphItem* item)
 {
-    return ( !item->childItems.empty() ) ? item->childItems.back() : item->Thread;
+    const auto children = visibleChildren(item);
+    return ( !children.empty() ) ? children.back() : item->Thread;
 }
 
 GraphItem* LayoutTreeLeft::nextLeft(GraphItem* item)
 {
-    return ( !item->childItems.empty() ) ? item->childItems[0] : item->Thread;
+    const auto children = visibleChildren(item);
+    return ( !children.empty() ) ? children[0] : item->Thread;
 }
 
 GraphItem* LayoutTreeLeft::ancestor(const GraphItem* vim, const GraphItem* v, GraphItem*& defaultAncestor )
@@ -135,8 +160,9 @@ void LayoutTreeLeft::executeShifts( GraphItem* item )
     double shift = 0;
     double change = 0;
 
-    for ( int i = item->childItems.size() - 1; i >= 0; i-- ) {
-        GraphItem* child = item->childItems[i];
+    const auto children = visibleChildren(item);
+    for ( int i = children.size() - 1; i >= 0; i-- ) {
+        GraphItem* child = children[i];
         child->Prelim += shift;
         child->Modifier += shift;
         change += child->Change;
@@ -146,7 +172,7 @@ void LayoutTreeLeft::executeShifts( GraphItem* item )
 
 void LayoutTreeLeft::moveSubtree( GraphItem* wm, GraphItem* wp, double shift)
 {
-    QVector<GraphItem*> children = wm->parentItem->childItems;
+    const auto children = visibleChildren(wm->parentItem);
     auto wmIndex  = std::distance( children.cbegin(), std::ranges::find(std::as_const(children), wm ) );
     auto wpIndex  = std::distance( children.cbegin(), std::ranges::find(std::as_const(children), wp ) );
     int  subtrees = wpIndex - wmIndex;

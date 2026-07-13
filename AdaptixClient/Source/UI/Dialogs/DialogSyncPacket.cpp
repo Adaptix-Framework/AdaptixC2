@@ -1,8 +1,27 @@
 #include <UI/Dialogs/DialogSyncPacket.h>
 
+#include <oclero/qlementine/style/QlementineStyle.hpp>
+#include <oclero/qlementine/style/Theme.hpp>
+
 void CustomSplashScreen::mousePressEvent(QMouseEvent *event)
 {
     event->ignore();
+}
+
+void CustomSplashScreen::drawContents(QPainter* painter)
+{
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
+    const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
+    painter->fillRect(rect(), t.backgroundColorMain1);
+
+    const QPixmap pm = pixmap();
+    if (!pm.isNull()) {
+        int x = (width()  - pm.width())  / 2;
+        int y = (height() - pm.height()) / 2;
+        painter->drawPixmap(x, y, pm);
+    }
+
+    QSplashScreen::drawContents(painter);
 }
 
 void DialogSyncPacket::setProcessingProgress(const int batchIndex, const int batchCount, const int processed, const int total)

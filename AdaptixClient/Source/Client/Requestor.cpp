@@ -1,6 +1,22 @@
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/HttpRequestManager.h>
+#include <QUrlQuery>
+
+static inline void httpPost(AuthProfile& profile, const QString& endpoint, const QJsonObject& body, const HttpCallback& callback, int timeout = 8000) {
+    QByteArray data = QJsonDocument(body).toJson();
+    HttpRequestManager::instance().post(profile.GetURL(), endpoint, profile.GetAccessToken(), data, callback, timeout);
+}
+
+static inline void httpPostRaw(AuthProfile& profile, const QString& endpoint, const QByteArray& jsonData, const HttpCallback& callback, int timeout = 8000) {
+    HttpRequestManager::instance().post(profile.GetURL(), endpoint, profile.GetAccessToken(), jsonData, callback, timeout);
+}
+
+static inline void httpPostFF(AuthProfile& profile, const QString& endpoint, const QByteArray& jsonData) {
+    HttpRequestManager::instance().postFireAndForget(profile.GetURL(), endpoint, profile.GetAccessToken(), jsonData);
+}
+
+
 
 QJsonObject HttpReq(const QString &sUrl, const QByteArray &jsonData, const QString &token, const int timeout)
 {
@@ -84,14 +100,11 @@ bool HttpReqJwtUpdate(AuthProfile* profile)
     return false;
 }
 
-bool HttpReqGetOTP(const QString &type, const QString &objectId, AuthProfile profile, QString* message, bool* ok)
+bool HttpReqGetOTP(const QString &type, const QJsonObject &data, AuthProfile& profile, QString* message, bool* ok)
 {
-    QJsonObject innerData;
-    innerData["id"] = objectId;
-
     QJsonObject dataJson;
     dataJson["type"] = type;
-    dataJson["data"] = innerData;
+    dataJson["data"] = data;
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     QString sUrl = profile.GetURL() + "/otp/generate";
@@ -104,104 +117,61 @@ bool HttpReqGetOTP(const QString &type, const QString &objectId, AuthProfile pro
     return false;
 }
 
-bool HttpReqGetOTP(const QString &type, const QJsonObject &data, const QString &baseUrl, const QString &accessToken, QString* otp)
+void HttpReqGetOTPAsync(const QString &type, const QJsonObject &data, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
     dataJson["type"] = type;
     dataJson["data"] = data;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    QString sUrl = baseUrl + "/otp/generate";
-    QJsonObject jsonObject = HttpReq(sUrl, jsonData, accessToken);
-    if ( jsonObject.contains("ok") && jsonObject["ok"].toBool() && jsonObject.contains("message") ) {
-        *otp = jsonObject["message"].toString();
-        return true;
-    }
-    return false;
-}
-
-bool HttpReqGetOTP(const QString &type, const QString &objectId, const QString &baseUrl, const QString &accessToken, QString* otp)
-{
-    QJsonObject innerData;
-    innerData["id"] = objectId;
-
-    QJsonObject dataJson;
-    dataJson["type"] = type;
-    dataJson["data"] = innerData;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    QString sUrl = baseUrl + "/otp/generate";
-    QJsonObject jsonObject = HttpReq(sUrl, jsonData, accessToken);
-    if ( jsonObject.contains("ok") && jsonObject["ok"].toBool() && jsonObject.contains("message") ) {
-        *otp = jsonObject["message"].toString();
-        return true;
-    }
-    return false;
-}
-
-void HttpReqGetOTPAsync(const QString &type, const QString &objectId, AuthProfile& profile, const HttpCallback &callback)
-{
-    QJsonObject innerData;
-    innerData["id"] = objectId;
-
-    QJsonObject dataJson;
-    dataJson["type"] = type;
-    dataJson["data"] = innerData;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/otp/generate", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/otp/generate", dataJson, callback);
 }
 
 /// ASYNC VERSIONS
 
-void HttpReqAgentRemoveAsync(const QStringList &agentsId, AuthProfile& profile, const HttpCallback &callback)
+static QJsonArray toJsonArrayInt64(const QList<qint64> &ids)
 {
-    QJsonObject dataJson;
-    dataJson["agent_id_array"] = toJsonArray(agentsId);
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/remove", profile.GetAccessToken(), jsonData, callback);
+    QJsonArray arr;
+    for (qint64 id : ids) arr.append(id);
+    return arr;
 }
 
-void HttpReqAgentSetTagAsync(const QStringList &agentsId, const QString &tag, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqAgentRemoveAsync(const QList<qint64> &agentsId, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["agent_id_array"] = toJsonArray(agentsId);
+    dataJson["agent_id_array"] = toJsonArrayInt64(agentsId);
+    httpPost(profile, "/agent/remove", dataJson, callback);
+}
+
+void HttpReqAgentSetTagAsync(const QList<qint64> &agentsId, const QString &tag, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["agent_id_array"] = toJsonArrayInt64(agentsId);
     dataJson["tag"] = tag;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/set/tag", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/agent/set/tag", dataJson, callback);
 }
 
-void HttpReqAgentSetMarkAsync(const QStringList &agentsId, const QString &mark, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqAgentSetMarkAsync(const QList<qint64> &agentsId, const QString &mark, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["agent_id_array"] = toJsonArray(agentsId);
+    dataJson["agent_id_array"] = toJsonArrayInt64(agentsId);
     dataJson["mark"] = mark;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/set/mark", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/agent/set/mark", dataJson, callback);
 }
 
-void HttpReqAgentSetColorAsync(const QStringList &agentsId, const QString &background, const QString &foreground, const bool reset, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqAgentSetColorAsync(const QList<qint64> &agentsId, const QString &background, const QString &foreground, const bool reset, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["agent_id_array"] = toJsonArray(agentsId);
+    dataJson["agent_id_array"] = toJsonArrayInt64(agentsId);
     dataJson["bc"] = background;
     dataJson["fc"] = foreground;
     dataJson["reset"] = reset;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/set/color", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/agent/set/color", dataJson, callback);
 }
 
-void HttpReqAgentUpdateDataAsync(const QString &agentId, const QJsonObject &updateData, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqAgentUpdateDataAsync(qint64 agentId, const QJsonObject &updateData, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson = updateData;
     dataJson["agent_id"] = agentId;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/update/data", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/agent/update/data", dataJson, callback);
 }
 
 void HttpReqAgentGenerateAsync(const QString &listenerName, const QString &agentName, const QString &configData, AuthProfile& profile, const HttpCallback &callback)
@@ -210,56 +180,96 @@ void HttpReqAgentGenerateAsync(const QString &listenerName, const QString &agent
     dataJson["listener_name"] = listenerName;
     dataJson["agent"]         = agentName;
     dataJson["config"]        = configData;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/generate", profile.GetAccessToken(), jsonData, callback, 30000);
+    httpPost(profile, "/agent/generate", dataJson, callback, 30000);
 }
 
 void HttpReqAgentCommandAsync(const QByteArray &jsonData, AuthProfile& profile)
 {
-    HttpRequestManager::instance().postFireAndForget(profile.GetURL(), "/agent/command/execute", profile.GetAccessToken(), jsonData);
+    httpPostFF(profile, "/agent/command/execute", jsonData);
 }
 
 void HttpReqAgentCommandFileAsync(const QByteArray &jsonData, AuthProfile& profile)
 {
-    HttpRequestManager::instance().postFireAndForget(profile.GetURL(), "/agent/command/file", profile.GetAccessToken(), jsonData);
+    httpPostFF(profile, "/agent/command/file", jsonData);
 }
 
-void HttpReqConsoleRemoveAsync(const QStringList &agentsId, AuthProfile& profile, const HttpCallback &callback)
+
+
+void HttpReqConsoleRemoveAsync(const QList<qint64> &agentsId, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["agent_id_array"] = toJsonArray(agentsId);
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/console/remove", profile.GetAccessToken(), jsonData, callback);
+    dataJson["agent_id_array"] = toJsonArrayInt64(agentsId);
+    httpPost(profile, "/agent/console/remove", dataJson, callback);
 }
 
-void HttpReqTaskCancelAsync(const QString &agentId, const QStringList &tasksId, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqConsoleGetPageAsync(qint64 agentId, qint64 afterId, int limit, AuthProfile& profile, const HttpCallback &callback)
+{
+    QUrlQuery params;
+    params.addQueryItem("agent_id", QString::number(agentId));
+    if (afterId > 0)
+        params.addQueryItem("after_id", QString::number(afterId));
+    params.addQueryItem("limit",    QString::number(limit));
+
+    HttpRequestManager::instance().getPage(profile.GetURL(), "/agent/console/list", profile.GetAccessToken(), params, callback);
+}
+
+void HttpReqConsoleGetAroundAsync(qint64 agentId, qint64 aroundId, int limit, AuthProfile& profile, const HttpCallback &callback)
+{
+    QUrlQuery params;
+    params.addQueryItem("agent_id", QString::number(agentId));
+    params.addQueryItem("around_id", QString::number(aroundId));
+    params.addQueryItem("limit", QString::number(limit));
+
+    HttpRequestManager::instance().getPage(profile.GetURL(), "/agent/console/list", profile.GetAccessToken(), params, callback);
+}
+
+void HttpReqConsoleSearchAsync(qint64 agentId, const QString &query, int limit, int offset, AuthProfile& profile, const HttpCallback &callback)
+{
+    QUrlQuery params;
+    params.addQueryItem("agent_id", QString::number(agentId));
+    params.addQueryItem("q", query);
+    params.addQueryItem("limit", QString::number(limit));
+    if (offset > 0)
+        params.addQueryItem("offset", QString::number(offset));
+
+    HttpRequestManager::instance().getPage(profile.GetURL(), "/agent/console/search", profile.GetAccessToken(), params, callback, 60000);
+}
+
+void HttpReqLogsGetPageAsync(int offset, int limit, qint64 beforeId, AuthProfile& profile, const HttpCallback &callback)
+{
+    QUrlQuery params;
+    if (beforeId > 0) {
+        params.addQueryItem("before_id", QString::number(beforeId));
+    } else {
+        params.addQueryItem("offset", QString::number(offset));
+    }
+    params.addQueryItem("limit", QString::number(limit));
+
+    HttpRequestManager::instance().getPage(profile.GetURL(), "/logs/list", profile.GetAccessToken(), params, callback);
+}
+
+void HttpReqTaskCancelAsync(qint64 agentId, const QList<qint64> &tasksId, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
     dataJson["agent_id"] = agentId;
     dataJson["tasks_array"] = toJsonArray(tasksId);
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/task/cancel", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/agent/task/cancel", dataJson, callback);
 }
 
-void HttpReqTasksDeleteAsync(const QString &agentId, const QStringList &tasksId, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqTasksDeleteAsync(qint64 agentId, const QList<qint64> &tasksId, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
     dataJson["agent_id"] = agentId;
     dataJson["tasks_array"] = toJsonArray(tasksId);
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/task/delete", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/agent/task/delete", dataJson, callback);
 }
 
 void HttpReqTasksHookAsync(const QByteArray &jsonData, AuthProfile& profile, const HttpCallback &callback)
 {
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/task/hook", profile.GetAccessToken(), jsonData, callback);
+    httpPostRaw(profile, "/agent/task/hook", jsonData, callback);
 }
 
-void HttpReqTasksSaveAsync(const QString &agentId, const QString &CommandLine, const int MessageType, const QString &Message, const QString &ClearText, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqTasksSaveAsync(qint64 agentId, const QString &CommandLine, const int MessageType, const QString &Message, const QString &ClearText, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
     dataJson["agent_id"]     = agentId;
@@ -267,67 +277,65 @@ void HttpReqTasksSaveAsync(const QString &agentId, const QString &CommandLine, c
     dataJson["message_type"] = MessageType;
     dataJson["message"]      = Message;
     dataJson["clear_text"]   = ClearText;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/agent/task/save", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/agent/task/save", dataJson, callback);
 }
 
 void HttpReqCredentialsCreateAsync(const QByteArray &jsonData, AuthProfile& profile, const HttpCallback &callback)
 {
-    HttpRequestManager::instance().post(profile.GetURL(), "/creds/add", profile.GetAccessToken(), jsonData, callback);
+    httpPostRaw(profile, "/creds/add", jsonData, callback);
 }
 
 void HttpReqCredentialsEditAsync(const QByteArray &jsonData, AuthProfile& profile, const HttpCallback &callback)
 {
-    HttpRequestManager::instance().post(profile.GetURL(), "/creds/edit", profile.GetAccessToken(), jsonData, callback);
+    httpPostRaw(profile, "/creds/edit", jsonData, callback);
 }
 
-void HttpReqCredentialsRemoveAsync(const QStringList &credsId, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqCredentialsRemoveAsync(const QList<qint64> &credsId, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["cred_id_array"] = toJsonArray(credsId);
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/creds/remove", profile.GetAccessToken(), jsonData, callback);
+    QJsonArray arr;
+    for (qint64 id : credsId) arr.append(id);
+    dataJson["cred_id_array"] = arr;
+    httpPost(profile, "/creds/remove", dataJson, callback);
 }
 
-void HttpReqCredentialsSetTagAsync(const QStringList &credsId, const QString &tag, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqCredentialsSetTagAsync(const QList<qint64> &credsId, const QString &tag, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["id_array"] = toJsonArray(credsId);
+    QJsonArray arr;
+    for (qint64 id : credsId) arr.append(id);
+    dataJson["id_array"] = arr;
     dataJson["tag"] = tag;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/creds/set/tag", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/creds/set/tag", dataJson, callback);
 }
 
 void HttpReqTargetsCreateAsync(const QByteArray &jsonData, AuthProfile& profile, const HttpCallback &callback)
 {
-    HttpRequestManager::instance().post(profile.GetURL(), "/targets/add", profile.GetAccessToken(), jsonData, callback);
+    httpPostRaw(profile, "/targets/add", jsonData, callback);
 }
 
 void HttpReqTargetEditAsync(const QByteArray &jsonData, AuthProfile& profile, const HttpCallback &callback)
 {
-    HttpRequestManager::instance().post(profile.GetURL(), "/targets/edit", profile.GetAccessToken(), jsonData, callback);
+    httpPostRaw(profile, "/targets/edit", jsonData, callback);
 }
 
-void HttpReqTargetRemoveAsync(const QStringList &targetsId, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqTargetRemoveAsync(const QList<qint64> &targetsId, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["target_id_array"] = toJsonArray(targetsId);
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/targets/remove", profile.GetAccessToken(), jsonData, callback);
+    QJsonArray arr;
+    for (qint64 id : targetsId) arr.append(id);
+    dataJson["target_id_array"] = arr;
+    httpPost(profile, "/targets/remove", dataJson, callback);
 }
 
-void HttpReqTargetSetTagAsync(const QStringList &targetsId, const QString &tag, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqTargetSetTagAsync(const QList<qint64> &targetsId, const QString &tag, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["id_array"] = toJsonArray(targetsId);
+    QJsonArray arr;
+    for (qint64 id : targetsId) arr.append(id);
+    dataJson["id_array"] = arr;
     dataJson["tag"] = tag;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/targets/set/tag", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/targets/set/tag", dataJson, callback);
 }
 
 void HttpReqListenerStartAsync(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile& profile, const HttpCallback &callback)
@@ -336,9 +344,7 @@ void HttpReqListenerStartAsync(const QString &listenerName, const QString &confi
     dataJson["name"]   = listenerName;
     dataJson["type"]   = configType;
     dataJson["config"] = configData;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/listener/create", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/listener/create", dataJson, callback);
 }
 
 void HttpReqListenerEditAsync(const QString &listenerName, const QString &configType, const QString &configData, AuthProfile& profile, const HttpCallback &callback)
@@ -347,9 +353,7 @@ void HttpReqListenerEditAsync(const QString &listenerName, const QString &config
     dataJson["name"]   = listenerName;
     dataJson["type"]   = configType;
     dataJson["config"] = configData;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/listener/edit", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/listener/edit", dataJson, callback);
 }
 
 void HttpReqListenerStopAsync(const QString &listenerName, const QString &listenerType, AuthProfile& profile, const HttpCallback &callback)
@@ -357,9 +361,7 @@ void HttpReqListenerStopAsync(const QString &listenerName, const QString &listen
     QJsonObject dataJson;
     dataJson["name"] = listenerName;
     dataJson["type"] = listenerType;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/listener/stop", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/listener/stop", dataJson, callback);
 }
 
 void HttpReqListenerPauseAsync(const QString &listenerName, const QString &listenerType, AuthProfile& profile, HttpCallback callback)
@@ -367,9 +369,7 @@ void HttpReqListenerPauseAsync(const QString &listenerName, const QString &liste
     QJsonObject dataJson;
     dataJson["name"] = listenerName;
     dataJson["type"] = listenerType;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/listener/pause", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/listener/pause", dataJson, callback);
 }
 
 void HttpReqListenerResumeAsync(const QString &listenerName, const QString &listenerType, AuthProfile& profile, const HttpCallback &callback)
@@ -377,46 +377,84 @@ void HttpReqListenerResumeAsync(const QString &listenerName, const QString &list
     QJsonObject dataJson;
     dataJson["name"] = listenerName;
     dataJson["type"] = listenerType;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/listener/resume", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/listener/resume", dataJson, callback);
 }
 
-void HttpReqDownloadActionAsync(const QString &action, const QString &fileId, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqListenerSetTagsAsync(const QString &listenerName, const QString &tags, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["file_id"] = fileId;
+    dataJson["name"] = listenerName;
+    dataJson["tags"] = tags;
+    httpPost(profile, "/listener/tags", dataJson, callback);
+}
+
+void HttpReqListenerConnectorAsync(const QString &listenerName, const QString &data, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["listener_name"] = listenerName;
+    dataJson["data"]          = data;
+    httpPost(profile, "/listener/connector", dataJson, callback);
+}
+
+void HttpReqDownloadActionAsync(const QString &action, qint64 fileId, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["file_id"] = toJsonI64(fileId);
     QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
     HttpRequestManager::instance().post(profile.GetURL(), "/download/" + action, profile.GetAccessToken(), jsonData, callback);
 }
 
-void HttpReqDownloadDelete(const QStringList &fileId, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqDownloadDelete(const QList<qint64> &fileId, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["file_id_array"] = toJsonArray(fileId);
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/download/delete", profile.GetAccessToken(), jsonData, callback);
+    QJsonArray arr;
+    for (qint64 id : fileId)
+        arr.append(toJsonI64(id));
+    dataJson["file_id_array"] = arr;
+    httpPost(profile, "/download/delete", dataJson, callback);
 }
 
-void HttpReqScreenSetNoteAsync(const QStringList &screensId, const QString &note, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqUploadDelete(const QList<qint64> &fileId, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["screen_id_array"] = toJsonArray(screensId);
+    QJsonArray arr;
+    for (qint64 id : fileId)
+        arr.append(toJsonI64(id));
+    dataJson["id_array"] = arr;
+    httpPost(profile, "/upload/delete", dataJson, callback);
+}
+
+void HttpReqDownloadSetTag(const QList<qint64> &fileId, const QString &tag, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    QJsonArray arr;
+    for (qint64 id : fileId)
+        arr.append(toJsonI64(id));
+    dataJson["id_array"] = arr;
+    dataJson["tag"] = tag;
+    httpPost(profile, "/download/set/tag", dataJson, callback);
+}
+
+void HttpReqScreenSetNoteAsync(const QList<qint64> &screensId, const QString &note, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    QJsonArray arr;
+    for (qint64 id : screensId)
+        arr.append(id);
+    dataJson["screen_id_array"] = arr;
     dataJson["note"] = note;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/screen/setnote", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/screen/setnote", dataJson, callback);
 }
 
-void HttpReqScreenRemoveAsync(const QStringList &screensId, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqScreenRemoveAsync(const QList<qint64> &screensId, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
-    dataJson["screen_id_array"] = toJsonArray(screensId);
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/screen/remove", profile.GetAccessToken(), jsonData, callback);
+    QJsonArray arr;
+    for (qint64 id : screensId)
+        arr.append(id);
+    dataJson["screen_id_array"] = arr;
+    httpPost(profile, "/screen/remove", dataJson, callback);
 }
 
 void HttpReqTunnelStartServerAsync(const QString &tunnelType, const QByteArray &jsonData, AuthProfile& profile, const HttpCallback &callback)
@@ -424,32 +462,90 @@ void HttpReqTunnelStartServerAsync(const QString &tunnelType, const QByteArray &
     HttpRequestManager::instance().post(profile.GetURL(), "/tunnel/start/" + tunnelType, profile.GetAccessToken(), jsonData, callback);
 }
 
-void HttpReqTunnelStopAsync(const QString &tunnelId, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqTunnelStopAsync(qint64 tunnelId, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
     dataJson["p_tunnel_id"] = tunnelId;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/tunnel/stop", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/tunnel/stop", dataJson, callback);
 }
 
-auto HttpReqTunnelSetInfoAsync(const QString &tunnelId, const QString &info, AuthProfile &profile,
+auto HttpReqTunnelSetInfoAsync(qint64 tunnelId, const QString &info, AuthProfile &profile,
                                const HttpCallback &callback) -> void {
     QJsonObject dataJson;
     dataJson["p_tunnel_id"] = tunnelId;
     dataJson["p_info"] = info;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/tunnel/set/info", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/tunnel/set/info", dataJson, callback);
 }
 
-void HttpReqChatSendMessageAsync(const QString &text, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqChatSendMessageAsync(const QString &text, qint64 replyToId, const QString &replyToName, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
     dataJson["message"] = text;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
+    dataJson["reply_to_id"] = static_cast<double>(replyToId);
+    dataJson["reply_to_name"] = replyToName;
+    httpPost(profile, "/chat/send", dataJson, callback);
+}
 
-    HttpRequestManager::instance().post(profile.GetURL(), "/chat/send", profile.GetAccessToken(), jsonData, callback);
+static inline void httpGet(AuthProfile& profile, const QString& endpoint, const QUrlQuery& params, const HttpCallback& callback, int timeout = 8000) {
+    HttpRequestManager::instance().getPage(profile.GetURL(), endpoint, profile.GetAccessToken(), params, callback, timeout);
+}
+
+void HttpReqChatEditMessageAsync(qint64 id, const QString &text, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["message"] = text;
+    httpPost(profile, "/chat/" + QString::number(id) + "/edit", dataJson, callback);
+}
+
+void HttpReqChatDeleteMessageAsync(qint64 id, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    httpPost(profile, "/chat/" + QString::number(id) + "/delete", dataJson, callback);
+}
+
+void HttpReqChatReactionAsync(qint64 id, const QString &emoji, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["emoji"] = emoji;
+    httpPost(profile, "/chat/" + QString::number(id) + "/react", dataJson, callback);
+}
+
+void HttpReqChatGetTodoAsync(AuthProfile& profile, const HttpCallback &callback)
+{
+    QUrlQuery params;
+    httpGet(profile, "/chat/todo", params, callback);
+}
+
+void HttpReqChatUpdateTodoAsync(const QString &content, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["content"] = content;
+    httpPost(profile, "/chat/todo", dataJson, callback);
+}
+
+void HttpReqChatHistoryAsync(qint64 beforeId, int limit, AuthProfile& profile, const HttpCallback &callback)
+{
+    QUrlQuery params;
+    if (beforeId > 0)
+        params.addQueryItem("before_id", QString::number(beforeId));
+    params.addQueryItem("limit", QString::number(limit));
+    httpGet(profile, "/chat/history", params, callback);
+}
+
+void HttpReqChatSearchAsync(const QString &query, qint64 beforeId, int limit, AuthProfile& profile, const HttpCallback &callback)
+{
+    QUrlQuery params;
+    params.addQueryItem("q", query);
+    if (beforeId > 0)
+        params.addQueryItem("before_id", QString::number(beforeId));
+    params.addQueryItem("limit", QString::number(limit));
+    httpGet(profile, "/chat/search", params, callback);
+}
+
+void HttpReqChatClearAsync(AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    httpPost(profile, "/chat/clear", dataJson, callback);
 }
 
 void HttpReqServiceCallAsync(const QString &service, const QString &command, const QString &args, AuthProfile& profile, const HttpCallback &callback)
@@ -458,21 +554,19 @@ void HttpReqServiceCallAsync(const QString &service, const QString &command, con
     dataJson["service"] = service;
     dataJson["command"] = command;
     dataJson["args"] = args;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/service/call", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/service/call", dataJson, callback);
 }
 
 void HttpReqAxScriptListAsync(AuthProfile& profile, const HttpCallback &callback)
 {
     QByteArray jsonData = QJsonDocument(QJsonObject()).toJson();
-    HttpRequestManager::instance().post(profile.GetURL(), "/axscript/list", profile.GetAccessToken(), jsonData, callback);
+    httpPostRaw(profile, "/axscript/list", jsonData, callback);
 }
 
 void HttpReqAxScriptCommandsAsync(AuthProfile& profile, const HttpCallback &callback)
 {
     QByteArray jsonData = QJsonDocument(QJsonObject()).toJson();
-    HttpRequestManager::instance().post(profile.GetURL(), "/axscript/commands", profile.GetAccessToken(), jsonData, callback);
+    httpPostRaw(profile, "/axscript/commands", jsonData, callback);
 }
 
 void HttpReqAxScriptLoadAsync(const QString &name, const QString &script, AuthProfile& profile, const HttpCallback &callback)
@@ -480,16 +574,67 @@ void HttpReqAxScriptLoadAsync(const QString &name, const QString &script, AuthPr
     QJsonObject dataJson;
     dataJson["name"] = name;
     dataJson["script"] = script;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/axscript/load", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/axscript/load", dataJson, callback);
 }
 
 void HttpReqAxScriptUnloadAsync(const QString &name, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
     dataJson["name"] = name;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    HttpRequestManager::instance().post(profile.GetURL(), "/axscript/unload", profile.GetAccessToken(), jsonData, callback);
+    httpPost(profile, "/axscript/unload", dataJson, callback);
 }
+
+void HttpReqGroupListAsync(const QString &scope, AuthProfile& profile, const HttpCallback &callback)
+{
+    QUrlQuery params;
+    params.addQueryItem("scope", scope);
+    HttpRequestManager::instance().getPage(profile.GetURL(), "/group/list", profile.GetAccessToken(), params, callback);
+}
+
+void HttpReqGroupCreateAsync(int64_t parentId, const QString &name, const QString &scope, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["parent_id"] = toJsonI64(parentId);
+    dataJson["name"]      = name;
+    dataJson["scope"]     = scope;
+    httpPost(profile, "/group/create", dataJson, callback);
+}
+
+void HttpReqGroupRenameAsync(int64_t groupId, const QString &name, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["group_id"] = toJsonI64(groupId);
+    dataJson["name"]     = name;
+    httpPost(profile, "/group/rename", dataJson, callback);
+}
+
+void HttpReqGroupDeleteAsync(int64_t groupId, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["group_id"] = toJsonI64(groupId);
+    httpPost(profile, "/group/delete", dataJson, callback);
+}
+
+void HttpReqGroupMembersAsync(int64_t groupId, const QList<qint64> &add, const QList<qint64> &remove, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["group_id"] = toJsonI64(groupId);
+    QJsonArray addArr, removeArr;
+    for (qint64 id : add)
+        addArr.append(toJsonI64(id));
+    for (qint64 id : remove)
+        removeArr.append(toJsonI64(id));
+    dataJson["add"]    = addArr;
+    dataJson["remove"] = removeArr;
+    httpPost(profile, "/group/members", dataJson, callback);
+}
+
+
+void HttpReqGroupReparentAsync(int64_t groupId, int64_t newParentId, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["group_id"]      = toJsonI64(groupId);
+    dataJson["new_parent_id"] = toJsonI64(newParentId);
+    httpPost(profile, "/group/reparent", dataJson, callback);
+}
+

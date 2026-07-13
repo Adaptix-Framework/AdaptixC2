@@ -2,8 +2,9 @@
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Agent/Agent.h>
-#include <Utils/CustomElements.h>
 #include <Utils/NonBlockingDialogs.h>
+#include <Utils/CustomElements/BoldHeaderView.h>
+#include <Utils/CustomElements/Delegates.h>
 
 #include <QJSEngine>
 #include <QJsonObject>
@@ -524,9 +525,19 @@ void AxTableWidgetWrapper::setSortingEnabled(const bool enable) { table->setSort
 
 void AxTableWidgetWrapper::resizeToContent(const int column) { table->horizontalHeader()->setSectionResizeMode(column, QHeaderView::ResizeToContents); }
 
-QString AxTableWidgetWrapper::text(const int row, const int column) const { return model->item(row, column)->text(); }
+QString AxTableWidgetWrapper::text(const int row, const int column) const {
+    auto* item = model->item(row, column);
+    return item ? item->text() : QString();
+}
 
-void AxTableWidgetWrapper::setText(const int row, const int column, const QString &text) const { model->item(row, column)->setText(text); }
+void AxTableWidgetWrapper::setText(const int row, const int column, const QString &text) const {
+    auto* item = model->item(row, column);
+    if (!item) {
+        model->setItem(row, column, new QStandardItem(text));
+    } else {
+        item->setText(text);
+    }
+}
 
 void AxTableWidgetWrapper::setReadOnly(const bool read)
 {
@@ -556,7 +567,8 @@ void AxTableWidgetWrapper::setColumnAlign(const int column, const QString &align
         iAlign = Qt::AlignRight | Qt::AlignVCenter;
 
     for(int rowIndex = 0; rowIndex < model->rowCount(); rowIndex++) {
-        model->item(rowIndex, column)->setTextAlignment(static_cast<Qt::AlignmentFlag>(iAlign));
+        if (auto* item = model->item(rowIndex, column))
+            item->setTextAlignment(static_cast<Qt::AlignmentFlag>(iAlign));
     }
 }
 
@@ -743,12 +755,12 @@ void AxListWidgetWrapper::setDragDropEnabled(const bool enabled)
 void AxListWidgetWrapper::setMenuEnabled(const bool enabled)
 {
     this->menuEnabled = enabled;
+    disconnect(list, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
     if (enabled) {
         list->setContextMenuPolicy(Qt::CustomContextMenu);
         connect(list, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
     } else {
         list->setContextMenuPolicy(Qt::DefaultContextMenu);
-        disconnect(list, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
     }
 }
 
@@ -1309,7 +1321,7 @@ QJSValue AxSelectorCreds::exec() const
     }
 
     QVariantList list;
-    for (auto cred : vecCreds) {
+    for (const auto& cred : vecCreds) {
         QVariantMap map;
         map["id"]       = cred.CredId;
         map["username"] = cred.Username;
@@ -1809,7 +1821,7 @@ void AxSelectorTargets::close() const { dialog->close(); }
 
 /// SELECTOR DOWNLOADS
 
-AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, const QVector<DownloadData> &vecDownloads, QWidget *parent)
+AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, const QVector<TransferData> &vecDownloads, QWidget *parent)
 {
     this->setProperty("Main", "base");
 
@@ -1894,7 +1906,7 @@ AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, const QVector<Down
     }
 }
 
-QVector<DownloadData> AxDialogDownloads::data() { return selectedData; }
+QVector<TransferData> AxDialogDownloads::data() { return selectedData; }
 
 void AxDialogDownloads::onClicked()
 {
@@ -1923,7 +1935,7 @@ void AxDialogDownloads::clearSearch()
 AxSelectorDownloads::AxSelectorDownloads(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
 {
     auto mapDownloads = scriptEngine->manager()->GetDownloads();
-    QVector<DownloadData> vecDownloads;
+    QVector<TransferData> vecDownloads;
     for (const auto& download : mapDownloads)
         vecDownloads.append(download);
 
@@ -1935,7 +1947,7 @@ void AxSelectorDownloads::setSize(const int w, const int h ) const { dialog->res
 
 QJSValue AxSelectorDownloads::exec() const
 {
-    QVector<DownloadData> vecDownloads;
+    QVector<TransferData> vecDownloads;
     if (dialog->exec() == QDialog::Accepted) {
         vecDownloads = dialog->data();
     }
@@ -1944,21 +1956,21 @@ QJSValue AxSelectorDownloads::exec() const
     for (auto download : vecDownloads) {
         QString state;
         switch (download.State) {
-            case DOWNLOAD_STATE_RUNNING:  state = "running";  break;
-            case DOWNLOAD_STATE_STOPPED:  state = "stopped";  break;
-            case DOWNLOAD_STATE_FINISHED: state = "finished"; break;
+            case TRANSFER_STATE_RUNNING:  state = "running";  break;
+            case TRANSFER_STATE_STOPPED:  state = "stopped";  break;
+            case TRANSFER_STATE_FINISHED: state = "finished"; break;
             default:                      state = "canceled"; break;
         }
 
         QVariantMap map;
-        map["id"]         = download.FileId;
+        map["id"]         = QVariant::fromValue(download.FileId);
         map["agent_id"]   = download.AgentId;
         map["agent_name"] = download.AgentName;
         map["user"]       = download.User;
         map["computer"]   = download.Computer;
         map["filename"]   = download.Filename;
         map["total_size"] = download.TotalSize;
-        map["recv_size"]  = download.RecvSize;
+        map["recv_size"]  = download.Progress;
         map["state"]      = state;
         map["date"]       = download.Date;
         list.append(map);

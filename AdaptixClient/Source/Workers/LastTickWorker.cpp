@@ -39,63 +39,60 @@ void LastTickWorker::stopWorker()
         delete timer;
         timer = nullptr;
     }
-    quit();
 }
 
 void LastTickWorker::updateLastItems()
 {
-    QStringList updatedAgents;
-
+    QList<AgentMarkInfo> marks;
     QReadLocker locker(&mainWidget->AgentsMapLock);
     for ( auto agent : mainWidget->AgentsMap ) {
-        if ( agent->data.Async && agent->active ) {
-            int current = QDateTime::currentSecsSinceEpoch();
-            int diff    = current - agent->data.LastTick;
+        if ( !agent->data.Async || !agent->active )
+            continue;
 
-            bool isOffHours = false;
-            if ( agent->data.WorkingTime && diff > 10 ) {
-                uint startH = ( agent->data.WorkingTime >> 24 ) % 64;
-                uint startM = ( agent->data.WorkingTime >> 16 ) % 64;
-                uint endH   = ( agent->data.WorkingTime >>  8 ) % 64;
-                uint endM   = ( agent->data.WorkingTime >>  0 ) % 64;
+        qint64 current = QDateTime::currentSecsSinceEpoch();
+        qint64 diff    = current - agent->data.LastTick;
 
-                QDateTime Now = QDateTime::currentDateTimeUtc();
-                int nowH = Now.time().hour() + agent->data.GmtOffset;
-                int nowM = Now.time().minute();
+        QString mark;
+        QString lastMark;
 
-                if ( startH < nowH && nowH < endH  ){}
-                else if ( startH == nowH && startH != endH && startM <= nowM ){}
-                else if ( endH == nowH && startM <= nowM && nowM < endM ){}
-                else {
-                    isOffHours = true;
-                    if (agent->data.Mark != "No worktime")
-                        agent->MarkItem("No worktime");
-                }
+        bool isOffHours = false;
+        if ( agent->data.WorkingTime && diff > 10 ) {
+            uint startH = ( agent->data.WorkingTime >> 24 ) % 64;
+            uint startM = ( agent->data.WorkingTime >> 16 ) % 64;
+            uint endH   = ( agent->data.WorkingTime >>  8 ) % 64;
+            uint endM   = ( agent->data.WorkingTime >>  0 ) % 64;
+
+            QDateTime Now = QDateTime::currentDateTimeUtc();
+            int nowH = Now.time().hour() + agent->data.GmtOffset;
+            int nowM = Now.time().minute();
+
+            if ( startH < nowH && nowH < endH  ){}
+            else if ( startH == nowH && startH != endH && startM <= nowM ){}
+            else if ( endH == nowH && startM <= nowM && nowM < endM ){}
+            else {
+                isOffHours = true;
+                mark = "No worktime";
             }
-
-            if ( GlobalClient->settings->data.CheckHealth && !isOffHours ) {
-                if (diff > agent->data.Sleep * GlobalClient->settings->data.HealthCoaf + GlobalClient->settings->data.HealthOffset) {
-
-                    if (diff > 24 * 3600)
-                        agent->LastMark = UnixTimestampGlobalToStringLocalSmall(agent->data.LastTick);
-                    else
-                        agent->LastMark = FormatSecToStr(diff) + " / " + FormatSecToStr(agent->data.Sleep);
-
-                    if (agent->data.Mark != "No response")
-                        agent->MarkItem("No response");
-
-                    updatedAgents.append(agent->data.Id);
-                    continue;
-                }
-                else {
-                    agent->MarkItem("");
-                }
-            }
-            agent->LastMark = FormatSecToStr(diff);
-            updatedAgents.append(agent->data.Id);
         }
+
+        if ( GlobalClient->settings->data.CheckHealth && !isOffHours ) {
+            if (diff > agent->data.Sleep * GlobalClient->settings->data.HealthCoaf + GlobalClient->settings->data.HealthOffset) {
+
+                if (diff > 24 * 3600)
+                    lastMark = UnixTimestampGlobalToStringLocalSmall(agent->data.LastTick);
+                else
+                    lastMark = FormatSecToStr(diff) + " / " + FormatSecToStr(agent->data.Sleep);
+
+                mark = "No response";
+            }
+        }
+
+        if (mark.isEmpty())
+            lastMark = FormatSecToStr(diff);
+
+        marks.append({agent->data.Id, mark, lastMark});
     }
 
-    if (!updatedAgents.isEmpty())
-        Q_EMIT agentsUpdated(updatedAgents);
+    if (!marks.isEmpty())
+        Q_EMIT agentTickUpdate(marks);
 }

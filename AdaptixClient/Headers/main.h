@@ -68,8 +68,8 @@
 #include <Utils/FileSystem.h>
 #include <Utils/Convert.h>
 
-#define FRAMEWORK_VERSION "Adaptix Framework v1.3"
-#define SMALL_VERSION     "v1.3"
+#define FRAMEWORK_VERSION "Adaptix Framework v2.0"
+#define SMALL_VERSION     "v2.0"
 
 ///////////
 
@@ -96,9 +96,14 @@
 #define SP_TYPE_EVENT            0x13
 #define TYPE_SYNC_BATCH          0x14
 #define TYPE_SYNC_CATEGORY_BATCH 0x15
+#define TYPE_LOG_BATCH           0x16
 
 #define TYPE_CHAT_MESSAGE 0x18
 #define TYPE_SERVICE_DATA 0x19
+#define TYPE_CHAT_EDIT    0x1a
+#define TYPE_CHAT_DELETE  0x1b
+#define TYPE_CHAT_REACTION 0x1c
+#define TYPE_CHAT_TODO    0x1d
 
 #define TYPE_REG_LISTENER 0x21
 #define TYPE_REG_AGENT    0x22
@@ -120,10 +125,11 @@
 #define TYPE_AGENT_TASK_REMOVE 0x4c
 #define TYPE_AGENT_TASK_HOOK   0x4d
 
-#define TYPE_DOWNLOAD_CREATE 0x51
-#define TYPE_DOWNLOAD_UPDATE 0x52
-#define TYPE_DOWNLOAD_DELETE 0x53
-#define TYPE_DOWNLOAD_ACTUAL 0x54
+#define TYPE_TRANSFER_CREATE  0x51
+#define TYPE_TRANSFER_UPDATE  0x52
+#define TYPE_TRANSFER_DELETE  0x53
+#define TYPE_TRANSFER_ACTUAL  0x54
+#define TYPE_TRANSFER_SET_TAG 0x55
 
 #define TYPE_TUNNEL_CREATE 0x57
 #define TYPE_TUNNEL_EDIT   0x58
@@ -159,12 +165,27 @@
 
 #define TYPE_AXSCRIPT_COMMANDS 0x91
 
+#define TYPE_GROUP_CREATE   0xa1
+#define TYPE_GROUP_RENAME   0xa2
+#define TYPE_GROUP_DELETE   0xa3
+#define TYPE_GROUP_MEMBERS  0xa4
+#define TYPE_GROUP_REPARENT 0xa5
+
 //////////
 
-#define DOWNLOAD_STATE_RUNNING  0x1
-#define DOWNLOAD_STATE_STOPPED  0x2
-#define DOWNLOAD_STATE_FINISHED 0x3
-#define DOWNLOAD_STATE_CANCELED 0x4
+#define TRANSFER_DOWNLOAD 1
+#define TRANSFER_UPLOAD   2
+
+#define TRANSFER_STATE_RUNNING  0x1
+#define TRANSFER_STATE_STOPPED  0x2
+#define TRANSFER_STATE_FINISHED 0x3
+#define TRANSFER_STATE_CANCELED 0x4
+
+#define LOG_STATUS_DEBUG   0
+#define LOG_STATUS_INFO    1
+#define LOG_STATUS_SUCCESS 2
+#define LOG_STATUS_WARN    3
+#define LOG_STATUS_ERROR   4
 
 /////////
 
@@ -197,22 +218,49 @@ typedef struct SettingsData {
     QString FontFamily;
     int     FontSize;
     QString GraphVersion;
+    bool    GraphAutoHideInactive;
+    bool    GraphAutoHideNoChilds;
     int     RemoteTerminalBufferSize;
+    int     PageSize;
+    int     ToolbarPosition; // 0 = top, 1 = bottom, 2 = left, 3 = right
 
     bool ConsoleTime;
     int  ConsoleBufferSize;
     bool ConsoleNoWrap;
     bool ConsoleAutoScroll;
     bool ConsoleShowBackground;
+    bool ConsoleUseAppTheme;
+    QString ConsoleBgImagePath;
+    int     ConsoleBgDimming;
     QString ConsoleTheme;
+    bool ConsoleAutoLoadEarlier;
+    int  ConsolePageSize;
 
     bool   SessionsTableColumns[16];
     int    SessionsColumnOrder[16];
+    int    SessionsViewMode;
+    bool   SessionsAutoHideInactive;
+    bool   SessionsCompactMode;
     bool   CheckHealth;
     double HealthCoaf;
     int    HealthOffset;
+    double DeadLightnessShift;
 
     bool TasksTableColumns[11];
+    int  TasksViewMode;
+    bool TasksInProcessOnly;
+    bool TasksCompactMode;
+
+    bool TargetsTableColumns[10];
+    int  TargetsViewMode;
+    bool TargetsCompactMode;
+
+    bool CredentialsTableColumns[10];
+    int  CredentialsViewMode;
+    bool CredentialsCompactMode;
+
+    bool FilesTableColumns[11];
+    bool FilesCompactMode;
 
     bool TabBlinkEnabled;
     QMap<QString, bool> BlinkWidgets;  // className -> enabled
@@ -240,12 +288,13 @@ typedef struct ListenerData
     QString Date;
     qint64  DateTimestamp = 0;
     QString Status;
+    QString Tags;
     QString Data;
 } ListenerData;
 
 typedef struct AgentData
 {
-    QString Id;
+    qint64  Id = 0;
     QString Name;
     QString Listener;
     bool    Async;
@@ -272,29 +321,66 @@ typedef struct AgentData
     QString Tags;
     QString Mark;
     QString Color;
-    int     LastTick;
+    qint64  LastTick;
     QString Date;
     qint64  DateTimestamp = 0;
 } AgentData;
 
-typedef struct DownloadData
+inline QString formatAgentUserHost(const AgentData& d)
 {
-    QString FileId;
-    QString AgentId;
+    if (d.Username.isEmpty() && d.Computer.isEmpty())
+        return QString();
+
+    QString user = d.Username;
+    if (d.Elevated)                 user = "* " + user;
+    if (!d.Impersonated.isEmpty())  user += " [" + d.Impersonated + "]";
+
+    if (d.Domain.isEmpty() || d.Computer == d.Domain)
+        return QString("%1 @ %2").arg(user).arg(d.Computer);
+    return QString("%1 @ %2.%3").arg(user).arg(d.Computer).arg(d.Domain);
+}
+
+#define TRANSFER_KIND_FILE   0
+#define TRANSFER_KIND_MEMORY 1
+
+typedef struct TransferData
+{
+    int     TransferType;
+    qint64  FileId = 0;
+    qint64  AgentId = 0;
     QString AgentName;
     QString User;
     QString Computer;
     QString Filename;
     qint64  TotalSize;
-    qint64  RecvSize;
+    qint64  Progress;
     int     State;
     QString Date;
     qint64  DateTimestamp = 0;
-} DownloadData;
+    QString Tag;
+    bool    Cancellable = true;
+    int     Kind = TRANSFER_KIND_FILE;
+    QString ArtifactName;
+    QString ArtifactType;
+} TransferData;
+
+typedef struct SyncEntryData
+{
+    QString id;
+    int     direction;
+    QString filename;
+    QString localPath;
+    qint64  timestamp;
+    qint64  totalSize;
+    qint64  progress;
+    double  speed;
+    int     state;
+} SyncEntryData;
 
 typedef struct ScreenData
 {
-    QString    ScreenId;
+    qint64     ScreenId = 0;
+    qint64     AgentId = 0;
     QString    User;
     QString    Computer;
     QString    Date;
@@ -305,7 +391,7 @@ typedef struct ScreenData
 
 typedef struct CredentialData
 {
-    QString CredId;
+    qint64  CredId = 0;
     QString Username;
     QString Password;
     QString Realm;
@@ -314,13 +400,13 @@ typedef struct CredentialData
     QString Date;
     qint64  DateTimestamp = 0;
     QString Storage;
-    QString AgentId;
+    qint64  AgentId = 0;
     QString Host;
 } CredentialData;
 
 typedef struct TargetData
 {
-    QString     TargetId;
+    qint64      TargetId = 0;
     QString     Computer;
     QString     Domain;
     QString     Address;
@@ -332,13 +418,13 @@ typedef struct TargetData
     qint64      DateTimestamp = 0;
     QString     Info;
     bool        Alive;
-    QStringList Agents;
+    QList<qint64> Agents;
 } TargetData;
 
 typedef struct TunnelData
 {
-    QString TunnelId;
-    QString AgentId;
+    qint64  TunnelId = 0;
+    qint64  AgentId  = 0;
     QString Computer;
     QString Username;
     QString Process;
@@ -349,13 +435,16 @@ typedef struct TunnelData
     QString Client;
     QString Fport;
     QString Fhost;
+    qint64  DateTimestamp = 0;
+    qint64  BytesSent = 0;
+    qint64  BytesRecv = 0;
 } TunnelData;
 
 typedef struct TaskData
 {
-    QString TaskId;
+    qint64  TaskId = 0;
     int     TaskType;
-    QString AgentId;
+    qint64  AgentId = 0;
     QString Client;
     QString User;
     QString Computer;
@@ -373,8 +462,8 @@ typedef struct PivotData
 {
     QString PivotId;
     QString PivotName;
-    QString ParentAgentId;
-    QString ChildAgentId;
+    qint64  ParentAgentId = 0;
+    qint64  ChildAgentId = 0;
 } PivotData;
 
 typedef struct ExtensionFile
@@ -390,5 +479,18 @@ typedef struct ExtensionFile
 
     QMap<QString, QVector<QJsonObject> > ExCommands;
 } ExtensionFile;
+
+
+inline qint64 parseI64(const QJsonObject& obj, const QString& key) {
+    return obj.value(key).toVariant().toLongLong();
+}
+
+inline qint64 parseI64(const QJsonValue& v) {
+    return v.toVariant().toLongLong();
+}
+
+inline QJsonValue toJsonI64(qint64 v) {
+    return QJsonValue::fromVariant(QVariant::fromValue(v));
+}
 
 #endif //ADAPTIXCLIENT_MAIN_H

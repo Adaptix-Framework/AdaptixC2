@@ -1,100 +1,201 @@
 #include <UI/Dialogs/DialogUploader.h>
+#include <UI/Widgets/FilesFeedWidget.h>
 #include <Workers/UploaderWorker.h>
+
+#include <QHBoxLayout>
 #include <QVBoxLayout>
-#include <QMessageBox>
 #include <QFileInfo>
 
-static void setupDialogUI(DialogUploader* dlg, QProgressBar*& progressBar, QLabel*& statusLabel, QLabel*& speedLabel, QPushButton*& cancelButton)
+static QString formatSize(qint64 bytes)
 {
-    dlg->setWindowTitle("Uploading...");
-    dlg->resize(400, 150);
-    dlg->setProperty("Main", "base");
-
-    progressBar   = new QProgressBar(dlg);
-    progressBar->setRange(0, 100);
-    statusLabel   = new QLabel("Preparing upload...", dlg);
-    speedLabel    = new QLabel("Speed: 0 KB/s", dlg);
-    cancelButton  = new QPushButton("Cancel", dlg);
-
-    QVBoxLayout* layout = new QVBoxLayout(dlg);
-    layout->addWidget(statusLabel);
-    layout->addWidget(progressBar);
-    layout->addWidget(speedLabel);
-    layout->addWidget(cancelButton);
-    dlg->setLayout(layout);
+    if (bytes < 1024) return QString("%1 b").arg(bytes);
+    if (bytes < 1024*1024) return QString("%1 Kb").arg(bytes/1024.0, 0, 'f', 1);
+    if (bytes < 1024*1024*1024) return QString("%1 Mb").arg(bytes/(1024.0*1024), 0, 'f', 1);
+    return QString("%1 Gb").arg(bytes/(1024.0*1024*1024), 0, 'f', 1);
 }
 
-static void connectWorkerSignals(DialogUploader* dlg, UploaderWorker* worker, QThread* workerThread,
-    QProgressBar* progressBar, QLabel* statusLabel, QLabel* speedLabel, QPushButton* cancelButton)
+void DialogUploader::setupUI(const QString &name)
 {
-    QObject::connect(workerThread, &QThread::started,     worker, &UploaderWorker::start);
-    QObject::connect(cancelButton, &QPushButton::clicked, worker, &UploaderWorker::cancel);
+    displayName = name;
 
-    QObject::connect(worker, &UploaderWorker::progress, dlg, [progressBar, statusLabel](const qint64 sent, const qint64 total) {
-        int percent = total > 0 ? static_cast<int>((sent * 100) / total) : 0;
-        progressBar->setValue(percent);
-        statusLabel->setText(QString("Uploaded %1 / %2 MB").arg(sent / (1024 * 1024)).arg(total / (1024 * 1024)));
+    this->setWindowTitle("Upload");
+    this->setFixedWidth(420);
+    this->setProperty("Main", "base");
+
+    auto* headerLayout = new QHBoxLayout();
+    headerLayout->setSpacing(8);
+    auto* badge = new QLabel("\u2191 UL", this);
+    badge->setStyleSheet("font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(210,153,34,0.15);color:#d29922;");
+    headerLabel = new QLabel(displayName, this);
+    headerLabel->setStyleSheet("font-size:13px;font-weight:600;");
+    sizeLabel = new QLabel(this);
+    sizeLabel->setStyleSheet("font-size:11px;color:#8b949e;");
+    sizeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    headerLayout->addWidget(badge);
+    headerLayout->addWidget(headerLabel, 1);
+    headerLayout->addWidget(sizeLabel);
+
+    progressBar = new QProgressBar(this);
+    progressBar->setRange(0, 100);
+    progressBar->setFixedHeight(8);
+    progressBar->setTextVisible(false);
+
+    statsLabel = new QLabel(this);
+    statsLabel->setStyleSheet("font-size:11px;color:#8b949e;");
+
+    hideButton = new QPushButton("Hide", this);
+    cancelButton = new QPushButton("Cancel", this);
+
+    auto* buttonLayout = new QHBoxLayout();
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(hideButton);
+    buttonLayout->addWidget(cancelButton);
+
+    auto* mainLayout = new QVBoxLayout(this);
+    mainLayout->addLayout(headerLayout);
+    mainLayout->addWidget(progressBar);
+    mainLayout->addWidget(statsLabel);
+    mainLayout->addLayout(buttonLayout);
+
+    if (!downloadsWidget)
+        hideButton->setVisible(false);
+}
+
+void DialogUploader::connectSignals()
+{
+    connect(workerThread, &QThread::started, worker, &UploaderWorker::start);
+    connect(cancelButton, &QPushButton::clicked, worker, &UploaderWorker::cancel);
+    connect(workerThread, &QThread::finished, worker, &QObject::deleteLater);
+    connect(workerThread, &QThread::finished, workerThread, &QObject::deleteLater);
+
+    connect(hideButton, &QPushButton::clicked, this, [this]() {
+        hidden = true;
+        this->hide();
     });
 
-    QObject::connect(worker, &UploaderWorker::speedUpdated, dlg, [speedLabel](const double kbps) {
-        speedLabel->setText(QString("Speed: %1 KB/s").arg(kbps, 0, 'f', 2));
+    connect(worker, &UploaderWorker::progress, this, [this](const qint64 sent, const qint64 total) {
+        currentSent = sent;
+        currentTotal = total;
+        if (!hidden) {
+            int percent = total > 0 ? static_cast<int>((sent * 100) / total) : 0;
+            progressBar->setValue(percent);
+            sizeLabel->setText(formatSize(total));
+            statsLabel->setText(QString("%1 / %2  |  %3%").arg(formatSize(sent), formatSize(total), QString::number(percent)));
+        }
+        if (downloadsWidget && !syncId.isEmpty())
+            downloadsWidget->UpdateSyncEntry(syncId, sent, total, 0);
     });
 
-    QObject::connect(worker, &UploaderWorker::finished, dlg, [dlg, worker, progressBar, statusLabel, speedLabel]() {
+    connect(worker, &UploaderWorker::speedUpdated, this, [this](const double kbps) {
+        if (!hidden) {
+            int percent = currentTotal > 0 ? static_cast<int>((currentSent * 100) / currentTotal) : 0;
+            QString speedStr = (kbps >= 1024) ? QString("%1 Mb/s").arg(kbps / 1024.0, 0, 'f', 1) : QString("%1 Kb/s").arg(kbps, 0, 'f', 1);
+            statsLabel->setText(QString("%1 / %2  |  %3  |  %4%").arg(formatSize(currentSent), formatSize(currentTotal), speedStr, QString::number(percent)));
+        }
+        if (downloadsWidget && !syncId.isEmpty())
+            downloadsWidget->UpdateSyncEntry(syncId, currentSent, currentTotal, kbps);
+    });
+
+    connect(worker, &UploaderWorker::finished, this, [this]() {
         if (!worker->IsError()) {
-            progressBar->setValue(100);
-            statusLabel->setText("Upload completed.");
-            speedLabel->setVisible(false);
-            Q_EMIT dlg->uploadFinished(true);
-            dlg->accept();
+            if (downloadsWidget && !syncId.isEmpty())
+                downloadsWidget->FinishSyncEntry(syncId, TRANSFER_STATE_FINISHED);
+            if (!hidden) {
+                progressBar->setValue(100);
+                progressBar->setVisible(false);
+                statsLabel->setText(QString("%1 / %2  |  Complete").arg(formatSize(currentTotal), formatSize(currentTotal)));
+                statsLabel->setStyleSheet("font-size:11px;color:#3fb950;");
+            }
+            Q_EMIT uploadFinished(true);
+            if (hidden) this->close();
+            else this->accept();
             return;
         }
-        Q_EMIT dlg->uploadFinished(false);
-        dlg->reject();
+
+        if (downloadsWidget && !syncId.isEmpty())
+            downloadsWidget->FinishSyncEntry(syncId, TRANSFER_STATE_CANCELED);
+        Q_EMIT uploadFinished(false);
+        if (hidden) this->close();
+        else this->reject();
     });
 
-    QObject::connect(worker, &UploaderWorker::failed, dlg, [dlg](const QString &msg) {
-        QMessageBox::critical(dlg, "Upload Error", msg);
-        Q_EMIT dlg->uploadFinished(false);
-        dlg->reject();
+    connect(worker, &UploaderWorker::failed, this, [this](const QString &msg) {
+        if (downloadsWidget && !syncId.isEmpty())
+            downloadsWidget->FinishSyncEntry(syncId, TRANSFER_STATE_CANCELED);
+        Q_EMIT uploadFinished(false);
+        if (hidden) { this->close(); return; }
+        statsLabel->setText(QString("Error: %1").arg(msg));
+        statsLabel->setStyleSheet("font-size:11px;color:#f85149;");
+        hideButton->setVisible(false);
+        cancelButton->setText("Close");
+        disconnect(cancelButton, nullptr, nullptr, nullptr);
+        connect(cancelButton, &QPushButton::clicked, this, &QDialog::reject);
     });
-
-    QObject::connect(workerThread, &QThread::finished, worker,       &QObject::deleteLater);
-    QObject::connect(workerThread, &QThread::finished, workerThread, &QObject::deleteLater);
 }
 
-DialogUploader::DialogUploader(const QUrl &uploadUrl, const QString &otp, const QByteArray &data, QWidget *parent) : QDialog(parent)
+DialogUploader::DialogUploader(const QUrl &uploadUrl, const QString &otp, const QByteArray &data, FilesFeedWidget *dw, QWidget *parent) : QDialog(parent), downloadsWidget(dw)
 {
-    setupDialogUI(this, progressBar, statusLabel, speedLabel, cancelButton);
+    setupUI("command data");
 
     workerThread = new QThread(this);
     worker = new UploaderWorker(uploadUrl, otp, data);
     worker->moveToThread(workerThread);
 
-    connectWorkerSignals(this, worker, workerThread, progressBar, statusLabel, speedLabel, cancelButton);
+    connectSignals();
+
+    if (downloadsWidget) {
+        syncId = GenerateRandomString(8, "hex");
+        SyncEntryData entry;
+        entry.id = syncId;
+        entry.direction = TRANSFER_UPLOAD;
+        entry.filename = displayName;
+        entry.localPath = QString();
+        entry.timestamp = QDateTime::currentSecsSinceEpoch();
+        entry.totalSize = 0;
+        entry.progress = 0;
+        entry.speed = 0;
+        entry.state = TRANSFER_STATE_RUNNING;
+        downloadsWidget->AddSyncEntry(entry);
+    }
+
     workerThread->start();
 }
 
-DialogUploader::DialogUploader(const QUrl &uploadUrl, const QString &otp, const QString &filePath, QWidget *parent) : QDialog(parent)
+DialogUploader::DialogUploader(const QUrl &uploadUrl, const QString &otp, const QString &filePath, FilesFeedWidget *dw, QWidget *parent) : QDialog(parent), downloadsWidget(dw), filePath(filePath)
 {
-    setupDialogUI(this, progressBar, statusLabel, speedLabel, cancelButton);
-
     QFileInfo fi(filePath);
-    statusLabel->setText(QString("Uploading: %1 (%2 MB)").arg(fi.fileName()).arg(fi.size() / (1024 * 1024)));
+    setupUI(fi.fileName());
 
     workerThread = new QThread(this);
     worker = new UploaderWorker(uploadUrl, otp, filePath);
     worker->moveToThread(workerThread);
 
-    connectWorkerSignals(this, worker, workerThread, progressBar, statusLabel, speedLabel, cancelButton);
+    connectSignals();
+
+    if (downloadsWidget) {
+        syncId = GenerateRandomString(8, "hex");
+        SyncEntryData entry;
+        entry.id = syncId;
+        entry.direction = TRANSFER_UPLOAD;
+        entry.filename = displayName;
+        entry.localPath = filePath;
+        entry.timestamp = QDateTime::currentSecsSinceEpoch();
+        entry.totalSize = 0;
+        entry.progress = 0;
+        entry.speed = 0;
+        entry.state = TRANSFER_STATE_RUNNING;
+        downloadsWidget->AddSyncEntry(entry);
+    }
+
     workerThread->start();
 }
 
 DialogUploader::~DialogUploader()
 {
     if (workerThread && workerThread->isRunning()) {
-        worker->cancel();
+        if (worker)
+            QMetaObject::invokeMethod(worker, "cancel", Qt::BlockingQueuedConnection);
         workerThread->quit();
-        workerThread->wait();
+        workerThread->wait(3000);
     }
 }

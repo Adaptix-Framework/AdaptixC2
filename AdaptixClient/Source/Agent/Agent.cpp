@@ -15,7 +15,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 {
     this->adaptixWidget = w;
 
-    this->data.Id            = jsonObjAgentData["a_id"].toString();
+    this->data.Id            = parseI64(jsonObjAgentData, "a_id");
     this->data.Name          = jsonObjAgentData["a_name"].toString();
     this->data.Listener      = jsonObjAgentData["a_listener"].toString();
     this->data.Async         = jsonObjAgentData["a_async"].toBool();
@@ -46,7 +46,7 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     this->data.Color         = jsonObjAgentData["a_color"].toString();
     this->data.Mark          = jsonObjAgentData["a_mark"].toString();
 
-    for ( auto listenerData : this->adaptixWidget->Listeners) {
+    for (const auto& listenerData : this->adaptixWidget->Listeners) {
         if ( listenerData.Name == this->data.Listener ) {
             this->listenerType = listenerData.ListenerRegName;
             if (listenerData.ListenerType == "internal")
@@ -75,6 +75,24 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
 
 Agent::~Agent()
 {
+    auto destroyDock = [](DockTab* tab) {
+        if (!tab || !tab->dock())
+            return;
+        auto* d = tab->dock();ы
+        tab->setParent(nullptr);
+        delete d;
+    };
+
+    if (Console) Console->clearAgent();
+    if (fileBrowser) fileBrowser->clearAgent();
+    if (processBrowser) processBrowser->clearAgent();
+
+    destroyDock(Console);
+    destroyDock(fileBrowser);
+    destroyDock(processBrowser);
+    destroyDock(terminal);
+    destroyDock(shell);
+
     delete Console;
     delete fileBrowser;
     delete processBrowser;
@@ -190,7 +208,7 @@ void Agent::Update(const QJsonObject &jsonObjAgentData)
         this->listenerType = "";
         this->connType = "";
 
-        for (auto listenerData : this->adaptixWidget->Listeners) {
+        for (const auto& listenerData : this->adaptixWidget->Listeners) {
             if (listenerData.Name == this->data.Listener) {
                 this->listenerType = listenerData.ListenerRegName;
                 if (listenerData.ListenerType == "internal")
@@ -240,21 +258,16 @@ void Agent::Update(const QJsonObject &jsonObjAgentData)
         QString oldMark = this->data.Mark;
         this->MarkItem(mark);
 
-        if (mark == "Terminated" || mark == "Inactive") {
-            adaptixWidget->SessionsGraphDock->RemoveAgent(this, true);
-        }
-        else if ((oldMark == "Terminated" || oldMark == "Inactive") && !this->graphItem) {
-            adaptixWidget->SessionsGraphDock->AddAgent(this, true);
-        }
+        if (this->graphItem)
+            this->graphItem->invalidateCache();
+        adaptixWidget->SessionsGraphDock->ApplyFiltersAndLayout();
     }
 }
 
 void Agent::MarkItem(const QString &mark)
 {
-    QString color;
     if ( mark == "" ) {
         this->active = true;
-        color = this->data.Color;
         this->graphImage = this->imageActive;
     }
     else {
@@ -262,22 +275,10 @@ void Agent::MarkItem(const QString &mark)
             this->active = false;
         }
         this->graphImage = this->imageInactive;
-        color = QString(COLOR_DarkBrownishRed) + "-" + QString(COLOR_LightGray);
     }
 
     if (this->graphItem)
         this->graphItem->invalidateCache();
-
-    if (color.isEmpty()) {
-        this->bg_color = QColor();
-        this->fg_color = QColor();
-    } else {
-        QStringList colors = color.split('-');
-        if (colors.size() == 2) {
-            this->bg_color = QColor(colors[0]);
-            this->fg_color = QColor(colors[1]);
-        }
-    }
 
     this->data.Mark = mark;
 }
@@ -339,12 +340,12 @@ void Agent::UpdateImage()
 
 /// TASK
 
-void Agent::TasksCancel(const QStringList &tasks) const
+void Agent::TasksCancel(const QList<qint64> &tasks) const
 {
     HttpReqTaskCancelAsync(data.Id, tasks, *(adaptixWidget->GetProfile()), [](bool, const QString&, const QJsonObject&) {});
 }
 
-void Agent::TasksDelete(const QStringList &tasks) const
+void Agent::TasksDelete(const QList<qint64> &tasks) const
 {
     HttpReqTasksDeleteAsync(data.Id, tasks, *(adaptixWidget->GetProfile()), [](bool, const QString&, const QJsonObject&) {});
 }
@@ -360,7 +361,7 @@ void Agent::SetParent(const PivotData &pivotData)
 
 void Agent::UnsetParent(const PivotData &pivotData)
 {
-    this->parentId = "";
+    this->parentId = 0;
     this->data.ExternalIP = "";
     this->LastMark = QString::fromUtf8("\u221E  \u221E");
 }

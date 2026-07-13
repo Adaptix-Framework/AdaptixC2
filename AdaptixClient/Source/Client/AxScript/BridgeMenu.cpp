@@ -8,7 +8,10 @@
 
 BridgeMenu::BridgeMenu(AxScriptEngine* scriptEngine, QObject* parent) : QObject(parent), scriptEngine(scriptEngine) {}
 
-BridgeMenu::~BridgeMenu() = default;
+BridgeMenu::~BridgeMenu()
+{
+    qDeleteAll(menuItems);
+}
 
 void BridgeMenu::reg(const QString &type, AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners)
 {
@@ -106,20 +109,4 @@ void BridgeMenu::add_targets(AbstractAxMenuItem *item, const QString &position)
 
 void BridgeMenu::add_credentials(AbstractAxMenuItem *item) {
     this->scriptEngine->registerMenu("Creds", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
-}
-
-void BridgeMenu::add_main(AbstractAxMenuItem* item) {
-    this->scriptEngine->registerMenu("MainMenu", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
-}
-
-void BridgeMenu::add_main_projects(AbstractAxMenuItem* item) {
-    this->scriptEngine->registerMenu("MainProjects", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
-}
-
-void BridgeMenu::add_main_axscript(AbstractAxMenuItem* item) {
-    this->scriptEngine->registerMenu("MainAxScript", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
-}
-
-void BridgeMenu::add_main_settings(AbstractAxMenuItem* item) {
-    this->scriptEngine->registerMenu("MainSettings", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
 }

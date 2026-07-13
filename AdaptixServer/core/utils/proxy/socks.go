@@ -7,7 +7,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/gorilla/websocket"
 )
 
@@ -38,7 +38,7 @@ func ReplySocks4StatusConn(conn net.Conn, success bool) {
 	}
 }
 
-func ReplySocks4StatusWs(wsconn *websocket.Conn, success bool) {
+func ReplySocks4StatusWs(wsconn adaptix.WebSocketConn, success bool) {
 	if success {
 		_ = wsconn.WriteMessage(websocket.BinaryMessage, []byte{0x00, 0x5a, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 	} else {
@@ -50,7 +50,7 @@ func ReplySocks5StatusConn(conn net.Conn, rep byte) {
 	_, _ = conn.Write([]byte{0x05, rep, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 }
 
-func ReplySocks5StatusWs(wsconn *websocket.Conn, rep byte) {
+func ReplySocks5StatusWs(wsconn adaptix.WebSocketConn, rep byte) {
 	_ = wsconn.WriteMessage(websocket.BinaryMessage, []byte{0x05, rep, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 }
 
@@ -71,6 +71,17 @@ func CheckSocks4(conn net.Conn) (ProxySocks, error) {
 	proxySocks.Port = int(binary.BigEndian.Uint16(buf[2:4]))
 	proxySocks.Address = net.IP(buf[4:8]).String()
 
+	for {
+		b := make([]byte, 1)
+		if _, err := io.ReadFull(conn, b); err != nil {
+			ReplySocks4StatusConn(conn, false)
+			return proxySocks, err
+		}
+		if b[0] == 0x00 {
+			break
+		}
+	}
+
 	return proxySocks, err
 }
 
@@ -89,7 +100,7 @@ func CheckSocks5(conn net.Conn, auth bool, username string, password string) (Pr
 	buf := make([]byte, 2)
 	_, err := io.ReadFull(conn, buf)
 	if err != nil {
-		_, _ = conn.Write([]byte{0x00, 0x01, 0x00})
+		_, _ = conn.Write([]byte{0x05, 0xFF, 0x00})
 		return proxySocks, err
 	}
 	socksVersion := buf[0]
@@ -98,7 +109,7 @@ func CheckSocks5(conn net.Conn, auth bool, username string, password string) (Pr
 	/// Check version and auth methods
 
 	if socksVersion != 0x05 {
-		return proxySocks, recvError(conn, "invalid version of socks proxy", []byte{0x00, 0x01, 0x00})
+		return proxySocks, recvError(conn, "invalid version of socks proxy", []byte{0x05, 0xFF, 0x00})
 	}
 
 	buf = make([]byte, socksAuthCount) // auth methods
@@ -217,6 +228,8 @@ func CheckSocks5(conn net.Conn, auth bool, username string, password string) (Pr
 		ReplySocks5StatusConn(conn, adaptix.SOCKS5_COMMAND_NOT_SUPPORTED)
 		return proxySocks, err
 	}
+
+	proxySocks.AddressType = int(addressType)
 
 	portBuf := make([]byte, 2)
 	_, err = io.ReadFull(conn, portBuf)

@@ -7,7 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
+	"github.com/Adaptix-Framework/axsafe"
 	"github.com/gorilla/websocket"
 )
 
@@ -47,12 +48,14 @@ const (
 	SyncCategoryAgentsOnlyActive    = "agents_only_active"
 	SyncCategoryAgentsInactive      = "agents_inactive"
 	SyncCategoryPivots              = "pivots"
+	SyncCategoryGroups              = "groups"
 	SyncCategoryTasksHistory        = "tasks_history"
 	SyncCategoryTasksManager        = "tasks_manager"
 	SyncCategoryTasksOnlyJobs       = "tasks_only_jobs"
 	SyncCategoryConsoleHistory      = "console_history"
 	SyncCategoryChatHistory         = "chat_history"
 	SyncCategoryChatRealtime        = "chat_realtime"
+	SyncCategoryChatTodo            = "chat_todo"
 	SyncCategoryDownloadsHistory    = "downloads_history"
 	SyncCategoryDownloadsRealtime   = "downloads_realtime"
 	SyncCategoryScreenshotHistory   = "screenshot_history"
@@ -116,8 +119,7 @@ type ClientHandler struct {
 
 	clientType      uint8
 	role            string
-	subscriptions   map[string]bool
-	subMu           sync.RWMutex
+	subscriptions   axsafe.Set[string]
 	consoleTeamMode bool
 }
 
@@ -505,10 +507,10 @@ func serializePacket(packet interface{}) []byte {
 	return result
 }
 
-func NewClientHandler(username string, socket *websocket.Conn, broker *MessageBroker, clientType uint8, consoleTeamMode bool) *ClientHandler {
+func NewClientHandler(username string, socket adaptix.WebSocketConn, broker *MessageBroker, clientType uint8, consoleTeamMode bool) *ClientHandler {
 	ch := &ClientHandler{
 		username:        username,
-		socket:          socket,
+		socket:          socket.(*websocket.Conn),
 		sendChan:        make(chan []byte, SendBufferSize),
 		syncChan:        make(chan []byte, SyncBufferSize),
 		done:            make(chan struct{}),
@@ -517,7 +519,7 @@ func NewClientHandler(username string, socket *websocket.Conn, broker *MessageBr
 		tmpStateStore:   make(map[string][]byte),
 		broker:          broker,
 		clientType:      clientType,
-		subscriptions:   make(map[string]bool),
+		subscriptions:   axsafe.NewSet[string](),
 		consoleTeamMode: consoleTeamMode,
 	}
 	ch.stats.LastActivity.Store(time.Now().Unix())
@@ -684,26 +686,21 @@ func (ch *ClientHandler) Stats() *ClientStats {
 }
 
 func (ch *ClientHandler) Subscribe(categories ...string) {
-	ch.subMu.Lock()
-	defer ch.subMu.Unlock()
 	for _, cat := range categories {
-		ch.subscriptions[cat] = true
+		ch.subscriptions.Add(cat)
 	}
 }
 
 func (ch *ClientHandler) IsSubscribed(category string) bool {
-	ch.subMu.RLock()
-	defer ch.subMu.RUnlock()
-	return ch.subscriptions[category]
+	return ch.subscriptions.Contains(category)
 }
 
 func (ch *ClientHandler) GetSubscriptions() []string {
-	ch.subMu.RLock()
-	defer ch.subMu.RUnlock()
-	subs := make([]string, 0, len(ch.subscriptions))
-	for cat := range ch.subscriptions {
+	subs := make([]string, 0, ch.subscriptions.Len())
+	ch.subscriptions.ForEachFast(func(cat string) bool {
 		subs = append(subs, cat)
-	}
+		return true
+	})
 	return subs
 }
 

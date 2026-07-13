@@ -2,12 +2,10 @@ package server
 
 import (
 	"AdaptixServer/core/extender"
-	"AdaptixServer/core/utils/safe"
 	"encoding/json"
-	"os"
 	"sort"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 const (
@@ -33,9 +31,15 @@ func getPacketCategory(packet interface{}) string {
 		return SyncCategoryTasksHistory
 	case SpNotification:
 		return "notifications"
+	case SyncPackerLogBatch:
+		return "logs"
 	case SyncPackerChatMessage:
 		return SyncCategoryChatHistory
-	case SyncPackerDownloadCreate, SyncPackerDownloadUpdate, SyncPackerDownloadActual:
+	case SyncPackerChatEdit, SyncPackerChatDelete, SyncPackerChatReaction:
+		return SyncCategoryChatRealtime
+	case SyncPackerChatTodo:
+		return SyncCategoryChatTodo
+	case SyncPackerTransferCreate, SyncPackerTransferUpdate, SyncPackerTransferActual:
 		return SyncCategoryDownloadsHistory
 	case SyncPackerScreenshotCreate:
 		return SyncCategoryScreenshotHistory
@@ -43,6 +47,8 @@ func getPacketCategory(packet interface{}) string {
 		return "tunnels"
 	case SyncPackerPivotCreate:
 		return "pivots"
+	case SyncPackerGroupCreate, SyncPackerGroupRename, SyncPackerGroupDelete, SyncPackerGroupMembers, SyncPackerGroupReparent:
+		return "groups"
 	case SyncPackerCredentialsAdd:
 		return SyncCategoryCredentialsHistory
 	case SyncPackerTargetsAdd:
@@ -122,9 +128,6 @@ func (ts *Teamserver) TsSyncCategories(client *ClientHandler, categories []strin
 	if requested[SyncCategoryAgentsInactive] {
 		delete(requested, SyncCategoryAgentsInactive)
 		packets = append(packets, ts.TsPresyncAgentsInactive()...)
-		if client.IsSubscribed(SyncCategoryConsoleHistory) {
-			packets = append(packets, ts.TsPresyncConsoleInactive(client)...)
-		}
 	}
 
 	if requested[SyncCategoryPivots] {
@@ -132,34 +135,23 @@ func (ts *Teamserver) TsSyncCategories(client *ClientHandler, categories []strin
 		packets = append(packets, ts.TsPresyncPivots()...)
 	}
 
+	if requested[SyncCategoryGroups] {
+		delete(requested, SyncCategoryGroups)
+		packets = append(packets, ts.TsPresyncGroups()...)
+	}
+
 	for category := range requested {
 		switch category {
 		case SyncCategoryTasksHistory:
-			presync := ts.TsPresyncTasks()
-			if client.IsSubscribed(SyncCategoryTasksOnlyJobs) {
-				for i := 0; i < len(presync); i++ {
-					p, ok := presync[i].(SyncPackerAgentTaskSync)
-					if ok {
-						if p.TaskType == adaptix.TASK_TYPE_JOB {
-							packets = append(packets, p)
-						}
-					}
-				}
-			} else {
-				packets = append(packets, presync...)
-			}
 		case SyncCategoryConsoleHistory:
-			packets = append(packets, ts.TsPresyncConsole(client)...)
 		case SyncCategoryDownloadsHistory:
-			packets = append(packets, ts.TsPresyncDownloads()...)
 		case SyncCategoryScreenshotHistory:
-			packets = append(packets, ts.TsPresyncScreenshots()...)
 		case SyncCategoryCredentialsHistory:
-			packets = append(packets, ts.TsPresyncCredentials()...)
 		case SyncCategoryTargetsHistory:
-			packets = append(packets, ts.TsPresyncTargets()...)
 		case SyncCategoryChatHistory:
 			packets = append(packets, ts.TsPresyncChat()...)
+		case SyncCategoryChatTodo:
+			packets = append(packets, ts.TsPresyncChatTodo()...)
 		case SyncCategoryNotifications:
 			packets = append(packets, ts.TsPresyncNotifications()...)
 		case SyncCategoryTunnels:
@@ -226,23 +218,20 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 	totalCount := ts.listener_configs.Len() + ts.agent_configs.Len() + ts.service_configs.Len()
 	packets := make([]interface{}, 0, totalCount)
 
-	ts.listener_configs.ForEach(func(key string, value interface{}) bool {
-		listenerInfo := value.(extender.ListenerInfo)
+	ts.listener_configs.ForEachFast(func(key string, listenerInfo extender.ListenerInfo) bool {
 		p := CreateSpListenerReg(listenerInfo.Name, listenerInfo.Protocol, listenerInfo.Type, listenerInfo.AX)
 		packets = append(packets, p)
 		return true
 	})
 
-	ts.agent_configs.ForEach(func(key string, value interface{}) bool {
-		agentInfo := value.(extender.AgentInfo)
+	ts.agent_configs.ForEachFast(func(key string, agentInfo extender.AgentInfo) bool {
 		groups := ts.TsGetAgentCommandGroups(agentInfo.Name)
 		p := CreateSpAgentReg(agentInfo.Name, agentInfo.AX, agentInfo.Listeners, agentInfo.MultiListeners, groups)
 		packets = append(packets, p)
 		return true
 	})
 
-	ts.service_configs.ForEach(func(key string, value interface{}) bool {
-		serviceInfo := value.(extender.ServiceInfo)
+	ts.service_configs.ForEachFast(func(key string, serviceInfo extender.ServiceInfo) bool {
 		p := CreateSpServiceReg(serviceInfo.Name, serviceInfo.AX)
 		packets = append(packets, p)
 		return true
@@ -254,8 +243,7 @@ func (ts *Teamserver) TsPresyncExtenders() []interface{} {
 func (ts *Teamserver) TsPresyncListeners() []interface{} {
 	count := ts.listeners.Len()
 	listeners := make([]adaptix.ListenerData, 0, count)
-	ts.listeners.ForEach(func(key string, value interface{}) bool {
-		listenerData := value.(adaptix.ListenerData)
+	ts.listeners.ForEachFast(func(key string, listenerData adaptix.ListenerData) bool {
 		listeners = append(listeners, listenerData)
 		return true
 	})
@@ -282,32 +270,26 @@ func (ts *Teamserver) TsPresyncAgentsActive() []interface{} {
 
 func (ts *Teamserver) TsPresyncAgentsInactive() []interface{} {
 	count := ts.Agents.Len()
-	agents := make([]*Agent, 0, count)
+	agents := make([]adaptix.AgentData, 0, count)
 
-	ts.Agents.ForEach(func(key string, value interface{}) bool {
-		agent, ok := value.(*Agent)
-		if !ok {
-			return true
-		}
+	ts.Agents.ForEachFast(func(key int64, agent *adaptix.Agent) bool {
 		agentData := agent.GetData()
 		if !ts.isAgentInactive(agentData.Mark) {
 			return true
 		}
-		agents = append(agents, agent)
+		agents = append(agents, agentData)
 		return true
 	})
 
 	sort.Slice(agents, func(i, j int) bool {
-		return agents[i].GetData().CreateTime < agents[j].GetData().CreateTime
+		return agents[i].CreateTime < agents[j].CreateTime
 	})
 
 	packets := make([]interface{}, 0, len(agents))
 	ts.Agents.DirectLock()
-	for _, agent := range agents {
-		if agent != nil {
-			p := CreateSpAgentNew(agent.GetData())
-			packets = append(packets, p)
-		}
+	for _, agentData := range agents {
+		p := CreateSpAgentNew(agentData)
+		packets = append(packets, p)
 	}
 	ts.Agents.DirectUnlock()
 
@@ -320,60 +302,28 @@ func (ts *Teamserver) isAgentInactive(mark string) bool {
 
 func (ts *Teamserver) presyncAgentsFiltered(activeOnly bool) []interface{} {
 	count := ts.Agents.Len()
-	agents := make([]*Agent, 0, count)
+	agents := make([]adaptix.AgentData, 0, count)
 
-	ts.Agents.ForEach(func(key string, value interface{}) bool {
-		agent, ok := value.(*Agent)
-		if !ok {
-			return true
-		}
+	ts.Agents.ForEachFast(func(key int64, agent *adaptix.Agent) bool {
 		agentData := agent.GetData()
 		if activeOnly && ts.isAgentInactive(agentData.Mark) {
 			return true
 		}
-		agents = append(agents, agent)
+		agents = append(agents, agentData)
 		return true
 	})
 
 	sort.Slice(agents, func(i, j int) bool {
-		return agents[i].GetData().CreateTime < agents[j].GetData().CreateTime
+		return agents[i].CreateTime < agents[j].CreateTime
 	})
 
 	packets := make([]interface{}, 0, len(agents))
 	ts.Agents.DirectLock()
-	for _, agent := range agents {
-		if agent != nil {
-			p := CreateSpAgentNew(agent.GetData())
-			packets = append(packets, p)
-		}
+	for _, agentData := range agents {
+		p := CreateSpAgentNew(agentData)
+		packets = append(packets, p)
 	}
 	ts.Agents.DirectUnlock()
-
-	return packets
-}
-
-func (ts *Teamserver) TsPresyncTasks() []interface{} {
-	var sortedTasks []adaptix.TaskData
-
-	ts.Agents.ForEach(func(key string, value interface{}) bool {
-		_, ok := value.(*Agent)
-		if !ok {
-			return true
-		}
-		agentTasks := ts.DBMS.DbTasksAll(key)
-		sortedTasks = append(sortedTasks, agentTasks...)
-		return true
-	})
-
-	sort.Slice(sortedTasks, func(i, j int) bool {
-		return sortedTasks[i].StartDate < sortedTasks[j].StartDate
-	})
-
-	packets := make([]interface{}, 0, len(sortedTasks))
-	for _, taskData := range sortedTasks {
-		t := CreateSpAgentTaskSync(taskData)
-		packets = append(packets, t)
-	}
 
 	return packets
 }
@@ -384,14 +334,9 @@ func (ts *Teamserver) TsPresyncConsole(client *ClientHandler) []interface{} {
 	username := client.Username()
 	activeOnly := client.IsSubscribed(SyncCategoryAgentsOnlyActive) && !client.IsSubscribed(SyncCategoryAgents)
 
-	ts.Agents.ForEach(func(key string, value interface{}) bool {
-		agent, ok := value.(*Agent)
-		if !ok {
-			return true
-		}
+	ts.Agents.ForEachFast(func(key int64, agent *adaptix.Agent) bool {
 		if activeOnly {
-			agentData := agent.GetData()
-			if ts.isAgentInactive(agentData.Mark) {
+			if ts.isAgentInactive(agent.GetData().Mark) {
 				return true
 			}
 		}
@@ -399,11 +344,11 @@ func (ts *Teamserver) TsPresyncConsole(client *ClientHandler) []interface{} {
 		for _, message := range restoreConsoles {
 			if !consoleTeamMode {
 				var check struct {
-					Client string `json:"Client"`
-					TaskId string `json:"TaskId"`
+					Client string `json:"a_client"`
+					TaskId int64  `json:"a_task_id"`
 				}
 				_ = json.Unmarshal(message, &check)
-				if check.TaskId != "" && check.Client != username {
+				if check.TaskId != 0 && check.Client != username {
 					continue
 				}
 			}
@@ -420,24 +365,19 @@ func (ts *Teamserver) TsPresyncConsoleInactive(client *ClientHandler) []interfac
 	consoleTeamMode := client.ConsoleTeamMode()
 	username := client.Username()
 
-	ts.Agents.ForEach(func(key string, value interface{}) bool {
-		agent, ok := value.(*Agent)
-		if !ok {
-			return true
-		}
-		agentData := agent.GetData()
-		if !ts.isAgentInactive(agentData.Mark) {
+	ts.Agents.ForEachFast(func(key int64, agent *adaptix.Agent) bool {
+		if !ts.isAgentInactive(agent.GetData().Mark) {
 			return true
 		}
 		restoreConsoles := ts.DBMS.DbConsoleAll(key)
 		for _, message := range restoreConsoles {
 			if !consoleTeamMode {
 				var check struct {
-					Client string `json:"Client"`
-					TaskId string `json:"TaskId"`
+					Client string `json:"a_client"`
+					TaskId int64  `json:"a_task_id"`
 				}
 				_ = json.Unmarshal(message, &check)
-				if check.TaskId != "" && check.Client != username {
+				if check.TaskId != 0 && check.Client != username {
 					continue
 				}
 			}
@@ -446,6 +386,17 @@ func (ts *Teamserver) TsPresyncConsoleInactive(client *ClientHandler) []interfac
 		return true
 	})
 
+	return packets
+}
+
+func (ts *Teamserver) TsPresyncGroups() []interface{} {
+	count := ts.groups.Len()
+	packets := make([]interface{}, 0, count)
+	ts.groups.ForEachFast(func(key int64, g adaptix.GroupData) bool {
+		p := CreateSpGroupCreate(g.GroupId, g.ParentGroupId, g.GroupName, g.Scope, g.Members)
+		packets = append(packets, p)
+		return true
+	})
 	return packets
 }
 
@@ -461,117 +412,25 @@ func (ts *Teamserver) TsPresyncPivots() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncChat() []interface{} {
-	dbMessages := ts.DBMS.DbChatAll()
+	dbMessages := ts.DBMS.DbChatRecent(40, 0)
 	packets := make([]interface{}, 0, len(dbMessages))
 	for _, message := range dbMessages {
-		p := CreateSpChatMessage(message)
+		p := CreateSpChatMessageEx(message)
 		packets = append(packets, p)
 	}
 	return packets
 }
 
-func (ts *Teamserver) TsPresyncDownloads() []interface{} {
-	var sortedDownloads []adaptix.DownloadData
-
-	ts.downloads.ForEach(func(key string, value interface{}) bool {
-		downloadData := value.(adaptix.DownloadData)
-		sortedDownloads = append(sortedDownloads, downloadData)
-		return true
-	})
-
-	dbDownloads := ts.DBMS.DbDownloadAll()
-	sortedDownloads = append(sortedDownloads, dbDownloads...)
-
-	sort.Slice(sortedDownloads, func(i, j int) bool {
-		return sortedDownloads[i].Date < sortedDownloads[j].Date
-	})
-
-	packets := make([]interface{}, 0, len(sortedDownloads))
-	for _, downloadData := range sortedDownloads {
-		d := CreateSpDownloadActual(downloadData)
-		packets = append(packets, d)
-	}
-
-	return packets
-}
-
-func (ts *Teamserver) TsPresyncScreenshots() []interface{} {
-	dbScreens := ts.DBMS.DbScreenshotAll()
-	if len(dbScreens) == 0 {
-		return nil
-	}
-
-	packets := make([]interface{}, 0, len(dbScreens))
-	for _, screenData := range dbScreens {
-		content, err := os.ReadFile(screenData.LocalPath)
-		if err == nil {
-			screenData.Content = content
-		}
-		t := CreateSpScreenshotCreate(screenData)
-		packets = append(packets, t)
-	}
-	return packets
-}
-
-func (ts *Teamserver) TsPresyncCredentials() []interface{} {
-	creds := ts.DBMS.DbCredentialsAll()
-	if len(creds) == 0 {
-		return nil
-	}
-	p := CreateSpCredentialsAdd(creds)
-	return []interface{}{p}
-}
-
-func (ts *Teamserver) TsPresyncTargets() []interface{} {
-	targets := ts.DBMS.DbTargetsAll()
-	if len(targets) == 0 {
-		return nil
-	}
-	p := CreateSpTargetsAdd(targets)
-	return []interface{}{p}
-}
-
-func (ts *Teamserver) TsPresyncTasksOnlyJobs() []interface{} {
-	var packets []interface{}
-
-	ts.Agents.ForEach(func(agentId string, value interface{}) bool {
-		agent, ok := value.(*Agent)
-		if !ok {
-			return true
-		}
-
-		agent.RunningJobs.ForEach(func(taskId string, jobsValue interface{}) bool {
-			jobs, ok := jobsValue.(*safe.Slice)
-			if !ok {
-				return true
-			}
-
-			jobs.DirectLock()
-			slice := jobs.DirectSlice()
-			for i := 0; i < len(slice); i++ {
-				hookJob, ok := slice[i].(*HookJob)
-				if !ok || hookJob == nil {
-					continue
-				}
-				packets = append(packets, CreateSpAgentTaskUpdate(hookJob.Job))
-			}
-			jobs.DirectUnlock()
-
-			return true
-		})
-
-		_ = agentId
-		return true
-	})
-
-	return packets
+func (ts *Teamserver) TsPresyncChatTodo() []interface{} {
+	content, updatedBy, updatedAt := ts.DBMS.DbChatGetTodo()
+	return []interface{}{CreateSpChatTodo(content, updatedBy, updatedAt)}
 }
 
 func (ts *Teamserver) TsPresyncTunnels() []interface{} {
 	count := int(ts.TunnelManager.stats.ActiveTunnels.Load())
 	packets := make([]interface{}, 0, count)
-	ts.TunnelManager.ForEachTunnel(func(key string, tunnel *Tunnel) bool {
-		t := CreateSpTunnelCreate(tunnel.Data)
+	ts.TunnelManager.ForEachTunnel(func(key int64, tunnel *Tunnel) bool {
+		t := CreateSpTunnelCreate(tunnel.Data, tunnel.BytesSent.Load(), tunnel.BytesRecv.Load())
 		packets = append(packets, t)
 		return true
 	})

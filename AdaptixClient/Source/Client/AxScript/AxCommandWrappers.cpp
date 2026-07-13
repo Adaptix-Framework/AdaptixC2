@@ -161,7 +161,29 @@ void AxCommandWrappers::setPreHook(const QJSValue &handler)
     command.pre_hook = handler;
 }
 
-AxCommandGroupWrapper::AxCommandGroupWrapper(QJSEngine* engine, QObject* parent) : QObject(parent), parent(parent), engine(engine) {}
+void AxCommandWrappers::setPostHook(const QJSValue &handler)
+{
+    if (!handler.isCallable()) {
+        Q_EMIT scriptError("handler is not function");
+        return;
+    }
+
+    command.is_post_hook = true;
+    command.post_hook = handler;
+}
+
+void AxCommandWrappers::setHandler(const QJSValue &handler)
+{
+    if (!handler.isCallable()) {
+        Q_EMIT scriptError("handler is not function");
+        return;
+    }
+
+    command.is_handler = true;
+    command.handler = handler;
+}
+
+AxCommandGroupWrapper::AxCommandGroupWrapper(QJSEngine* engine, QObject* parent) : QObject(parent), engine(engine) {}
 
 void AxCommandGroupWrapper::SetParams(const QString &name, const QJSValue &array)
 {

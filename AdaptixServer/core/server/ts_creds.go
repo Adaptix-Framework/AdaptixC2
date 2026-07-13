@@ -4,11 +4,36 @@ import (
 	"AdaptixServer/core/eventing"
 	"encoding/json"
 	"fmt"
-	"math/rand/v2"
+	"strconv"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
+
+func toInt64Any(v any) (int64, bool) {
+	switch x := v.(type) {
+	case int64:
+		return x, true
+	case int:
+		return int64(x), true
+	case float64:
+		return int64(x), true
+	case string:
+		if x == "" {
+			return 0, false
+		}
+		n, err := strconv.ParseInt(x, 10, 64)
+		return n, err == nil
+	case json.Number:
+		n, err := x.Int64()
+		return n, err == nil
+	}
+	return 0, false
+}
+
+func (ts *Teamserver) TsCredGenID() int64 {
+	return ts.IdGen.Next("cred")
+}
 
 func (ts *Teamserver) TsCredentilsList() (string, error) {
 	dbCreds := ts.DBMS.DbCredentialsAll()
@@ -22,6 +47,29 @@ func (ts *Teamserver) TsCredentilsList() (string, error) {
 		return "", err
 	}
 	return string(jsonCreds), nil
+}
+
+type CredsPage struct {
+	Items  []adaptix.CredsData `json:"items"`
+	Total  int                 `json:"total"`
+	Offset int                 `json:"offset"`
+	Limit  int                 `json:"limit"`
+}
+
+func (ts *Teamserver) TsCredentialsGetPage(agentId int64, offset, limit int, filterExpr, sortCol, sortOrder string) ([]byte, error) {
+	items, total, err := ts.DBMS.DbCredentialsGetPage(agentId, offset, limit, filterExpr, sortCol, sortOrder)
+	if err != nil {
+		return nil, err
+	}
+	if items == nil {
+		items = make([]adaptix.CredsData, 0)
+	}
+	return json.Marshal(CredsPage{
+		Items:  items,
+		Total:  total,
+		Offset: offset,
+		Limit:  limit,
+	})
 }
 
 func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
@@ -49,18 +97,22 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 		if v, ok := value["storage"].(string); ok {
 			cred.Storage = v
 		}
-		if v, ok := value["agent_id"].(string); ok {
+		if v, ok := toInt64Any(value["agent_id"]); ok {
 			cred.AgentId = v
 		}
 		if v, ok := value["host"].(string); ok {
 			cred.Host = v
 		}
 
+		if cred.Username == "" && cred.Password == "" {
+			continue
+		}
+
 		if ts.DBMS.DbCredentialsFindDuplicate(cred.Username, cred.Realm, cred.Password) {
 			continue
 		}
 
-		cred.CredId = fmt.Sprintf("%08x", rand.Uint32())
+		cred.CredId = ts.TsCredGenID()
 		cred.Date = time.Now().Unix()
 
 		inputCreds = append(inputCreds, *cred)
@@ -100,11 +152,11 @@ func (ts *Teamserver) TsCredentilsAdd(creds []map[string]interface{}) error {
 	return nil
 }
 
-func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error {
+func (ts *Teamserver) TsCredentilsEdit(credId int64, username string, password string, realm string, credType string, tag string, storage string, host string) error {
 
 	cred, err := ts.DBMS.DbCredentialById(credId)
 	if err != nil {
-		return fmt.Errorf("creds %s not exists", credId)
+		return fmt.Errorf("creds %d not exists", credId)
 	}
 
 	if cred.Username == username && cred.Realm == realm && cred.Password == password && cred.Type == credType && cred.Tag == tag && cred.Storage == storage && cred.Host == host {
@@ -139,7 +191,7 @@ func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password 
 	_ = ts.DBMS.DbCredentialsUpdate(*cred)
 
 	packet := CreateSpCredentialsUpdate(*cred)
-	ts.TsSyncStateWithCategory(packet, "cred:"+credId, SyncCategoryCredentialsRealtime)
+	ts.TsSyncStateWithCategory(packet, fmt.Sprintf("cred:%d", credId), SyncCategoryCredentialsRealtime)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventCredentialsEdit{
@@ -153,7 +205,7 @@ func (ts *Teamserver) TsCredentilsEdit(credId string, username string, password 
 	return nil
 }
 
-func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
+func (ts *Teamserver) TsCredentilsDelete(credsId []int64) error {
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventCredentialsRemove{CredIds: credsId}
 	if !ts.EventManager.Emit(eventing.EventCredsRemove, eventing.HookPre, preEvent) {
@@ -165,7 +217,7 @@ func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
 	credsId = preEvent.CredIds /// can be modified by hooks
 	// ----------------
 
-	go func(ids []string) {
+	go func(ids []int64) {
 		_ = ts.DBMS.DbCredentialsDeleteBatch(ids)
 	}(credsId)
 
@@ -180,8 +232,8 @@ func (ts *Teamserver) TsCredentilsDelete(credsId []string) error {
 	return nil
 }
 
-func (ts *Teamserver) TsCredentialsSetTag(credsId []string, tag string) error {
-	go func(ids []string, t string) {
+func (ts *Teamserver) TsCredentialsSetTag(credsId []int64, tag string) error {
+	go func(ids []int64, t string) {
 		_ = ts.DBMS.DbCredentialsSetTagBatch(ids, t)
 	}(credsId, tag)
 

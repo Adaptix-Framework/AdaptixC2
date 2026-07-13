@@ -3,7 +3,9 @@ package server
 import (
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"AdaptixServer/core/database"
+
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 const (
@@ -25,9 +27,15 @@ const (
 	TYPE_SYNC_FINISH         = 0x12
 	TYPE_SYNC_BATCH          = 0x14
 	TYPE_SYNC_CATEGORY_BATCH = 0x15
+	TYPE_LOG_BATCH           = 0x16
 
-	TYPE_CHAT_MESSAGE = 0x18
-	TYPE_SERVICE_DATA = 0x19
+	TYPE_CHAT_MESSAGE       = 0x18
+	TYPE_SERVICE_DATA       = 0x19
+	TYPE_CHAT_EDIT          = 0x1a
+	TYPE_CHAT_DELETE        = 0x1b
+	TYPE_CHAT_REACTION      = 0x1c
+	TYPE_CHAT_TODO          = 0x1d
+	TYPE_CHAT_SEARCH_RESULT = 0x1e
 
 	TYPE_LISTENER_REG = 0x21
 	TYPE_AGENT_REG    = 0x22
@@ -49,10 +57,11 @@ const (
 	TYPE_AGENT_TASK_REMOVE = 0x4c
 	TYPE_AGENT_TASK_HOOK   = 0x4d
 
-	TYPE_DOWNLOAD_CREATE = 0x51
-	TYPE_DOWNLOAD_UPDATE = 0x52
-	TYPE_DOWNLOAD_DELETE = 0x53
-	TYPE_DOWNLOAD_ACTUAL = 0x54
+	TYPE_TRANSFER_CREATE  = 0x51
+	TYPE_TRANSFER_UPDATE  = 0x52
+	TYPE_TRANSFER_DELETE  = 0x53
+	TYPE_TRANSFER_ACTUAL  = 0x54
+	TYPE_TRANSFER_SET_TAG = 0x55
 
 	TYPE_TUNNEL_CREATE = 0x57
 	TYPE_TUNNEL_EDIT   = 0x58
@@ -87,6 +96,12 @@ const (
 	TYPE_TARGETS_SET_TAG = 0x8a
 
 	TYPE_AXSCRIPT_COMMANDS = 0x91
+
+	TYPE_GROUP_CREATE   = 0xa1
+	TYPE_GROUP_RENAME   = 0xa2
+	TYPE_GROUP_DELETE   = 0xa3
+	TYPE_GROUP_MEMBERS  = 0xa4
+	TYPE_GROUP_REPARENT = 0xa5
 )
 
 func CreateSpNotification(notifyType int, message string) SpNotification {
@@ -159,6 +174,7 @@ func CreateSpListenerStart(listenerData adaptix.ListenerData) SyncPackerListener
 		AgentAddrs:       listenerData.AgentAddr,
 		CreateTime:       listenerData.CreateTime,
 		ListenerStatus:   listenerData.Status,
+		Tags:             listenerData.Tags,
 		Data:             listenerData.Data,
 	}
 }
@@ -259,7 +275,7 @@ func CreateSpAgentUpdate(agentData adaptix.AgentData) SyncPackerAgentUpdate {
 	}
 }
 
-func CreateSpAgentTick(agents []string) SyncPackerAgentTick {
+func CreateSpAgentTick(agents []int64) SyncPackerAgentTick {
 	return SyncPackerAgentTick{
 		SpType: TYPE_AGENT_TICK,
 
@@ -267,7 +283,7 @@ func CreateSpAgentTick(agents []string) SyncPackerAgentTick {
 	}
 }
 
-func CreateSpAgentRemove(agentId string) SyncPackerAgentRemove {
+func CreateSpAgentRemove(agentId int64) SyncPackerAgentRemove {
 	return SyncPackerAgentRemove{
 		SpType: TYPE_AGENT_REMOVE,
 
@@ -310,7 +326,7 @@ func CreateSpAgentTaskUpdate(taskData adaptix.TaskData) SyncPackerAgentTaskUpdat
 	}
 }
 
-func CreateSpAgentTaskSend(tasksId []string) SyncPackerAgentTaskSend {
+func CreateSpAgentTaskSend(tasksId []int64) SyncPackerAgentTaskSend {
 	return SyncPackerAgentTaskSend{
 		SpType: TYPE_AGENT_TASK_SEND,
 
@@ -341,7 +357,7 @@ func CreateSpAgentTaskHook(taskData adaptix.TaskData, jobIndex int) SyncPackerAg
 	}
 }
 
-func CreateSpAgentConsoleOutput(agentId string, messageType int, message string, text string) SyncPackerAgentConsoleOutput {
+func CreateSpAgentConsoleOutput(agentId int64, messageType int, message string, text string) SyncPackerAgentConsoleOutput {
 	return SyncPackerAgentConsoleOutput{
 		SpCreateTime: time.Now().UTC().Unix(),
 		SpType:       TYPE_AGENT_CONSOLE_OUT,
@@ -353,7 +369,7 @@ func CreateSpAgentConsoleOutput(agentId string, messageType int, message string,
 	}
 }
 
-func CreateSpAgentErrorCommand(agentId string, cmdline string, message string, HookId string, HandlerId string) SyncPackerAgentErrorCommand {
+func CreateSpAgentErrorCommand(agentId int64, cmdline string, message string, HookId string, HandlerId string) SyncPackerAgentErrorCommand {
 	return SyncPackerAgentErrorCommand{
 		SpType: TYPE_AGENT_CONSOLE_ERROR,
 
@@ -365,7 +381,7 @@ func CreateSpAgentErrorCommand(agentId string, cmdline string, message string, H
 	}
 }
 
-func CreateSpAgentLocalCommand(agentId string, cmdline string, message string, text string) SyncPackerAgentLocalCommand {
+func CreateSpAgentLocalCommand(agentId int64, cmdline string, message string, text string) SyncPackerAgentLocalCommand {
 	return SyncPackerAgentLocalCommand{
 		SpCreateTime: time.Now().UTC().Unix(),
 		SpType:       TYPE_AGENT_CONSOLE_LOCAL,
@@ -431,65 +447,127 @@ func CreateSpPivotDelete(pivotId string) SyncPackerPivotDelete {
 
 /// CHAT
 
-func CreateSpChatMessage(chatData adaptix.ChatData) SyncPackerChatMessage {
+func CreateSpChatMessageEx(data database.ChatDataEx) SyncPackerChatMessage {
 	return SyncPackerChatMessage{
-		SpType: TYPE_CHAT_MESSAGE,
-
-		Username: chatData.Username,
-		Message:  chatData.Message,
-		Date:     chatData.Date,
+		SpType:      TYPE_CHAT_MESSAGE,
+		Id:          data.Id,
+		Username:    data.Username,
+		Message:     data.Message,
+		Date:        data.Date,
+		Edited:      data.Edited,
+		Deleted:     data.Deleted,
+		DeletedDate: data.DeletedDate,
+		Reactions:   data.Reactions,
+		ReplyToId:   data.ReplyToId,
+		ReplyToName: data.ReplyToName,
 	}
 }
 
-/// DOWNLOAD
-
-func CreateSpDownloadCreate(downloadData adaptix.DownloadData) SyncPackerDownloadCreate {
-	return SyncPackerDownloadCreate{
-		SpType: TYPE_DOWNLOAD_CREATE,
-
-		AgentId:   downloadData.AgentId,
-		AgentName: downloadData.AgentName,
-		FileId:    downloadData.FileId,
-		User:      downloadData.User,
-		Computer:  downloadData.Computer,
-		File:      downloadData.RemotePath,
-		Size:      downloadData.TotalSize,
-		Date:      downloadData.Date,
+func CreateSpChatEdit(id int64, newMessage string) SyncPackerChatEdit {
+	return SyncPackerChatEdit{
+		SpType:  TYPE_CHAT_EDIT,
+		Id:      id,
+		Message: newMessage,
 	}
 }
 
-func CreateSpDownloadUpdate(downloadData adaptix.DownloadData) SyncPackerDownloadUpdate {
-	return SyncPackerDownloadUpdate{
-		SpType: TYPE_DOWNLOAD_UPDATE,
-
-		FileId:   downloadData.FileId,
-		RecvSize: downloadData.RecvSize,
-		State:    downloadData.State,
+func CreateSpChatDelete(id int64) SyncPackerChatDelete {
+	return SyncPackerChatDelete{
+		SpType: TYPE_CHAT_DELETE,
+		Id:     id,
 	}
 }
 
-func CreateSpDownloadDelete(fileId []string) SyncPackerDownloadDelete {
-	return SyncPackerDownloadDelete{
-		SpType: TYPE_DOWNLOAD_DELETE,
+func CreateSpChatReaction(id int64, reactions string) SyncPackerChatReaction {
+	return SyncPackerChatReaction{
+		SpType:    TYPE_CHAT_REACTION,
+		Id:        id,
+		Reactions: reactions,
+	}
+}
+
+func CreateSpChatTodo(content string, updatedBy string, updatedAt int64) SyncPackerChatTodo {
+	return SyncPackerChatTodo{
+		SpType:    TYPE_CHAT_TODO,
+		Content:   content,
+		UpdatedBy: updatedBy,
+		UpdatedAt: updatedAt,
+	}
+}
+
+/// TRANSFER (download / upload)
+
+func CreateSpTransferCreate(transferData adaptix.TransferData, transferType int) SyncPackerTransferCreate {
+	return SyncPackerTransferCreate{
+		SpType:       TYPE_TRANSFER_CREATE,
+		TransferType: transferType,
+
+		AgentId:      transferData.AgentId,
+		AgentName:    transferData.AgentName,
+		FileId:       transferData.FileId,
+		User:         transferData.User,
+		Computer:     transferData.Computer,
+		File:         transferData.RemotePath,
+		Size:         transferData.TotalSize,
+		Date:         transferData.Date,
+		Tag:          transferData.Tag,
+		Cancellable:  transferData.Cancellable,
+		Kind:         transferData.Kind,
+		ArtifactName: transferData.ArtifactName,
+		ArtifactType: transferData.ArtifactType,
+	}
+}
+
+func CreateSpTransferUpdate(transferData adaptix.TransferData, transferType int) SyncPackerTransferUpdate {
+	return SyncPackerTransferUpdate{
+		SpType:       TYPE_TRANSFER_UPDATE,
+		TransferType: transferType,
+
+		FileId:   transferData.FileId,
+		Progress: transferData.Progress,
+		State:    transferData.State,
+	}
+}
+
+func CreateSpTransferDelete(fileId []int64, transferType int) SyncPackerTransferDelete {
+	return SyncPackerTransferDelete{
+		SpType:       TYPE_TRANSFER_DELETE,
+		TransferType: transferType,
 
 		FileId: fileId,
 	}
 }
 
-func CreateSpDownloadActual(downloadData adaptix.DownloadData) SyncPackerDownloadActual {
-	return SyncPackerDownloadActual{
-		SpType: TYPE_DOWNLOAD_ACTUAL,
+func CreateSpTransferActual(transferData adaptix.TransferData, transferType int) SyncPackerTransferActual {
+	return SyncPackerTransferActual{
+		SpType:       TYPE_TRANSFER_ACTUAL,
+		TransferType: transferType,
 
-		AgentId:   downloadData.AgentId,
-		AgentName: downloadData.AgentName,
-		FileId:    downloadData.FileId,
-		User:      downloadData.User,
-		Computer:  downloadData.Computer,
-		File:      downloadData.RemotePath,
-		Size:      downloadData.TotalSize,
-		Date:      downloadData.Date,
-		RecvSize:  downloadData.RecvSize,
-		State:     downloadData.State,
+		AgentId:      transferData.AgentId,
+		AgentName:    transferData.AgentName,
+		FileId:       transferData.FileId,
+		User:         transferData.User,
+		Computer:     transferData.Computer,
+		File:         transferData.RemotePath,
+		Size:         transferData.TotalSize,
+		Date:         transferData.Date,
+		Progress:     transferData.Progress,
+		State:        transferData.State,
+		Tag:          transferData.Tag,
+		Cancellable:  transferData.Cancellable,
+		Kind:         transferData.Kind,
+		ArtifactName: transferData.ArtifactName,
+		ArtifactType: transferData.ArtifactType,
+	}
+}
+
+func CreateSpTransferSetTag(fileIds []int64, tag string, transferType int) SyncPackerTransferTag {
+	return SyncPackerTransferTag{
+		SpType:       TYPE_TRANSFER_SET_TAG,
+		TransferType: transferType,
+
+		FileId: fileIds,
+		Tag:    tag,
 	}
 }
 
@@ -500,6 +578,7 @@ func CreateSpScreenshotCreate(screenData adaptix.ScreenData) SyncPackerScreensho
 		SpType: TYPE_SCREEN_CREATE,
 
 		ScreenId: screenData.ScreenId,
+		AgentId:  screenData.AgentId,
 		User:     screenData.User,
 		Computer: screenData.Computer,
 		Note:     screenData.Note,
@@ -508,7 +587,7 @@ func CreateSpScreenshotCreate(screenData adaptix.ScreenData) SyncPackerScreensho
 	}
 }
 
-func CreateSpScreenshotUpdate(screenId string, note string) SyncPackerScreenshotUpdate {
+func CreateSpScreenshotUpdate(screenId int64, note string) SyncPackerScreenshotUpdate {
 	return SyncPackerScreenshotUpdate{
 		SpType: TYPE_SCREEN_UPDATE,
 
@@ -517,7 +596,7 @@ func CreateSpScreenshotUpdate(screenId string, note string) SyncPackerScreenshot
 	}
 }
 
-func CreateSpScreenshotDelete(screenId string) SyncPackerScreenshotDelete {
+func CreateSpScreenshotDelete(screenId int64) SyncPackerScreenshotDelete {
 	return SyncPackerScreenshotDelete{
 		SpType: TYPE_SCREEN_DELETE,
 
@@ -567,7 +646,7 @@ func CreateSpCredentialsUpdate(credsData adaptix.CredsData) SyncPackerCredential
 	}
 }
 
-func CreateSpCredentialsDelete(credsId []string) SyncPackerCredentialsDelete {
+func CreateSpCredentialsDelete(credsId []int64) SyncPackerCredentialsDelete {
 	return SyncPackerCredentialsDelete{
 		SpType: TYPE_CREDS_DELETE,
 
@@ -575,7 +654,7 @@ func CreateSpCredentialsDelete(credsId []string) SyncPackerCredentialsDelete {
 	}
 }
 
-func CreateSpCredentialsSetTag(credsId []string, tag string) SyncPackerCredentialsTag {
+func CreateSpCredentialsSetTag(credsId []int64, tag string) SyncPackerCredentialsTag {
 	return SyncPackerCredentialsTag{
 		SpType: TYPE_CREDS_SET_TAG,
 
@@ -630,7 +709,7 @@ func CreateSpTargetUpdate(targetData adaptix.TargetData) SyncPackerTargetUpdate 
 	}
 }
 
-func CreateSpTargetDelete(targetsId []string) SyncPackerTargetDelete {
+func CreateSpTargetDelete(targetsId []int64) SyncPackerTargetDelete {
 	return SyncPackerTargetDelete{
 		SpType: TYPE_TARGETS_DELETE,
 
@@ -638,7 +717,7 @@ func CreateSpTargetDelete(targetsId []string) SyncPackerTargetDelete {
 	}
 }
 
-func CreateSpTargetSetTag(targetsId []string, tag string) SyncPackerTargetTag {
+func CreateSpTargetSetTag(targetsId []int64, tag string) SyncPackerTargetTag {
 	return SyncPackerTargetTag{
 		SpType: TYPE_TARGETS_SET_TAG,
 
@@ -699,7 +778,7 @@ func CreateSpBrowserProcess(taskData adaptix.TaskData, data string) SyncPacketBr
 
 /// TUNNEL
 
-func CreateSpTunnelCreate(tunnelData adaptix.TunnelData) SyncPackerTunnelCreate {
+func CreateSpTunnelCreate(tunnelData adaptix.TunnelData, bytesSent, bytesRecv int64) SyncPackerTunnelCreate {
 	return SyncPackerTunnelCreate{
 		SpType: TYPE_TUNNEL_CREATE,
 
@@ -715,6 +794,9 @@ func CreateSpTunnelCreate(tunnelData adaptix.TunnelData) SyncPackerTunnelCreate 
 		Client:    tunnelData.Client,
 		Fport:     tunnelData.Fport,
 		Fhost:     tunnelData.Fhost,
+		Date:      tunnelData.Date,
+		BytesSent: bytesSent,
+		BytesRecv: bytesRecv,
 	}
 }
 
@@ -752,6 +834,69 @@ func CreateSpServiceData(service string, data string) SyncPackerServiceData {
 
 		Service: service,
 		Data:    data,
+	}
+}
+
+/// LOGS
+
+func CreateSpLogBatch(items []adaptix.LogEntry) SyncPackerLogBatch {
+	return SyncPackerLogBatch{
+		SpType: TYPE_LOG_BATCH,
+		Items:  items,
+	}
+}
+
+/// GROUPS
+
+func CreateSpGroupCreate(groupId int64, parentId int64, name string, scope string, members []int64) SyncPackerGroupCreate {
+	if members == nil {
+		members = []int64{}
+	}
+	return SyncPackerGroupCreate{
+		SpType:        TYPE_GROUP_CREATE,
+		GroupId:       groupId,
+		ParentGroupId: parentId,
+		GroupName:     name,
+		Scope:         scope,
+		Members:       members,
+	}
+}
+
+func CreateSpGroupRename(groupId int64, name string) SyncPackerGroupRename {
+	return SyncPackerGroupRename{
+		SpType:    TYPE_GROUP_RENAME,
+		GroupId:   groupId,
+		GroupName: name,
+	}
+}
+
+func CreateSpGroupDelete(groupId int64) SyncPackerGroupDelete {
+	return SyncPackerGroupDelete{
+		SpType:  TYPE_GROUP_DELETE,
+		GroupId: groupId,
+	}
+}
+
+func CreateSpGroupMembers(groupId int64, add []int64, remove []int64) SyncPackerGroupMembers {
+	if add == nil {
+		add = []int64{}
+	}
+	if remove == nil {
+		remove = []int64{}
+	}
+	return SyncPackerGroupMembers{
+		SpType:  TYPE_GROUP_MEMBERS,
+		GroupId: groupId,
+		Add:     add,
+		Remove:  remove,
+	}
+}
+
+func CreateSpGroupReparent(groupId int64, newParentId int64) SyncPackerGroupReparent {
+	return SyncPackerGroupReparent{
+		SpType:      TYPE_GROUP_REPARENT,
+		GroupId:     groupId,
+		NewParentId: newParentId,
 	}
 }
 

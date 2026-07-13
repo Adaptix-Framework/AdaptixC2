@@ -2,12 +2,14 @@ package connector
 
 import (
 	"AdaptixServer/core/utils/krypt"
-	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/token"
+	"crypto/subtle"
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
+	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 )
@@ -47,12 +49,17 @@ func (tc *TsConnector) tcLogin(ctx *gin.Context) {
 	recvHash := krypt.SHA256([]byte(creds.Password))
 
 	if tc.OnlyHash {
-		if recvHash != tc.Hash {
+		if creds.Username == "" {
+			_ = ctx.Error(errors.New("username is required"))
+			return
+		}
+		if subtle.ConstantTimeCompare([]byte(recvHash), []byte(tc.Hash)) != 1 {
 			_ = ctx.Error(errors.New("incorrect password"))
 			return
 		}
 	} else {
-		if recvHash != tc.Operators[creds.Username] {
+		expected, ok := tc.Operators[creds.Username]
+		if !ok || subtle.ConstantTimeCompare([]byte(recvHash), []byte(expected)) != 1 {
 			_ = ctx.Error(errors.New("incorrect password"))
 			return
 		}
@@ -87,48 +94,36 @@ func (tc *TsConnector) tcWebsocketConnect(username string, wsConn *websocket.Con
 }
 
 func (tc *TsConnector) tcSync(ctx *gin.Context) {
-	value, exists := ctx.Get("username")
-	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
-		return
-	}
-	username, ok := value.(string)
+	username, ok := mustUsername(ctx)
 	if !ok {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
 		return
 	}
 
 	go tc.teamserver.TsClientSync(username)
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "sync started", "ok": true})
+	respondOKMessage(ctx, "sync started")
 }
 
 func (tc *TsConnector) tcSubscribe(ctx *gin.Context) {
-	value, exists := ctx.Get("username")
-	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
-		return
-	}
-	username, ok := value.(string)
+	username, ok := mustUsername(ctx)
 	if !ok {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
 		return
 	}
 
 	var req SubscribeRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "Invalid subscribe request: " + err.Error(), "ok": false})
+		respondError(ctx, http.StatusBadRequest, "Invalid subscribe request: "+err.Error())
 		return
 	}
 
 	if len(req.Categories) == 0 {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "No categories specified", "ok": false})
+		respondError(ctx, http.StatusBadRequest, "No categories specified")
 		return
 	}
 
 	go tc.teamserver.TsClientSubscribe(username, req.Categories, req.ConsoleTeamMode)
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "subscribe started", "ok": true})
+	respondOKMessage(ctx, "subscribe started")
 }
 
 /// OTP
@@ -149,7 +144,7 @@ func (tc *TsConnector) tcConnectOTP(ctx *gin.Context) {
 
 	exists := tc.teamserver.TsClientExists(wsData.Username)
 	if exists {
-		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Client already connected", "ok": false})
+		respondError(ctx, http.StatusNetworkAuthenticationRequired, "Client already connected")
 		return
 	}
 
@@ -164,12 +159,12 @@ func (tc *TsConnector) tcConnectOTP(ctx *gin.Context) {
 	}
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
-		logs.Error("", "WebSocket upgrade error: "+err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "WebSocket upgrade error: %s", err.Error())
 		return
 	}
 
 	if wsConn == nil {
-		logs.Error("", "WebSocket is nil")
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "WebSocket is nil")
 		return
 	}
 
@@ -193,7 +188,7 @@ func (tc *TsConnector) tcChannelOTP(ctx *gin.Context) {
 
 	exists := tc.teamserver.TsClientExists(wsData.Username)
 	if !exists {
-		ctx.JSON(http.StatusNetworkAuthenticationRequired, gin.H{"message": "Server error: client not connected", "ok": false})
+		respondError(ctx, http.StatusNetworkAuthenticationRequired, "Server error: client not connected")
 		return
 	}
 
@@ -203,12 +198,12 @@ func (tc *TsConnector) tcChannelOTP(ctx *gin.Context) {
 	}
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
-		logs.Error("", "WebSocket upgrade error: "+err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "WebSocket upgrade error: %s", err.Error())
 		return
 	}
 
 	if wsConn == nil {
-		logs.Error("", "WebSocket is nil")
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "WebSocket is nil")
 		return
 	}
 
@@ -217,25 +212,69 @@ func (tc *TsConnector) tcChannelOTP(ctx *gin.Context) {
 	switch otpType {
 	case "channel_tunnel":
 		if err := tc.teamserver.TsTunnelClientNewChannel(channelDataStr, wsConn); err != nil {
-			logs.Error("", "Tunnel channel error: "+err.Error())
+			tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "Tunnel channel error: %s", err.Error())
 			wsConn.Close()
 		}
 
 	case "channel_terminal":
 		if err := tc.teamserver.TsAgentTerminalCreateChannel(channelDataStr, wsConn); err != nil {
-			logs.Error("", "Terminal channel error: "+err.Error())
+			tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "Terminal channel error: %s", err.Error())
 			wsConn.Close()
 		}
 
 	case "channel_agent_build":
 		go func() {
 			if err := tc.teamserver.TsAgentBuildCreateChannel(channelDataStr, wsConn); err != nil {
-				logs.Error("", "Agent build channel error: "+err.Error())
+				tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "Agent build channel error: %s", err.Error())
 			}
 		}()
 
 	default:
-		logs.Error("", "Unknown channel type: "+otpType)
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "Unknown channel type: %s", otpType)
 		wsConn.Close()
 	}
+}
+
+/// LOGS
+
+func (tc *TsConnector) TcLogsList(ctx *gin.Context) {
+	limit := 200
+	offset := 0
+	var beforeId int64 = 0
+
+	if q := ctx.Query("limit"); q != "" {
+		v, err := strconv.Atoi(q)
+		if err != nil || v < 0 {
+			respondError(ctx, http.StatusBadRequest, "limit must be a non-negative integer")
+			return
+		}
+		if v > 2000 {
+			v = 2000
+		}
+		limit = v
+	}
+	if q := ctx.Query("before_id"); q != "" {
+		v, err := strconv.ParseInt(q, 10, 64)
+		if err != nil || v < 0 {
+			respondError(ctx, http.StatusBadRequest, "before_id must be a non-negative 64-bit integer")
+			return
+		}
+		beforeId = v
+	}
+
+	var (
+		jsonData []byte
+		err      error
+	)
+	if beforeId > 0 {
+		jsonData, err = tc.teamserver.TsLogsGetPageBeforeId(beforeId, limit)
+	} else {
+		jsonData, err = tc.teamserver.TsLogsGetPage(offset, limit)
+	}
+	if err != nil {
+		respondError(ctx, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", jsonData)
 }

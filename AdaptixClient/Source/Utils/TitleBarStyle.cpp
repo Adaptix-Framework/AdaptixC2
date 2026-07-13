@@ -19,17 +19,17 @@ namespace TitleBarStyle {
 
     static bool isLightTheme(const QString& themeName)
     {
-        QString themeFile = ":/themes/" + themeName;
+        QString themeFile = ":/qlementine-themes/" + themeName;
         QFile file(themeFile);
 
         if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
             return false;
 
-        QString content = QString::fromUtf8(file.read(500));
+        QString content = QString::fromUtf8(file.read(2000));
         file.close();
 
-        QRegularExpression regex(R"(@theme-type:\s*(light|dark))");
-        QRegularExpressionMatch match = regex.match(content);
+        const QRegularExpression regex(R"RE("type"\s*:\s*"(light|dark)")RE");
+        const auto match = regex.match(content);
 
         if (match.hasMatch())
             return match.captured(1).toLower() == "light";

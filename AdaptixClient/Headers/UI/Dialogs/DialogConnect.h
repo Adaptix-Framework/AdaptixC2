@@ -2,11 +2,13 @@
 #define ADAPTIXCLIENT_DIALOGCONNECT_H
 
 #include <main.h>
-#include <Utils/CustomElements.h>
+#include <Utils/CustomElements/CardListWidget.h>
+
 #include <oclero/qlementine/widgets/PopoverButton.hpp>
 #include <oclero/qlementine/widgets/Popover.hpp>
 #include <oclero/qlementine/widgets/Switch.hpp>
 #include <oclero/qlementine/widgets/Menu.hpp>
+
 
 class AuthProfile;
 

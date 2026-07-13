@@ -7,56 +7,82 @@ import (
 	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/extender"
 	"AdaptixServer/core/profile"
-	"AdaptixServer/core/utils/logs"
-	"AdaptixServer/core/utils/safe"
+	"AdaptixServer/core/utils/idgen"
 	"AdaptixServer/core/utils/token"
+	"context"
+	"encoding/hex"
+	"fmt"
 	"net"
 	"os"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
+	"github.com/Adaptix-Framework/axsafe"
 	"github.com/goccy/go-yaml"
 )
 
-func NewTeamserver() *Teamserver {
+func NewTeamserver(debug bool) *Teamserver {
+	ctx, cancel := context.WithCancel(context.Background())
+	ts := &Teamserver{
+		ctx:        ctx,
+		cancel:     cancel,
+		LogManager: NewLogManager(debug),
+	}
+	ts.LogManager.Bind(ts)
 
-	dbms, err := database.NewDatabase(logs.RepoLogsInstance.DbPath)
+	paths, err := initPaths()
 	if err != nil {
-		logs.Error("", "Failed to create a DBMS: "+err.Error())
+		fmt.Fprintf(os.Stderr, "[-] Failed to init paths: %s\n", err.Error())
 		return nil
 	}
+	ts.Paths = paths
+
+	dbms, err := database.NewDatabase(paths.DbPath, ts)
+	if err != nil {
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "Failed to create a DBMS: %s", err.Error())
+		return nil
+	}
+	ts.DBMS = dbms
 
 	broker := NewMessageBroker()
 	broker.Start()
+	ts.Broker = broker
 
-	ts := &Teamserver{
-		Profile:      profile.NewProfile(),
-		DBMS:         dbms,
-		Broker:       broker,
-		EventManager: eventing.NewEventManager(),
-		OTPManager:   token.NewOTPManager(60*time.Second, 30*time.Second),
+	ts.Profile = profile.NewProfile(ts)
+	ts.EventManager = eventing.NewEventManager(ts)
+	ts.OTPManager = token.NewOTPManager(60*time.Second, 30*time.Second)
 
-		listener_configs: safe.NewMap(),
-		agent_configs:    safe.NewMap(),
-		service_configs:  safe.NewMap(),
+	ts.listener_configs = axsafe.NewMap[string, extender.ListenerInfo]()
+	ts.agent_configs = axsafe.NewMap[string, extender.AgentInfo]()
+	ts.service_configs = axsafe.NewMap[string, extender.ServiceInfo]()
 
-		wm_agent_types: make(map[string]string),
-		wm_listeners:   make(map[string][]string),
+	ts.wm_agent_types = axsafe.NewMap[string, string]()
+	ts.wm_listeners = axsafe.NewMap[string, []string]()
 
-		notifications: safe.NewSlice(),
-		Agents:        safe.NewMap(),
-		listeners:     safe.NewMap(),
-		downloads:     safe.NewMap(),
-		tmp_uploads:   safe.NewMap(),
-		terminals:     safe.NewMap(),
-		pivots:        safe.NewSlice(),
-		builders:      safe.NewMap(),
-	}
+	ts.notifications = axsafe.NewSlice()
+	ts.Agents = axsafe.NewMap[int64, *adaptix.Agent]()
+	ts.agentsUid = axsafe.NewMap[string, int64]()
+	ts.listeners = axsafe.NewMap[string, adaptix.ListenerData]()
+	ts.downloads = axsafe.NewMap[int64, adaptix.TransferData]()
+	ts.uploads = axsafe.NewMap[int64, adaptix.TransferData]()
+	ts.tmp_uploads = axsafe.NewMap[int64, string]()
+	ts.terminals = axsafe.NewMap[int64, *Terminal]()
+	ts.pivots = axsafe.NewSlice()
+	ts.groups = axsafe.NewMap[int64, adaptix.GroupData]()
+	ts.builders = axsafe.NewMap[string, *AgentBuilder]()
+
+	ts.tickedAgents = axsafe.NewSet[int64]()
+	ts.tickNotify = make(chan struct{}, 1)
+
+	ts.IdGen = idgen.New("screen", "cred", "target", "task", "file", "agent", "listener")
+	_ = ts.IdGen.Bind(dbms.GetDB())
+
 	ts.ScriptManager = axscript.NewScriptManager(ts)
 	ts.TaskManager = NewTaskManager(ts)
 	ts.TunnelManager = NewTunnelManager(ts)
+	ts.TunnelManager.Start(ts.ctx)
 	ts.FrameManager = NewFrameManager(ts, nil)
-	ts.Extender = extender.NewExtender(ts)
+	ts.Extender = extender.NewExtender(ts, ts.Paths.ListenerPath)
 	return ts
 }
 
@@ -90,42 +116,33 @@ func (ts *Teamserver) RestoreData() {
 		return
 	}
 
-	logs.Info("", "Restore data from Database...")
+	ts.TsLogAdd(adaptix.LogStatusInfo, 0, "server", "Restore data from Database...")
 
 	/// AGENTS
 	countAgents := 0
 	restoreAgents := ts.DBMS.DbAgentAll()
 	for _, agentData := range restoreAgents {
 
-		extenderAgent, err := ts.Extender.ExAgentGetExtender(agentData.Name)
+		agentFunctions, err := ts.Extender.ExAgentRestore(agentData.Name, agentData)
 		if err != nil {
-			logs.Warn("   ", "Failed to get extenderAgent for agent %v (%v): %v", agentData.Id, agentData.Name, err.Error())
+			ts.TsLogAdd(adaptix.LogStatusWarn, 1, "server", "Failed to get agentFunctions for agent %v (%v): %v", agentData.Id, agentData.Name, err.Error())
 			continue
 		}
 
-		agent := &Agent{
-			Extender:     extenderAgent,
-			HostedQueue:  safe.NewPriorityQueue(0x1000),
-			RunningTasks: safe.NewMap(),
-			RunningJobs:  safe.NewMap(),
-			PivotParent:  nil,
-			PivotChilds:  safe.NewSlice(),
-			Tick:         false,
-			Active:       true,
-		}
+		agent := adaptix.NewAgent(agentData, agentFunctions)
 
 		if agentData.Mark == "Terminated" {
-			agent.Active = false
-		}
-
-		if agentData.Mark == "" {
+			agent.SetActive(false)
+		} else if agentData.Mark == "" {
 			if !agentData.Async {
 				agentData.Mark = "Disconnect"
 			}
 		}
 
-		agent.SetData(agentData)
 		ts.Agents.Put(agentData.Id, agent)
+		if len(agentData.UID) > 0 {
+			ts.agentsUid.Put(hex.EncodeToString(agentData.UID), agentData.Id)
+		}
 
 		packet := CreateSpAgentNew(agentData)
 		ts.TsSyncAllClients(packet)
@@ -134,7 +151,7 @@ func (ts *Teamserver) RestoreData() {
 
 		countAgents++
 	}
-	logs.Success("   ", "Restored %v agents", countAgents)
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v agents", countAgents)
 
 	/// PIVOT
 	countPivots := 0
@@ -143,29 +160,36 @@ func (ts *Teamserver) RestoreData() {
 		_ = ts.TsPivotCreate(restorePivot.PivotId, restorePivot.ParentAgentId, restorePivot.ChildAgentId, restorePivot.PivotName, true)
 		countPivots++
 	}
-	logs.Success("   ", "Restored %v pivots", countPivots)
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v pivots", countPivots)
 
-	logs.Success("   ", "Restored %v listeners", ts.DBMS.DbTableCount("Listeners"))
-	logs.Success("   ", "Restored %v screenshots", ts.DBMS.DbTableCount("Screenshots"))
-	logs.Success("   ", "Restored %v downloads", ts.DBMS.DbTableCount("Downloads"))
-	logs.Success("   ", "Restored %v credentials", ts.DBMS.DbTableCount("Credentials"))
-	logs.Success("   ", "Restored %v targets", ts.DBMS.DbTableCount("Targets"))
+	/// GROUPS
+	countGroups := 0
+	restoreGroups := ts.DBMS.DbGroupGetAll("")
+	for _, g := range restoreGroups {
+		ts.groups.Put(g.GroupId, g)
+		countGroups++
+	}
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v groups", countGroups)
+
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v listeners", ts.DBMS.DbTableCount("Listeners"))
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v screenshots", ts.DBMS.DbTableCount("Screenshots"))
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v downloads", ts.DBMS.DbTableCount("Downloads"))
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v credentials", ts.DBMS.DbTableCount("Credentials"))
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v targets", ts.DBMS.DbTableCount("Targets"))
 
 	/// LISTENERS
 	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
 		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.CreateTime, restoreListener.Watermark, restoreListener.CustomData)
 		if err != nil {
-			logs.Error("", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {
-			value, ok := ts.listeners.Get(restoreListener.ListenerName)
+			listenerData, ok := ts.listeners.Get(restoreListener.ListenerName)
 			if ok {
-				listenerData := value.(adaptix.ListenerData)
-
 				if restoreListener.ListenerStatus == "Paused" && listenerData.Status == "Listen" {
 					err = ts.Extender.ExListenerPause(restoreListener.ListenerName)
 					if err != nil {
-						logs.Error("", "Failed to pause restored listener %s: %s", restoreListener.ListenerName, err.Error())
+						ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "Failed to pause restored listener %s: %s", restoreListener.ListenerName, err.Error())
 					} else {
 						listenerData.Status = "Paused"
 						ts.listeners.Put(restoreListener.ListenerName, listenerData)
@@ -208,7 +232,7 @@ func (ts *Teamserver) Start() {
 
 	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server, *ts.Profile.HttpServer)
 	if err != nil {
-		logs.Error("", "Failed to init HTTP handler: "+err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "Failed to init HTTP handler: %s", err.Error())
 		return
 	}
 
@@ -217,14 +241,16 @@ func (ts *Teamserver) Start() {
 	ts.TsAxScriptLoadFromProfile()
 
 	go ts.AdaptixServer.Start(&stopped)
-	logs.Success("", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
 
 	ts.RestoreData()
-	logs.Success("", "The AdaptixC2 server is ready")
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server", "The AdaptixC2 server is ready")
 
-	go ts.TsAgentTickUpdate()
+	go ts.TsAgentTickUpdate(ts.ctx)
 
 	<-stopped
-	logs.Warn("", "Teamserver finished")
-	os.Exit(0)
+	ts.LogManager.Stop()
+	ts.FrameManager.Stop()
+	ts.cancel()
+	ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "Teamserver finished")
 }

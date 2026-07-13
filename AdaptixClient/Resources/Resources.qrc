@@ -3,6 +3,7 @@
     <qresource prefix="/">
         <file alias="LogoLin">Logo.png</file>
         <file alias="SyncLogo">SyncLogo.png</file>
+        <file alias="Back">Back.png</file>
     </qresource>
 
     <qresource prefix="/fonts">
@@ -18,51 +19,37 @@
     </qresource>
 
     <qresource prefix="/qlementine-themes">
-        <file alias="Adaptix_Dark">themes/adaptix_dark.json</file>
-        <file alias="Adaptix_Light">themes/adaptix_light.json</file>
+        <file alias="Adaptix_Dark_Emerald">themes/adaptix_dark_emerald.json</file>
+        <file alias="Adaptix_Light_Emerald">themes/adaptix_light_emerald.json</file>
         <file alias="Adaptix_Dracula">themes/adaptix_dracula.json</file>
-        <file alias="Dark_Ice">themes/dark_ice.json</file>
-        <file alias="Glass_Morph">themes/glass_morph.json</file>
-        <file alias="Hacker_Tech">themes/hacker_tech.json</file>
-        <file alias="Fallout">themes/fallout.json</file>
-        <file alias="Light_Arc">themes/light_arc.json</file>
-        <file alias="Dark_Classic">themes/dark.json</file>
-        <file alias="Dracula">themes/dracula.json</file>
     </qresource>
 
     <qresource prefix="/console-themes">
         <file alias="console_adaptix_dark.json">themes/console/console_adaptix_dark.json</file>
         <file alias="console_adaptix_light.json">themes/console/console_adaptix_light.json</file>
         <file alias="console_adaptix_dracula.json">themes/console/console_adaptix_dracula.json</file>
-        <file alias="console_dark_ice.json">themes/console/console_dark_ice.json</file>
-        <file alias="console_glass_morph.json">themes/console/console_glass_morph.json</file>
-        <file alias="console_hacker_tech.json">themes/console/console_hacker_tech.json</file>
-        <file alias="console_fallout.json">themes/console/console_fallout.json</file>
-        <file alias="console_light_arc.json">themes/console/console_light_arc.json</file>
-        <file alias="console_dark_classic.json">themes/console/console_dark_classic.json</file>
-        <file alias="console_dracula.json">themes/console/console_dracula.json</file>
-    </qresource>
-
-    <qresource prefix="/backgrounds">
-        <file alias="adaptix_background">backgrounds/adaptix_background.png</file>
     </qresource>
 
     <qresource prefix="/icons">
-        <file alias="logs">icons/news_64dp.png</file>
+        <file alias="logs">icons/event_note_64dp.png</file>
         <file alias="listeners">icons/headphones_64dp.png</file>
         <file alias="extension">icons/extension_64dp.png</file>
+        <file alias="folder_code">icons/folder_code_64dp.png</file>
+        <file alias="code">icons/code_xml_64dp.png</file>
         <file alias="format_list">icons/format_list_bulleted_64dp.png</file>
         <file alias="graph">icons/hub_64dp.png</file>
         <file alias="job">icons/job_64dp.png</file>
-        <file alias="devices">icons/devices_64dp.png</file>
-        <file alias="chat">icons/forum_64dp.png</file>
-        <file alias="vpn">icons/vpn_64dp.png</file>
-        <file alias="downloads">icons/downloads_64.png</file>
+        <file alias="chat">icons/groups_64dp.png</file>
+        <file alias="vpn">icons/sync_alt_64dp.png</file>
+        <file alias="downloads">icons/download_64dp.png</file>
+        <file alias="devices">icons/radar_64dp.png</file>
         <file alias="key">icons/key_64dp.png</file>
-        <file alias="picture">icons/picture_64dp.png</file>
+        <file alias="picture">icons/wallpaper_64dp.png</file>
         <file alias="keyboard">icons/keyboard_64dp.png</file>
         <file alias="link">icons/link_64dp.png</file>
         <file alias="unlink">icons/link_off_64dp.png</file>
+
+        <file alias="plus">icons/add_circle_64dp.png</file>
 
         <file alias="close">icons/close_dp64.png</file>
         <file alias="check">icons/check_dp64.png</file>
@@ -82,6 +69,10 @@
         <file alias="restart">icons/restart_64dp.png</file>
         <file alias="stop">icons/stop_64dp.png</file>
         <file alias="settings_account">icons/settings_account_64dp.png</file>
+        <file alias="build">icons/handyman_64dp.png</file>
+        <file alias="delete">icons/delete_64dp.png</file>
+        <file alias="new_file">icons/new_window_64dp.png</file>
+        <file alias="open_folder">icons/folder_open_64dp.png</file>
 
         <file alias="fs_ssd">icons/filesystem/ssd_64dp.png</file>
         <file alias="fs_document">icons/filesystem/document_64dp.png</file>

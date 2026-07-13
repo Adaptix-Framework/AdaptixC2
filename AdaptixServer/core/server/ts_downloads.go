@@ -3,20 +3,22 @@ package server
 import (
 	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/krypt"
-	"AdaptixServer/core/utils/logs"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
-func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int64) error {
+func (ts *Teamserver) TsFileGenID() int64 {
+	return ts.IdGen.Next("file")
+}
+
+func (ts *Teamserver) TsDownloadAdd(agentId int64, fileId int64, fileName string, fileSize int64) error {
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataDownloadStart{
 		AgentId:  agentId,
@@ -32,32 +34,29 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 	}
 	// ----------------
 
-	downloadData := adaptix.DownloadData{
+	downloadData := adaptix.TransferData{
 		AgentId:    agentId,
 		FileId:     fileId,
 		RemotePath: fileName,
 		TotalSize:  fileSize,
-		RecvSize:   0,
+		Progress:   0,
 		Date:       time.Now().Unix(),
-		State:      adaptix.DOWNLOAD_STATE_RUNNING,
+		State:      adaptix.TRANSFER_STATE_RUNNING,
 	}
 
-	value, ok := ts.Agents.Get(agentId)
+	agent, ok := ts.Agents.Get(agentId)
 	if !ok {
-		return errors.New("Agent not found: " + agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return errors.New("Invalid agent type: " + agentId)
+		return errors.New(fmt.Sprintf("Agent not found: %d", agentId))
 	}
 	agentData := agent.GetData()
 	downloadData.User = agentData.Username
 	downloadData.Computer = agentData.Computer
 	downloadData.AgentName = agentData.Name
 
-	dirPath := logs.RepoLogsInstance.DownloadPath
+	dirPath := ts.Paths.DownloadPath
 	baseName := filepath.Base(filepath.Clean(strings.ReplaceAll(fileName, `\`, `/`)))
-	saveName := krypt.MD5([]byte(strconv.FormatInt(downloadData.Date, 10))) + "_" + baseName
+	hashSeed := fmt.Sprintf("%d_%d", fileId, downloadData.Date)
+	saveName := krypt.MD5([]byte(hashSeed)) + "_" + baseName
 
 	_, err := os.Stat(dirPath)
 	if os.IsNotExist(err) {
@@ -68,14 +67,19 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 	}
 
 	downloadData.LocalPath = dirPath + "/" + saveName
-	downloadData.File, err = os.Create(downloadData.LocalPath)
+	f, err := os.Create(downloadData.LocalPath)
 	if err != nil {
 		return errors.New("Failed to create file: " + err.Error())
 	}
+	f.Close()
 
 	ts.downloads.Put(downloadData.FileId, downloadData)
 
-	packet := CreateSpDownloadCreate(downloadData)
+	if err := ts.DBMS.DbDownloadInsert(downloadData); err != nil {
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:transfer_manager", "%s", err.Error())
+	}
+
+	packet := CreateSpTransferCreate(downloadData, TRANSFER_DOWNLOAD)
 	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryDownloadsRealtime)
 
 	// --- POST HOOK ---
@@ -91,46 +95,57 @@ func (ts *Teamserver) TsDownloadAdd(agentId string, fileId string, fileName stri
 	return nil
 }
 
-func (ts *Teamserver) TsDownloadUpdate(fileId string, state int, data []byte) error {
-	value, ok := ts.downloads.Get(fileId)
+func (ts *Teamserver) TsDownloadUpdate(fileId int64, state int, data []byte) error {
+	d, ok := ts.downloads.Get(fileId)
 	if !ok {
-		return errors.New("File not found: " + fileId)
+		return fmt.Errorf("File not found: %d", fileId)
 	}
-	downloadData := value.(adaptix.DownloadData)
-	downloadData.State = state
 
+	var writeErr error
 	if len(data) > 0 {
-		_, err := downloadData.File.Write(data)
+		f, err := os.OpenFile(d.LocalPath, os.O_APPEND|os.O_WRONLY, 0644)
 		if err != nil {
-			downloadData.File, err = os.Create(downloadData.LocalPath)
+			f, err = os.OpenFile(d.LocalPath, os.O_WRONLY|os.O_CREATE, 0644)
 			if err != nil {
-				return errors.New("Failed to create file: " + err.Error())
-			}
-
-			_, err = downloadData.File.Write(data)
-			if err != nil {
-				return errors.New("Failed to write file '" + downloadData.LocalPath + "': " + err.Error())
+				writeErr = errors.New("Failed to open file: " + err.Error())
 			}
 		}
-		downloadData.RecvSize += int64(len(data))
+		if writeErr == nil {
+			_, err = f.Write(data)
+			_ = f.Close()
+			if err != nil {
+				writeErr = errors.New("Failed to write file '" + d.LocalPath + "': " + err.Error())
+			}
+		}
 	}
 
-	ts.downloads.Put(downloadData.FileId, downloadData)
+	if writeErr != nil {
+		return writeErr
+	}
 
-	packet := CreateSpDownloadUpdate(downloadData)
-	ts.TsSyncStateWithCategory(packet, "download:"+downloadData.FileId, SyncCategoryDownloadsRealtime)
+	var updated adaptix.TransferData
+	ts.downloads.Update(fileId, func(d adaptix.TransferData) adaptix.TransferData {
+		d.State = state
+		if len(data) > 0 {
+			d.Progress += int64(len(data))
+		}
+		updated = d
+		return d
+	})
+
+	packet := CreateSpTransferUpdate(updated, TRANSFER_DOWNLOAD)
+	ts.TsSyncStateWithCategory(packet, fmt.Sprintf("download:%d", updated.FileId), SyncCategoryDownloadsRealtime)
 
 	return nil
 }
 
-func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
-	value, ok := ts.downloads.Get(fileId)
+func (ts *Teamserver) TsDownloadClose(fileId int64, reason int) error {
+	downloadData, ok := ts.downloads.Get(fileId)
 	if !ok {
-		return errors.New("File not found: " + fileId)
+		return fmt.Errorf("File not found: %d", fileId)
 	}
-	downloadData := value.(adaptix.DownloadData)
 
-	canceled := reason != adaptix.DOWNLOAD_STATE_FINISHED
+	canceled := reason != adaptix.TRANSFER_STATE_FINISHED
 
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataDownloadFinish{Download: downloadData, Canceled: canceled}
@@ -142,26 +157,22 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 	}
 	// ----------------
 
-	err := downloadData.File.Close()
-	if err != nil {
-		logs.Debug("", fmt.Sprintf("Failed to finish download [%x] file: %v", downloadData.FileId, err))
-	}
+	ts.downloads.Delete(fileId)
 
-	if reason == adaptix.DOWNLOAD_STATE_FINISHED {
-		downloadData.State = adaptix.DOWNLOAD_STATE_FINISHED
-		err = ts.DBMS.DbDownloadInsert(downloadData)
-		if err != nil {
-			logs.Error("", err.Error())
-		}
-		ts.downloads.Delete(fileId)
+	if reason == adaptix.TRANSFER_STATE_FINISHED {
+		downloadData.State = adaptix.TRANSFER_STATE_FINISHED
 	} else {
-		downloadData.State = adaptix.DOWNLOAD_STATE_CANCELED
+		downloadData.State = adaptix.TRANSFER_STATE_CANCELED
 		_ = os.Remove(downloadData.LocalPath)
-		ts.downloads.Delete(fileId)
 	}
 
-	packet := CreateSpDownloadUpdate(downloadData)
-	ts.TsSyncStateWithCategory(packet, "download:"+downloadData.FileId, SyncCategoryDownloadsRealtime)
+	err := ts.DBMS.DbDownloadUpdateState(downloadData.FileId, downloadData.State, downloadData.Progress)
+	if err != nil {
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:transfer_manager", "%s", err.Error())
+	}
+
+	packet := CreateSpTransferUpdate(downloadData, TRANSFER_DOWNLOAD)
+	ts.TsSyncStateWithCategory(packet, fmt.Sprintf("download:%d", downloadData.FileId), SyncCategoryDownloadsRealtime)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataDownloadFinish{Download: downloadData, Canceled: canceled}
@@ -171,34 +182,31 @@ func (ts *Teamserver) TsDownloadClose(fileId string, reason int) error {
 	return nil
 }
 
-func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename string, content []byte) error {
+func (ts *Teamserver) TsDownloadSave(agentId int64, fileId int64, filename string, content []byte) error {
 
-	downloadData := adaptix.DownloadData{
+	downloadData := adaptix.TransferData{
 		AgentId:    agentId,
 		FileId:     fileId,
 		RemotePath: filename,
 		TotalSize:  int64(len(content)),
-		RecvSize:   int64(len(content)),
+		Progress:   int64(len(content)),
 		Date:       time.Now().Unix(),
-		State:      adaptix.DOWNLOAD_STATE_FINISHED,
+		State:      adaptix.TRANSFER_STATE_FINISHED,
 	}
 
-	value, ok := ts.Agents.Get(agentId)
+	agent, ok := ts.Agents.Get(agentId)
 	if !ok {
-		return errors.New("Agent not found: " + agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return errors.New("Invalid agent type: " + agentId)
+		return errors.New(fmt.Sprintf("Agent not found: %d", agentId))
 	}
 	agentData := agent.GetData()
 	downloadData.User = agentData.Username
 	downloadData.Computer = agentData.Computer
 	downloadData.AgentName = agentData.Name
 
-	dirPath := logs.RepoLogsInstance.DownloadPath
+	dirPath := ts.Paths.DownloadPath
 	baseName := filepath.Base(filepath.Clean(strings.ReplaceAll(filename, `\`, `/`)))
-	saveName := krypt.MD5([]byte(strconv.FormatInt(downloadData.Date, 10))) + "_" + baseName
+	hashSeed := fmt.Sprintf("%d_%d", fileId, downloadData.Date)
+	saveName := krypt.MD5([]byte(hashSeed)) + "_" + baseName
 
 	_, err := os.Stat(dirPath)
 	if os.IsNotExist(err) {
@@ -209,38 +217,62 @@ func (ts *Teamserver) TsDownloadSave(agentId string, fileId string, filename str
 	}
 
 	downloadData.LocalPath = dirPath + "/" + saveName
-	downloadData.File, err = os.Create(downloadData.LocalPath)
+	err = os.WriteFile(downloadData.LocalPath, content, 0644)
 	if err != nil {
-		return errors.New("Failed to create file: " + err.Error())
-	}
-	_, err = downloadData.File.Write(content)
-	if err != nil {
-		_ = downloadData.File.Close()
 		return errors.New("Failed to write file: " + err.Error())
 	}
-	_ = downloadData.File.Close()
 
-	packetRes1 := CreateSpDownloadCreate(downloadData)
+	packetRes1 := CreateSpTransferCreate(downloadData, TRANSFER_DOWNLOAD)
 	ts.TsSyncAllClientsWithCategory(packetRes1, SyncCategoryDownloadsRealtime)
 
-	packetRes2 := CreateSpDownloadUpdate(downloadData)
-	ts.TsSyncStateWithCategory(packetRes2, "download:"+downloadData.FileId, SyncCategoryDownloadsRealtime)
+	packetRes2 := CreateSpTransferUpdate(downloadData, TRANSFER_DOWNLOAD)
+	ts.TsSyncStateWithCategory(packetRes2, fmt.Sprintf("download:%d", downloadData.FileId), SyncCategoryDownloadsRealtime)
 
 	err = ts.DBMS.DbDownloadInsert(downloadData)
 	if err != nil {
-		logs.Error("", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:transfer_manager", "%s", err.Error())
 	}
 
 	return nil
 }
 
-///
+// /
+
+type DownloadsPage struct {
+	Items  []adaptix.TransferData `json:"items"`
+	Total  int                    `json:"total"`
+	Offset int                    `json:"offset"`
+	Limit  int                    `json:"limit"`
+}
+
+func (ts *Teamserver) TsDownloadsGetPage(agentId int64, offset, limit int, filterExpr, sortCol, sortOrder string) ([]byte, error) {
+	items, total, err := ts.DBMS.DbDownloadsGetPage(agentId, offset, limit, filterExpr, sortCol, sortOrder)
+	if err != nil {
+		return nil, err
+	}
+	if items == nil {
+		items = make([]adaptix.TransferData, 0)
+	}
+
+	for i := range items {
+		if live, ok := ts.downloads.Get(items[i].FileId); ok {
+			items[i].Progress = live.Progress
+			items[i].State = live.State
+		}
+	}
+
+	return json.Marshal(DownloadsPage{
+		Items:  items,
+		Total:  total,
+		Offset: offset,
+		Limit:  limit,
+	})
+}
 
 func (ts *Teamserver) TsDownloadList() (string, error) {
-	var downloads []adaptix.DownloadData
+	var downloads []adaptix.TransferData
 
-	ts.downloads.ForEach(func(key string, value interface{}) bool {
-		data := value.(adaptix.DownloadData)
+	ts.downloads.ForEachFast(func(key int64, data adaptix.TransferData) bool {
 		data.LocalPath = "******"
 		downloads = append(downloads, data)
 		return true
@@ -259,26 +291,27 @@ func (ts *Teamserver) TsDownloadList() (string, error) {
 	return string(jsonDownloads), nil
 }
 
-func (ts *Teamserver) TsDownloadGet(fileId string) (adaptix.DownloadData, error) {
-	value, ok := ts.downloads.Get(fileId)
+func (ts *Teamserver) TsDownloadGet(fileId int64) (adaptix.TransferData, error) {
+	downloadData, ok := ts.downloads.Get(fileId)
 	if ok {
-		return value.(adaptix.DownloadData), nil
+		return downloadData, nil
 	}
 
-	downloadData, err := ts.DBMS.DbDownloadGet(fileId)
+	var err error
+	downloadData, err = ts.DBMS.DbDownloadGet(fileId)
 	if err != nil {
-		return adaptix.DownloadData{}, errors.New("File not found: " + fileId)
+		return adaptix.TransferData{}, fmt.Errorf("File not found: %d", fileId)
 	}
 	return downloadData, nil
 }
 
-func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
+func (ts *Teamserver) TsDownloadSync(fileId int64) (string, []byte, error) {
 	downloadData, err := ts.TsDownloadGet(fileId)
 	if err != nil {
-		return "", nil, errors.New("File not found: " + fileId)
+		return "", nil, fmt.Errorf("File not found: %d", fileId)
 	}
 
-	if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
+	if downloadData.State != adaptix.TRANSFER_STATE_FINISHED {
 		return "", nil, errors.New("download not finished")
 	}
 
@@ -287,7 +320,7 @@ func (ts *Teamserver) TsDownloadSync(fileId string) (string, []byte, error) {
 	return filename, content, err
 }
 
-func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
+func (ts *Teamserver) TsDownloadDelete(fileId []int64) error {
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataDownloadRemove{FileIds: fileId}
 	if !ts.EventManager.Emit(eventing.EventDownloadRemove, eventing.HookPre, preEvent) {
@@ -299,24 +332,23 @@ func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
 	fileId = preEvent.FileIds
 	// ----------------
 
-	var deleteFiles []string
-	var dbDeleteIds []string
+	var deleteFiles []int64
+	var dbDeleteIds []int64
 	var filesToRemove []string
 
 	for _, id := range fileId {
-		value, ok := ts.downloads.Get(id)
+		downloadData, ok := ts.downloads.Get(id)
 		if ok {
-			downloadData := value.(adaptix.DownloadData)
-
-			if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED && downloadData.State != adaptix.DOWNLOAD_STATE_CANCELED {
+			if downloadData.State == adaptix.TRANSFER_STATE_RUNNING || downloadData.State == adaptix.TRANSFER_STATE_STOPPED {
+				_ = ts.TsDownloadClose(id, adaptix.TRANSFER_STATE_CANCELED)
+				deleteFiles = append(deleteFiles, id)
+				dbDeleteIds = append(dbDeleteIds, id)
 				continue
 			}
 
-			if downloadData.State == adaptix.DOWNLOAD_STATE_CANCELED {
-				_ = downloadData.File.Close()
-			}
 			filesToRemove = append(filesToRemove, downloadData.LocalPath)
 			deleteFiles = append(deleteFiles, id)
+			dbDeleteIds = append(dbDeleteIds, id)
 			ts.downloads.Delete(id)
 		} else {
 			downloadData, err := ts.DBMS.DbDownloadGet(id)
@@ -324,24 +356,22 @@ func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
 				continue
 			}
 
-			if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
-				continue
+			if downloadData.State == adaptix.TRANSFER_STATE_FINISHED {
+				filesToRemove = append(filesToRemove, downloadData.LocalPath)
 			}
-
-			filesToRemove = append(filesToRemove, downloadData.LocalPath)
 			deleteFiles = append(deleteFiles, id)
 			dbDeleteIds = append(dbDeleteIds, id)
 		}
 	}
 
-	go func(paths []string, ids []string) {
+	go func(paths []string, ids []int64) {
 		for _, path := range paths {
 			_ = os.Remove(path)
 		}
 		_ = ts.DBMS.DbDownloadDeleteBatch(ids)
 	}(filesToRemove, dbDeleteIds)
 
-	packet := CreateSpDownloadDelete(fileId)
+	packet := CreateSpTransferDelete(fileId, TRANSFER_DOWNLOAD)
 	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryDownloadsRealtime)
 
 	// --- POST HOOK ---
@@ -352,45 +382,65 @@ func (ts *Teamserver) TsDownloadDelete(fileId []string) error {
 	return nil
 }
 
-///
-
-func (ts *Teamserver) TsDownloadGetFilepath(fileId string) (string, error) {
-	downloadData, err := ts.TsDownloadGet(fileId)
-	if err != nil {
-		return "", errors.New("File not found: " + fileId)
+func (ts *Teamserver) TsDownloadSetTag(fileIds []int64, tag string) error {
+	if len(fileIds) == 0 {
+		return nil
 	}
 
-	if downloadData.State != adaptix.DOWNLOAD_STATE_FINISHED {
+	for _, id := range fileIds {
+		if d, ok := ts.downloads.Get(id); ok {
+			d.Tag = tag
+			ts.downloads.Put(id, d)
+		}
+	}
+
+	go func(ids []int64, t string) {
+		_ = ts.DBMS.DbDownloadSetTagBatch(ids, t)
+	}(fileIds, tag)
+
+	packet := CreateSpTransferSetTag(fileIds, tag, TRANSFER_DOWNLOAD)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryDownloadsRealtime)
+
+	return nil
+}
+
+///
+
+func (ts *Teamserver) TsDownloadGetFilepath(fileId int64) (string, error) {
+	downloadData, err := ts.TsDownloadGet(fileId)
+	if err != nil {
+		return "", fmt.Errorf("File not found: %d", fileId)
+	}
+
+	if downloadData.State != adaptix.TRANSFER_STATE_FINISHED {
 		return "", errors.New("Download not finished")
 	}
 
 	return downloadData.LocalPath, nil
 }
 
-func (ts *Teamserver) TsUploadGetFilepath(fileId string) (string, error) {
-	value, ok := ts.tmp_uploads.Get(fileId)
+func (ts *Teamserver) TsUploadGetFilepath(fileId int64) (string, error) {
+	filename, ok := ts.tmp_uploads.Get(fileId)
 	if !ok {
-		return "", errors.New("File not found: " + fileId)
+		return "", fmt.Errorf("File not found: %d", fileId)
 	}
-	filename := value.(string)
 
-	path := logs.RepoLogsInstance.UploadPath + "/" + filename
+	path := ts.Paths.UploadPath + "/" + filename
 
 	return path, nil
 }
 
-func (ts *Teamserver) TsUploadGetFileContent(fileId string) ([]byte, error) {
-	value, ok := ts.tmp_uploads.GetDelete(fileId)
+func (ts *Teamserver) TsUploadGetFileContent(fileId int64) ([]byte, error) {
+	filename, ok := ts.tmp_uploads.GetDelete(fileId)
 	if !ok {
-		return nil, errors.New("File not found: " + fileId)
+		return nil, fmt.Errorf("File not found: %d", fileId)
 	}
-	filename := value.(string)
 
-	path := logs.RepoLogsInstance.UploadPath + "/" + filename
+	path := ts.Paths.UploadPath + "/" + filename
 
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, errors.New("Failed to read file: " + fileId)
+		return nil, fmt.Errorf("Failed to read file: %d", fileId)
 	}
 	_ = os.Remove(path)
 

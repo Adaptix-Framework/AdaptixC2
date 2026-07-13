@@ -1,12 +1,11 @@
 package database
 
 import (
-	"AdaptixServer/core/utils/logs"
 	"database/sql"
 	"errors"
 	"fmt"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 func (dbms *DBMS) DbPivotExist(pivotId string) bool {
@@ -27,15 +26,16 @@ func (dbms *DBMS) DbPivotInsert(pivotData adaptix.PivotData) error {
 		return errors.New("database does not exist")
 	}
 
-	ok = dbms.DbPivotExist(pivotData.PivotId)
-	if ok {
+	insertQuery := `INSERT OR IGNORE INTO Pivots (PivotId, PivotName, ParentAgentId, ChildAgentId) values(?,?,?,?);`
+	result, err := dbms.database.Exec(insertQuery, pivotData.PivotId, pivotData.PivotName, pivotData.ParentAgentId, pivotData.ChildAgentId)
+	if err != nil {
+		return err
+	}
+	affected, _ := result.RowsAffected()
+	if affected == 0 {
 		return fmt.Errorf("pivot %s already exists", pivotData.PivotId)
 	}
-
-	insertQuery := `INSERT INTO Pivots (PivotId, PivotName, ParentAgentId, ChildAgentId) values(?,?,?,?);`
-	_, err := dbms.database.Exec(insertQuery, pivotData.PivotId, pivotData.PivotName, pivotData.ParentAgentId, pivotData.ChildAgentId)
-
-	return err
+	return nil
 }
 
 func (dbms *DBMS) DbPivotDelete(pivotId string) error {
@@ -63,7 +63,7 @@ func (dbms *DBMS) DbPivotAll() []*adaptix.PivotData {
 		selectQuery := `SELECT PivotId, PivotName, ParentAgentId, ChildAgentId FROM Pivots;`
 		query, err := dbms.database.Query(selectQuery)
 		if err != nil {
-			logs.Debug("", "Failed to query pivots: "+err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query pivots: %s", err.Error())
 			return pivots
 		}
 		defer func(query *sql.Rows) {

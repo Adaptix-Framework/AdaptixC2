@@ -1,12 +1,14 @@
 #include <Agent/Agent.h>
-#include <oclero/qlementine/widgets/Menu.hpp>
-#include <Utils/CustomElements.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/AuthProfile.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <Utils/CustomElements/BoldHeaderView.h>
+#include <Utils/CustomElements/Delegates.h>
+
+#include <oclero/qlementine/widgets/Menu.hpp>
 
 REGISTER_DOCK_WIDGET(BrowserProcessWidget, "Browser Process", false)
 
@@ -448,6 +450,8 @@ void BrowserProcessWidget::filterTableWidget(const QString &filterText) const
 
 void BrowserProcessWidget::onReload() const
 {
+    if (!agent)
+        return;
     statusLabel->setText("");
     loadingSpinner->setVisible(true);
     loadingSpinner->setSpinning(true);
@@ -462,6 +466,9 @@ void BrowserProcessWidget::onFilter(const QString &text) const
 
 void BrowserProcessWidget::handleTableMenu(const QPoint &pos)
 {
+    if (!agent)
+        return;
+
     if ( !tableView->indexAt(pos).isValid() )
         return;
 
@@ -512,7 +519,12 @@ void BrowserProcessWidget::actionCopyPid() const
 
 void BrowserProcessWidget::onTableSelect() const
 {
-    QString pid = tableModel->item( tableView->currentIndex().row(), 0 )->text();
+    if (!tableView->currentIndex().isValid())
+        return;
+    auto* pidItem = tableModel->item( tableView->currentIndex().row(), 0 );
+    if (!pidItem)
+        return;
+    QString pid = pidItem->text();
     auto item = QTreeWidgetItemIterator ( treeBrowserWidget );
     while ( *item ) {
         if ( ( *item )->text( 1 ) == pid ) {
@@ -525,9 +537,13 @@ void BrowserProcessWidget::onTableSelect() const
 
 void BrowserProcessWidget::onTreeSelect() const
 {
-    QString pid = treeBrowserWidget->currentItem()->text( 1 );
+    auto* currentItem = treeBrowserWidget->currentItem();
+    if (!currentItem)
+        return;
+    QString pid = currentItem->text( 1 );
     for ( int i = 0; i < tableModel->rowCount(); i++ ) {
-        if ( tableModel->item( i, 0 )->text().compare( pid ) == 0 )
+        auto* cell = tableModel->item( i, 0 );
+        if ( cell && cell->text().compare( pid ) == 0 )
             tableView->setCurrentIndex( tableModel->index(i, 0) );
     }
 }

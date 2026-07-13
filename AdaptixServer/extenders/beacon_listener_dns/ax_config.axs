@@ -52,7 +52,7 @@ function ListenerUI(mode_create)
 
     form.connect(buttonEncryptKey, "clicked", function() { textEncryptKey.setText(ax.random_string(32, "hex")); });
     form.connect(checkBurstEnabled, "stateChanged", function() {
-        if(spinBurstSleep.getEnabled()) {
+        if (spinBurstSleep.getEnabled()) {
             spinBurstSleep.setEnabled(false);
             spinBurstJitter.setEnabled(false);
         } else {
@@ -64,25 +64,25 @@ function ListenerUI(mode_create)
     let spacer2 = form.create_vspacer();
 
     let layout = form.create_gridlayout();
-    layout.addWidget(spacer1,          0, 0, 1, 3);
-    layout.addWidget(labelHost,        1, 0, 1, 1);
-    layout.addWidget(comboHostBind,    1, 1, 1, 1);
-    layout.addWidget(spinPortBind,     1, 2, 1, 1);
-    layout.addWidget(labelDomain,      2, 0, 1, 1);
-    layout.addWidget(textDomain,       2, 1, 1, 2);
-    layout.addWidget(labelPktSize,     3, 0, 1, 1);
-    layout.addWidget(spinPktSize,      3, 1, 1, 2);
-    layout.addWidget(labelTTL,         4, 0, 1, 1);
-    layout.addWidget(spinTTL,          4, 1, 1, 2);
-    layout.addWidget(labelEncryptKey,  5, 0, 1, 1);
-    layout.addWidget(textEncryptKey,   5, 1, 1, 1);
-    layout.addWidget(buttonEncryptKey, 5, 2, 1, 1);
+    layout.addWidget(spacer1,           0, 0, 1, 3);
+    layout.addWidget(labelHost,         1, 0, 1, 1);
+    layout.addWidget(comboHostBind,     1, 1, 1, 1);
+    layout.addWidget(spinPortBind,      1, 2, 1, 1);
+    layout.addWidget(labelDomain,       2, 0, 1, 1);
+    layout.addWidget(textDomain,        2, 1, 1, 2);
+    layout.addWidget(labelPktSize,      3, 0, 1, 1);
+    layout.addWidget(spinPktSize,       3, 1, 1, 2);
+    layout.addWidget(labelTTL,          4, 0, 1, 1);
+    layout.addWidget(spinTTL,           4, 1, 1, 2);
+    layout.addWidget(labelEncryptKey,   5, 0, 1, 1);
+    layout.addWidget(textEncryptKey,    5, 1, 1, 1);
+    layout.addWidget(buttonEncryptKey,  5, 2, 1, 1);
     layout.addWidget(checkBurstEnabled, 6, 0, 1, 3);
-    layout.addWidget(labelBurstSleep,  7, 0, 1, 1);
-    layout.addWidget(spinBurstSleep,   7, 1, 1, 2);
-    layout.addWidget(labelBurstJitter, 8, 0, 1, 1);
-    layout.addWidget(spinBurstJitter,  8, 1, 1, 2);
-    layout.addWidget(spacer2,          9, 0, 1, 3);
+    layout.addWidget(labelBurstSleep,   7, 0, 1, 1);
+    layout.addWidget(spinBurstSleep,    7, 1, 1, 2);
+    layout.addWidget(labelBurstJitter,  8, 0, 1, 1);
+    layout.addWidget(spinBurstJitter,   8, 1, 1, 2);
+    layout.addWidget(spacer2,           9, 0, 1, 3);
 
     let container = form.create_container();
     container.put("host_bind",     comboHostBind);
@@ -101,7 +101,7 @@ function ListenerUI(mode_create)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 400,
+        ui_height: 420,
         ui_width: 500
     }
 }

@@ -24,7 +24,6 @@
 #include <QFrame>
 #include <QBoxLayout>
 #include <QGridLayout>
-#include <Utils/CustomElements.h>
 
 class AxUiFactory : public QObject {
     Q_OBJECT

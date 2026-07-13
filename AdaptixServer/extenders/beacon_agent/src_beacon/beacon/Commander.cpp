@@ -271,6 +271,7 @@ void Commander::CmdDownload(ULONG commandId, Packer* inPacker, Packer* outPacker
 {
 	ULONG filenameSize = 0;
 	CHAR* filename     = (CHAR*) inPacker->UnpackBytes(&filenameSize);
+	ULONG fileId       = inPacker->Unpack32();
 	ULONG taskId       = inPacker->Unpack32();
 
 	outPacker->Pack32(taskId);
@@ -288,7 +289,7 @@ void Commander::CmdDownload(ULONG commandId, Packer* inPacker, Packer* outPacker
 		ULONG64 fileSize   = ((ULONG64)fileSizeHigh << 32) | fileSizeLow;
 
 		if (pathSize > 0) {
-			DownloadData downloadData = this->agent->downloader->CreateDownloadData(taskId, hFile, fileSize);
+			DownloadData downloadData = this->agent->downloader->CreateDownloadData(taskId, fileId, hFile, fileSize);
 			outPacker->Pack32(COMMAND_DOWNLOAD);
 			outPacker->Pack32(downloadData.fileId);
 			outPacker->Pack8(DOWNLOAD_START);

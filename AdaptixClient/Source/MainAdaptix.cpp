@@ -32,9 +32,10 @@ MainAdaptix::MainAdaptix()
 
 MainAdaptix::~MainAdaptix()
 {
-    delete storage;
     delete mainUI;
     delete extender;
+    delete settings;
+    delete storage;
 }
 
 void MainAdaptix::Start() const
@@ -178,11 +179,11 @@ void MainAdaptix::NewProject() const
 AuthProfile* MainAdaptix::Login()
 {
     AuthProfile* authProfile;
-    auto dialogConnect = new DialogConnect();
+    DialogConnect dialogConnect;
     bool result;
 
     do {
-        authProfile = dialogConnect->StartDialog();
+        authProfile = dialogConnect.StartDialog();
         if ( !authProfile || !authProfile->valid)
             return NULL;
 
@@ -192,6 +193,7 @@ AuthProfile* MainAdaptix::Login()
                 MessageError("Login failure");
             else
                 MessageError(authProfile->message);
+            delete authProfile;
         }
 
     } while( !result );
@@ -199,7 +201,7 @@ AuthProfile* MainAdaptix::Login()
     return authProfile;
 }
 
-void MainAdaptix::SetApplicationTheme() const
+void MainAdaptix::SetApplicationTheme()
 {
     static bool kddwInitialized = false;
     if (!kddwInitialized) {
@@ -222,10 +224,18 @@ void MainAdaptix::SetApplicationTheme() const
     FontManager::instance().initialize();
 
     auto* style = new oclero::qlementine::QlementineStyle(qApp);
-    QString userPath = QDir(QDir::homePath()).filePath(".adaptix/themes/app/" + settings->data.MainTheme + ".json");
-    QString themePath = QFile::exists(userPath) ? userPath : QString(":/qlementine-themes/%1").arg(settings->data.MainTheme);
+    QString themeName = settings->data.MainTheme;
+    QString userPath = QDir(QDir::homePath()).filePath(".adaptix/themes/app/" + themeName + ".json");
+    QString themePath = QFile::exists(userPath) ? userPath : QString(":/qlementine-themes/%1").arg(themeName);
+
+    if (!QFile::exists(userPath) && !QFile::exists(themePath)) {
+        themeName = "Adaptix_Dark_Emerald";
+        settings->data.MainTheme = themeName;
+        themePath = QString(":/qlementine-themes/%1").arg(themeName);
+    }
     style->setThemeJsonPath(themePath);
-    const_cast<MainAdaptix*>(this)->qlementineStyle = style;
+    style->setAutoIconColor(oclero::qlementine::AutoIconColor::ForegroundColor);
+    qlementineStyle = style;
 
     ApplyApplicationFont();
 

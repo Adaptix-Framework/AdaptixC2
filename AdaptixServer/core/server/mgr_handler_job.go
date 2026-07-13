@@ -2,23 +2,23 @@ package server
 
 import (
 	"AdaptixServer/core/eventing"
-	"AdaptixServer/core/utils/safe"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
+	"github.com/Adaptix-Framework/axsafe"
 )
 
 const maxAccumulatedSize = 0xa00000 // 10 MB
 
 type JobTaskHandler struct{}
 
-func (h *JobTaskHandler) Create(tm *TaskManager, agent *Agent, taskData *adaptix.TaskData) {
+func (h *JobTaskHandler) Create(tm *TaskManager, agent *adaptix.Agent, taskData *adaptix.TaskData) {
 	if taskData.Sync {
-		tm.syncTaskCreate(taskData.AgentId, agent, taskData)
+		tm.syncTaskCreate(taskData.AgentId, taskData)
 	}
 	agent.HostedQueue.Push(taskData.Priority, *taskData)
 }
 
-func (h *JobTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
+func (h *JobTaskHandler) Update(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
 	updateData.AgentId = task.AgentId
 
 	// --- EVENT ---
@@ -44,7 +44,7 @@ func (h *JobTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.Tas
 	h.updateWithoutHook(tm, agent, task, updateData)
 }
 
-func (h *JobTaskHandler) updateWithServerHook(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
+func (h *JobTaskHandler) updateWithServerHook(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
 	hookData := map[string]interface{}{
 		"agent":     task.AgentId,
 		"task_id":   task.TaskId,
@@ -73,23 +73,22 @@ func (h *JobTaskHandler) updateWithServerHook(tm *TaskManager, agent *Agent, tas
 	h.updateWithoutHook(tm, agent, task, updateData)
 }
 
-func (h *JobTaskHandler) updateWithHook(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
+func (h *JobTaskHandler) updateWithHook(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
 	updateData.HookId = task.HookId
 
-	hookJob := &HookJob{
+	hookJob := &adaptix.HookJob{
 		Job:       *updateData,
 		Processed: false,
 		Sent:      false,
 	}
 
 	num := 0
-	value, ok := agent.RunningJobs.Get(task.TaskId)
+	jobs, ok := agent.RunningJobs.Get(task.TaskId)
 	if ok {
-		jobs := value.(*safe.Slice)
 		jobs.Put(hookJob)
 		num = int(jobs.Len() - 1)
 	} else {
-		jobs := safe.NewSlice()
+		jobs := axsafe.NewSlice()
 		jobs.Put(hookJob)
 		agent.RunningJobs.Put(task.TaskId, jobs)
 	}
@@ -98,24 +97,23 @@ func (h *JobTaskHandler) updateWithHook(tm *TaskManager, agent *Agent, task *ada
 	tm.ts.TsSyncClient(task.Client, packet)
 }
 
-func (h *JobTaskHandler) updateWithoutHook(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
+func (h *JobTaskHandler) updateWithoutHook(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
 	if !task.Sync {
 		return
 	}
 
-	hookJob := &HookJob{
+	hookJob := &adaptix.HookJob{
 		Job:       *updateData,
 		Processed: true,
 		Sent:      true,
 	}
 
-	value, ok := agent.RunningJobs.Get(task.TaskId)
+	jobs, ok := agent.RunningJobs.Get(task.TaskId)
 
 	if updateData.Completed {
 		agent.RunningTasks.Delete(updateData.TaskId)
 
 		if ok {
-			jobs := value.(*safe.Slice)
 			jobs.Put(hookJob)
 			h.aggregateJobResults(task, jobs)
 			agent.RunningJobs.Delete(task.TaskId)
@@ -130,26 +128,25 @@ func (h *JobTaskHandler) updateWithoutHook(tm *TaskManager, agent *Agent, task *
 
 		updateData.HandlerId = task.HandlerId
 
-		tm.completeTask(agent, task)
+		tm.completeTask(task)
 	} else {
 		if ok {
-			jobs := value.(*safe.Slice)
 			jobs.Put(hookJob)
 		} else {
-			jobs := safe.NewSlice()
-			jobs.Put(hookJob)
-			agent.RunningJobs.Put(task.TaskId, jobs)
+			newJobs := axsafe.NewSlice()
+			newJobs.Put(hookJob)
+			agent.RunningJobs.Put(task.TaskId, newJobs)
 		}
 	}
 
-	tm.syncTaskUpdate(task.AgentId, agent, updateData)
+	tm.syncTaskUpdate(task.AgentId, updateData)
 }
 
-func (h *JobTaskHandler) aggregateJobResults(task *adaptix.TaskData, jobs *safe.Slice) {
+func (h *JobTaskHandler) aggregateJobResults(task *adaptix.TaskData, jobs *axsafe.Slice) {
 	jobsArray := jobs.CutArray()
 
 	for _, jobValue := range jobsArray {
-		jobData := jobValue.(*HookJob)
+		jobData := jobValue.(*adaptix.HookJob)
 
 		if task.MessageType != CONSOLE_OUT_ERROR {
 			task.MessageType = jobData.Job.MessageType
@@ -160,7 +157,9 @@ func (h *JobTaskHandler) aggregateJobResults(task *adaptix.TaskData, jobs *safe.
 
 		if len(task.ClearText)+len(jobData.Job.ClearText) > maxAccumulatedSize {
 			remaining := maxAccumulatedSize - len(jobData.Job.ClearText) - 1000
-			if remaining > 0 {
+			if remaining <= 0 {
+				task.ClearText = ""
+			} else {
 				task.ClearText = task.ClearText[len(task.ClearText)-remaining:] + "\n[EARLIER OUTPUT TRUNCATED]\n"
 			}
 		}
@@ -168,47 +167,47 @@ func (h *JobTaskHandler) aggregateJobResults(task *adaptix.TaskData, jobs *safe.
 	}
 }
 
-func (h *JobTaskHandler) PostHook(tm *TaskManager, agent *Agent, task *adaptix.TaskData, hookData *adaptix.TaskData, jobIndex int) error {
+func (h *JobTaskHandler) PostHook(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, hookData *adaptix.TaskData, jobIndex int) error {
 	if !task.Sync {
 		return nil
 	}
 
-	value, ok := agent.RunningJobs.Get(task.TaskId)
+	jobs, ok := agent.RunningJobs.Get(task.TaskId)
 	if !ok {
 		return nil
 	}
-	jobs := value.(*safe.Slice)
 
 	jobValue, ok := jobs.Get(uint(jobIndex))
 	if !ok {
 		return nil
 	}
-	jobData := jobValue.(*HookJob)
+	jobData := jobValue.(*adaptix.HookJob)
 
+	jobData.Mu.Lock()
 	jobData.Job.MessageType = hookData.MessageType
 	jobData.Job.Message = hookData.Message
 	jobData.Job.ClearText = hookData.ClearText
 	jobData.Processed = true
+	jobData.Mu.Unlock()
 
 	h.processReadyJobs(tm, agent, task, jobs)
 
 	return nil
 }
 
-func (h *JobTaskHandler) processReadyJobs(tm *TaskManager, agent *Agent, task *adaptix.TaskData, jobs *safe.Slice) {
+func (h *JobTaskHandler) processReadyJobs(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, jobs *axsafe.Slice) {
 	completed := false
 	sent := true
 
 	jobs.DirectLock()
-	defer jobs.DirectUnlock()
 
 	slice := jobs.DirectSlice()
 
 	for i := 0; i < len(slice); i++ {
-		hookJob := slice[i].(*HookJob)
+		hookJob := slice[i].(*adaptix.HookJob)
 		notProcessBreak := false
 
-		hookJob.mu.Lock()
+		hookJob.Mu.Lock()
 
 		if hookJob.Job.Completed {
 			completed = true
@@ -224,7 +223,7 @@ func (h *JobTaskHandler) processReadyJobs(tm *TaskManager, agent *Agent, task *a
 				tm.ts.TsSyncAllClientsWithCategory(packet_task_update, SyncCategoryTasksManager)
 				tm.ts.TsSyncConsole(packet_console_update, hookJob.Job.Client, hookJob.Job.Client)
 
-				_ = tm.ts.DBMS.DbConsoleInsert(task.AgentId, packet_console_update)
+				_ = tm.ts.DBMS.DbConsoleInsert(task.AgentId, hookJob.Job.Client, packet_console_update)
 			} else {
 				notProcessBreak = true
 			}
@@ -234,7 +233,7 @@ func (h *JobTaskHandler) processReadyJobs(tm *TaskManager, agent *Agent, task *a
 			sent = hookJob.Sent
 		}
 
-		hookJob.mu.Unlock()
+		hookJob.Mu.Unlock()
 
 		if notProcessBreak {
 			break
@@ -242,49 +241,79 @@ func (h *JobTaskHandler) processReadyJobs(tm *TaskManager, agent *Agent, task *a
 	}
 
 	if completed && sent {
-		h.finalizeJob(tm, agent, task, slice)
+		if task.Completed {
+			jobs.DirectUnlock()
+			return
+		}
+		task.Completed = true
+		snapshot := make([]interface{}, len(slice))
+		copy(snapshot, slice)
+		jobs.DirectUnlock()
+		h.finalizeJob(tm, agent, task, snapshot)
+		return
 	}
+
+	jobs.DirectUnlock()
 }
 
-func (h *JobTaskHandler) finalizeJob(tm *TaskManager, agent *Agent, task *adaptix.TaskData, slice []interface{}) {
+func (h *JobTaskHandler) finalizeJob(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, slice []interface{}) {
 	agent.RunningTasks.Delete(task.TaskId)
 
 	for i := 0; i < len(slice); i++ {
-		hookJob := slice[i].(*HookJob)
+		hookJob := slice[i].(*adaptix.HookJob)
+
+		hookJob.Mu.RLock()
+		jobData := hookJob.Job
+		hookJob.Mu.RUnlock()
 
 		if task.MessageType != CONSOLE_OUT_ERROR {
-			task.MessageType = hookJob.Job.MessageType
+			task.MessageType = jobData.MessageType
 		}
 		if task.Message == "" {
-			task.Message = hookJob.Job.Message
+			task.Message = jobData.Message
 		}
-		task.ClearText += hookJob.Job.ClearText
-		task.FinishDate = hookJob.Job.FinishDate
-		task.Completed = hookJob.Job.Completed
+
+		if len(task.ClearText)+len(jobData.ClearText) > maxAccumulatedSize {
+			remaining := maxAccumulatedSize - len(jobData.ClearText) - 1000
+			if remaining <= 0 {
+				task.ClearText = ""
+			} else {
+				task.ClearText = task.ClearText[len(task.ClearText)-remaining:] + "\n[EARLIER OUTPUT TRUNCATED]\n"
+			}
+		}
+		task.ClearText += jobData.ClearText
+
+		task.FinishDate = jobData.FinishDate
+		task.Completed = jobData.Completed
 	}
 
 	agent.RunningJobs.Delete(task.TaskId)
-	tm.completeTask(agent, task)
+	tm.completeTask(task)
 	tm.executeServerHandler(task)
 }
 
-func (h *JobTaskHandler) OnClientDisconnect(tm *TaskManager, agent *Agent, task *adaptix.TaskData, clientName string) {
-	value, ok := agent.RunningJobs.Get(task.TaskId)
+func (h *JobTaskHandler) OnClientDisconnect(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, clientName string) {
+	jobs, ok := agent.RunningJobs.Get(task.TaskId)
 	if !ok {
 		return
 	}
-	jobs := value.(*safe.Slice)
 
 	jobs.DirectLock()
 	slice := jobs.DirectSlice()
 
 	allProcessed := true
+
+	if task.Completed {
+		jobs.DirectUnlock()
+		return
+	}
+
 	completed := false
 
 	for i := 0; i < len(slice); i++ {
-		hookJob := slice[i].(*HookJob)
+		hookJob := slice[i].(*adaptix.HookJob)
 
-		hookJob.mu.Lock()
+		hookJob.Mu.Lock()
 
 		if !hookJob.Processed {
 			hookJob.Processed = true
@@ -299,7 +328,7 @@ func (h *JobTaskHandler) OnClientDisconnect(tm *TaskManager, agent *Agent, task 
 			tm.ts.TsSyncAllClientsWithCategory(packet_task_update, SyncCategoryTasksManager)
 			tm.ts.TsSyncConsole(packet_console_update, hookJob.Job.Client, hookJob.Job.Client)
 
-			_ = tm.ts.DBMS.DbConsoleInsert(task.AgentId, packet_console_update)
+			_ = tm.ts.DBMS.DbConsoleInsert(task.AgentId, hookJob.Job.Client, packet_console_update)
 		}
 
 		if hookJob.Job.Completed {
@@ -309,11 +338,20 @@ func (h *JobTaskHandler) OnClientDisconnect(tm *TaskManager, agent *Agent, task 
 			allProcessed = false
 		}
 
-		hookJob.mu.Unlock()
+		hookJob.Mu.Unlock()
 	}
 
 	if completed && allProcessed {
-		h.finalizeJob(tm, agent, task, slice)
+		if task.Completed {
+			jobs.DirectUnlock()
+			return
+		}
+		task.Completed = true
+		snapshot := make([]interface{}, len(slice))
+		copy(snapshot, slice)
+		jobs.DirectUnlock()
+		h.finalizeJob(tm, agent, task, snapshot)
+		return
 	}
 
 	jobs.DirectUnlock()

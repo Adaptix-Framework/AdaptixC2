@@ -5,6 +5,7 @@
 #include <MainAdaptix.h>
 #include <UI/MainUI.h>
 #include <Client/AuthProfile.h>
+#include <QAbstractItemView>
 
 class KPH_SearchInput : public QObject
 {
@@ -39,13 +40,14 @@ class KPH_ConsoleInput : public QObject
 Q_OBJECT
     QLineEdit* inputLineEdit;
     QPlainTextEdit* outputTextEdit;
+    QStringListModel* commandModel = nullptr;
     QString    tmpCommandLine;
 
     QStringList history;
     int historyIndex;
 
     QStringList completions;
-    int completionIndex;
+    int completionIndex = -1;
     QString completionBase;
     QString completionPrefix;
     QString completionSuffix;
@@ -53,6 +55,13 @@ Q_OBJECT
 public:
     KPH_ConsoleInput(QLineEdit *input, QPlainTextEdit *output, QObject *parent = nullptr) : QObject(parent), inputLineEdit(input), outputTextEdit(output), historyIndex(-1) {
         inputLineEdit->installEventFilter(this);
+    }
+
+    void setCommandModel(QStringListModel* model) { commandModel = model; }
+
+    void setCompleterPopup(QAbstractItemView* popup) {
+        if (popup)
+            popup->installEventFilter(this);
     }
 
     void AddToHistory(const QString &command) {
@@ -65,6 +74,26 @@ public:
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override {
+        if (watched != inputLineEdit && event->type() == QEvent::KeyPress) {
+            QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+            if (keyEvent->key() == Qt::Key_Tab || keyEvent->key() == Qt::Key_Backtab) {
+                QCompleter* completer = inputLineEdit->completer();
+                if (completer && completer->popup() && completer->popup()->isVisible()) {
+                    QModelIndex idx = completer->popup()->currentIndex();
+                    if (idx.isValid()) {
+                        inputLineEdit->blockSignals(true);
+                        inputLineEdit->setText(idx.data().toString());
+                        inputLineEdit->setCursorPosition(inputLineEdit->text().length());
+                        inputLineEdit->blockSignals(false);
+                    }
+                    completer->popup()->hide();
+                    completionIndex = -1;
+                    inputLineEdit->setFocus();
+                    return true;
+                }
+            }
+        }
+
         if (watched == inputLineEdit && event->type() == QEvent::KeyPress) {
             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
 
@@ -97,11 +126,6 @@ protected:
                 return true;
             }
 
-            if (keyEvent->key() == Qt::Key_L && (keyEvent->modifiers() & Qt::ControlModifier)) {
-                outputTextEdit->clear();
-                return true;
-            }
-
             if (keyEvent->key() == Qt::Key_Tab) {
                 if (keyEvent->modifiers() & Qt::ControlModifier) {
                     QString baseDir;
@@ -120,10 +144,48 @@ protected:
                     return true;
                 }
                 else {
-                    if (completionIndex < 0) {
-                        QString text = inputLineEdit->text();
-                        int cursorPos = inputLineEdit->cursorPosition();
+                    QString text = inputLineEdit->text();
+                    int cursorPos = inputLineEdit->cursorPosition();
+                    QString leftOfCursor = text.left(cursorPos).trimmed();
+                    bool isFirstWord = !leftOfCursor.contains(' ');
 
+                    if (isFirstWord && commandModel) {
+                        // Command name completion
+                        if (completionIndex < 0) {
+                            completionBase = leftOfCursor;
+                            completionSuffix = text.mid(cursorPos);
+                            if (completionBase.isEmpty()) {
+                                completionIndex = -1;
+                                return true;
+                            }
+
+                            completions.clear();
+                            completionIndex = 0;
+                            const QStringList commands = commandModel->stringList();
+                            for (const QString &cmd : commands) {
+                                if (cmd.startsWith(completionBase, Qt::CaseInsensitive))
+                                    completions << cmd;
+                            }
+                            completions.sort(Qt::CaseInsensitive);
+                        }
+
+                        if (!completions.isEmpty()) {
+                            QString chosen = completions[completionIndex];
+                            QString newText = chosen + completionSuffix;
+
+                            inputLineEdit->blockSignals(true);
+                            inputLineEdit->setText(newText);
+                            int selStart = completionBase.length();
+                            int selLen = chosen.length() - selStart;
+                            inputLineEdit->setSelection(selStart, selLen);
+                            inputLineEdit->blockSignals(false);
+
+                            completionIndex = (completionIndex + 1) % completions.size();
+                        }
+                        return true;
+                    }
+
+                    if (completionIndex < 0) {
                         bool inQuotes = false;
                         int start = cursorPos;
                         while (start > 0) {
@@ -179,13 +241,15 @@ protected:
                     if (!completions.isEmpty()) {
                         QString chosen = completions[completionIndex];
                         QString newText = completionPrefix + chosen + completionSuffix;
-                        inputLineEdit->setText(newText);
 
+                        inputLineEdit->blockSignals(true);
+                        inputLineEdit->setText(newText);
                         int selBaseOffset = completionPrefix.length();
                         int selOffset = completionBase.length();
                         int selStart = selBaseOffset + selOffset;
                         int selLen = chosen.length() - selOffset;
                         inputLineEdit->setSelection(selStart, selLen);
+                        inputLineEdit->blockSignals(false);
 
                         completionIndex = (completionIndex + 1) % completions.size();
                     }

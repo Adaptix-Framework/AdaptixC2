@@ -5,6 +5,7 @@
 
 #include <QAbstractScrollArea>
 #include <QFocusFrame>
+#include <QPointer>
 #include <QTimer>
 #include <QEvent>
 
@@ -29,11 +30,16 @@ public:
         QTimer::singleShot(0, this, [this]() {
           if (!_added) {
             _added = true;
+            if (!_focusFrame)
+              _focusFrame = new QFocusFrame(_widget);
             _focusFrame->setWidget(_widget);
           }
         });
       } else if (type == QEvent::Show && _added) {
-        _focusFrame->setWidget(nullptr);
+        if (!_focusFrame)
+          _focusFrame = new QFocusFrame(_widget);
+        else
+          _focusFrame->setWidget(nullptr);
         _focusFrame->setWidget(_widget);
       }
     }
@@ -43,7 +49,7 @@ public:
 
 private:
   QWidget* _widget{ nullptr };
-  QFocusFrame* _focusFrame{ nullptr };
+  QPointer<QFocusFrame> _focusFrame;
   bool _added{ false };
 };
 } // namespace oclero::qlementine

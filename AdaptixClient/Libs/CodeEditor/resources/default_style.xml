@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<style-scheme version="1.0" name="Default">
+    <style name="Text" foreground="#000000" background="#ffffff"/>
+    <style name="Selection" foreground="#eff0f1" background="#3daee9"/>
+    <style name="LineNumber" foreground="#6272a4"/>
+    <style name="Parentheses" foreground="#ff0000" background="#b4eeb4"/>
+    <style name="CurrentLine" background="#eeeeee"/>
+    <style name="CurrentLineNumber" foreground="#808080" bold="true"/>
+    <style name="Occurrences" background="#b4b4b4"/>
+    <style name="Number" foreground="#000080"/>
+    <style name="String" foreground="#008000"/>
+    <style name="Type" foreground="#800080"/>
+    <style name="Function" foreground="#00677c" background="#ffffff"/>
+    <style name="Keyword" foreground="#808000"/>
+    <style name="PrimitiveType" foreground="#808000"/>
+    <style name="Preprocessor" foreground="#000080"/>
+    <style name="Comment" foreground="#008000"/>
+    <style name="AxGlobal" foreground="#00677c"/>
+    <style name="AxAgent" foreground="#0057a8"/>
+    <style name="AxCommand" foreground="#0070a0"/>
+    <style name="AxBOF" foreground="#1a7a3e"/>
+    <style name="AxFile" foreground="#2a8a4e"/>
+    <style name="AxScript" foreground="#8a3a8a"/>
+    <style name="AxEncoding" foreground="#a05000"/>
+    <style name="AxUtil" foreground="#9a5a1a"/>
+    <style name="Error" underlineColor="#ff0000" underlineStyle="WaveUnderline"/>
+    <style name="Warning" underlineColor="#ffbe00" underlineStyle="WaveUnderline"/>
+    <style name="FoldMarker" foreground="#808080" background="#ffffff"/>
+    <style name="FoldMarkerHighlight" foreground="#ffffff" background="#808080"/>
+    <style name="FoldRegion" background="#f0f0f0"/>
+    <style name="TabActive" background="#ffffff" foreground="#000000"/>
+    <style name="TabInactive" background="#e0e0e0" foreground="#666666"/>
+</style-scheme>

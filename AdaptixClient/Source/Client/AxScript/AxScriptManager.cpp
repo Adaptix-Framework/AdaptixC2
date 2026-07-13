@@ -11,8 +11,7 @@
 #include <Client/AxScript/AxUiFactory.h>
 #include <Client/AxScript/BridgeEvent.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <UI/Widgets/SessionsTableWidget.h>
-#include <UI/Widgets/AxConsoleWidget.h>
+#include <UI/Widgets/SessionsFeedWidget.h>
 
 namespace {
 
@@ -34,6 +33,7 @@ AxScriptManager::AxScriptManager(AdaptixWidget* main_widget, QObject *parent): Q
 
 AxScriptManager::~AxScriptManager()
 {
+    Clear();
     delete uiFactory;
 }
 
@@ -59,17 +59,22 @@ void AxScriptManager::Clear()
     scripts.clear();
     qDeleteAll(server_scripts);
     server_scripts.clear();
+
+    for (auto* w : activeWorkers) {
+        QMetaObject::invokeMethod(w, "stop", Qt::QueuedConnection);
+        w->deleteLater();
+    }
+    activeWorkers.clear();
 }
 
 void AxScriptManager::ResetMain()
 {
-    auto commanderList = adaptixWidget->GetCommandersAll();
-    for (const auto& commander : commanderList)
-        commander->RemoveClientGroup(mainScript->context.name);
-
-    if (mainScript)
+    if (mainScript) {
+        auto commanderList = adaptixWidget->GetCommandersAll();
+        for (const auto& commander : commanderList)
+            commander->RemoveClientGroup(mainScript->context.name);
         delete mainScript;
-
+    }
     mainScript = new AxScriptEngine(this, "main", this);
 }
 
@@ -89,7 +94,7 @@ QJSEngine* AxScriptManager::GetEngine(const QString &name)
 
 AdaptixWidget* AxScriptManager::GetAdaptix() const { return adaptixWidget; }
 
-QMap<QString, Agent*> AxScriptManager::GetAgents() const {
+QMap<qint64, Agent*> AxScriptManager::GetAgents() const {
     QReadLocker locker(&adaptixWidget->AgentsMapLock);
     return adaptixWidget->AgentsMap;
 }
@@ -103,12 +108,12 @@ QVector<ListenerData> AxScriptManager::GetListeners() const {
     return adaptixWidget->Listeners;
 }
 
-QMap<QString, DownloadData> AxScriptManager::GetDownloads() const {
+QMap<qint64, TransferData> AxScriptManager::GetDownloads() const {
     QReadLocker locker(&adaptixWidget->DownloadsLock);
     return adaptixWidget->Downloads;
 }
 
-QMap<QString, ScreenData> AxScriptManager::GetScreenshots() const {
+QMap<qint64, ScreenData> AxScriptManager::GetScreenshots() const {
     QReadLocker locker(&adaptixWidget->ScreenshotsLock);
     return adaptixWidget->Screenshots;
 }
@@ -200,7 +205,7 @@ QJSEngine* AxScriptManager::ServiceScriptEngine(const QString &name)
 
 void AxScriptManager::ServiceScriptDataHandler(const QString &name, const QString &data)
 {
-    if (!config_scripts.contains(name) || config_scripts[name].type != ConfigScriptType::Service)
+    if (!config_scripts.contains(name))
         return;
 
     QJSValue func = config_scripts[name].engine->engine()->globalObject().property("data_handler");
@@ -363,16 +368,19 @@ void AxScriptManager::GlobalScriptLoadAsync(const QString &path)
 void AxScriptManager::ExecuteAsync(const QString& code, const QString& name)
 {
     auto* worker = new AxScriptWorker(this, name, nullptr);
-    
+    activeWorkers.append(worker);
+
     connect(worker, &AxScriptWorker::executionFinished, this, [this, worker, name](bool success, const QString& error) {
+        activeWorkers.removeAll(worker);
         if (!success && !error.isEmpty()) {
             consolePrintError(QString("Async script '%1' error: %2").arg(name).arg(error));
         }
         worker->deleteLater();
     });
 
-    worker->waitForReady();
-    worker->executeAsync(code);
+    connect(worker, &AxScriptWorker::initialized, worker, [worker, code]() {
+        worker->executeAsync(code);
+    }, Qt::QueuedConnection);
 }
 
 bool AxScriptManager::containsUiCalls(const QString& code)
@@ -380,8 +388,9 @@ bool AxScriptManager::containsUiCalls(const QString& code)
     static const QRegularExpression uiRegex(
         QStringLiteral("\\b(form\\.create_|form\\.connect|ax\\.dialog|ax\\.input|"
                        "ax\\.message|ax\\.confirm|ax\\.file_dialog|ax\\.color_dialog|"
-                       "ax\\.font_dialog|menu\\.add_|menu\\.create_)")
-    );
+                       "ax\\.font_dialog|ax\\.prompt_|ax\\.show_message|ax\\.open_|"
+                       "menu\\.add_|menu\\.create_)")
+        );
     return uiRegex.match(code).hasMatch();
 }
 
@@ -495,16 +504,14 @@ void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QS
 
     if (!conflictingGroups.isEmpty()) {
         QString error = "Command group '" + group.groupName + "' is already registered by server script. Skipping registration.";
-        if (adaptixWidget->AxConsoleDock)
-            adaptixWidget->AxConsoleDock->PrintError(error);
+        Q_EMIT consoleError(error);
         return;
     }
 
     if (!conflictingCommands.isEmpty()) {
         QString cmdList = conflictingCommands.values().join("', '");
         QString error = "Commands '" + cmdList + "' from group '" + group.groupName + "' are already registered by server script. Skipping registration.";
-        if (adaptixWidget->AxConsoleDock)
-            adaptixWidget->AxConsoleDock->PrintError(error);
+        Q_EMIT consoleError(error);
         return;
     }
 
@@ -529,14 +536,14 @@ void AxScriptManager::EventRemove(const QString &event_id)
     }
 }
 
-QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QStringList &agentIds, const QString &menuType, const bool &agentsNeed)
+QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QList<qint64> &agentIds, const QString &menuType, const bool &agentsNeed)
 {
     QSet<QString> agentTypes;
     QSet<QString> listenerTypes;
     QSet<int>     osTypes;
     {
         QReadLocker locker(&adaptixWidget->AgentsMapLock);
-        for (const auto& agent_id: agentIds) {
+        for (qint64 agent_id: agentIds) {
             if (adaptixWidget->AgentsMap.contains(agent_id)) {
                 const auto& agent = adaptixWidget->AgentsMap[agent_id];
                 agentTypes.insert(agent->data.Name);
@@ -571,7 +578,7 @@ QList<AxMenuItem> AxScriptManager::FilterMenuItems(const QStringList &agentIds, 
     return ret;
 }
 
-QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QString &eventType)
+QList<AxEvent> AxScriptManager::FilterEvents(qint64 agentId, const QString &eventType)
 {
     QList<AxEvent> ret;
 
@@ -607,12 +614,24 @@ QList<AxEvent> AxScriptManager::FilterEvents(const QString &agentId, const QStri
     return ret;
 }
 
+static QList<qint64> stringListToInt64(const QStringList &list) {
+    QList<qint64> out;
+    out.reserve(list.size());
+    for (const QString &s : list) {
+        bool ok = false;
+        qint64 v = s.toLongLong(&ok);
+        if (ok) out.append(v);
+    }
+    return out;
+}
+
 void AxScriptManager::AppAgentHide(const QStringList &agents)
 {
     bool updated = false;
+    QList<qint64> ids = stringListToInt64(agents);
     {
-        QReadLocker locker(&adaptixWidget->AgentsMapLock);
-        for (const auto& agentId : agents) {
+        QWriteLocker locker(&adaptixWidget->AgentsMapLock);
+        for (qint64 agentId : ids) {
             if (adaptixWidget->AgentsMap.contains(agentId)) {
                 adaptixWidget->AgentsMap[agentId]->show = false;
                 updated = true;
@@ -626,41 +645,41 @@ void AxScriptManager::AppAgentHide(const QStringList &agents)
 
 void AxScriptManager::AppAgentRemove(const QStringList &agents)
 {
-    HttpReqAgentRemoveAsync(agents, *(adaptixWidget->GetProfile()), nullptr);
+    HttpReqAgentRemoveAsync(stringListToInt64(agents), *(adaptixWidget->GetProfile()), nullptr);
 }
 
 /// APP
 
 void AxScriptManager::AppAgentSetColor(const QStringList &agents, const QString &background, const QString &foreground, const bool reset)
 {
-    HttpReqAgentSetColorAsync(agents, background, foreground, reset, *(adaptixWidget->GetProfile()), nullptr);
+    HttpReqAgentSetColorAsync(stringListToInt64(agents), background, foreground, reset, *(adaptixWidget->GetProfile()), nullptr);
 }
 
 void AxScriptManager::AppAgentSetMark(const QStringList &agents, const QString &mark)
 {
-    HttpReqAgentSetMarkAsync(agents, mark, *(adaptixWidget->GetProfile()), nullptr);
+    HttpReqAgentSetMarkAsync(stringListToInt64(agents), mark, *(adaptixWidget->GetProfile()), nullptr);
 }
 
 void AxScriptManager::AppAgentSetTag(const QStringList &agents, const QString &tag)
 {
-    HttpReqAgentSetTagAsync(agents, tag, *(adaptixWidget->GetProfile()), nullptr);
+    HttpReqAgentSetTagAsync(stringListToInt64(agents), tag, *(adaptixWidget->GetProfile()), nullptr);
 }
 
 void AxScriptManager::AppAgentUpdateData(const QString &id, const QJsonObject &updateData)
 {
-    HttpReqAgentUpdateDataAsync(id, updateData, *(adaptixWidget->GetProfile()), nullptr);
+    HttpReqAgentUpdateDataAsync(id.toLongLong(), updateData, *(adaptixWidget->GetProfile()), nullptr);
 }
 
 /// MENU
 
-int AxScriptManager::AddMenuSession(QMenu *menu, const QString &menuType, QStringList agentIds)
+int AxScriptManager::AddMenuSession(QMenu *menu, const QString &menuType, QList<qint64> agentIds)
 {
     QVariantList context;
     {
         QReadLocker locker(&adaptixWidget->AgentsMapLock);
-        for (const auto& agent_id: agentIds) {
+        for (qint64 agent_id: agentIds) {
             if (adaptixWidget->AgentsMap.contains(agent_id))
-                context << agent_id;
+                context << QVariant::fromValue(agent_id);
         }
     }
     return addMenuItemsToMenu(menu, FilterMenuItems(agentIds, menuType, true), context);
@@ -684,7 +703,7 @@ int AxScriptManager::AddMenuFileBrowser(QMenu *menu, QVector<DataMenuFileBrowser
             }
         }
     }
-    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << files[0].agentId, "FileBrowser", true), context);
+    return addMenuItemsToMenu(menu, FilterMenuItems(QList<qint64>() << files[0].agentId, "FileBrowser", true), context);
 }
 
 int AxScriptManager::AddMenuProcessBrowser(QMenu *menu, QVector<DataMenuProcessBrowser> processes)
@@ -708,7 +727,7 @@ int AxScriptManager::AddMenuProcessBrowser(QMenu *menu, QVector<DataMenuProcessB
             }
         }
     }
-    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << processes[0].agentId, "ProcessBrowser", true), context);
+    return addMenuItemsToMenu(menu, FilterMenuItems(QList<qint64>() << processes[0].agentId, "ProcessBrowser", true), context);
 }
 
 int AxScriptManager::AddMenuDownload(QMenu *menu, const QString &menuType, QVector<DataMenuDownload> files, const bool &agnetNeed)
@@ -721,27 +740,28 @@ int AxScriptManager::AddMenuDownload(QMenu *menu, const QString &menuType, QVect
         for (const auto& file : files) {
             QVariantMap map;
             map["agent_id"] = file.agentId;
-            map["file_id"]  = file.fileId;
+            map["file_id"]  = QVariant::fromValue(file.fileId);
             map["path"]     = file.path;
             map["state"]    = file.state;
             context << map;
         }
     }
-    return addMenuItemsToMenu(menu, FilterMenuItems(QStringList() << files[0].agentId, menuType, false), context);
+    return addMenuItemsToMenu(menu, FilterMenuItems(QList<qint64>() << files[0].agentId, menuType, false), context);
 }
 
-int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QStringList &tasks)
+int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QList<qint64> &tasks)
 {
     if (tasks.empty()) return 0;
 
-    QSet<QString> agents;
+    QSet<qint64> agents;
     QVariantList context;
-    for (const auto& taskId : tasks) {
+    for (qint64 taskId : tasks) {
+        QReadLocker locker(&adaptixWidget->TasksMapLock);
         if (adaptixWidget->TasksMap.contains(taskId)) {
             TaskData taskData = adaptixWidget->TasksMap[taskId];
             QVariantMap map;
-            map["agent_id"] = taskData.AgentId;
-            map["task_id"]  = taskData.TaskId;
+            map["agent_id"] = QVariant::fromValue(taskData.AgentId);
+            map["task_id"]  = qlonglong(taskData.TaskId);
             map["state"]    = taskData.Status;
             map["type"] = taskTypeToString(taskData.TaskType);
 
@@ -749,7 +769,7 @@ int AxScriptManager::AddMenuTask(QMenu *menu, const QString &menuType, const QSt
             agents.insert(taskData.AgentId);
         }
     }
-    return addMenuItemsToMenu(menu, FilterMenuItems(QList<QString>(agents.begin(), agents.end()), menuType, true), context);
+    return addMenuItemsToMenu(menu, FilterMenuItems(QList<qint64>(agents.begin(), agents.end()), menuType, true), context);
 }
 
 int AxScriptManager::AddMenuTargets(QMenu *menu, const QString &menuType, const QStringList &targets)
@@ -771,7 +791,7 @@ int AxScriptManager::AddMenuCreds(QMenu *menu, const QString &menuType, const QS
 
 /// EVENT
 
-void AxScriptManager::emitNewAgent(const QString &agentId)
+void AxScriptManager::emitNewAgent(qint64 agentId)
 {
     for (const auto& event : FilterEvents(agentId, "new_agent")) {
         if (event.jsEngine) {
@@ -781,7 +801,7 @@ void AxScriptManager::emitNewAgent(const QString &agentId)
     }
 }
 
-void AxScriptManager::emitFileBrowserDisks(const QString &agentId)
+void AxScriptManager::emitFileBrowserDisks(qint64 agentId)
 {
     for (const auto& event : FilterEvents(agentId, "FileBrowserDisks")) {
         if (event.jsEngine) {
@@ -791,7 +811,7 @@ void AxScriptManager::emitFileBrowserDisks(const QString &agentId)
     }
 }
 
-void AxScriptManager::emitFileBrowserList(const QString &agentId, const QString &path)
+void AxScriptManager::emitFileBrowserList(qint64 agentId, const QString &path)
 {
     for (const auto& event : FilterEvents(agentId, "FileBrowserList")) {
         if (event.jsEngine) {
@@ -802,7 +822,7 @@ void AxScriptManager::emitFileBrowserList(const QString &agentId, const QString 
     }
 }
 
-void AxScriptManager::emitFileBrowserUpload(const QString &agentId, const QString &path, const QString &localFilename)
+void AxScriptManager::emitFileBrowserUpload(qint64 agentId, const QString &path, const QString &localFilename)
 {
     for (const auto& event : FilterEvents(agentId, "FileBrowserUpload")) {
         if (event.jsEngine) {
@@ -814,7 +834,7 @@ void AxScriptManager::emitFileBrowserUpload(const QString &agentId, const QStrin
     }
 }
 
-void AxScriptManager::emitProcessBrowserList(const QString &agentId)
+void AxScriptManager::emitProcessBrowserList(qint64 agentId)
 {
     for (const auto& event : FilterEvents(agentId, "ProcessBrowserList")) {
         if (event.jsEngine) {
@@ -838,6 +858,12 @@ void AxScriptManager::emitDisconnectClient()
 
 /// SLOTS
 
-void AxScriptManager::consolePrintMessage(const QString &message) { this->adaptixWidget->AxConsoleDock->PrintMessage(message); }
+void AxScriptManager::consolePrintMessage(const QString &message)
+{
+    Q_EMIT consoleMessage(message);
+}
 
-void AxScriptManager::consolePrintError(const QString &message) { this->adaptixWidget->AxConsoleDock->PrintError(message); }
+void AxScriptManager::consolePrintError(const QString &message)
+{
+    Q_EMIT consoleError(message);
+}

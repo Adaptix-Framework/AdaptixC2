@@ -5,7 +5,25 @@ import (
 	"encoding/hex"
 	"fmt"
 	"strings"
+
+	"github.com/dop251/goja"
 )
+
+// /---
+func jsBytes(v goja.Value) ([]byte, bool) {
+	if v == nil || goja.IsUndefined(v) || goja.IsNull(v) {
+		return nil, false
+	}
+	switch x := v.Export().(type) {
+	case goja.ArrayBuffer:
+		return x.Bytes(), true
+	case []byte:
+		return x, true
+	case string:
+		return []byte(x), true
+	}
+	return nil, false
+}
 
 // /---
 func bytesToCode(language string, data []byte, varName string) string {
@@ -95,76 +113,29 @@ func bytesToCode(language string, data []byte, varName string) string {
 	}
 }
 
-// /---
-func encodeData(alg string, data []byte, key string) string {
-	switch alg {
-	case "base64":
-		return base64.StdEncoding.EncodeToString(data)
-	case "hex":
-		return hex.EncodeToString(data)
-	case "xor":
-		if len(key) == 0 {
-			return base64.StdEncoding.EncodeToString(data)
-		}
-		keyBytes := []byte(key)
-		result := make([]byte, len(data))
-		for i := range data {
-			result[i] = data[i] ^ keyBytes[i%len(keyBytes)]
-		}
-		return base64.StdEncoding.EncodeToString(result)
-	default:
-		return base64.StdEncoding.EncodeToString(data)
-	}
-}
-
-// /---
-func decodeData(alg string, data string, key string) string {
-	switch alg {
-	case "base64":
-		decoded, err := base64.StdEncoding.DecodeString(data)
-		if err != nil {
-			return ""
-		}
-		return string(decoded)
-	case "hex":
-		decoded, err := hex.DecodeString(data)
-		if err != nil {
-			return ""
-		}
-		return string(decoded)
-	case "xor":
-		raw, err := base64.StdEncoding.DecodeString(data)
-		if err != nil {
-			return ""
-		}
-		if len(key) == 0 {
-			return string(raw)
-		}
-		keyBytes := []byte(key)
-		result := make([]byte, len(raw))
-		for i := range raw {
-			result[i] = raw[i] ^ keyBytes[i%len(keyBytes)]
-		}
-		return string(result)
-	default:
+// / ---
+func xorBytes(data []byte, key string) []byte {
+	if len(key) == 0 {
 		return data
 	}
+	keyBytes := []byte(key)
+	out := make([]byte, len(data))
+	for i := range data {
+		out[i] = data[i] ^ keyBytes[i%len(keyBytes)]
+	}
+	return out
 }
 
-// /---
-func decodeRawData(alg string, rawData []byte, key string) []byte {
+// / ---
+func encodeData(alg string, data []byte, key string) (text string, raw []byte, isText bool) {
 	switch alg {
+	case "base64":
+		return base64.StdEncoding.EncodeToString(data), nil, true
+	case "hex":
+		return hex.EncodeToString(data), nil, true
 	case "xor":
-		if len(key) == 0 {
-			return rawData
-		}
-		keyBytes := []byte(key)
-		result := make([]byte, len(rawData))
-		for i := range rawData {
-			result[i] = rawData[i] ^ keyBytes[i%len(keyBytes)]
-		}
-		return result
+		return "", xorBytes(data, key), false
 	default:
-		return rawData
+		return base64.StdEncoding.EncodeToString(data), nil, true
 	}
 }

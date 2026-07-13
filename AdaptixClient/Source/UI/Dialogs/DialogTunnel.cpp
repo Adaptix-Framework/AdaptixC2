@@ -1,23 +1,22 @@
 #include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
 
-DialogTunnel::DialogTunnel(const QString &agentId, const bool s4, const bool s5, const bool lpf, const bool rpf)
+DialogTunnel::DialogTunnel(qint64 agentId, const bool s4, const bool s5, const bool lpf, const bool rpf)
 {
-    this->createUI();
+     this->createUI();
+     this->AgentId = agentId;
 
-    tunnelTypeCombo->clear();
-    this->AgentId = agentId;
+     if (s5) { typeSegment->addItem("SOCKS5"); typeNames << "SOCKS5"; }
+     if (s4) { typeSegment->addItem("SOCKS4"); typeNames << "SOCKS4"; }
+     if (lpf) { typeSegment->addItem("LPF"); typeNames << "LPF"; }
+     if (rpf) { typeSegment->addItem("RPF"); typeNames << "RPF"; }
 
-    if (s5)  tunnelTypeCombo->addItem("Socks5");
-    if (s4)  tunnelTypeCombo->addItem("Socks4");
-    if (lpf) tunnelTypeCombo->addItem("Local port forwarding");
-    if (rpf) tunnelTypeCombo->addItem("Reverse port forwarding");
+     connect(typeSegment, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this]() { changeType(typeSegment->currentIndex()); });
+     connect(buttonCreate, &QPushButton::clicked, this, &DialogTunnel::onButtonCreate);
+     connect(buttonCancel, &QPushButton::clicked, this, &DialogTunnel::onButtonCancel);
+     connect(socks5UseAuth, &oclero::qlementine::Switch::toggled, this, &DialogTunnel::onSocks5AuthCheckChange);
 
-    connect(tunnelTypeCombo, &QComboBox::currentTextChanged, this, &DialogTunnel::changeType);
-    connect(buttonCreate,    &QPushButton::clicked,          this, &DialogTunnel::onButtonCreate);
-    connect(buttonCancel,    &QPushButton::clicked,          this, &DialogTunnel::onButtonCancel);
-
-    connect(socks5UseAuth, &oclero::qlementine::Switch::toggled, this, &DialogTunnel::onSocks5AuthCheckChange );
+     changeType(0);
 }
 
 DialogTunnel::~DialogTunnel() = default;
@@ -25,160 +24,164 @@ DialogTunnel::~DialogTunnel() = default;
 void DialogTunnel::createUI()
 {
     this->resize(400, 350);
-    this->setWindowTitle( "Create Tunnel" );
+    this->setWindowTitle("Create Tunnel");
     this->setProperty("Main", "base");
 
-    tunnelTypeLabel = new QLabel("Tunnel type:", this);
-    tunnelTypeCombo = new QComboBox(this);
+    typeSegment = new oclero::qlementine::SegmentedControl(this);
+    typeSegment->setFixedHeight(26);
 
-    tunnelEndpointLabel = new QLabel("Tunnel endpoint:", this);
-    tunnelEndpointCombo = new QComboBox(this);
-    tunnelEndpointCombo->addItem("Teamserver");
-    tunnelEndpointCombo->addItem("Client");
+    endpointSegment = new oclero::qlementine::SegmentedControl(this);
+    endpointSegment->addItem("Server");
+    endpointSegment->addItem("Client");
+    endpointSegment->setFixedHeight(26);
 
-    tunnelDescLabel = new QLabel("Description: ",this);
-    tunnelDescInput = new QLineEdit(this);
+    segLayout = new QHBoxLayout();
+    segLayout->setSpacing(8);
+    segLayout->addWidget(typeSegment);
+    segLayout->addWidget(endpointSegment);
 
-    tunnelStackWidget = new QStackedWidget(this );
+    descLabel = new QLabel("Description", this);
+    descInput = new QLineEdit(this);
+    descInput->setPlaceholderText("Optional description...");
 
-    stackGridLayout = new QGridLayout(this );
-    stackGridLayout->setHorizontalSpacing(0);
-    stackGridLayout->setContentsMargins(0, 0, 0, 0 );
-    stackGridLayout->addWidget(tunnelStackWidget, 0, 0, 1, 1 );
+    configGroup = new QGroupBox(this);
+    configGroup->setTitle("SOCKS5 Configuration");
 
-    tunnelConfigGroupbox = new QGroupBox(this);
-    tunnelConfigGroupbox->setTitle("Settings");
-    tunnelConfigGroupbox->setLayout(stackGridLayout);
+    stackWidget = new QStackedWidget(this);
 
-    buttonCreate = new QPushButton(this);
-    buttonCreate->setText("Create");
-    buttonCreate->setDefault(true);
+    configGrid = new QGridLayout(configGroup);
+    configGrid->setContentsMargins(0, 0, 0, 0);
+    configGrid->addWidget(stackWidget, 0, 0);
 
-    buttonCancel = new QPushButton(this);
-    buttonCancel->setText("Cancel");
-
-    horizontalSpacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    horizontalSpacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-
-    hLayoutBottom = new QHBoxLayout();
-    hLayoutBottom->addItem(horizontalSpacer_1);
-    hLayoutBottom->addWidget(buttonCreate);
-    hLayoutBottom->addWidget(buttonCancel);
-    hLayoutBottom->addItem(horizontalSpacer_2);
-
-    mainGridLayout = new QGridLayout( this );
-    mainGridLayout->addWidget( tunnelTypeLabel,      0, 0, 1, 1);
-    mainGridLayout->addWidget( tunnelTypeCombo,      0, 1, 1, 1);
-    mainGridLayout->addWidget( tunnelEndpointLabel,  1, 0, 1, 1);
-    mainGridLayout->addWidget( tunnelEndpointCombo,  1, 1, 1, 1);
-    mainGridLayout->addWidget( tunnelDescLabel,      2, 0, 1, 1);
-    mainGridLayout->addWidget( tunnelDescInput,      2, 1, 1, 1);
-    mainGridLayout->addWidget( tunnelConfigGroupbox, 3, 0, 1, 2);
-    mainGridLayout->addLayout( hLayoutBottom,        4, 0, 1, 2);
-
-    this->setLayout(mainGridLayout);
-
-    int buttonWidth  = buttonCancel->width();
-    buttonCreate->setFixedWidth(buttonWidth);
-    buttonCancel->setFixedWidth(buttonWidth);
-
-    int buttonHeight = buttonCancel->height();
-    buttonCreate->setFixedHeight(buttonHeight);
-    buttonCancel->setFixedHeight(buttonHeight);
-
+    // SOCKS5 page
     socks5Widget = new QWidget(this);
-    socks5LocalAddrLabel = new QLabel("Listen:", socks5Widget);
-    socks5LocalAddrInput = new QLineEdit("0.0.0.0", socks5Widget);
-    socks5LocalPortSpin  = new QSpinBox(socks5Widget);
-    socks5LocalPortSpin->setMinimum(1);
-    socks5LocalPortSpin->setMaximum(65535);
-    socks5LocalPortSpin->setValue(1080);
-    socks5UseAuth       = new oclero::qlementine::Switch(socks5Widget);
-    socks5UseAuth->setText("Use authentication");
-    socks5AuthUserLabel = new QLabel("Username:", socks5Widget);
-    socks5AuthUserInput = new QLineEdit(socks5Widget);
-    socks5AuthUserInput->setEnabled(false);
-    socks5AuthPassLabel = new QLabel("Password:", socks5Widget);
-    socks5AuthPassInput = new QLineEdit(socks5Widget);
-    socks5AuthPassInput->setEnabled(false);
+    auto* s5Grid = new QGridLayout(socks5Widget);
+    s5Grid->setContentsMargins(12, 12, 12, 12);
+    s5Grid->setSpacing(8);
 
-    socks5GridLayout = new QGridLayout(socks5Widget);
-    socks5GridLayout->addWidget(socks5LocalAddrLabel, 0, 0, 1, 1);
-    socks5GridLayout->addWidget(socks5LocalAddrInput, 0, 1, 1, 1);
-    socks5GridLayout->addWidget(socks5LocalPortSpin,  0, 2, 1, 1);
-    socks5GridLayout->addWidget(socks5UseAuth,        1, 1, 1, 2);
-    socks5GridLayout->addWidget(socks5AuthUserLabel,  2, 0, 1, 1);
-    socks5GridLayout->addWidget(socks5AuthUserInput,  2, 1, 1, 2);
-    socks5GridLayout->addWidget(socks5AuthPassLabel,  3, 0, 1, 1);
-    socks5GridLayout->addWidget(socks5AuthPassInput,  3, 1, 1, 2);
-    tunnelStackWidget->addWidget(socks5Widget);
+    auto* s5AddrLabel = new QLabel("Listen address", socks5Widget);
+    socks5AddrInput = new QLineEdit("0.0.0.0", socks5Widget);
+    auto* s5PortLabel = new QLabel("Listen port", socks5Widget);
+    socks5PortSpin = new QSpinBox(socks5Widget);
+    socks5PortSpin->setRange(1, 65535);
+    socks5PortSpin->setValue(1080);
+    socks5UseAuth = new oclero::qlementine::Switch(socks5Widget);
+    socks5UseAuth->setText("Enable username/password");
+    auto* s5UserLabel = new QLabel("Username", socks5Widget);
+    socks5UserInput = new QLineEdit(socks5Widget);
+    socks5UserInput->setEnabled(false);
+    auto* s5PassLabel = new QLabel("Password", socks5Widget);
+    socks5PassInput = new QLineEdit(socks5Widget);
+    socks5PassInput->setEnabled(false);
 
+    s5Grid->addWidget(s5AddrLabel,     0, 0);
+    s5Grid->addWidget(socks5AddrInput, 0, 1);
+    s5Grid->addWidget(s5PortLabel,     1, 0);
+    s5Grid->addWidget(socks5PortSpin,  1, 1);
+    s5Grid->addWidget(socks5UseAuth,   2, 0, 1, 2);
+    s5Grid->addWidget(s5UserLabel,     3, 0);
+    s5Grid->addWidget(socks5UserInput, 3, 1);
+    s5Grid->addWidget(s5PassLabel,     4, 0);
+    s5Grid->addWidget(socks5PassInput, 4, 1);
+    stackWidget->addWidget(socks5Widget);
 
+    // SOCKS4 page
     socks4Widget = new QWidget(this);
-    socks4LocalAddrLabel = new QLabel("Listen:", socks4Widget);
-    socks4LocalAddrInput = new QLineEdit("0.0.0.0", socks4Widget);
-    socks4LocalPortSpin  = new QSpinBox(socks4Widget);
-    socks4LocalPortSpin->setMinimum(1);
-    socks4LocalPortSpin->setMaximum(65535);
-    socks4LocalPortSpin->setValue(1080);
+    auto* s4Grid = new QGridLayout(socks4Widget);
+    s4Grid->setContentsMargins(12, 12, 12, 12);
+    s4Grid->setSpacing(8);
 
-    socks4GridLayout = new QGridLayout(socks4Widget);
-    socks4GridLayout->addWidget(socks4LocalAddrLabel, 0, 0, 1, 1);
-    socks4GridLayout->addWidget(socks4LocalAddrInput, 0, 1, 1, 1);
-    socks4GridLayout->addWidget(socks4LocalPortSpin,  0, 2, 1, 1);
-    tunnelStackWidget->addWidget(socks4Widget);
+    auto* s4AddrLabel = new QLabel("Listen address", socks4Widget);
+    socks4AddrInput = new QLineEdit("0.0.0.0", socks4Widget);
+    auto* s4PortLabel = new QLabel("Listen port", socks4Widget);
+    socks4PortSpin = new QSpinBox(socks4Widget);
+    socks4PortSpin->setRange(1, 65535);
+    socks4PortSpin->setValue(1080);
 
+    s4Grid->addWidget(s4AddrLabel,     0, 0);
+    s4Grid->addWidget(socks4AddrInput, 0, 1);
+    s4Grid->addWidget(s4PortLabel,     1, 0);
+    s4Grid->addWidget(socks4PortSpin,  1, 1);
+    stackWidget->addWidget(socks4Widget);
 
+    // LPF page
     lpfWidget = new QWidget(this);
-    lpfLocalAddrLabel = new QLabel("Listen:", lpfWidget);
-    lpfLocalAddrInput = new QLineEdit("0.0.0.0", lpfWidget);
-    lpfLocalPortSpin  = new QSpinBox(lpfWidget);
-    lpfLocalPortSpin->setMinimum(1);
-    lpfLocalPortSpin->setMaximum(65535);
-    lpfLocalPortSpin->setValue(8000);
-    lpfTargetAddrLabel = new QLabel("Target:", lpfWidget);
+    auto* lpfGrid = new QGridLayout(lpfWidget);
+    lpfGrid->setContentsMargins(12, 12, 12, 12);
+    lpfGrid->setSpacing(8);
+
+    auto* lpfAddrLabel = new QLabel("Listen address", lpfWidget);
+    lpfAddrInput = new QLineEdit("0.0.0.0", lpfWidget);
+    auto* lpfPortLabel = new QLabel("Listen port", lpfWidget);
+    lpfPortSpin = new QSpinBox(lpfWidget);
+    lpfPortSpin->setRange(1, 65535);
+    lpfPortSpin->setValue(8000);
+    auto* lpfTAddrLabel = new QLabel("Target address", lpfWidget);
     lpfTargetAddrInput = new QLineEdit("127.0.0.1", lpfWidget);
-    lpfTargetPortSpin  = new QSpinBox(lpfWidget);
-    lpfTargetPortSpin->setMinimum(1);
-    lpfTargetPortSpin->setMaximum(65535);
+    auto* lpfTPortLabel = new QLabel("Target port", lpfWidget);
+    lpfTargetPortSpin = new QSpinBox(lpfWidget);
+    lpfTargetPortSpin->setRange(1, 65535);
     lpfTargetPortSpin->setValue(8000);
 
-    lpfGridLayout = new QGridLayout(lpfWidget);
-    lpfGridLayout->addWidget(lpfLocalAddrLabel,  0, 0, 1, 1);
-    lpfGridLayout->addWidget(lpfLocalAddrInput,  0, 1, 1, 1);
-    lpfGridLayout->addWidget(lpfLocalPortSpin,   0, 2, 1, 1);
-    lpfGridLayout->addWidget(lpfTargetAddrLabel, 1, 0, 1, 1);
-    lpfGridLayout->addWidget(lpfTargetAddrInput, 1, 1, 1, 1);
-    lpfGridLayout->addWidget(lpfTargetPortSpin,  1, 2, 1, 1);
-    tunnelStackWidget->addWidget(lpfWidget);
+    lpfGrid->addWidget(lpfAddrLabel,        0, 0);
+    lpfGrid->addWidget(lpfAddrInput,        0, 1);
+    lpfGrid->addWidget(lpfPortLabel,        1, 0);
+    lpfGrid->addWidget(lpfPortSpin,         1, 1);
+    lpfGrid->addWidget(lpfTAddrLabel,       2, 0);
+    lpfGrid->addWidget(lpfTargetAddrInput,  2, 1);
+    lpfGrid->addWidget(lpfTPortLabel,       3, 0);
+    lpfGrid->addWidget(lpfTargetPortSpin,   3, 1);
+    stackWidget->addWidget(lpfWidget);
 
+    // RPF page
     rpfWidget = new QWidget(this);
-    rpfPortLabel = new QLabel("Port:", rpfWidget);
-    rpfPortSpin  = new QSpinBox(rpfWidget);
-    rpfPortSpin->setMinimum(1);
-    rpfPortSpin->setMaximum(65535);
+    auto* rpfGrid = new QGridLayout(rpfWidget);
+    rpfGrid->setContentsMargins(12, 12, 12, 12);
+    rpfGrid->setSpacing(8);
+
+    auto* rpfPortLabel = new QLabel("Port", rpfWidget);
+    rpfPortSpin = new QSpinBox(rpfWidget);
+    rpfPortSpin->setRange(1, 65535);
     rpfPortSpin->setValue(8000);
-    rpfTargetAddrLabel = new QLabel("Target:", rpfWidget);
+    auto* rpfTAddrLabel = new QLabel("Target address", rpfWidget);
     rpfTargetAddrInput = new QLineEdit("127.0.0.1", rpfWidget);
-    rpfTargetPortSpin  = new QSpinBox(rpfWidget);
-    rpfTargetPortSpin->setMinimum(1);
-    rpfTargetPortSpin->setMaximum(65535);
+    auto* rpfTPortLabel = new QLabel("Target port", rpfWidget);
+    rpfTargetPortSpin = new QSpinBox(rpfWidget);
+    rpfTargetPortSpin->setRange(1, 65535);
     rpfTargetPortSpin->setValue(8000);
 
-    rpfGridLayout = new QGridLayout(rpfWidget);
-    rpfGridLayout->addWidget(rpfPortLabel,       0, 0, 1, 1);
-    rpfGridLayout->addWidget(rpfPortSpin,        0, 1, 1, 2);
-    rpfGridLayout->addWidget(rpfTargetAddrLabel, 1, 0, 1, 1);
-    rpfGridLayout->addWidget(rpfTargetAddrInput, 1, 1, 1, 1);
-    rpfGridLayout->addWidget(rpfTargetPortSpin,  1, 2, 1, 1);
-    tunnelStackWidget->addWidget(rpfWidget);
+    rpfGrid->addWidget(rpfPortLabel,       0, 0);
+    rpfGrid->addWidget(rpfPortSpin,        0, 1);
+    rpfGrid->addWidget(rpfTAddrLabel,      1, 0);
+    rpfGrid->addWidget(rpfTargetAddrInput, 1, 1);
+    rpfGrid->addWidget(rpfTPortLabel,      2, 0);
+    rpfGrid->addWidget(rpfTargetPortSpin,  2, 1);
+    stackWidget->addWidget(rpfWidget);
+
+    buttonCreate = new QPushButton("Create Tunnel", this);
+    buttonCreate->setDefault(true);
+    buttonCancel = new QPushButton("Cancel", this);
+
+    buttonLayout = new QHBoxLayout();
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(buttonCancel);
+    buttonLayout->addWidget(buttonCreate);
+
+    mainLayout = new QVBoxLayout(this);
+    mainLayout->addLayout(segLayout);
+    mainLayout->addWidget(descLabel);
+    mainLayout->addWidget(descInput);
+    mainLayout->addWidget(configGroup);
+    mainLayout->addLayout(buttonLayout);
+
+    this->setLayout(mainLayout);
 }
 
 void DialogTunnel::StartDialog()
 {
-     this->valid = false;
-     this->message = "";
-     this->exec();
+    this->valid = false;
+    this->message = "";
+    this->exec();
 }
 
 bool DialogTunnel::IsValid() const { return this->valid; }
@@ -187,159 +190,128 @@ QString DialogTunnel::GetMessage() const { return this->message; }
 
 QString DialogTunnel::GetTunnelType() const { return this->tunnelType; }
 
-QString DialogTunnel::GetEndpoint() const { return this->tunnelEndpointCombo->currentText(); }
+QString DialogTunnel::GetEndpoint() const
+{
+     return endpointSegment->currentIndex() == 0 ? "Teamserver" : "Client";
+}
 
 QByteArray DialogTunnel::GetTunnelData() const { return this->jsonData; }
 
-void DialogTunnel::changeType(const QString &type) const
+void DialogTunnel::changeType(int index) const
 {
-     tunnelEndpointCombo->clear();
-     tunnelEndpointCombo->addItem("Teamserver");
-     if (type == "Socks5") {
-          tunnelStackWidget->setCurrentIndex(0);
-          tunnelEndpointCombo->addItem("Client");
-     }
-     else if (type == "Socks4") {
-          tunnelStackWidget->setCurrentIndex(1);
-          tunnelEndpointCombo->addItem("Client");
-     }
-     else if (type == "Local port forwarding") {
-          tunnelStackWidget->setCurrentIndex(2);
-          tunnelEndpointCombo->addItem("Client");
-     }
-     else if (type == "Reverse port forwarding") {
-          tunnelStackWidget->setCurrentIndex(3);
-     }
+    if (index < 0 || index >= typeNames.size()) return;
+    QString type = typeNames[index];
+
+    if (type == "SOCKS5") {
+        stackWidget->setCurrentIndex(0);
+        configGroup->setTitle("SOCKS5 Configuration");
+        endpointSegment->setVisible(true);
+    } else if (type == "SOCKS4") {
+        stackWidget->setCurrentIndex(1);
+        configGroup->setTitle("SOCKS4 Configuration");
+        endpointSegment->setVisible(true);
+    } else if (type == "LPF") {
+        stackWidget->setCurrentIndex(2);
+        configGroup->setTitle("LPF Configuration");
+        endpointSegment->setVisible(true);
+    } else if (type == "RPF") {
+        stackWidget->setCurrentIndex(3);
+        configGroup->setTitle("RPF Configuration");
+        endpointSegment->setVisible(false);
+    }
 }
 
 void DialogTunnel::onSocks5AuthCheckChange() const
 {
-     bool active = socks5UseAuth->isChecked();
-     socks5AuthUserInput->setEnabled(active);
-     socks5AuthPassInput->setEnabled(active);
+    bool active = socks5UseAuth->isChecked();
+    socks5UserInput->setEnabled(active);
+    socks5PassInput->setEnabled(active);
 }
 
 void DialogTunnel::onButtonCreate()
 {
-     QString type = tunnelTypeCombo->currentText();
+    int idx = typeSegment->currentIndex();
+    if (idx < 0 || idx >= typeNames.size()) return;
+    QString type = typeNames[idx];
 
-     QJsonObject dataJson;
-     dataJson["agent_id"] = this->AgentId;
-     dataJson["desc"]     = this->tunnelDescInput->text();
-     dataJson["listen"]   = this->tunnelEndpointCombo->currentText() == "Teamserver";
+    QJsonObject dataJson;
+    dataJson["agent_id"] = this->AgentId;
+    dataJson["desc"]     = this->descInput->text();
+    dataJson["listen"]   = endpointSegment->currentIndex() == 0;
 
-     if (type == "Socks5") {
-          QString l_host   = this->socks5LocalAddrInput->text();
-          int     l_port   = this->socks5LocalPortSpin->value();
-          bool    use_auth = this->socks5UseAuth->isChecked();
-          QString username = this->socks5AuthUserInput->text();
-          QString password = this->socks5AuthPassInput->text();
+    if (type == "SOCKS5") {
+        QString l_host   = socks5AddrInput->text();
+        int     l_port   = socks5PortSpin->value();
+        bool    use_auth = socks5UseAuth->isChecked();
+        QString username = socks5UserInput->text();
+        QString password = socks5PassInput->text();
 
-          if (l_host.isEmpty()) {
-               this->valid   = false;
-               this->message = "Listen host must be set";
-               this->close();
-               return;
-          }
-          if (use_auth) {
-               if (username.isEmpty()) {
-                    this->valid   = false;
-                    this->message = "Username host must be set";
-                    this->close();
-                    return;
-               }
-               if (password.isEmpty()) {
-                    this->valid   = false;
-                    this->message = "Password host must be set";
-                    this->close();
-                    return;
-               }
-          }
-          else {
-               username = "";
-               password = "";
-          }
+        if (l_host.isEmpty()) {
+            this->valid = false; this->message = "Listen host must be set"; this->close(); return;
+        }
+        if (use_auth) {
+            if (username.isEmpty()) { this->valid = false; this->message = "Username must be set"; this->close(); return; }
+            if (password.isEmpty()) { this->valid = false; this->message = "Password must be set"; this->close(); return; }
+        } else {
+            username = ""; password = "";
+        }
 
-          this->tunnelType = "socks5";
-          this->valid = true;
-          dataJson["l_host"]   = l_host;
-          dataJson["l_port"]   = l_port;
-          dataJson["use_auth"] = use_auth;
-          dataJson["username"] = username;
-          dataJson["password"] = password;
+        this->tunnelType = "socks5";
+        this->valid = true;
+        dataJson["l_host"]   = l_host;
+        dataJson["l_port"]   = l_port;
+        dataJson["use_auth"] = use_auth;
+        dataJson["username"] = username;
+        dataJson["password"] = password;
+    }
+    else if (type == "SOCKS4") {
+        QString l_host = socks4AddrInput->text();
+        int     l_port = socks4PortSpin->value();
 
-     }
-     else if (type == "Socks4") {
-          QString l_host = this->socks4LocalAddrInput->text();
-          int     l_port = this->socks4LocalPortSpin->value();
+        if (l_host.isEmpty()) { this->valid = false; this->message = "Listen host must be set"; this->close(); return; }
 
-          if (l_host.isEmpty()) {
-               this->valid   = false;
-               this->message = "Listen host must be set";
-               this->close();
-               return;
-          }
+        this->tunnelType = "socks4";
+        this->valid = true;
+        dataJson["l_host"] = l_host;
+        dataJson["l_port"] = l_port;
+    }
+    else if (type == "LPF") {
+        QString l_host = lpfAddrInput->text();
+        int     l_port = lpfPortSpin->value();
+        QString t_host = lpfTargetAddrInput->text();
+        int     t_port = lpfTargetPortSpin->value();
 
-          this->tunnelType = "socks4";
-          this->valid = true;
-          dataJson["l_host"] = l_host;
-          dataJson["l_port"] = l_port;
+        if (l_host.isEmpty()) { this->valid = false; this->message = "Listen host must be set"; this->close(); return; }
+        if (t_host.isEmpty()) { this->valid = false; this->message = "Target host must be set"; this->close(); return; }
 
-     }
-     else if (type == "Local port forwarding") {
-          QString l_host = this->lpfLocalAddrInput->text();
-          int     l_port = this->lpfLocalPortSpin->value();
-          QString t_host = this->lpfTargetAddrInput->text();
-          int     t_port = this->lpfTargetPortSpin->value();
+        this->tunnelType = "lportfwd";
+        this->valid = true;
+        dataJson["l_host"] = l_host;
+        dataJson["l_port"] = l_port;
+        dataJson["t_host"] = t_host;
+        dataJson["t_port"] = t_port;
+    }
+    else if (type == "RPF") {
+        int     port   = rpfPortSpin->value();
+        QString t_host = rpfTargetAddrInput->text();
+        int     t_port = rpfTargetPortSpin->value();
 
-          if (l_host.isEmpty()) {
-               this->valid   = false;
-               this->message = "Listen host must be set";
-               this->close();
-               return;
-          }
-          if (t_host.isEmpty()) {
-               this->valid   = false;
-               this->message = "Target host must be set";
-               this->close();
-               return;
-          }
+        if (t_host.isEmpty()) { this->valid = false; this->message = "Target host must be set"; this->close(); return; }
 
-          this->tunnelType = "lportfwd";
-          this->valid = true;
-          dataJson["l_host"] = l_host;
-          dataJson["l_port"] = l_port;
-          dataJson["t_host"] = t_host;
-          dataJson["t_port"] = t_port;
-
-     }
-     else if (type == "Reverse port forwarding") {
-          int     port   = this->rpfPortSpin->value();
-          QString t_host = this->rpfTargetAddrInput->text();
-          int     t_port = this->rpfTargetPortSpin->value();
-
-          if (t_host.isEmpty()) {
-               this->valid   = false;
-               this->message = "Target host must be set";
-               this->close();
-               return;
-          }
-
-          this->tunnelType = "rportfwd";
-          this->valid = true;
-          dataJson["port"]   = port;
-          dataJson["t_host"] = t_host;
-          dataJson["t_port"] = t_port;
-
-     }
-     else {
-          this->message = "Unknown tunnel type";
-          this->valid = false;
-          this->close();
-          return;
-     }
-     this->jsonData = QJsonDocument(dataJson).toJson();
-     this->close();
+        this->tunnelType = "rportfwd";
+        this->valid = true;
+        dataJson["port"]   = port;
+        dataJson["t_host"] = t_host;
+        dataJson["t_port"] = t_port;
+    }
+    else {
+        this->message = "Unknown tunnel type";
+        this->valid = false;
+        this->close();
+        return;
+    }
+    this->jsonData = QJsonDocument(dataJson).toJson();
+    this->close();
 }
 
 void DialogTunnel::onButtonCancel() { this->close(); }

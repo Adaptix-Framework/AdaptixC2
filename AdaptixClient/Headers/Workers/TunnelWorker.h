@@ -10,11 +10,14 @@ Q_OBJECT
     QWebSocket* websocket = nullptr;
     QUrl        wsUrl;
     QString     otp;
-    std::atomic<bool> stopped = false;
+    std::atomic<bool> stopped{false};
+    std::atomic<bool> finishedEmitted{false};
 
     QMutex wsBufferMutex;
     QQueue<QByteArray> wsBuffer;
     std::atomic<bool> wsConnected{false};
+
+    void finishWorker();
 
 public:
     TunnelWorker(QTcpSocket* socket, const QString &otp, const QUrl& wsUrl, QObject* parent = nullptr);
@@ -29,8 +32,10 @@ public Q_SLOTS:
 
 private Q_SLOTS:
     void onTcpReadyRead();
+    void onTcpDisconnected();
     void onWsConnected();
-    void onWsBinaryMessageReceived(const QByteArray& msg) const;
+    void onWsDisconnected();
+    void onWsBinaryMessageReceived(const QByteArray& msg);
     void onWsError(QAbstractSocket::SocketError error);
 };
 

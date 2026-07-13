@@ -3,8 +3,9 @@
 
 #include <main.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Utils/CustomElements/CardListWidget.h>
 #include <Client/AuthProfile.h>
-#include <Utils/CustomElements.h>
+
 #include <oclero/qlementine/widgets/Menu.hpp>
 
 class AxContainerWrapper;
@@ -13,11 +14,10 @@ class DialogListener : public QDialog
 {
 Q_OBJECT
 
-    QGridLayout*    mainGridLayout         = nullptr;
+    QVBoxLayout*    mainGridLayout         = nullptr;
     QGridLayout*    stackGridLayout        = nullptr;
     QLabel*         listenerNameLabel      = nullptr;
     QLineEdit*      inputListenerName      = nullptr;
-    QLabel*         profileLabel           = nullptr;
     QAction*        actionSaveProfile      = nullptr;
     QLineEdit*      inputProfileName       = nullptr;
     bool            profileNameManuallyEdited = false;
@@ -26,13 +26,13 @@ Q_OBJECT
     QLabel*         listenerTypeLabel      = nullptr;
     QComboBox*      listenerTypeCombobox   = nullptr;
     QPushButton*    buttonCreate           = nullptr;
+    QPushButton*    cancelButton           = nullptr;
     QPushButton*    buttonNewProfile       = nullptr;
     QPushButton*    buttonLoad             = nullptr;
     QPushButton*    buttonSave             = nullptr;
     QGroupBox*      listenerConfigGroupbox = nullptr;
     QStackedWidget* configStackWidget      = nullptr;
 
-    // Profile management block
     QLabel*           label_Profiles     = nullptr;
     CardListWidget*   cardWidget         = nullptr;
     oclero::qlementine::Menu* menuContext = nullptr;

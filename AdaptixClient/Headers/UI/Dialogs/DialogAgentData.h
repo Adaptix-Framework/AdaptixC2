@@ -4,70 +4,54 @@
 #include <main.h>
 #include <Client/AuthProfile.h>
 
+#include <oclero/qlementine/widgets/Switch.hpp>
+
 class DialogAgentData : public QDialog
 {
-
     QVBoxLayout* mainLayout        = nullptr;
-    QHBoxLayout* hLayoutBottom     = nullptr;
-    QSpacerItem* horizontalSpacer  = nullptr;
-
-    QGroupBox*   groupNetwork      = nullptr;
-    QGridLayout* layoutNetwork     = nullptr;
-    QLabel*      labelInternalIP   = nullptr;
-    QLineEdit*   inputInternalIP   = nullptr;
-    QLabel*      labelExternalIP   = nullptr;
-    QLineEdit*   inputExternalIP   = nullptr;
-
-    QGroupBox*   groupCoding       = nullptr;
-    QGridLayout* layoutCoding      = nullptr;
-    QLabel*      labelACP          = nullptr;
-    QSpinBox*    inputACP          = nullptr;
-    QLabel*      labelOemCP        = nullptr;
-    QSpinBox*    inputOemCP        = nullptr;
-
-    QGroupBox*   groupProcess      = nullptr;
-    QGridLayout* layoutProcess     = nullptr;
-    QLabel*      labelProcess      = nullptr;
-    QLineEdit*   inputProcess      = nullptr;
-    QComboBox*   inputArch         = nullptr;
-    QCheckBox*   inputElevated     = nullptr;
-    QLabel*      labelPid          = nullptr;
-    QLineEdit*   inputPid          = nullptr;
-    QLabel*      labelTid          = nullptr;
-    QLineEdit*   inputTid          = nullptr;
-
-    QGroupBox*   groupOS           = nullptr;
-    QGridLayout* layoutOS          = nullptr;
-    QLabel*      labelOs           = nullptr;
-    QComboBox*   inputOs           = nullptr;
-    QLineEdit*   inputOsDesc       = nullptr;
-    QLabel*      labelGmtOffset    = nullptr;
-    QSpinBox*    inputGmtOffset    = nullptr;
-
-    QGroupBox*   groupContext      = nullptr;
-    QGridLayout* layoutContext     = nullptr;
-    QLabel*      labelDomain       = nullptr;
-    QLineEdit*   inputDomain       = nullptr;
-    QLabel*      labelComputer     = nullptr;
-    QLineEdit*   inputComputer     = nullptr;
-    QLabel*      labelUsername     = nullptr;
-    QLineEdit*   inputUsername     = nullptr;
-    QLabel*      labelImpersonated = nullptr;
-    QLineEdit*   inputImpersonated = nullptr;
-
+    QHBoxLayout* columnsLayout     = nullptr;
+    QHBoxLayout* buttonLayout      = nullptr;
     QPushButton* buttonUpdate      = nullptr;
     QPushButton* buttonCancel      = nullptr;
 
+    QGroupBox*   groupIdentity     = nullptr;
+    QGridLayout* layoutIdentity    = nullptr;
+    QLineEdit*   inputDomain       = nullptr;
+    QLineEdit*   inputComputer     = nullptr;
+    QLineEdit*   inputUsername     = nullptr;
+    QLineEdit*   inputImpersonated = nullptr;
+
+    QGroupBox*   groupProcess      = nullptr;
+    QGridLayout* layoutProcess     = nullptr;
+    QLineEdit*   inputProcess      = nullptr;
+    QComboBox*   inputArch         = nullptr;
+    QSpinBox*    inputPid          = nullptr;
+    QSpinBox*    inputTid          = nullptr;
+    oclero::qlementine::Switch* inputElevated = nullptr;
+
+    QGroupBox*   groupNetwork      = nullptr;
+    QGridLayout* layoutNetwork     = nullptr;
+    QLineEdit*   inputInternalIP   = nullptr;
+    QLineEdit*   inputExternalIP   = nullptr;
+
+    QGroupBox*   groupOS           = nullptr;
+    QGridLayout* layoutOS          = nullptr;
+    QComboBox*   inputOs           = nullptr;
+    QLineEdit*   inputOsDesc       = nullptr;
+    QSpinBox*    inputGmtOffset    = nullptr;
+    QSpinBox*    inputACP          = nullptr;
+    QSpinBox*    inputOemCP        = nullptr;
+
     AuthProfile authProfile;
-    QString     agentId;
+    qint64      agentId = 0;
 
     QString     originalInternalIP;
     QString     originalExternalIP;
     int         originalGmtOffset;
     int         originalACP;
     int         originalOemCP;
-    QString     originalPid;
-    QString     originalTid;
+    int         originalPid;
+    int         originalTid;
     QString     originalArch;
     bool        originalElevated;
     QString     originalProcess;

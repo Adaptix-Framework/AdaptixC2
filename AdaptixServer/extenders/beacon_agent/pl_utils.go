@@ -7,13 +7,12 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand/v2"
 	"net"
 	"regexp"
 	"strconv"
 	"strings"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 const (
@@ -117,31 +116,58 @@ const (
 	dnsCompressFlag     = 0x1
 )
 
-func CreateTaskCommandSaveMemory(ts Teamserver, agentId string, buffer []byte) int {
-	chunkSize := 0x100000 // 1Mb
-	memoryId := int(rand.Uint32())
-
-	bufferSize := len(buffer)
-
-	taskData := adaptix.TaskData{
-		Type:    adaptix.TASK_TYPE_TASK,
-		AgentId: agentId,
-		Sync:    false,
-	}
-
-	for start := 0; start < bufferSize; start += chunkSize {
-		fin := start + chunkSize
-		if fin > bufferSize {
-			fin = bufferSize
+func parseStringList(v any) []string {
+	var out []string
+	switch t := v.(type) {
+	case nil:
+		return out
+	case string:
+		for _, line := range strings.Split(t, "\n") {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				out = append(out, line)
+			}
 		}
-
-		array := []interface{}{COMMAND_SAVEMEMORY, memoryId, bufferSize, fin - start, buffer[start:fin]}
-		taskData.Data, _ = PackArray(array)
-		taskData.TaskId = fmt.Sprintf("%08x", rand.Uint32())
-
-		ts.TsTaskCreate(agentId, "", "", taskData)
+	case []string:
+		for _, line := range t {
+			line = strings.TrimSpace(line)
+			if line != "" {
+				out = append(out, line)
+			}
+		}
+	case []any:
+		for _, item := range t {
+			line, _ := item.(string)
+			line = strings.TrimSpace(line)
+			if line != "" {
+				out = append(out, line)
+			}
+		}
 	}
-	return memoryId
+	return out
+}
+
+func parseCallbackAddresses(v any) (hosts []string, ports []int, err error) {
+	lines := parseStringList(v)
+	for _, line := range lines {
+		if line == "address:port" {
+			continue
+		}
+		host, portStr, splitErr := net.SplitHostPort(line)
+		if splitErr != nil {
+			return nil, nil, fmt.Errorf("callback_addresses: invalid entry %q (want host:port): %w", line, splitErr)
+		}
+		port, convErr := strconv.Atoi(portStr)
+		if convErr != nil || port < 1 || port > 65535 {
+			return nil, nil, fmt.Errorf("callback_addresses: invalid port in %q", line)
+		}
+		if host == "" {
+			return nil, nil, fmt.Errorf("callback_addresses: empty host in %q", line)
+		}
+		hosts = append(hosts, host)
+		ports = append(ports, port)
+	}
+	return hosts, ports, nil
 }
 
 func GetOsVersion(majorVersion uint8, minorVersion uint8, buildNumber uint, isServer bool, systemArch string) (int, string) {
@@ -286,7 +312,7 @@ func formatBurstStatus(enabled int, sleepMs int, jitterPct int) string {
 	return fmt.Sprintf("on (sleep=%dms, jitter=%d%%)", sleepMs, jitterPct)
 }
 
-func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string]any, userAgent string) ([]interface{}, error) {
+func buildDNSProfileParams(params []interface{}, generateConfig GenerateConfig, listenerMap map[string]any, userAgent string) ([]interface{}, error) {
 
 	domain, _ := listenerMap["domain"].(string)
 
@@ -343,7 +369,7 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 		burstJitter = 0
 	}
 
-	params := []interface{}{
+	params = append(params,
 		domain,
 		resolvers,
 		dohResolvers,
@@ -356,7 +382,7 @@ func buildDNSProfileParams(generateConfig GenerateConfig, listenerMap map[string
 		burstJitter,
 		dnsMode, // DNS mode (0=UDP, 1=DoH, 2=UDP->DoH, 3=DoH->UDP)
 		userAgent,
-	}
+	)
 
 	return params, nil
 }

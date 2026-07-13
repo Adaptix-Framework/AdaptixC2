@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"AdaptixServer/core/utils/logs"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 const (
@@ -17,6 +17,10 @@ const (
 	DefaultHookTimeout    = 30 * time.Second
 	DefaultPreHookTimeout = 5 * time.Second
 )
+
+type Teamserver interface {
+	TsLogAdd(status adaptix.LogStatus, level int, source string, format string, args ...any)
+}
 
 type HookFunc func(event any) error
 
@@ -36,6 +40,7 @@ type eventTask struct {
 }
 
 type EventManager struct {
+	ts    Teamserver
 	hooks map[EventType][]*Hook
 	mu    sync.RWMutex
 
@@ -45,8 +50,9 @@ type EventManager struct {
 	running    bool
 }
 
-func NewEventManager() *EventManager {
+func NewEventManager(ts Teamserver) *EventManager {
 	em := &EventManager{
+		ts:         ts,
 		hooks:      make(map[EventType][]*Hook),
 		taskQueue:  make(chan eventTask, DefaultQueueSize),
 		shutdownCh: make(chan struct{}),
@@ -97,13 +103,17 @@ func (em *EventManager) executeHookWithTimeout(hook *Hook, event any, defaultTim
 			}
 		}()
 		done <- hook.Handler(event)
+		select {
+		case done <- hook.Handler(event):
+		case <-ctx.Done():
+		}
 	}()
 
 	select {
 	case err := <-done:
 		return err
 	case <-ctx.Done():
-		logs.Warn("", fmt.Sprintf("Hook %s timed out after %v", hook.Name, timeout))
+		em.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "Hook %s timed out after %v", hook.Name, timeout)
 		return fmt.Errorf("hook %s timed out", hook.Name)
 	}
 }
@@ -118,7 +128,6 @@ func (em *EventManager) Shutdown() {
 	em.mu.Unlock()
 
 	close(em.shutdownCh)
-	close(em.taskQueue)
 	em.workerWg.Wait()
 }
 
@@ -225,7 +234,7 @@ func (em *EventManager) Emit(eventType EventType, phase HookPhase, event any) bo
 					return false
 				}
 			}
-			logs.Warn("", fmt.Sprintf("Hook %s error: %v", hook.Name, err))
+			em.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "Hook %s error: %v", hook.Name, err)
 		}
 
 		if baseEvent != nil && baseEvent.Cancelled {
@@ -265,7 +274,7 @@ func (em *EventManager) EmitAsync(eventType EventType, event any) {
 			hook:      hook,
 		}:
 		default:
-			logs.Warn("", fmt.Sprintf("Event queue full, dropping hook %s for event %s", hook.Name, eventType))
+			em.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "Event queue full, dropping hook %s for event %s", hook.Name, eventType)
 		}
 	}
 }
@@ -310,13 +319,19 @@ func getBaseEvent(event any) *BaseEvent {
 		return &e.BaseEvent
 	case *EventDataAgentCheckin:
 		return &e.BaseEvent
+	case *EventDataAgentActivate:
+		return &e.BaseEvent
 	case *EventDataAgentTerminate:
+		return &e.BaseEvent
+	case *EventDataAgentRemove:
 		return &e.BaseEvent
 	case *EventDataAgentUpdate:
 		return &e.BaseEvent
 	case *EventDataTaskCreate:
 		return &e.BaseEvent
 	case *EventDataTaskStart:
+		return &e.BaseEvent
+	case *EventDataTaskUpdateJob:
 		return &e.BaseEvent
 	case *EventDataTaskComplete:
 		return &e.BaseEvent
@@ -328,7 +343,17 @@ func getBaseEvent(event any) *BaseEvent {
 		return &e.BaseEvent
 	case *EventDataDownloadFinish:
 		return &e.BaseEvent
+	case *EventDataDownloadRemove:
+		return &e.BaseEvent
+	case *EventDataUploadStart:
+		return &e.BaseEvent
+	case *EventDataUploadFinish:
+		return &e.BaseEvent
+	case *EventDataUploadRemove:
+		return &e.BaseEvent
 	case *EventDataScreenshotAdd:
+		return &e.BaseEvent
+	case *EventDataScreenshotRemove:
 		return &e.BaseEvent
 	case *EventDataTunnelStart:
 		return &e.BaseEvent
@@ -339,6 +364,8 @@ func getBaseEvent(event any) *BaseEvent {
 	case *EventDataClientDisconnect:
 		return &e.BaseEvent
 	case *EventDataTargetAdd:
+		return &e.BaseEvent
+	case *EventDataTargetEdit:
 		return &e.BaseEvent
 	case *EventDataTargetRemove:
 		return &e.BaseEvent

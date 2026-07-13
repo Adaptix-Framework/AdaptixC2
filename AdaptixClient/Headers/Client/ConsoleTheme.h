@@ -43,6 +43,8 @@ struct ConsoleThemeData
     QColor statusSuccess = QColor("#FFFF00");
     QColor statusError   = QColor("#E32227");
     QColor statusInfo    = QColor("#89CFF0");
+    QColor statusDebug   = QColor("#7AC0C0");
+    QColor statusWarn    = QColor("#E6B450");
 
     ConsoleStyleEntry operatorStyle;
     ConsoleStyleEntry task;
@@ -81,10 +83,12 @@ public:
     QStringList availableThemes() const;
     void loadTheme(const QString& name);
     bool importTheme(const QString& filePath);
+    bool deleteTheme(const QString& name);
 
     const ConsoleThemeData& theme() const { return m_theme; }
     QString currentThemeName() const { return m_themeName; }
 
+    static ConsoleThemeData buildFromQlementine(const QString& themeName = QString(), const QString& bgImagePath = QString(), int bgDimming = 80);
     static QString userThemeDir();
 
 Q_SIGNALS:

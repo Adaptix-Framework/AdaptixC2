@@ -12,91 +12,107 @@ DialogTarget::~DialogTarget() = default;
 
 void DialogTarget::createUI()
 {
-    this->resize(500, 250);
-    this->setWindowTitle( "Add target" );
+    this->resize(500, 350);
+    this->setWindowTitle("Create Target");
     this->setProperty("Main", "base");
 
-    computerLabel = new QLabel("Computer:", this);
-    computerInput = new QLineEdit(this);
+    hostGroup = new QGroupBox("Host", this);
+    hostGrid = new QGridLayout(hostGroup);
+    hostGrid->setContentsMargins(12, 12, 12, 12);
+    hostGrid->setSpacing(8);
 
-    domainLabel = new QLabel("Domain:", this);
-    domainInput = new QLineEdit(this);
+    auto* computerLabel = new QLabel("Computer", hostGroup);
+    computerInput = new QLineEdit(hostGroup);
+    computerInput->setPlaceholderText("DC01");
 
-    addressLabel = new QLabel("Address:", this);
-    addressInput = new QLineEdit(this);
+    auto* domainLabel = new QLabel("Domain", hostGroup);
+    domainInput = new QLineEdit(hostGroup);
+    domainInput->setPlaceholderText("CORP.LOCAL");
 
-    aliveCheck = new QCheckBox("alive", this);
+    auto* addressLabel = new QLabel("Address", hostGroup);
+    addressInput = new QLineEdit(hostGroup);
+    addressInput->setPlaceholderText("10.0.0.1");
 
-    osLabel = new QLabel("OS type:", this);
-    osCombo = new QComboBox(this);
+    auto* aliveLabel = new QLabel("Alive", hostGroup);
+    aliveSwitch = new oclero::qlementine::Switch(hostGroup);
+
+    hostGrid->addWidget(computerLabel, 0, 0);
+    hostGrid->addWidget(computerInput, 0, 1);
+    hostGrid->addWidget(domainLabel,   1, 0);
+    hostGrid->addWidget(domainInput,   1, 1);
+    hostGrid->addWidget(addressLabel,  2, 0);
+    hostGrid->addWidget(addressInput,  2, 1);
+    hostGrid->addWidget(aliveLabel,    3, 0);
+    hostGrid->addWidget(aliveSwitch,   3, 1);
+
+    systemGroup = new QGroupBox("System", this);
+    systemGrid = new QGridLayout(systemGroup);
+    systemGrid->setContentsMargins(12, 12, 12, 12);
+    systemGrid->setSpacing(8);
+
+    auto* osLabel = new QLabel("OS Type", systemGroup);
+    osCombo = new QComboBox(systemGroup);
     osCombo->addItems(QStringList() << "unknown" << "windows" << "linux" << "macos");
 
-    osDescLabel = new QLabel("OS description:", this);
-    osDescInput = new QLineEdit(this);
+    auto* osDescLabel = new QLabel("Description", systemGroup);
+    osDescInput = new QLineEdit(systemGroup);
+    osDescInput->setPlaceholderText("Windows Server 2022");
 
-    tagLabel  = new QLabel("Tag:", this);
-    tagInput  = new QLineEdit(this);
+    auto* tagLabel = new QLabel("Tag", systemGroup);
+    tagInput = new QLineEdit(systemGroup);
+    tagInput->setPlaceholderText("dc, fileserver...");
 
-    infoLabel  = new QLabel("Info:", this);
-    infoInput = new QLineEdit(this);
+    auto* infoLabel = new QLabel("Info", systemGroup);
+    infoInput = new QLineEdit(systemGroup);
+    infoInput->setPlaceholderText("Domain controller");
 
-    spacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-    spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
+    systemGrid->addWidget(osLabel,     0, 0);
+    systemGrid->addWidget(osCombo,     0, 1);
+    systemGrid->addWidget(osDescLabel, 1, 0);
+    systemGrid->addWidget(osDescInput, 1, 1);
+    systemGrid->addWidget(tagLabel,    2, 0);
+    systemGrid->addWidget(tagInput,    2, 1);
+    systemGrid->addWidget(infoLabel,   3, 0);
+    systemGrid->addWidget(infoInput,   3, 1);
 
-    createButton = new QPushButton("Save", this);
+    createButton = new QPushButton("Create Target", this);
     createButton->setDefault(true);
     cancelButton = new QPushButton("Cancel", this);
 
-    hLayoutBottom = new QHBoxLayout();
-    hLayoutBottom->addItem(spacer_1);
-    hLayoutBottom->addWidget(createButton);
-    hLayoutBottom->addWidget(cancelButton);
-    hLayoutBottom->addItem(spacer_2);
+    buttonLayout = new QHBoxLayout();
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(cancelButton);
+    buttonLayout->addWidget(createButton);
 
-    mainGridLayout = new QGridLayout(this);
-    mainGridLayout->setContentsMargins(4, 4,  4, 4 );
-    mainGridLayout->addWidget(computerLabel, 0, 0, 1, 1);
-    mainGridLayout->addWidget(computerInput, 0, 1, 1, 1);
-    mainGridLayout->addWidget(domainLabel,   1, 0, 1, 1);
-    mainGridLayout->addWidget(domainInput,   1, 1, 1, 1);
-    mainGridLayout->addWidget(addressLabel,  2, 0, 1, 1);
-    mainGridLayout->addWidget(addressInput,  2, 1, 1, 1);
-    mainGridLayout->addWidget(aliveCheck,    3, 1, 1, 1);
-    mainGridLayout->addWidget(osLabel,       4, 0, 1, 1);
-    mainGridLayout->addWidget(osCombo,       4, 1, 1, 1);
-    mainGridLayout->addWidget(osDescLabel,   5, 0, 1, 1);
-    mainGridLayout->addWidget(osDescInput,   5, 1, 1, 1);
-    mainGridLayout->addWidget(tagLabel,      6, 0, 1, 1);
-    mainGridLayout->addWidget(tagInput,      6, 1, 1, 1);
-    mainGridLayout->addWidget(infoLabel,     7, 0, 1, 1);
-    mainGridLayout->addWidget(infoInput,     7, 1, 1, 1);
-    mainGridLayout->addLayout(hLayoutBottom, 8, 0, 1, 2);
+    mainLayout = new QVBoxLayout(this);
+    mainLayout->addWidget(hostGroup);
+    mainLayout->addWidget(systemGroup);
+    mainLayout->addLayout(buttonLayout);
 
-    int buttonWidth  = createButton->width();
-    createButton->setFixedWidth(buttonWidth);
-    cancelButton->setFixedWidth(buttonWidth);
-
-    int buttonHeight = createButton->height();
-    createButton->setFixedHeight(buttonHeight);
-    cancelButton->setFixedHeight(buttonHeight);
+    this->setLayout(mainLayout);
 }
 
 void DialogTarget::StartDialog()
 {
-    this->valid   = false;
+    this->valid = false;
     this->message = "";
+    this->editMode = false;
+    this->setWindowTitle("Create Target");
+    createButton->setText("Create Target");
     this->exec();
 }
 
 void DialogTarget::SetEditmode(const TargetData &targetData)
 {
-    this->setWindowTitle( "Edit target" );
+    this->editMode = true;
+    this->setWindowTitle("Edit Target");
+    createButton->setText("Update Target");
     this->targetId = targetData.TargetId;
 
     computerInput->setText(targetData.Computer);
     domainInput->setText(targetData.Domain);
     addressInput->setText(targetData.Address);
-    aliveCheck->setChecked(targetData.Alive);
+    aliveSwitch->setChecked(targetData.Alive);
     osCombo->setCurrentIndex(targetData.Os);
     osDescInput->setText(targetData.OsDesc);
     tagInput->setText(targetData.Tag);
@@ -104,9 +120,7 @@ void DialogTarget::SetEditmode(const TargetData &targetData)
 }
 
 bool DialogTarget::IsValid() const { return this->valid; }
-
 QString DialogTarget::GetMessage() const { return this->message; }
-
 TargetData DialogTarget::GetTargetData() const { return this->data; }
 
 void DialogTarget::onButtonCreate()
@@ -116,11 +130,17 @@ void DialogTarget::onButtonCreate()
     data.Computer = computerInput->text();
     data.Domain   = domainInput->text();
     data.Address  = addressInput->text();
-    data.Alive    = aliveCheck->isChecked();
+    data.Alive    = aliveSwitch->isChecked();
     data.Os       = osCombo->currentIndex();
     data.OsDesc   = osDescInput->text();
     data.Tag      = tagInput->text();
     data.Info     = infoInput->text();
+
+    if (data.Computer.isEmpty() && data.Address.isEmpty()) {
+        this->valid = false;
+        this->message = "Computer or Address must be set";
+        return;
+    }
 
     this->valid = true;
     this->close();

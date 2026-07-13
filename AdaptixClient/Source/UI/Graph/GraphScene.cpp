@@ -3,7 +3,7 @@
 #include <UI/Graph/GraphScene.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <UI/Widgets/TasksWidget.h>
+#include <UI/Widgets/TasksFeedWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
@@ -50,35 +50,11 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
                 graphics_items.append(gi);
         }
         if( graphics_items.empty() ) {
-            auto* sessionsGraph = qobject_cast<SessionsGraph*>(parent());
-            if (!sessionsGraph)
-                return QGraphicsScene::contextMenuEvent( event );
-
-            oclero::qlementine::Menu layoutMenu("Layout");
-            auto* actionLeftToRight = layoutMenu.addAction("Left to Right");
-            auto* actionTopToBottom = layoutMenu.addAction("Top to Bottom");
-
-            actionLeftToRight->setCheckable(true);
-            actionTopToBottom->setCheckable(true);
-            actionLeftToRight->setChecked(sessionsGraph->GetLayoutDirection() == LayoutLeftToRight);
-            actionTopToBottom->setChecked(sessionsGraph->GetLayoutDirection() == LayoutTopToBottom);
-
-            connect(actionLeftToRight, &QAction::triggered, sessionsGraph, [sessionsGraph]() {
-                sessionsGraph->SetLayoutDirection(LayoutLeftToRight);
-            }, Qt::QueuedConnection);
-            connect(actionTopToBottom, &QAction::triggered, sessionsGraph, [sessionsGraph]() {
-                sessionsGraph->SetLayoutDirection(LayoutTopToBottom);
-            }, Qt::QueuedConnection);
-
-            oclero::qlementine::Menu ctxMenu;
-            ctxMenu.addMenu(&layoutMenu);
-            ctxMenu.exec(event->screenPos());
-            event->accept();
-            return;
+            return QGraphicsScene::contextMenuEvent( event );
         }
     }
 
-    QStringList agentIds;
+    QList<qint64> agentIds;
     for ( const auto& _graphics_item : graphics_items ) {
         const auto item = dynamic_cast<GraphItem*>( _graphics_item );
         if ( item && item->agent )
@@ -103,7 +79,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
         }
     });
     agentMenu->addAction("Task manager", this, [adaptixWidget, agentIds]() {
-        for (const QString& agentId : agentIds) {
+        for (qint64 agentId : agentIds) {
             adaptixWidget->TasksDock->SetAgentFilter(agentId);
             adaptixWidget->SetTasksUI();
         }
@@ -172,13 +148,16 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     });
     if (agentIds.size() == 1) {
         sessionMenu->addAction("Set data", this, [adaptixWidget, agentIds]() {
-            QString agentId = agentIds.first();
+            qint64 agentId = agentIds.first();
             if (!adaptixWidget->AgentsMap.contains(agentId))
                 return;
 
-            Agent* agent = adaptixWidget->AgentsMap[agentId];
+            Agent* agent = adaptixWidget->AgentsMap.value(agentId, nullptr);
+            if (!agent)
+                return;
 
-            auto* dialog = new DialogAgentData();
+            auto* dialog = new DialogAgentData(adaptixWidget);
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
             dialog->SetProfile(*(adaptixWidget->GetProfile()));
             dialog->SetAgentData(agent->data);
             dialog->Start();
@@ -186,7 +165,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     }
 
     ctxMenu.addAction("Console", this, [adaptixWidget, agentIds]() {
-        for (const QString& agentId : agentIds) {
+        for (qint64 agentId : agentIds) {
             adaptixWidget->LoadConsoleUI(agentId);
         }
     });
@@ -225,7 +204,7 @@ void GraphScene::keyPressEvent(QKeyEvent *event)
             return;
         }
 
-        QStringList agentIds;
+        QList<qint64> agentIds;
         for (const auto& gi : selectedItems()) {
             const auto item = dynamic_cast<GraphItem*>(gi);
             if (item && item->agent)
@@ -238,22 +217,22 @@ void GraphScene::keyPressEvent(QKeyEvent *event)
 
         switch (event->key()) {
             case Qt::Key_P:
-                for (const QString& id : agentIds)
+                for (qint64 id : agentIds)
                     adaptixWidget->LoadProcessBrowserUI(id);
                 event->accept();
                 return;
             case Qt::Key_L:
-                for (const QString& id : agentIds)
+                for (qint64 id : agentIds)
                     adaptixWidget->LoadFileBrowserUI(id);
                 event->accept();
                 return;
             case Qt::Key_T:
-                for (const QString& id : agentIds)
+                for (qint64 id : agentIds)
                     adaptixWidget->LoadTerminalUI(id);
                 event->accept();
                 return;
             case Qt::Key_I:
-                for (const QString& id : agentIds)
+                for (qint64 id : agentIds)
                     adaptixWidget->LoadConsoleUI(id);
                 event->accept();
                 return;

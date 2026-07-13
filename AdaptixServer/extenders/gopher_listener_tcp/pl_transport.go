@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/vmihailenco/msgpack/v5"
 )
 
@@ -29,8 +30,8 @@ type Listener struct {
 }
 
 type TransportTCP struct {
-	AgentConnects Map
-	JobConnects   Map
+	AgentConnects Map[int64, Connection]
+	JobConnects   Map[string, Connection]
 	Listener      net.Listener
 	Config        TransportConfig
 	Name          string
@@ -65,11 +66,12 @@ type Connection struct {
 
 const (
 	INIT_PACK     = 1
-	EXFIL_PACK    = 2
-	JOB_PACK      = 3
-	TUNNEL_PACK   = 4
-	TERMINAL_PACK = 5
-	BOF_PACK      = 6
+	RESUME_PACK   = 2
+	EXFIL_PACK    = 3
+	JOB_PACK      = 4
+	TUNNEL_PACK   = 5
+	TERMINAL_PACK = 6
+	BOF_PACK      = 7
 )
 
 type StartMsg struct {
@@ -78,25 +80,28 @@ type StartMsg struct {
 }
 
 type InitPack struct {
-	Id   uint   `msgpack:"id"`
 	Type uint   `msgpack:"type"`
 	Data []byte `msgpack:"data"`
 }
 
+type ResumePack struct {
+	Id int64 `msgpack:"id"`
+}
+
 type ExfilPack struct {
-	Id   uint   `msgpack:"id"`
+	Id   int64  `msgpack:"id"`
 	Type uint   `msgpack:"type"`
 	Task string `msgpack:"task"`
 }
 
 type JobPack struct {
-	Id   uint   `msgpack:"id"`
+	Id   int64  `msgpack:"id"`
 	Type uint   `msgpack:"type"`
 	Task string `msgpack:"task"`
 }
 
 type TunnelPack struct {
-	Id        uint   `msgpack:"id"`
+	Id        int64  `msgpack:"id"`
 	Type      uint   `msgpack:"type"`
 	ChannelId int    `msgpack:"channel_id"`
 	Key       []byte `msgpack:"key"`
@@ -106,7 +111,7 @@ type TunnelPack struct {
 }
 
 type TermPack struct {
-	Id     uint   `msgpack:"id"`
+	Id     int64  `msgpack:"id"`
 	TermId int    `msgpack:"term_id"`
 	Key    []byte `msgpack:"key"`
 	Iv     []byte `msgpack:"iv"`
@@ -175,12 +180,12 @@ func validConfig(config string) error {
 	return nil
 }
 
-func (t *TransportTCP) Start(ts Teamserver) error {
+func (t *TransportTCP) Start(ts adaptix.Teamserver) error {
 	var err error = nil
 	address := fmt.Sprintf("%s:%d", t.Config.HostBind, t.Config.PortBind)
 
 	if t.Config.Ssl {
-		fmt.Printf("  Started mTLS listener '%s': %s\n", t.Name, address)
+		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, "Started mTLS listener '%s': %s", t.Name, address)
 		cert, err := tls.X509KeyPair(t.Config.ServerCert, t.Config.ServerKey)
 		if err != nil {
 			return err
@@ -200,7 +205,7 @@ func (t *TransportTCP) Start(ts Teamserver) error {
 		}
 
 	} else {
-		fmt.Printf("  Started TCP listener '%s': %s\n", t.Name, address)
+		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, "Started TCP listener '%s': %s", t.Name, address)
 		t.Listener, err = net.Listen("tcp", address)
 		if err != nil {
 			return err
@@ -222,7 +227,7 @@ func (t *TransportTCP) Start(ts Teamserver) error {
 	return err
 }
 
-func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
+func (t *TransportTCP) handleConnection(conn net.Conn, ts adaptix.Teamserver) {
 	var (
 		sendData []byte
 		recvData []byte
@@ -261,26 +266,37 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 		goto ERR
 	}
 
-	switch initMsg.Type {
+	if initMsg.Type == INIT_PACK || initMsg.Type == RESUME_PACK {
 
-	case INIT_PACK:
-
-		var initPack InitPack
-		err := msgpack.Unmarshal(initMsg.Data, &initPack)
-		if err != nil {
-			goto ERR
-		}
-
-		agentId := fmt.Sprintf("%08x", initPack.Id)
-		agentType := fmt.Sprintf("%08x", initPack.Type)
-		ExternalIP := strings.Split(conn.RemoteAddr().String(), ":")[0]
-
-		if !Ts.TsAgentIsExists(agentId) {
-			_, err = Ts.TsAgentCreate(agentType, agentId, initPack.Data, t.Name, ExternalIP, false)
+		var agentId int64
+		if initMsg.Type == INIT_PACK {
+			var initPack InitPack
+			err := msgpack.Unmarshal(initMsg.Data, &initPack)
 			if err != nil {
 				goto ERR
 			}
+
+			agentType := fmt.Sprintf("%08x", initPack.Type)
+			ExternalIP := ""
+			if host, _, err := net.SplitHostPort(conn.RemoteAddr().String()); err == nil {
+				ExternalIP = host
+			}
+
+			agentData, errCreate := Ts.TsAgentCreate(agentType, nil, initPack.Data, t.Name, ExternalIP, false)
+			if errCreate != nil {
+				err = errCreate
+				goto ERR
+			}
+			agentId = agentData.Id
+
 		} else {
+			var resumePack ResumePack
+			err := msgpack.Unmarshal(initMsg.Data, &resumePack)
+			if err != nil {
+				goto ERR
+			}
+			agentId = resumePack.Id
+
 			_ = Ts.TsAgentUpdateDataPartial(agentId, struct {
 				Mark     *string `json:"mark"`
 				Listener *string `json:"listener"`
@@ -321,207 +337,209 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts Teamserver) {
 		}{Mark: new("Disconnect")})
 		t.AgentConnects.Delete(agentId)
 		_ = conn.Close()
+	} else {
 
-	case EXFIL_PACK:
+		switch initMsg.Type {
 
-		var exfilPack ExfilPack
-		err := msgpack.Unmarshal(initMsg.Data, &exfilPack)
-		if err != nil {
-			goto ERR
-		}
+		case EXFIL_PACK:
 
-		agentId := fmt.Sprintf("%08x", exfilPack.Id)
-
-		if !Ts.TsTaskRunningExists(agentId, exfilPack.Task) {
-			goto ERR
-		}
-
-		jcId := agentId + "-" + exfilPack.Task
-
-		t.JobConnects.Put(jcId, connection)
-
-		for {
-			recvData, err = recvMsg(conn)
+			var exfilPack ExfilPack
+			err := msgpack.Unmarshal(initMsg.Data, &exfilPack)
 			if err != nil {
-				break
+				goto ERR
 			}
-			_ = Ts.TsAgentProcessData(agentId, recvData)
-		}
+			agentId := exfilPack.Id
 
-		t.JobConnects.Delete(jcId)
-		_ = conn.Close()
-
-	case JOB_PACK, BOF_PACK:
-
-		var jobPack JobPack
-		err := msgpack.Unmarshal(initMsg.Data, &jobPack)
-		if err != nil {
-			goto ERR
-		}
-
-		agentId := fmt.Sprintf("%08x", jobPack.Id)
-
-		if !Ts.TsTaskRunningExists(agentId, jobPack.Task) {
-			goto ERR
-		}
-
-		jcId := agentId + "-" + jobPack.Task
-
-		t.JobConnects.Put(jcId, connection)
-
-		for {
-			recvData, err = recvMsg(conn)
-			if err != nil {
-				break
+			exfilTaskId, _ := strconv.ParseInt(exfilPack.Task, 16, 64)
+			if !Ts.TsTaskRunningExists(agentId, exfilTaskId) {
+				goto ERR
 			}
-			_ = Ts.TsAgentProcessData(agentId, recvData)
-		}
 
-		t.JobConnects.Delete(jcId)
-		_ = conn.Close()
+			jcId := fmt.Sprintf("%d-%s", agentId, exfilPack.Task)
 
-	case TUNNEL_PACK:
+			t.JobConnects.Put(jcId, connection)
 
-		var tunPack TunnelPack
-		err := msgpack.Unmarshal(initMsg.Data, &tunPack)
-		if err != nil {
-			goto ERR
-		}
-
-		agentId := fmt.Sprintf("%08x", tunPack.Id)
-
-		if !Ts.TsTunnelChannelExists(tunPack.ChannelId) {
-			goto ERR
-		}
-
-		if !tunPack.Alive {
-			if tunPack.Reason < 1 || tunPack.Reason > 8 {
-				tunPack.Reason = 5
-			}
-			ts.TsTunnelConnectionHalt(tunPack.ChannelId, tunPack.Reason)
-			_ = conn.Close()
-			return
-		}
-
-		ts.TsTunnelConnectionResume(agentId, tunPack.ChannelId, true)
-
-		pr, pw, err := Ts.TsTunnelGetPipe(agentId, tunPack.ChannelId)
-		if err != nil {
-			goto ERR
-		}
-
-		blockEnc, _ := aes.NewCipher(tunPack.Key)
-		encStream := cipher.NewCTR(blockEnc, tunPack.Iv)
-		encWriter := &cipher.StreamWriter{S: encStream, W: conn}
-
-		decCipher, _ := aes.NewCipher(tunPack.Key)
-		decStream := cipher.NewCTR(decCipher, tunPack.Iv)
-		decReader := &cipher.StreamReader{S: decStream, R: conn}
-
-		_ = pw.Close()
-
-		var closeOnce sync.Once
-		closeAll := func() {
-			closeOnce.Do(func() {
-				_ = conn.Close()
-				_ = pr.Close()
-			})
-		}
-
-		var wg sync.WaitGroup
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			_, _ = io.Copy(encWriter, pr)
-			closeAll()
-		}()
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			buf := make([]byte, 0x8000)
 			for {
-				n, err := decReader.Read(buf)
-				if n > 0 {
-					data := make([]byte, n)
-					copy(data, buf[:n])
-					ts.TsTunnelConnectionData(tunPack.ChannelId, data)
-				}
+				recvData, err = recvMsg(conn)
 				if err != nil {
 					break
 				}
+				_ = Ts.TsAgentProcessData(agentId, recvData)
 			}
-			closeAll()
-		}()
 
-		wg.Wait()
-
-		ts.TsTunnelConnectionClose(tunPack.ChannelId, false)
-
-	case TERMINAL_PACK:
-
-		var termPack TermPack
-		err := msgpack.Unmarshal(initMsg.Data, &termPack)
-		if err != nil {
-			goto ERR
-		}
-
-		agentId := fmt.Sprintf("%08x", termPack.Id)
-		terminalId := fmt.Sprintf("%08x", termPack.TermId)
-
-		if !Ts.TsTerminalConnExists(terminalId) {
-			goto ERR
-		}
-
-		if !termPack.Alive {
-			_ = ts.TsAgentTerminalCloseChannel(terminalId, termPack.Status)
+			t.JobConnects.Delete(jcId)
 			_ = conn.Close()
-			return
-		}
 
-		ts.TsTerminalConnResume(agentId, terminalId, true)
+		case JOB_PACK, BOF_PACK:
 
-		pr, pw, err := Ts.TsTerminalGetPipe(agentId, terminalId)
-		if err != nil {
-			goto ERR
-		}
+			var jobPack JobPack
+			err := msgpack.Unmarshal(initMsg.Data, &jobPack)
+			if err != nil {
+				goto ERR
+			}
+			agentId := jobPack.Id
 
-		blockEnc, _ := aes.NewCipher(termPack.Key)
-		encStream := cipher.NewCTR(blockEnc, termPack.Iv)
-		encWriter := &cipher.StreamWriter{S: encStream, W: conn}
+			jobTaskId, _ := strconv.ParseInt(jobPack.Task, 16, 64)
+			if !Ts.TsTaskRunningExists(agentId, jobTaskId) {
+				goto ERR
+			}
 
-		blockDec, _ := aes.NewCipher(termPack.Key)
-		decStream := cipher.NewCTR(blockDec, termPack.Iv)
-		decWriter := &cipher.StreamWriter{S: decStream, W: pw}
+			jcId := fmt.Sprintf("%d-%s", agentId, jobPack.Task)
 
-		var closeOnce sync.Once
-		closeAll := func() {
-			closeOnce.Do(func() {
+			t.JobConnects.Put(jcId, connection)
+
+			for {
+				recvData, err = recvMsg(conn)
+				if err != nil {
+					break
+				}
+				_ = Ts.TsAgentProcessData(agentId, recvData)
+			}
+
+			t.JobConnects.Delete(jcId)
+			_ = conn.Close()
+
+		case TUNNEL_PACK:
+
+			var tunPack TunnelPack
+			err := msgpack.Unmarshal(initMsg.Data, &tunPack)
+			if err != nil {
+				goto ERR
+			}
+			agentId := tunPack.Id
+
+			if !Ts.TsTunnelChannelExists(int64(uint32(tunPack.ChannelId))) {
+				goto ERR
+			}
+
+			if !tunPack.Alive {
+				if tunPack.Reason < 1 || tunPack.Reason > 8 {
+					tunPack.Reason = 5
+				}
+				ts.TsTunnelConnectionHalt(int64(uint32(tunPack.ChannelId)), tunPack.Reason)
 				_ = conn.Close()
-				_ = pr.Close()
-			})
+				return
+			}
+
+			ts.TsTunnelConnectionResume(agentId, int64(uint32(tunPack.ChannelId)), true)
+
+			pr, pw, err := Ts.TsTunnelGetPipe(agentId, int64(uint32(tunPack.ChannelId)))
+			if err != nil {
+				goto ERR
+			}
+
+			blockEnc, _ := aes.NewCipher(tunPack.Key)
+			encStream := cipher.NewCTR(blockEnc, tunPack.Iv)
+			encWriter := &cipher.StreamWriter{S: encStream, W: conn}
+
+			decCipher, _ := aes.NewCipher(tunPack.Key)
+			decStream := cipher.NewCTR(decCipher, tunPack.Iv)
+			decReader := &cipher.StreamReader{S: decStream, R: conn}
+
+			_ = pw.Close()
+
+			var closeOnce sync.Once
+			closeAll := func() {
+				closeOnce.Do(func() {
+					_ = conn.Close()
+					_ = pr.Close()
+				})
+			}
+
+			var wg sync.WaitGroup
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, _ = io.Copy(encWriter, pr)
+				closeAll()
+			}()
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				buf := make([]byte, 0x8000)
+				for {
+					n, err := decReader.Read(buf)
+					if n > 0 {
+						data := make([]byte, n)
+						copy(data, buf[:n])
+						ts.TsTunnelConnectionData(int64(uint32(tunPack.ChannelId)), data)
+					}
+					if err != nil {
+						break
+					}
+				}
+				closeAll()
+			}()
+
+			wg.Wait()
+
+			ts.TsTunnelConnectionClose(int64(uint32(tunPack.ChannelId)), false)
+
+		case TERMINAL_PACK:
+
+			var termPack TermPack
+			err := msgpack.Unmarshal(initMsg.Data, &termPack)
+			if err != nil {
+				goto ERR
+			}
+			agentId := termPack.Id
+			terminalId := int64(uint32(termPack.TermId))
+
+			if !Ts.TsTerminalConnExists(terminalId) {
+				goto ERR
+			}
+
+			if !termPack.Alive {
+				_ = ts.TsAgentTerminalCloseChannel(terminalId, termPack.Status)
+				_ = conn.Close()
+				return
+			}
+
+			ts.TsTerminalConnResume(agentId, terminalId, true)
+
+			pr, pw, err := Ts.TsTerminalGetPipe(agentId, terminalId)
+			if err != nil {
+				goto ERR
+			}
+
+			blockEnc, _ := aes.NewCipher(termPack.Key)
+			encStream := cipher.NewCTR(blockEnc, termPack.Iv)
+			encWriter := &cipher.StreamWriter{S: encStream, W: conn}
+
+			blockDec, _ := aes.NewCipher(termPack.Key)
+			decStream := cipher.NewCTR(blockDec, termPack.Iv)
+			decWriter := &cipher.StreamWriter{S: decStream, W: pw}
+
+			var closeOnce sync.Once
+			closeAll := func() {
+				closeOnce.Do(func() {
+					_ = conn.Close()
+					_ = pr.Close()
+				})
+			}
+
+			var wg sync.WaitGroup
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, _ = io.Copy(encWriter, pr)
+				closeAll()
+			}()
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				_, _ = io.Copy(decWriter, conn)
+				closeAll()
+			}()
+
+			wg.Wait()
+
+			_ = ts.TsAgentTerminalCloseChannel(terminalId, "killed")
 		}
-
-		var wg sync.WaitGroup
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			_, _ = io.Copy(encWriter, pr)
-			closeAll()
-		}()
-
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			_, _ = io.Copy(decWriter, conn)
-			closeAll()
-		}()
-
-		wg.Wait()
-
-		_ = ts.TsAgentTerminalCloseChannel(terminalId, "killed")
 	}
 
 	return
@@ -541,8 +559,7 @@ func (t *TransportTCP) Stop() error {
 		_ = t.Listener.Close()
 	}
 
-	t.AgentConnects.ForEach(func(key string, valueConn interface{}) bool {
-		connection, _ := valueConn.(Connection)
+	t.AgentConnects.ForEach(func(key int64, connection Connection) bool {
 		if connection.conn != nil {
 			connection.handleCancel()
 			_ = connection.conn.Close()

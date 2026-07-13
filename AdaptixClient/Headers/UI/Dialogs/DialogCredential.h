@@ -5,31 +5,29 @@
 
 class DialogCredential : public QDialog
 {
-    QGridLayout* mainGridLayout = nullptr;
-    QLabel*      usernameLabel  = nullptr;
-    QLineEdit*   usernameInput  = nullptr;
-    QLabel*      passwordLabel  = nullptr;
-    QLineEdit*   passwordInput  = nullptr;
-    QLabel*      realmLabel     = nullptr;
-    QLineEdit*   realmInput     = nullptr;
-    QLabel*      typeLabel      = nullptr;
-    QComboBox*   typeCombo      = nullptr;
-    QLabel*      tagLabel       = nullptr;
-    QLineEdit*   tagInput       = nullptr;
-    QLabel*      storageLabel   = nullptr;
-    QComboBox*   storageCombo   = nullptr;
-    QLabel*      hostLabel      = nullptr;
-    QLineEdit*   hostInput      = nullptr;
-    QHBoxLayout* hLayoutBottom  = nullptr;
-    QSpacerItem* spacer_1       = nullptr;
-    QSpacerItem* spacer_2       = nullptr;
+    QVBoxLayout* mainLayout     = nullptr;
+    QGroupBox*   credGroup      = nullptr;
+    QGridLayout* credGrid       = nullptr;
+    QGroupBox*   sourceGroup    = nullptr;
+    QGridLayout* sourceGrid     = nullptr;
+    QHBoxLayout* buttonLayout   = nullptr;
     QPushButton* createButton   = nullptr;
     QPushButton* cancelButton   = nullptr;
 
+    QLineEdit*   usernameInput  = nullptr;
+    QLineEdit*   passwordInput  = nullptr;
+    QLineEdit*   realmInput     = nullptr;
+    QComboBox*   typeCombo      = nullptr;
+    QComboBox*   storageCombo   = nullptr;
+    QLineEdit*   hostInput      = nullptr;
+    QLineEdit*   tagInput       = nullptr;
+
     bool       valid    = false;
     QString    message  = "";
-    QString    credsId  = "";
+    qint64     credsId  = 0;
     CredentialData data = {};
+
+    bool editMode = false;
 
     void createUI();
 

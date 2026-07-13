@@ -12,13 +12,16 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	mrand "math/rand/v2"
 	"net"
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/miekg/dns"
 )
 
@@ -29,12 +32,12 @@ type Listener struct {
 type TransportDNS struct {
 	Config TransportConfig
 	Name   string
-	Active bool
 
 	udpServer *dns.Server
 	tcpServer *dns.Server
 
-	rng *mrand.Rand
+	mu     sync.Mutex
+	active bool
 }
 
 type TransportConfig struct { // DNSConfig
@@ -49,6 +52,22 @@ type TransportConfig struct { // DNSConfig
 	BurstEnabled bool     `json:"burst_enabled"`
 	BurstSleep   int      `json:"burst_sleep"`
 	BurstJitter  int      `json:"burst_jitter"`
+}
+
+func sidToAgentId(sid string) int64 {
+	sid = strings.ToLower(strings.TrimSpace(sid))
+	if len(sid) != 8 {
+		return 0
+	}
+	uid, err := hex.DecodeString(sid)
+	if err != nil || len(uid) != 4 {
+		return 0
+	}
+	id, ok := Ts.TsAgentIdByUID(uid)
+	if !ok {
+		return 0
+	}
+	return id
 }
 
 func validConfig(config string) error {
@@ -69,50 +88,61 @@ func validConfig(config string) error {
 	}
 
 	keyLen := len(conf.EncryptKey)
-	if keyLen < 6 || keyLen > 32 {
-		return errors.New("encrypt_key must be 6-32 characters")
+	if keyLen != 32 {
+		return errors.New("encrypt_key must be exactly 32 hex characters (16 bytes)")
 	}
 
 	return nil
 }
 
-func (t *TransportDNS) Start(ts Teamserver) error {
+func (t *TransportDNS) setActive(v bool) {
+	t.mu.Lock()
+	t.active = v
+	t.mu.Unlock()
+}
+
+func (t *TransportDNS) IsActive() bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.active
+}
+
+func (t *TransportDNS) Start(ts adaptix.Teamserver) error {
 	addr := net.JoinHostPort(t.Config.HostBind, strconv.Itoa(t.Config.PortBind))
 	mux := dns.NewServeMux()
 	mux.HandleFunc(".", t.handleDNS)
 
 	t.udpServer = &dns.Server{Addr: addr, Net: "udp", Handler: mux}
 	t.tcpServer = &dns.Server{Addr: addr, Net: "tcp", Handler: mux}
-	t.Active = true
+	t.setActive(true)
 
-	var start_error error = nil
+	var startErr error
+	var errOnce sync.Once
 
 	go func() {
 		err := t.udpServer.ListenAndServe()
 		if err != nil {
-			start_error = err
-			t.Active = false
-			fmt.Printf("[BeaconDNS] UDP listener error: %v\n", err)
+			errOnce.Do(func() { startErr = err })
+			t.setActive(false)
+			Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "UDP listener error: %v", err)
 		}
 	}()
 
 	go func() {
 		err := t.tcpServer.ListenAndServe()
 		if err != nil {
-			start_error = err
-			t.Active = false
-			fmt.Printf("[BeaconDNS] TCP listener error: %v\n", err)
+			errOnce.Do(func() { startErr = err })
+			t.setActive(false)
+			Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "TCP listener error: %v", err)
 		}
 	}()
 
 	time.Sleep(500 * time.Millisecond)
-
-	return start_error
+	return startErr
 }
 
 func (t *TransportDNS) Stop() error {
-	t.Active = false
-
+	t.setActive(false)
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
@@ -141,7 +171,7 @@ func (t *TransportDNS) handleDNS(w dns.ResponseWriter, r *dns.Msg) {
 	if baseTTL == 0 {
 		baseTTL = 10
 	}
-	ttl := baseTTL + uint32(t.rng.IntN(60))
+	ttl := baseTTL + uint32(mrand.IntN(60))
 
 	for _, q := range r.Question {
 		req := t.parseRequest(q)
@@ -268,109 +298,57 @@ func (t *TransportDNS) handleHI(req *dnsRequest, w dns.ResponseWriter) {
 		return
 	}
 
-	agentType := fmt.Sprintf("%08x", binary.BigEndian.Uint32(fullBeat[:4]))
-	agentId := fmt.Sprintf("%08x", binary.BigEndian.Uint32(fullBeat[4:8]))
-	beat := fullBeat[8:]
+	beat := fullBeat
+	if decompressed, ok := decompressZlibData(fullBeat); ok {
+		beat = decompressed
+	}
 
-	if !Ts.TsAgentIsExists(agentId) {
-		externalIP := "" // extractExternalIP(w.RemoteAddr())
-		_, _ = Ts.TsAgentCreate(agentType, agentId, beat, t.Name, externalIP, true)
+	if len(beat) < 8 {
+		return
+	}
+
+	agentType := fmt.Sprintf("%08x", binary.BigEndian.Uint32(beat[:4]))
+	agentUid := beat[4:8]
+	agentBeat := beat[8:]
+
+	agentId, exists := Ts.TsAgentIdByUID(agentUid)
+	if !exists {
+		externalIP := extractRemoteIP(w)
+		ad, err := Ts.TsAgentCreate(agentType, agentUid, agentBeat, t.Name, externalIP, true)
+		if err != nil {
+			Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "HI agent create failed: %v", err)
+			return
+		}
+		agentId = ad.Id
 	}
 	_ = Ts.TsAgentSetTick(agentId, t.Name)
 }
 
-const beaconFrameHeaderSize = 9
-const beaconCompressMinSize = 2048
-
-func beaconEncodeDownstream(data []byte) []byte {
-	payload, flags := beaconCompress(data)
-	nonce := uint32(time.Now().UnixNano()&0xFFFFFFFF) ^ mrand.Uint32()
-
-	frame := make([]byte, beaconFrameHeaderSize+len(payload))
-	frame[0] = flags
-	binary.LittleEndian.PutUint32(frame[1:5], nonce)
-	binary.LittleEndian.PutUint32(frame[5:9], uint32(len(data)))
-	copy(frame[beaconFrameHeaderSize:], payload)
-	return frame
-}
-
-func beaconDecodeUpstream(data []byte) []byte {
-	if len(data) <= 5 {
-		return data
-	}
-	flags := data[0]
-	origLen := binary.LittleEndian.Uint32(data[1:5])
-	payload := data[5:]
-
-	if (flags & 0x1) != 0 {
-		if origLen > 0 {
-			zr, err := zlib.NewReader(bytes.NewReader(payload))
-			if err == nil {
-				decompressed := make([]byte, origLen)
-				n, errRead := zr.Read(decompressed)
-				zr.Close()
-				if errRead == nil || (n > 0 && n == int(origLen)) {
-					return decompressed[:n]
-				}
-			}
-		}
-	} else if origLen > 0 && origLen <= uint32(len(payload)) {
-		return payload[:origLen]
-	}
-	return data
-}
-
-func beaconCompress(data []byte) ([]byte, byte) {
-	if uint32(len(data)) <= beaconCompressMinSize {
-		return data, 0
-	}
-	var zbuf bytes.Buffer
-	wz, err := zlib.NewWriterLevel(&zbuf, zlib.BestCompression)
-	if err != nil {
-		return data, 0
-	}
-	if _, err := wz.Write(data); err != nil {
-		wz.Close()
-		return data, 0
-	}
-	if err := wz.Close(); err != nil {
-		return data, 0
-	}
-	compressed := zbuf.Bytes()
-	if len(compressed) > 0 && len(compressed) < len(data) {
-		return compressed, 1
-	}
-	return data, 0
-}
-
 func (t *TransportDNS) handleHB(req *dnsRequest) (needsReset bool, hasPendingTasks bool) {
-	if req.sid != "" {
-		_ = Ts.TsAgentSetTick(req.sid, t.Name)
+	agentId := sidToAgentId(req.sid)
+	if agentId == 0 {
+		return false, false
 	}
+	_ = Ts.TsAgentSetTick(agentId, t.Name)
 
 	decrypted := rc4Crypt(req.data, t.Config.EncryptKey)
 
-	var ackOffset, ackTaskNonce uint32
-	if len(decrypted) >= 4 {
-		ackOffset = binary.BigEndian.Uint32(decrypted[0:4])
-	}
-	if len(decrypted) >= 12 {
-		ackTaskNonce = binary.BigEndian.Uint32(decrypted[8:12])
-	}
-	if ackOffset > 0 || ackTaskNonce > 0 {
-		Ts.TsFrameAckDelivery(req.sid, ackOffset, ackTaskNonce)
+	if len(decrypted) >= 8 {
+		ackOffset := binary.BigEndian.Uint32(decrypted[0:4])
+		ackNonce := binary.BigEndian.Uint32(decrypted[4:8])
+		Ts.TsFrameAckDelivery(agentId, ackOffset, ackNonce)
 	}
 
-	hasPendingTasks = Ts.TsFrameHasPending(req.sid)
+	hasPendingTasks = Ts.TsFrameHasPending(agentId)
 	return false, hasPendingTasks
-
-	return needsReset, hasPendingTasks
 }
 
 func (t *TransportDNS) handleGET(req *dnsRequest, w dns.ResponseWriter) []byte {
-	if req.sid != "" {
-		_ = Ts.TsAgentSetTick(req.sid, t.Name)
+	agentId := sidToAgentId(req.sid)
+	if agentId == 0 {
+		return nil
 	}
+	_ = Ts.TsAgentSetTick(agentId, t.Name)
 
 	decrypted := rc4Crypt(req.data, t.Config.EncryptKey)
 
@@ -392,59 +370,45 @@ func (t *TransportDNS) handleGET(req *dnsRequest, w dns.ResponseWriter) []byte {
 		}
 	}
 
-	total, offset, data, _, isEmpty := Ts.TsFrameGetChunk(req.sid, reqOffset, maxChunk, beaconEncodeDownstream)
+	total, offset, data, taskNonce, isEmpty := Ts.TsFrameGetChunk(agentId, reqOffset, maxChunk, nil)
 	if isEmpty || len(data) == 0 {
 		return nil
 	}
 
-	frame := make([]byte, 8+len(data))
+	frame := make([]byte, 12+len(data))
 	binary.BigEndian.PutUint32(frame[0:4], total)
 	binary.BigEndian.PutUint32(frame[4:8], offset)
-	copy(frame[8:], data)
+	binary.BigEndian.PutUint32(frame[8:12], taskNonce)
+	copy(frame[12:], data)
 	return frame
 }
 
 func (t *TransportDNS) handlePUT(req *dnsRequest) putAckInfo {
 	ack := putAckInfo{}
 
-	if len(req.data) == 0 {
+	agentId := sidToAgentId(req.sid)
+	if agentId == 0 || len(req.data) == 0 {
 		return ack
 	}
 
 	decrypted := rc4Crypt(req.data, t.Config.EncryptKey)
 
-	// Parse optional MetaV1 header (may contain downstream delivery ACK)
-	payload := decrypted
-	meta, rest, hasMeta := parseMetaV1(decrypted)
-	if hasMeta {
-		if (meta.MetaFlags & 0x1) != 0 {
-			Ts.TsFrameAckDelivery(req.sid, meta.DownAckOffset, 0)
-		}
-		payload = rest
-	}
-
-	// Tiny payload without fragmentation header — pass through directly
-	if len(payload) <= 8 {
-		_ = Ts.TsAgentProcessData(req.sid, payload)
+	if len(decrypted) < 8 {
 		return ack
 	}
 
-	// Parse fragment header: [total:4][offset:4][chunk...]
-	total := binary.BigEndian.Uint32(payload[0:4])
-	offset := binary.BigEndian.Uint32(payload[4:8])
-	chunk := payload[8:]
+	total := binary.BigEndian.Uint32(decrypted[0:4])
+	offset := binary.BigEndian.Uint32(decrypted[4:8])
+	chunk := decrypted[8:]
 
 	if total == 0 {
-		_ = Ts.TsAgentProcessData(req.sid, payload)
 		return ack
 	}
 
-	// Delegate to FrameManager (byte-offset mode: totalSize > 0, chunkCount = 0)
-	complete, nextExpectedOff, filled, _, assembled := Ts.TsFramePut(req.sid, offset, chunk, total, 0)
+	complete, nextExpectedOff, filled, _, assembled := Ts.TsFramePut(agentId, offset, chunk, total, 0)
 
 	if complete && assembled != nil {
-		decoded := beaconDecodeUpstream(assembled)
-		_ = Ts.TsAgentProcessData(req.sid, decoded)
+		_ = Ts.TsAgentProcessData(agentId, assembled)
 	}
 
 	ack.total = total
@@ -452,9 +416,7 @@ func (t *TransportDNS) handlePUT(req *dnsRequest) putAckInfo {
 	ack.nextExpectedOff = nextExpectedOff
 	ack.filled = filled
 
-	if req.sid != "" {
-		_ = Ts.TsAgentSetTick(req.sid, t.Name)
-	}
+	_ = Ts.TsAgentSetTick(agentId, t.Name)
 	return ack
 }
 
@@ -592,18 +554,8 @@ const (
 	seqXorMask       = 0x39913991
 	dnsSafeChunkSize = 280
 	defaultChunkSize = 4096
-	metaV1Size       = 8
-	frameHeaderSize  = 9 // flags:1 + nonce:4 + origLen:4
-
-	shutdownTimeout = 2 * time.Second
+	shutdownTimeout  = 2 * time.Second
 )
-
-type metaV1 struct {
-	Version       byte
-	MetaFlags     byte
-	Reserved      uint16
-	DownAckOffset uint32
-}
 
 type dnsRequest struct {
 	sid   string
@@ -638,14 +590,26 @@ func rc4Crypt(data []byte, keyHex string) []byte {
 	return result
 }
 
-func parseMetaV1(data []byte) (metaV1, []byte, bool) {
-	var m metaV1
-	if len(data) < metaV1Size {
-		return m, data, false
+func decompressZlibData(data []byte) ([]byte, bool) {
+	if len(data) < 2 {
+		return data, false
 	}
-	m.Version = data[0]
-	m.MetaFlags = data[1]
-	m.Reserved = binary.LittleEndian.Uint16(data[2:4])
-	m.DownAckOffset = binary.LittleEndian.Uint32(data[4:8])
-	return m, data[metaV1Size:], true
+	zr, err := zlib.NewReader(bytes.NewReader(data))
+	if err != nil {
+		return data, false
+	}
+	decompressed, errRead := io.ReadAll(zr)
+	zr.Close()
+	if errRead == nil && len(decompressed) > 0 {
+		return decompressed, true
+	}
+	return data, false
+}
+
+func extractRemoteIP(w dns.ResponseWriter) string {
+	addr := w.RemoteAddr().String()
+	if host, _, err := net.SplitHostPort(addr); err == nil {
+		return host
+	}
+	return addr
 }

@@ -2,22 +2,20 @@ package server
 
 import (
 	"AdaptixServer/core/eventing"
-	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/krypt"
-	"AdaptixServer/core/utils/logs"
 	isvalid "AdaptixServer/core/utils/valid"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 func (ts *Teamserver) TsListenerList() (string, error) {
 	var listeners []adaptix.ListenerData
-	ts.listeners.ForEach(func(key string, value interface{}) bool {
-		listeners = append(listeners, value.(adaptix.ListenerData))
+	ts.listeners.ForEachFast(func(key string, listenerData adaptix.ListenerData) bool {
+		listeners = append(listeners, listenerData)
 		return true
 	})
 
@@ -43,11 +41,10 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 	}
 	// ----------------
 
-	value, ok := ts.listener_configs.Get(listenerRegName)
+	listenerInfo, ok := ts.listener_configs.Get(listenerRegName)
 	if !ok {
 		return fmt.Errorf("listener %v does not register", listenerRegName)
 	}
-	listenerInfo, _ := value.(extender.ListenerInfo)
 
 	if ts.listeners.Contains(listenerName) {
 		return errors.New("listener already exists")
@@ -76,7 +73,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 
 	if !isvalid.ValidHex8(listenerData.Watermark) {
 		if listenerData.Watermark != "" {
-			logs.Error("", "Listener %s is invalid watermark. Set random...", listenerName)
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:listener", "Listener %s is invalid watermark. Set random...", listenerName)
 		}
 		listenerData.Watermark, _ = krypt.GenerateUID(8)
 	}
@@ -84,14 +81,14 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 	err = ts.Extender.ExListenerStart(listenerName)
 	if err != nil {
 		listenerData.Status = "Stopped"
-		logs.Error("", "Listener %s created but failed to start: %s", listenerName, err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:listener", "Listener %s created but failed to start: %s", listenerName, err.Error())
 	} else {
 		listenerData.Status = "Listen"
 	}
 
 	ts.listeners.Put(listenerName, listenerData)
 
-	ts.wm_listeners[listenerData.Watermark] = []string{listenerName, listenerRegName}
+	ts.wm_listeners.Put(listenerData.Watermark, []string{listenerName, listenerRegName})
 
 	packet := CreateSpListenerStart(listenerData)
 	ts.TsSyncAllClients(packet)
@@ -113,13 +110,13 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 }
 
 func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string, listenerConfig string) error {
-	value, ok := ts.listener_configs.Get(listenerRegName)
+	listenerInfo, ok := ts.listener_configs.Get(listenerRegName)
 	if !ok {
 		return fmt.Errorf("listener %v does not register", listenerRegName)
 	}
-	listenerInfo, _ := value.(extender.ListenerInfo)
 
-	if !ts.listeners.Contains(listenerName) {
+	existingData, ok := ts.listeners.Get(listenerName)
+	if !ok {
 		return fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
@@ -128,6 +125,7 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string
 		return err
 	}
 
+	listenerData.Tags = existingData.Tags
 	listenerData.Name = listenerName
 	listenerData.RegName = listenerRegName
 	listenerData.Data = listenerConfig
@@ -169,8 +167,10 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 		return fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
-	_ = ts.Extender.ExListenerStop(listenerName)
-
+	if err := ts.Extender.ExListenerStop(listenerName); err != nil {
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:listener", "failed to stop listener '%s': %v", listenerName, err)
+		return err
+	}
 	ts.listeners.Delete(listenerName)
 
 	packet := CreateSpListenerStop(listenerName)
@@ -212,8 +212,7 @@ func (ts *Teamserver) TsListenerPause(listenerName string, listenerType string) 
 		return fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
-	value, _ := ts.listeners.Get(listenerName)
-	listenerData := value.(adaptix.ListenerData)
+	listenerData, _ := ts.listeners.Get(listenerName)
 	if listenerData.Status == "Paused" {
 		return fmt.Errorf("listener '%v' is already paused", listenerName)
 	}
@@ -262,8 +261,7 @@ func (ts *Teamserver) TsListenerResume(listenerName string, listenerType string)
 		return fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
-	value, _ := ts.listeners.Get(listenerName)
-	listenerData := value.(adaptix.ListenerData)
+	listenerData, _ := ts.listeners.Get(listenerName)
 	if listenerData.Status == "Listen" {
 		return fmt.Errorf("listener '%v' is already running", listenerName)
 	}
@@ -295,27 +293,52 @@ func (ts *Teamserver) TsListenerGetProfile(listenerName string) (string, []byte,
 	if !ts.listeners.Contains(listenerName) {
 		return "", nil, fmt.Errorf("listener %v does not exist", listenerName)
 	}
-	value, _ := ts.listeners.Get(listenerName)
-	watermark := value.(adaptix.ListenerData).Watermark
+	listenerData, _ := ts.listeners.Get(listenerName)
+	watermark := listenerData.Watermark
 	data, err := ts.Extender.ExListenerGetProfile(listenerName)
 	return watermark, data, err
 }
 
-func (ts *Teamserver) TsListenerInteralHandler(watermark string, data []byte) (string, error) {
-	pair, ok := ts.wm_listeners[watermark]
+func (ts *Teamserver) TsListenerInteralHandler(watermark string, data []byte) (int64, error) {
+	pair, ok := ts.wm_listeners.Get(watermark)
 	if !ok {
-		return "", fmt.Errorf("listener %v does not exist", watermark)
+		return 0, fmt.Errorf("listener %v does not exist", watermark)
 	}
 
 	listenerName := pair[0]
 	listenerType := pair[1]
 
 	if !ts.listener_configs.Contains(listenerType) {
-		return "", fmt.Errorf("listener %v does not exist", listenerType)
+		return 0, fmt.Errorf("listener %v does not exist", listenerType)
 	}
 	if !ts.listeners.Contains(listenerName) {
-		return "", fmt.Errorf("listener '%v' does not exist", listenerName)
+		return 0, fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
 	return ts.Extender.ExListenerInternalHandler(listenerName, data)
+}
+
+func (ts *Teamserver) TsListenerConnector(listenerName string, data []byte) (int64, error) {
+	listenerData, ok := ts.listeners.Get(listenerName)
+	if !ok {
+		return 0, fmt.Errorf("listener '%v' does not exist", listenerName)
+	}
+	return ts.TsListenerInteralHandler(listenerData.Watermark, data)
+}
+
+func (ts *Teamserver) TsListenerSetTags(listenerName string, tags string) error {
+	listenerData, ok := ts.listeners.Get(listenerName)
+	if !ok {
+		return fmt.Errorf("listener '%v' does not exist", listenerName)
+	}
+
+	listenerData.Tags = tags
+	ts.listeners.Put(listenerName, listenerData)
+
+	packet := CreateSpListenerEdit(listenerData)
+	ts.TsSyncAllClients(packet)
+
+	_ = ts.DBMS.DbListenerUpdateTags(listenerName, tags)
+
+	return nil
 }

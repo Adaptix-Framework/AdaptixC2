@@ -3,17 +3,22 @@
 #include <Client/TunnelEndpoint.h>
 #include <Client/AuthProfile.h>
 #include <Client/Requestor.h>
+#include <QRandomGenerator>
+#include <QPointer>
 
-TunnelEndpoint::TunnelEndpoint(QObject* parent) : QObject(parent), tcpServer(new QTcpServer(this)){}
+TunnelEndpoint::TunnelEndpoint(QObject* parent) : QObject(parent), tcpServer(new QTcpServer(this)) {}
 
-TunnelEndpoint::~TunnelEndpoint() = default;
+TunnelEndpoint::~TunnelEndpoint()
+{
+    Stop();
+}
 
 bool TunnelEndpoint::StartTunnel(AuthProfile* profile, const QString &type, const QByteArray &jsonData)
 {
     this->profile = profile;
 
     QString urlTemplate = "wss://%1:%2%3/channel";
-    QString sUrl = urlTemplate.arg( profile->GetHost() ).arg( profile->GetPort() ).arg( profile->GetEndpoint() );
+    QString sUrl = urlTemplate.arg(profile->GetHost()).arg(profile->GetPort()).arg(profile->GetEndpoint());
     this->wsUrl = QUrl(sUrl);
 
     QJsonDocument doc = QJsonDocument::fromJson(jsonData);
@@ -31,16 +36,16 @@ bool TunnelEndpoint::StartTunnel(AuthProfile* profile, const QString &type, cons
         connect(tcpServer, &QTcpServer::newConnection, this, &TunnelEndpoint::onStartSocksChannel);
         return Listen(obj);
     }
-    else if (type == "socks4") {
+    if (type == "socks4") {
         connect(tcpServer, &QTcpServer::newConnection, this, &TunnelEndpoint::onStartSocksChannel);
         return Listen(obj);
     }
-    else if (type == "lportfwd") {
+    if (type == "lportfwd") {
         connect(tcpServer, &QTcpServer::newConnection, this, &TunnelEndpoint::onStartLpfChannel);
         return Listen(obj);
     }
-    else if (type == "rportfwd") {
-
+    if (type == "rportfwd") {
+        return false;
     }
     return false;
 }
@@ -48,7 +53,7 @@ bool TunnelEndpoint::StartTunnel(AuthProfile* profile, const QString &type, cons
 bool TunnelEndpoint::Listen(const QJsonObject &obj)
 {
     lHost = obj["l_host"].toString();
-    lPort = obj["l_port"].toInt();
+    lPort = static_cast<quint16>(obj["l_port"].toInt());
 
     if (!tcpServer->listen(QHostAddress(lHost), lPort)) {
         MessageError(tcpServer->errorString());
@@ -57,45 +62,98 @@ bool TunnelEndpoint::Listen(const QJsonObject &obj)
     return true;
 }
 
-void TunnelEndpoint::SetTunnelId(const QString &tunnelId)
+void TunnelEndpoint::SetTunnelId(qint64 tunnelId)
 {
     this->tunnelId = tunnelId;
 }
 
-void TunnelEndpoint::StopChannel(const QString& channelId)
+void TunnelEndpoint::StopChannel(qint64 channelId)
 {
     auto it = tunnelChannels.find(channelId);
     if (it == tunnelChannels.end())
         return;
 
-    tunnelChannels.erase(it);
+    if (it->worker)
+        QMetaObject::invokeMethod(it->worker, "stop", Qt::QueuedConnection);
 }
 
 void TunnelEndpoint::Stop()
 {
+    ++endpointGeneration;
+
     if (tcpServer && tcpServer->isListening())
         tcpServer->close();
 
-    for (auto it = tunnelChannels.begin(); it != tunnelChannels.end(); ) {
-        ChannelHandle handle = it.value();
-        it = tunnelChannels.erase(it);
-
-        if (handle.worker && handle.thread) {
-            QMetaObject::invokeMethod(handle.worker, "stop", Qt::QueuedConnection);
-            handle.thread->quit();
-            handle.thread->wait(3000);
-        }
+    const QList<QTcpSocket*> pendingSocks = findChildren<QTcpSocket*>(QString(), Qt::FindDirectChildrenOnly);
+    for (QTcpSocket* s : pendingSocks) {
+        s->abort();
+        s->deleteLater();
     }
+
+    QList<QThread*> threads;
+    threads.reserve(tunnelChannels.size());
+
+    for (auto it = tunnelChannels.begin(); it != tunnelChannels.end(); ++it) {
+        if (it->worker)
+            QMetaObject::invokeMethod(it->worker, "stop", Qt::QueuedConnection);
+        if (it->thread)
+            threads.append(it->thread);
+    }
+
+    for (QThread* thread : threads) {
+        if (thread && thread->isRunning())
+            thread->wait(5000);
+    }
+
+    tunnelChannels.clear();
 }
 
-void TunnelEndpoint::startWorker(QTcpSocket* clientSock, const QJsonObject& otpData, const QString& channelId)
+void TunnelEndpoint::startWorker(QTcpSocket* clientSock, const QJsonObject& otpData, qint64 channelId)
 {
-    QString otp;
-    bool otpResult = HttpReqGetOTP("channel_tunnel", otpData, profile->GetURL(), profile->GetAccessToken(), &otp);
-    if (!otpResult) {
-        clientSock->deleteLater();
+    if (!profile || !clientSock) {
+        if (clientSock)
+            clientSock->deleteLater();
         return;
     }
+
+    clientSock->setParent(this);
+    clientSock->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+
+    const quint64 gen = endpointGeneration;
+
+    QPointer<TunnelEndpoint> self = this;
+    QPointer<QTcpSocket> sock = clientSock;
+
+    HttpReqGetOTPAsync("channel_tunnel", otpData, *profile, [self, sock, channelId, gen](bool success, const QString& message, const QJsonObject& response) {
+            Q_UNUSED(message);
+
+            if (!sock)
+                return;
+
+            if (!self || gen != self->endpointGeneration) {
+                sock->deleteLater();
+                return;
+            }
+
+            if (!success || !response.value(QStringLiteral("ok")).toBool()) {
+                sock->deleteLater();
+                return;
+            }
+
+            const QString otp = response.value(QStringLiteral("message")).toString();
+            if (otp.isEmpty()) {
+                sock->deleteLater();
+                return;
+            }
+
+            self->launchChannelWorker(sock.data(), otp, channelId);
+        });
+}
+
+void TunnelEndpoint::launchChannelWorker(QTcpSocket* clientSock, const QString& otp, qint64 channelId)
+{
+    if (!clientSock)
+        return;
 
     QThread* thread = new QThread;
     TunnelWorker* worker = new TunnelWorker(clientSock, otp, this->wsUrl);
@@ -106,11 +164,13 @@ void TunnelEndpoint::startWorker(QTcpSocket* clientSock, const QJsonObject& otpD
     worker->moveToThread(thread);
     clientSock->setParent(worker);
 
-    connect(thread, &QThread::started,       worker, &TunnelWorker::start);
+    connect(thread, &QThread::started, worker, &TunnelWorker::start);
     connect(worker, &TunnelWorker::finished, thread, &QThread::quit);
     connect(worker, &TunnelWorker::finished, worker, &TunnelWorker::deleteLater);
-    connect(thread, &QThread::finished,      thread, &QThread::deleteLater);
-    connect(worker, &TunnelWorker::finished, this, [this, channelId]() {StopChannel(channelId);});
+    connect(thread, &QThread::finished, thread, &QThread::deleteLater);
+    connect(worker, &TunnelWorker::finished, this, [this, channelId]() {
+        tunnelChannels.remove(channelId);
+    });
 
     tunnelChannels[channelId] = {thread, worker, channelId};
     thread->start();
@@ -118,17 +178,21 @@ void TunnelEndpoint::startWorker(QTcpSocket* clientSock, const QJsonObject& otpD
 
 void TunnelEndpoint::onStartLpfChannel()
 {
-    if (this->tunnelId.isEmpty())
+    if (this->tunnelId == 0)
         return;
 
     while (tcpServer->hasPendingConnections()) {
         QTcpSocket* clientSock = tcpServer->nextPendingConnection();
+        if (!clientSock)
+            continue;
 
-        QString channelId = GenerateRandomString(8, "hex");
+        qint64 channelId = 0;
+        while (channelId == 0)
+            channelId = static_cast<qint64>(QRandomGenerator::global()->generate64() & 0x7fffffffffffffffLL);
 
         QJsonObject otpData;
-        otpData["tunnel_id"]  = this->tunnelId;
-        otpData["channel_id"] = channelId;
+        otpData["tunnel_id"]  = toJsonI64(this->tunnelId);
+        otpData["channel_id"] = toJsonI64(channelId);
 
         startWorker(clientSock, otpData, channelId);
     }
@@ -136,8 +200,14 @@ void TunnelEndpoint::onStartLpfChannel()
 
 void TunnelEndpoint::startHandshakeWorker(QTcpSocket* clientSock, const QString& type)
 {
+    if (!profile || !clientSock) {
+        if (clientSock)
+            clientSock->deleteLater();
+        return;
+    }
+
     QThread* thread = new QThread;
-    SocksHandshakeWorker* worker = new SocksHandshakeWorker(clientSock, this->tunnelId, type, this->useAuth, this->username, this->password, this->profile->GetAccessToken(), this->profile->GetURL(), this->wsUrl);
+    auto* worker = new SocksHandshakeWorker(clientSock, this->tunnelId, type, this->useAuth, this->username, this->password, *this->profile, this->wsUrl);
 
     clientSock->setParent(nullptr);
     clientSock->moveToThread(thread);
@@ -156,23 +226,37 @@ void TunnelEndpoint::startHandshakeWorker(QTcpSocket* clientSock, const QString&
 
 void TunnelEndpoint::onStartSocksChannel()
 {
-    if (this->tunnelId.isEmpty())
+    if (this->tunnelId == 0)
         return;
 
     while (tcpServer->hasPendingConnections()) {
         QTcpSocket* clientSock = tcpServer->nextPendingConnection();
+        if (!clientSock)
+            continue;
         startHandshakeWorker(clientSock, this->tunnelType);
     }
 }
 
-void TunnelEndpoint::onWorkerReady(TunnelWorker* worker, const QString& channelId)
+void TunnelEndpoint::onWorkerReady(TunnelWorker* worker, qint64 channelId)
 {
+    if (!worker || channelId == 0) {
+        if (worker)
+            worker->deleteLater();
+        return;
+    }
+
     QThread* thread = worker->thread();
+    if (!thread) {
+        worker->deleteLater();
+        return;
+    }
 
     connect(worker, &TunnelWorker::finished, thread, &QThread::quit);
     connect(worker, &TunnelWorker::finished, worker, &TunnelWorker::deleteLater);
     connect(thread, &QThread::finished, thread, &QThread::deleteLater);
-    connect(worker, &TunnelWorker::finished, this, [this, channelId]() { StopChannel(channelId); });
+    connect(worker, &TunnelWorker::finished, this, [this, channelId]() {
+        tunnelChannels.remove(channelId);
+    });
 
     tunnelChannels[channelId] = {thread, worker, channelId};
 

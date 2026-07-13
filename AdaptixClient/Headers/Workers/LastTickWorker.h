@@ -5,6 +5,12 @@
 
 class AdaptixWidget;
 
+struct AgentMarkInfo {
+    qint64  agentId;
+    QString mark;
+    QString lastMark;
+};
+
 class LastTickWorker : public QThread
 {
 Q_OBJECT
@@ -18,7 +24,7 @@ public:
     void run() override;
 
 Q_SIGNALS:
-    void agentsUpdated(const QStringList& agentIds);
+    void agentTickUpdate(const QList<AgentMarkInfo>& marks);
 
 public Q_SLOTS:
     void updateLastItems();

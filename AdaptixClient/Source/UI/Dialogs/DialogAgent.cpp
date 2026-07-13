@@ -10,21 +10,71 @@
 #include <QJSEngine>
 #include <QWidgetAction>
 
+#include <QLayoutItem>
+
+class FlowLayout : public QLayout {
+public:
+    explicit FlowLayout(QWidget *parent, int hGap = 4, int vGap = 4) : QLayout(parent), m_hGap(hGap), m_vGap(vGap) {}
+    ~FlowLayout() override { while (auto *item = takeAt(0)) delete item; }
+
+    void addItem(QLayoutItem *item) override { m_items.append(item); }
+    int count() const override { return m_items.count(); }
+    QLayoutItem *itemAt(int index) const override { return m_items.value(index); }
+    QLayoutItem *takeAt(int index) override { return (index >= 0 && index < m_items.size()) ? m_items.takeAt(index) : nullptr; }
+
+    Qt::Orientations expandingDirections() const override { return {}; }
+    bool hasHeightForWidth() const override { return true; }
+    int heightForWidth(int width) const override { return doLayout(QRect(0, 0, width, 0), true); }
+
+    void setGeometry(const QRect &rect) override {
+        QLayout::setGeometry(rect);
+        doLayout(rect, false);
+    }
+
+    QSize sizeHint() const override { return minimumSize(); }
+    QSize minimumSize() const override {
+        QSize size;
+        for (auto *item : m_items)
+            size = size.expandedTo(item->minimumSize());
+        return size + QSize(contentsMargins().left() + contentsMargins().right(), contentsMargins().top() + contentsMargins().bottom());
+    }
+
+private:
+    int doLayout(const QRect &rect, bool testOnly) const {
+        int x = rect.x(), y = rect.y(), lineHeight = 0;
+        for (auto *item : m_items) {
+            QSize space = item->sizeHint();
+            int nextX = x + space.width() + m_hGap;
+            if (nextX - m_hGap > rect.right() && lineHeight > 0) {
+                x = rect.x();
+                y += lineHeight + m_vGap;
+                nextX = x + space.width() + m_hGap;
+                lineHeight = 0;
+            }
+            if (!testOnly)
+                item->setGeometry(QRect(QPoint(x, y), space));
+            x = nextX;
+            lineHeight = qMax(lineHeight, space.height());
+        }
+        return y + lineHeight - rect.y();
+    }
+
+    QList<QLayoutItem *> m_items;
+    int m_hGap, m_vGap;
+};
+
 void DialogAgent::createUI()
 {
     this->setWindowTitle("Generate Agent");
     this->setProperty("Main", "base");
 
     listenerLabel = new QLabel("Listener:", this);
-    listenerInput = new QLineEdit(this);
-    listenerInput->setReadOnly(true);
 
-    listenerDisplayEdit = new QLineEdit(this);
-    listenerDisplayEdit->setReadOnly(true);
-    listenerDisplayEdit->setPlaceholderText("Click to select listeners...");
-
-    listenerSelectBtn = new oclero::qlementine::PopoverButton("", this);
-    listenerSelectBtn->setToolTip("Select listeners");
+    listenerSelectBtn = new oclero::qlementine::PopoverButton("", QIcon(":/icons/plus"), this);
+    listenerSelectBtn->setToolTip("Add listener");
+    listenerSelectBtn->setFixedSize(28, 28);
+    listenerSelectBtn->setIconSize(QSize(18, 18));
+    listenerSelectBtn->setShowArrowIndicator(false);
 
     listenerListWidget = new QListWidget();
     listenerListWidget->setSelectionMode(QAbstractItemView::SingleSelection);
@@ -59,18 +109,21 @@ void DialogAgent::createUI()
     listenerPopover->setPreferredAlignment(oclero::qlementine::Popover::Alignment::Begin);
     listenerSelectBtn->setPopoverContentWidget(listenerPopupContent);
 
-    listenerSelectionWidget = new QWidget(this);
-    auto listenerSelectionLayout = new QHBoxLayout(listenerSelectionWidget);
-    listenerSelectionLayout->setContentsMargins(0, 0, 0, 0);
-    listenerSelectionLayout->setSpacing(4);
-    listenerSelectionLayout->addWidget(listenerDisplayEdit);
-    listenerSelectionLayout->addWidget(listenerSelectBtn);
-    listenerSelectionWidget->setVisible(false);
+    listenerChipsContainer = new QWidget(this);
+    listenerChipsContainer->setObjectName("ListenerChipsContainer");
+    listenerChipsContainer->setMinimumHeight(28);
+    listenerChipsContainer->setStyleSheet(
+        "QWidget#ListenerChipsContainer {"
+        "  background: palette(base);"
+        "  border: 1px solid palette(mid);"
+        "  border-radius: 4px;"
+        "}"
+    );
+    auto chipsLayout = new FlowLayout(listenerChipsContainer, 4, 4);
+    chipsLayout->setContentsMargins(6, 4, 6, 4);
 
     agentLabel    = new QLabel("Agent:", this);
     agentCombobox = new QComboBox(this);
-
-    profileLabel = new QLabel("Profile:", this);
 
     inputProfileName = new QLineEdit(this);
     inputProfileName->setToolTip("Profile name");
@@ -88,8 +141,6 @@ void DialogAgent::createUI()
 
     configStackWidget = new QStackedWidget(this);
     stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1);
-    // stackGridLayout->setRowStretch(0, 1);
-    // stackGridLayout->setColumnStretch(0, 1);
 
     agentConfigGroupbox = new QGroupBox("Agent config", this);
     agentConfigGroupbox->setAlignment(Qt::AlignHCenter);
@@ -97,7 +148,6 @@ void DialogAgent::createUI()
 
     buildButton = new QPushButton("Generate", this);
     buildButton->setDefault(true);
-    buildButton->setFixedWidth(160);
     buildButton->setFocus();
 
     menuContext = new oclero::qlementine::Menu(this);
@@ -105,64 +155,82 @@ void DialogAgent::createUI()
     menuContext->addAction("Remove", this, &DialogAgent::onProfileRemove);
 
     label_Profiles = new QLabel(this);
-    label_Profiles->setAlignment(Qt::AlignCenter);
     label_Profiles->setText("Profiles");
+    label_Profiles->setObjectName("ProfilesHeader");
+    label_Profiles->setStyleSheet("QLabel#ProfilesHeader { color: palette(placeholderText); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }");
+
+    inputProfileName->setPlaceholderText("Profile name...");
 
     cardWidget = new CardListWidget(this);
-    cardWidget->setFixedWidth(220);
     cardWidget->setContextMenuPolicy(Qt::CustomContextMenu);
     cardWidget->addAction(menuContext->menuAction());
     cardWidget->setSelectionMode(QAbstractItemView::SingleSelection);
     cardWidget->setFocusPolicy(Qt::NoFocus);
 
+    auto profileSeparator = new QFrame(this);
+    profileSeparator->setFrameShape(QFrame::HLine);
+    profileSeparator->setFrameShadow(QFrame::Sunken);
+
     buttonNewProfile = new QPushButton(this);
-    buttonNewProfile->setText("New Profile");
-    buttonNewProfile->setMinimumSize(QSize(10, 30));
+    buttonNewProfile->setText("New");
+    buttonNewProfile->setMinimumSize(QSize(10, 28));
 
     buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
-    buttonLoad->setIconSize(QSize(20, 20));
-    buttonLoad->setFixedSize(QSize(30, 30));
+    buttonLoad->setIconSize(QSize(18, 18));
+    buttonLoad->setFixedSize(QSize(28, 28));
     buttonLoad->setToolTip("Load profile from file");
 
     buttonSave = new QPushButton(QIcon(":/icons/save_as"), "", this);
-    buttonSave->setIconSize(QSize(20, 20));
-    buttonSave->setFixedSize(QSize(30, 30));
+    buttonSave->setIconSize(QSize(18, 18));
+    buttonSave->setFixedSize(QSize(28, 28));
     buttonSave->setToolTip("Save profile to file");
+
+    auto profileButtonsLayout = new QHBoxLayout();
+    profileButtonsLayout->setContentsMargins(0, 0, 0, 0);
+    profileButtonsLayout->setSpacing(4);
+    profileButtonsLayout->addWidget(buttonNewProfile, 1);
+    profileButtonsLayout->addWidget(buttonLoad);
+    profileButtonsLayout->addWidget(buttonSave);
+
+    auto profilesLayout = new QVBoxLayout();
+    profilesLayout->setContentsMargins(10, 10, 10, 10);
+    profilesLayout->setSpacing(6);
+    profilesLayout->addWidget(label_Profiles);
+    profilesLayout->addWidget(inputProfileName);
+    profilesLayout->addWidget(profileSeparator);
+    profilesLayout->addWidget(cardWidget, 1);
+    profilesLayout->addLayout(profileButtonsLayout);
+
+    auto profilesPanel = new QWidget(this);
+    profilesPanel->setFixedWidth(220);
+    profilesPanel->setLayout(profilesLayout);
 
     auto leftPanelLayout = new QGridLayout();
     leftPanelLayout->setVerticalSpacing(8);
     leftPanelLayout->setHorizontalSpacing(8);
     leftPanelLayout->setContentsMargins(5, 5, 5, 5);
 
-    leftPanelLayout->addWidget(listenerLabel,            0, 0);
-    leftPanelLayout->addWidget(listenerInput,            0, 1);
-    leftPanelLayout->addWidget(listenerSelectionWidget,  0, 1);
+    auto listenerFieldLayout = new QHBoxLayout();
+    listenerFieldLayout->setContentsMargins(0, 0, 0, 0);
+    listenerFieldLayout->setSpacing(4);
+    listenerFieldLayout->addWidget(listenerChipsContainer, 1);
+    listenerFieldLayout->addWidget(listenerSelectBtn);
 
-    leftPanelLayout->addWidget(agentLabel,          1, 0);
-    leftPanelLayout->addWidget(agentCombobox,       1, 1);
-
-    leftPanelLayout->addWidget(profileLabel,        2, 0);
-    leftPanelLayout->addWidget(inputProfileName,    2, 1);
-
-    leftPanelLayout->addWidget(agentConfigGroupbox, 3, 0, 1, 2);
-
+    leftPanelLayout->addWidget(agentLabel,          0, 0);
+    leftPanelLayout->addWidget(agentCombobox,       0, 1);
+    leftPanelLayout->addWidget(listenerLabel,       1, 0);
+    leftPanelLayout->addLayout(listenerFieldLayout, 1, 1);
+    leftPanelLayout->addWidget(agentConfigGroupbox, 2, 0, 1, 2);
     leftPanelLayout->setRowStretch(0, 0);
     leftPanelLayout->setRowStretch(1, 0);
-    leftPanelLayout->setRowStretch(2, 0);
-    leftPanelLayout->setRowStretch(3, 1);
+    leftPanelLayout->setRowStretch(2, 1);
     leftPanelLayout->setColumnStretch(0, 0);
     leftPanelLayout->setColumnStretch(1, 1);
 
-    auto actionButtonsLayout = new QHBoxLayout();
-    actionButtonsLayout->addStretch();
-    actionButtonsLayout->addWidget(buildButton);
-    actionButtonsLayout->addStretch();
-
     auto formLayout = new QVBoxLayout();
     formLayout->setContentsMargins(10, 10, 10, 10);
-    formLayout->setSpacing(10);
+    formLayout->setSpacing(8);
     formLayout->addLayout(leftPanelLayout, 1);
-    formLayout->addLayout(actionButtonsLayout);
 
     auto formWidget = new QWidget(this);
     formWidget->setLayout(formLayout);
@@ -171,32 +239,63 @@ void DialogAgent::createUI()
     separatorLine->setFrameShape(QFrame::VLine);
     separatorLine->setFrameShadow(QFrame::Sunken);
 
-    auto profileButtonsLayout = new QHBoxLayout();
-    profileButtonsLayout->setContentsMargins(0, 0, 0, 0);
-    profileButtonsLayout->setSpacing(5);
-    profileButtonsLayout->addWidget(buttonNewProfile, 1);
-    profileButtonsLayout->addWidget(buttonLoad);
-    profileButtonsLayout->addWidget(buttonSave);
+    cancelButton = new QPushButton("Cancel", this);
+    cancelButton->setFixedHeight(30);
 
-    auto profilesLayout = new QVBoxLayout();
-    profilesLayout->setContentsMargins(5, 5, 5, 5);
-    profilesLayout->setSpacing(5);
-    profilesLayout->addWidget(label_Profiles);
-    profilesLayout->addWidget(cardWidget, 1);
-    profilesLayout->addLayout(profileButtonsLayout);
+    buildButton->setFixedHeight(30);
+    buildButton->setFixedWidth(120);
 
-    auto profilesPanel = new QWidget(this);
-    profilesPanel->setLayout(profilesLayout);
-
-    collapseButton = new QPushButton(QIcon(":/icons/arrow_drop_down"), " build log", this);
+    collapseButton = new QPushButton(QIcon(":/icons/arrow_right"), " Build Log", this);
     collapseButton->setFlat(true);
-    collapseButton->setIconSize(QSize(16, 16));
-    collapseButton->setFixedHeight(24);
+    collapseButton->setIconSize(QSize(14, 14));
+    collapseButton->setFixedHeight(28);
     collapseButton->setCursor(Qt::PointingHandCursor);
+    collapseButton->setStyleSheet("font-size: 11px;");
+    {
+        QPalette p = collapseButton->palette();
+        p.setColor(QPalette::ButtonText, p.color(QPalette::PlaceholderText));
+        collapseButton->setPalette(p);
+    }
+
+    fileLinkButton = new QPushButton(this);
+    fileLinkButton->setFlat(true);
+    fileLinkButton->setFixedHeight(28);
+    fileLinkButton->setCursor(Qt::PointingHandCursor);
+    fileLinkButton->setIcon(QIcon(":/icons/downloads"));
+    fileLinkButton->setIconSize(QSize(14, 14));
+    fileLinkButton->setStyleSheet("font-size: 11px; font-weight: 500;");
+    fileLinkButton->setVisible(false);
+    fileLinkButton->setToolTip("Click to save file");
+    {
+        QPalette p = fileLinkButton->palette();
+        p.setColor(QPalette::ButtonText, p.color(QPalette::Highlight));
+        fileLinkButton->setPalette(p);
+    }
+    connect(fileLinkButton, &QPushButton::clicked, this, &DialogAgent::onSaveBuildFile);
+
+    auto footerLeftLayout = new QHBoxLayout();
+    footerLeftLayout->setContentsMargins(0, 0, 0, 0);
+    footerLeftLayout->setSpacing(8);
+    footerLeftLayout->addWidget(collapseButton);
+    footerLeftLayout->addWidget(fileLinkButton);
+
+    auto footerLayout = new QHBoxLayout();
+    footerLayout->setContentsMargins(10, 0, 10, 0);
+    footerLayout->setSpacing(8);
+    footerLayout->addLayout(footerLeftLayout);
+    footerLayout->addStretch();
+    footerLayout->addWidget(cancelButton);
+    footerLayout->addWidget(buildButton);
+
+    auto footerWidget = new QWidget(this);
+    footerWidget->setObjectName("DialogFooter");
+    footerWidget->setFixedHeight(46);
+    footerWidget->setStyleSheet("QWidget#DialogFooter { border-top: 1px solid palette(mid); }");
+    footerWidget->setLayout(footerLayout);
 
     buildLogOutput = new QTextEdit(this);
     buildLogOutput->setReadOnly(true);
-    buildLogOutput->setMinimumHeight(150);
+    buildLogOutput->setMinimumHeight(140);
     buildLogOutput->setStyleSheet("background-color: #151515; color: #BEBEBE; border: 1px solid #2A2A2A; border-radius: 4px;");
     buildLogOutput->setFont(FontManager::instance().getFont("Hack"));
 
@@ -211,27 +310,25 @@ void DialogAgent::createUI()
         collapseButton->setIcon(QIcon(buildLogExpander->expanded() ? ":/icons/arrow_drop_down" : ":/icons/arrow_right"));
     });
 
-    auto buildLogLayout = new QVBoxLayout();
-    buildLogLayout->setContentsMargins(5, 0, 5, 5);
-    buildLogLayout->setSpacing(2);
-    buildLogLayout->addWidget(collapseButton);
-    buildLogLayout->addWidget(buildLogExpander, 1);
-
     buildLogPanel = new QWidget(this);
-    buildLogPanel->setLayout(buildLogLayout);
+    auto buildLogPanelLayout = new QVBoxLayout(buildLogPanel);
+    buildLogPanelLayout->setContentsMargins(0, 0, 0, 0);
+    buildLogPanelLayout->setSpacing(0);
+    buildLogPanelLayout->addWidget(buildLogExpander, 1);
     buildLogPanel->setVisible(false);
 
-    auto topLayout = new QHBoxLayout();
-    topLayout->setContentsMargins(0, 0, 0, 0);
-    topLayout->setSpacing(0);
-    topLayout->addWidget(formWidget, 1);
-    topLayout->addWidget(separatorLine);
-    topLayout->addWidget(profilesPanel);
+    auto bodyLayout = new QHBoxLayout();
+    bodyLayout->setContentsMargins(0, 0, 0, 0);
+    bodyLayout->setSpacing(0);
+    bodyLayout->addWidget(formWidget, 1);
+    bodyLayout->addWidget(separatorLine);
+    bodyLayout->addWidget(profilesPanel);
 
     auto mainLayout = new QVBoxLayout(this);
     mainLayout->setContentsMargins(5, 5, 5, 5);
-    mainLayout->setSpacing(5);
-    mainLayout->addLayout(topLayout, 1);
+    mainLayout->setSpacing(0);
+    mainLayout->addLayout(bodyLayout, 1);
+    mainLayout->addWidget(footerWidget);
     mainLayout->addWidget(buildLogPanel);
 
     this->setLayout(mainLayout);
@@ -249,6 +346,7 @@ DialogAgent::DialogAgent(AdaptixWidget* adaptixWidget, const QString &listenerNa
     connect(cardWidget,         &QListWidget::customContextMenuRequested, this, &DialogAgent::handleProfileContextMenu);
     connect(agentCombobox,      &QComboBox::currentTextChanged,           this, &DialogAgent::changeConfig);
     connect(buildButton,        &QPushButton::clicked,                    this, &DialogAgent::onButtonBuild);
+    connect(cancelButton,       &QPushButton::clicked,                    this, &QDialog::close);
     connect(buttonNewProfile,   &QPushButton::clicked,                    this, &DialogAgent::onButtonNewProfile);
     connect(buttonLoad,         &QPushButton::clicked,                    this, &DialogAgent::onButtonLoad);
     connect(buttonSave,         &QPushButton::clicked,                    this, &DialogAgent::onButtonSave);
@@ -259,7 +357,7 @@ DialogAgent::DialogAgent(AdaptixWidget* adaptixWidget, const QString &listenerNa
     connect(btnMoveDown,        &QPushButton::clicked,                    this, &DialogAgent::onMoveListenerDown);
     connect(listenerSelectBtn,  &QPushButton::clicked,                    this, &DialogAgent::showListenerPopup);
 
-    this->listenerInput->setText(listenerName);
+    rebuildSingleListenerChip(listenerName);
 }
 
 DialogAgent::~DialogAgent()
@@ -308,71 +406,6 @@ void DialogAgent::Start()
     this->setModal(true);
     this->show();
 }
-
-// void DialogAgent::onButtonGenerate()
-// {
-//     QString agentName  = agentCombobox->currentText();
-//     QString profileName = inputProfileName->text().trimmed();
-//     bool shouldSaveProfile = actionSaveProfile->isChecked() && !profileName.isEmpty();
-//
-//     auto configData = QString();
-//     if (ax_uis.contains(agentName) && ax_uis[agentName].container)
-//         configData = ax_uis[agentName].container->toJson();
-//
-//     QString baseDir = authProfile.GetProjectDir();
-//
-//     QPointer<DialogAgent> safeThis = this;
-//      /// ToDo: listenersName array
-//     HttpReqAgentGenerateAsync(listenerName, agentName, configData, authProfile,
-//         [safeThis, baseDir, agentName, configData, profileName, shouldSaveProfile](bool success, const QString &message, const QJsonObject&) {
-//         if (!success) {
-//             MessageError(message);
-//             return;
-//         }
-//
-//         if (safeThis && shouldSaveProfile) {
-//             safeThis->saveProfile(profileName, agentName, configData);
-//             safeThis->loadProfiles();
-//         }
-//
-//         QStringList parts = message.split(":");
-//         if (parts.size() != 2) {
-//             MessageError("The response format is not supported");
-//             return;
-//         }
-//
-//         QByteArray content     = QByteArray::fromBase64(parts[1].toUtf8());
-//         QString    filename    = QString( QByteArray::fromBase64(parts[0].toUtf8()));
-//         QString    initialPath = QDir(baseDir).filePath(filename);
-//
-//         NonBlockingDialogs::getSaveFileName(safeThis, "Save File", initialPath, "All Files (*.*)",
-//             [safeThis, content](const QString& filePath) {
-//                 if (filePath.isEmpty())
-//                     return;
-//
-//                 QFile file(filePath);
-//                 if (!file.open(QIODevice::WriteOnly)) {
-//                     MessageError("Failed to open file for writing");
-//                     return;
-//                 }
-//
-//                 file.write(content);
-//                 file.close();
-//
-//                 QInputDialog inputDialog;
-//                 inputDialog.setWindowTitle("Save agent");
-//                 inputDialog.setLabelText("File saved to:");
-//                 inputDialog.setTextEchoMode(QLineEdit::Normal);
-//                 inputDialog.setTextValue(filePath);
-//                 inputDialog.adjustSize();
-//                 inputDialog.move(QGuiApplication::primaryScreen()->geometry().center() - inputDialog.geometry().center());
-//                 inputDialog.exec();
-//
-//                 if (safeThis)
-//                     safeThis->close();
-//             });
-//     });
-// }
 
 void DialogAgent::onButtonLoad()
 {
@@ -452,8 +485,10 @@ void DialogAgent::onButtonSave()
     QString tmpFilename = QString("%1_config.json").arg(configType);
     QString baseDir     = authProfile.GetProjectDir();
     QString initialPath = QDir(baseDir).filePath(tmpFilename);
+    QPointer<DialogAgent> safeThis = this;
     NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "JSON files (*.json)",
-        [this, fileContent](const QString& filePath) {
+        [safeThis, fileContent](const QString& filePath) {
+            if (!safeThis) return;
             if (filePath.isEmpty())
                 return;
 
@@ -489,8 +524,7 @@ void DialogAgent::changeConfig(const QString &agentName)
 
     AgentTypeInfo typeInfo = agentTypes.value(agentName, AgentTypeInfo{false, QStringList()});
     bool isMultiListeners = typeInfo.multiListeners;
-    listenerSelectionWidget->setVisible(isMultiListeners);
-    listenerInput->setVisible(!isMultiListeners);
+    listenerSelectBtn->setVisible(isMultiListeners);
     listenerLabel->setText(isMultiListeners ? "Listeners:" : "Listener:");
 
     if (isMultiListeners) {
@@ -511,7 +545,9 @@ void DialogAgent::changeConfig(const QString &agentName)
         }
 
         listenerListWidget->blockSignals(false);
-        updateListenerDisplay();
+        rebuildListenerChips();
+    } else {
+        rebuildSingleListenerChip(listenerName);
     }
 
     QString baseName = agentName;
@@ -767,6 +803,9 @@ void DialogAgent::onButtonBuild()
     }
 
     buildLogOutput->clear();
+    buildFileName.clear();
+    buildFileContent.clear();
+    fileLinkButton->setVisible(false);
     buildLogPanel->setVisible(true);
     buildLogExpander->setExpanded(true);
     collapseButton->setIcon(QIcon(":/icons/arrow_drop_down"));
@@ -785,8 +824,8 @@ void DialogAgent::onButtonBuild()
     otpData["listeners_name"] = listenersArray;
 
     QString otp;
-    bool otpResult = HttpReqGetOTP("channel_agent_build", otpData, authProfile.GetURL(), authProfile.GetAccessToken(), &otp);
-    if (!otpResult) {
+    bool ok = false;
+    if (!HttpReqGetOTP("channel_agent_build", otpData, authProfile, &otp, &ok) || !ok) {
         buildButton->setText("Build");
         MessageError("Failed to generate OTP for build");
         return;
@@ -857,6 +896,14 @@ void DialogAgent::onBuildMessage(const QString &msg)
             if (filename.isEmpty() || content.isEmpty())
                 return;
 
+            buildFileName = filename;
+            buildFileContent = content;
+
+            fileLinkButton->setText(filename);
+            fileLinkButton->setVisible(true);
+
+            buildLogOutput->append(QString("<span style='color: #dcdcaa;'>[+]</span> File ready: %1").arg(filename.toHtmlEscaped()));
+
             QString baseDir = authProfile.GetProjectDir();
             QString initialPath = QDir(baseDir).filePath(filename);
 
@@ -899,6 +946,36 @@ void DialogAgent::onBuildFinished()
     buildThread = nullptr;
 }
 
+void DialogAgent::onSaveBuildFile()
+{
+    if (buildFileName.isEmpty() || buildFileContent.isEmpty())
+        return;
+
+    QString baseDir = authProfile.GetProjectDir();
+    QString initialPath = QDir(baseDir).filePath(buildFileName);
+
+    QPointer<DialogAgent> safeThis = this;
+    QByteArray content = buildFileContent;
+    NonBlockingDialogs::getSaveFileName(this, "Save File", initialPath, "All Files (*.*)",
+        [safeThis, content](const QString& filePath) {
+            if (filePath.isEmpty())
+                return;
+
+            QFile file(filePath);
+            if (!file.open(QIODevice::WriteOnly)) {
+                MessageError("Failed to open file for writing");
+                return;
+            }
+
+            file.write(content);
+            file.close();
+
+            if (safeThis) {
+                safeThis->buildLogOutput->append(QString("<span style='color: #dcdcaa;'>[+]</span> File saved: %1").arg(filePath.toHtmlEscaped()));
+            }
+        });
+}
+
 void DialogAgent::stopBuild()
 {
     if (!buildWorker || !buildThread)
@@ -910,18 +987,12 @@ void DialogAgent::stopBuild()
     buildWorker = nullptr;
     buildThread = nullptr;
 
-    connect(worker, &BuildWorker::finished, this, [this, thread]() {
-        if (thread->isRunning()) {
-            thread->quit();
-            thread->wait();
-        }
-
-        buildLogPanel->setVisible(false);
-
-        buildButton->setText("Build");
-    });
-
     QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
+
+    connect(thread, &QThread::finished, thread, [thread, worker]() {
+        worker->deleteLater();
+        thread->deleteLater();
+    });
 }
 
 void DialogAgent::onListenerSelectionChanged(const QListWidgetItem *item)
@@ -1080,12 +1151,98 @@ void DialogAgent::showListenerPopup()
 
 void DialogAgent::updateListenerDisplay()
 {
-    QStringList selectedNames;
+    rebuildListenerChips();
+}
+
+void DialogAgent::rebuildListenerChips()
+{
+    QLayout *layout = listenerChipsContainer->layout();
+    while (layout->count() > 0) {
+        QLayoutItem *item = layout->takeAt(0);
+        if (item->widget())
+            delete item->widget();
+        delete item;
+    }
+
     for (int i = 0; i < listenerListWidget->count(); ++i) {
         auto *item = listenerListWidget->item(i);
-        if (item->checkState() == Qt::Checked) {
-            selectedNames.append(item->text());
-        }
+        if (item->checkState() != Qt::Checked)
+            continue;
+
+        QString name = item->text();
+        int idx = i;
+
+        auto *chip = new QWidget(listenerChipsContainer);
+        chip->setObjectName("ListenerChip");
+        chip->setFixedHeight(24);
+        chip->setStyleSheet(
+            "QWidget#ListenerChip {"
+            "  background: transparent;"
+            "  border: 1px solid palette(highlight);"
+            "  border-radius: 4px;"
+            "}"
+        );
+
+        auto *chipLabel = new QLabel(QString(" %1 ").arg(name), chip);
+        chipLabel->setStyleSheet("color: palette(highlight); font-size: 13px; font-weight: 500; background: transparent; border: none;");
+
+        auto *chipBtn = new QPushButton("×", chip);
+        chipBtn->setObjectName("ChipRemoveBtn");
+        chipBtn->setFixedSize(20, 20);
+        chipBtn->setCursor(Qt::PointingHandCursor);
+        chipBtn->setStyleSheet(
+            "QPushButton#ChipRemoveBtn {"
+            "  background: transparent; border: none;"
+            "  color: palette(highlight); font-size: 12px; font-weight: bold;"
+            "}"
+            "QPushButton#ChipRemoveBtn:hover { color: palette(light); }"
+        );
+        connect(chipBtn, &QPushButton::clicked, this, [this, idx]() {
+            auto *listItem = listenerListWidget->item(idx);
+            if (listItem)
+                listItem->setCheckState(Qt::Unchecked);
+        });
+
+        auto *chipLayout = new QHBoxLayout(chip);
+        chipLayout->setContentsMargins(6, 0, 4, 0);
+        chipLayout->setSpacing(2);
+        chipLayout->setAlignment(Qt::AlignVCenter);
+        chipLayout->addWidget(chipLabel);
+        chipLayout->addWidget(chipBtn);
+
+        layout->addWidget(chip);
     }
-    listenerDisplayEdit->setText(selectedNames.join(", "));
+}
+
+void DialogAgent::rebuildSingleListenerChip(const QString &name)
+{
+    QLayout *layout = listenerChipsContainer->layout();
+    while (layout->count() > 0) {
+        QLayoutItem *item = layout->takeAt(0);
+        if (item->widget())
+            delete item->widget();
+        delete item;
+    }
+
+    auto *chip = new QWidget(listenerChipsContainer);
+    chip->setObjectName("ListenerChip");
+    chip->setFixedHeight(24);
+    chip->setStyleSheet(
+        "QWidget#ListenerChip {"
+        "  background: transparent;"
+        "  border: 1px solid palette(highlight);"
+        "  border-radius: 4px;"
+        "}"
+    );
+
+    auto *chipLabel = new QLabel(QString(" %1 ").arg(name), chip);
+    chipLabel->setStyleSheet("color: palette(highlight); font-size: 13px; font-weight: 500; background: transparent; border: none;");
+
+    auto *chipLayout = new QHBoxLayout(chip);
+    chipLayout->setContentsMargins(6, 0, 6, 0);
+    chipLayout->setSpacing(0);
+    chipLayout->setAlignment(Qt::AlignVCenter);
+    chipLayout->addWidget(chipLabel);
+
+    layout->addWidget(chip);
 }

@@ -1,7 +1,6 @@
 package axscript
 
 import (
-	"AdaptixServer/core/utils/logs"
 	"crypto/md5"
 	"crypto/sha1"
 	"crypto/sha256"
@@ -10,15 +9,21 @@ import (
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
+	"log"
+	"math"
 	"math/rand"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf16"
 
+	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/dop251/goja"
 )
+
+const maxSafeJSInt = int64(1) << 53
 
 func registerAxBridge(engine *ScriptEngine) {
 	rt := engine.runtime
@@ -55,6 +60,8 @@ func registerAxBridge(engine *ScriptEngine) {
 		obj.Set("addArgFlagFile", builder.AddArgFlagFile)
 		obj.Set("addSubCommands", builder.AddSubCommands)
 		obj.Set("setPreHook", builder.SetPreHook)
+		obj.Set("setPostHook", builder.SetPostHook)
+		obj.Set("setHandler", builder.SetHandler)
 
 		obj.Set("__builder", builder)
 
@@ -95,7 +102,7 @@ func registerAxBridge(engine *ScriptEngine) {
 			panic(rt.NewTypeError("execute_command requires at least 2 arguments: (agentId, cmdline)"))
 		}
 
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		cmdline := call.Argument(1).String()
 
 		var postHookFn goja.Callable
@@ -131,7 +138,7 @@ func registerAxBridge(engine *ScriptEngine) {
 			panic(rt.NewTypeError("execute_alias requires at least 3 arguments: (agentId, originalCmdline, aliasCmdline)"))
 		}
 
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		displayCmdline := call.Argument(1).String()
 		aliasCmdline := call.Argument(2).String()
 		message := ""
@@ -172,7 +179,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if len(call.Arguments) < 5 {
 			panic(rt.NewTypeError("execute_alias_hook requires 5 arguments"))
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		displayCmdline := call.Argument(1).String()
 		aliasCmdline := call.Argument(2).String()
 		message := ""
@@ -197,7 +204,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if len(call.Arguments) < 5 {
 			panic(rt.NewTypeError("execute_alias_handler requires 5 arguments"))
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		displayCmdline := call.Argument(1).String()
 		aliasCmdline := call.Argument(2).String()
 		message := ""
@@ -227,7 +234,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || len(call.Arguments) < 2 {
 			return goja.Undefined()
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		property := call.Argument(1).String()
 		info := engine.manager.GetAgentInfo(agentId, property)
 		if info == nil {
@@ -261,8 +268,13 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || len(call.Arguments) < 3 {
 			return goja.Undefined()
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		msgType := int(call.Argument(1).ToInteger())
+		switch msgType {
+		case 1, 2, 3, 4, 5, 6, 7, 10:
+		default:
+			panic(rt.NewTypeError("ax.console_message: invalid msgType %d (allowed: 1..7, 10)", msgType))
+		}
 		message := call.Argument(2).String()
 		clearText := ""
 		if len(call.Arguments) > 3 {
@@ -274,23 +286,23 @@ func registerAxBridge(engine *ScriptEngine) {
 
 	axObj.Set("log", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) > 0 {
-			logs.Info("", "[%s] %s", engine.name, call.Argument(0).String())
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusInfo, 0, "server:axscript_manager", "[%s] %s", engine.name, call.Argument(0).String())
 		}
 		return goja.Undefined()
 	})
 
 	axObj.Set("log_error", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) > 0 {
-			logs.Error("", "[%s] %s", engine.name, call.Argument(0).String())
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "[%s] %s", engine.name, call.Argument(0).String())
 		}
 		return goja.Undefined()
 	})
 
 	axObj.Set("execute_command_hook", func(call goja.FunctionCall) goja.Value {
 		if engine.manager == nil || len(call.Arguments) < 3 {
-			return goja.Undefined()
+			return rt.ToValue(false)
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		cmdline := call.Argument(1).String()
 		var hookFn goja.Callable
 		if fn, ok := goja.AssertFunction(call.Argument(2)); ok {
@@ -305,9 +317,9 @@ func registerAxBridge(engine *ScriptEngine) {
 
 	axObj.Set("execute_command_handler", func(call goja.FunctionCall) goja.Value {
 		if engine.manager == nil || len(call.Arguments) < 3 {
-			return goja.Undefined()
+			return rt.ToValue(false)
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		cmdline := call.Argument(1).String()
 		var handlerFn goja.Callable
 		if fn, ok := goja.AssertFunction(call.Argument(2)); ok {
@@ -322,7 +334,7 @@ func registerAxBridge(engine *ScriptEngine) {
 
 	axObj.Set("register_commands_group", func(call goja.FunctionCall) goja.Value {
 		if engine.manager == nil || len(call.Arguments) < 2 {
-			return goja.Undefined()
+			return rt.ToValue(false)
 		}
 
 		groupVal := call.Argument(0)
@@ -353,7 +365,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		}
 
 		if groupBuilder == nil {
-			logs.Warn("", "register_commands_group: invalid group object")
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "register_commands_group: invalid group object")
 			return goja.Undefined()
 		}
 
@@ -438,7 +450,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		path := call.Argument(0).String()
 		err := engine.manager.LoadAxScriptChild(engine, path)
 		if err != nil {
-			logs.Error("", "script_load error: %v", err)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "script_load error: %v", err)
 			panic(rt.NewGoError(err))
 		}
 		return goja.Undefined()
@@ -451,7 +463,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		path := call.Argument(0).String()
 		absPath, err := engine.manager.ImportAxScript(engine, path)
 		if err != nil {
-			logs.Error("", "script_import error: %v", err)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "script_import error: %v", err)
 			panic(rt.NewGoError(err))
 		}
 		engine.AddImportedFile(absPath)
@@ -465,7 +477,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		name := call.Argument(0).String()
 		err := engine.manager.UnloadAxScript(name)
 		if err != nil {
-			logs.Warn("", "script_unload error: %v", err)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "script_unload error: %v", err)
 		}
 		return goja.Undefined()
 	})
@@ -486,13 +498,9 @@ func registerAxBridge(engine *ScriptEngine) {
 		}
 		arrLen := int(lengthVal.ToInteger())
 
-		items := strings.Split(types, ",")
-		for i := range items {
-			items[i] = strings.TrimSpace(items[i])
-		}
-
+		items := parseBofTypes(types)
 		if len(items) != arrLen {
-			panic(rt.NewTypeError("bof_pack: types count must match args count"))
+			panic(rt.NewTypeError(fmt.Sprintf("bof_pack: types count (%d) must match args count (%d) — types=%q parsed=%v", len(items), arrLen, types, items)))
 		}
 
 		var data []byte
@@ -523,16 +531,13 @@ func registerAxBridge(engine *ScriptEngine) {
 					data = append(data, rb...)
 				}
 			case "bytes":
-				s := val.String()
-				decoded, err := base64.StdEncoding.DecodeString(s)
-				if err != nil {
-					decoded = []byte{}
-				}
-				l := uint32(len(decoded))
+				// Accept ArrayBuffer / Uint8Array / string (UTF-8 bytes).
+				raw, _ := jsBytes(val)
+				l := uint32(len(raw))
 				lb := make([]byte, 4)
 				binary.LittleEndian.PutUint32(lb, l)
 				data = append(data, lb...)
-				data = append(data, decoded...)
+				data = append(data, raw...)
 			case "int":
 				n := int32(val.ToInteger())
 				nb := make([]byte, 4)
@@ -561,7 +566,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || len(call.Arguments) == 0 {
 			return rt.ToValue("x86")
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		info := engine.manager.GetAgentInfo(agentId, "arch")
 		if info == nil {
 			return rt.ToValue("x86")
@@ -576,7 +581,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || len(call.Arguments) == 0 {
 			return rt.ToValue(false)
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		info := engine.manager.GetAgentInfo(agentId, "arch")
 		if s, ok := info.(string); ok {
 			return rt.ToValue(s == "x64")
@@ -588,7 +593,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || len(call.Arguments) == 0 {
 			return rt.ToValue(false)
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		info := engine.manager.GetAgentInfo(agentId, "id")
 		if info == nil {
 			return rt.ToValue(false)
@@ -604,7 +609,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || len(call.Arguments) == 0 {
 			return rt.ToValue(false)
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		info := engine.manager.GetAgentInfo(agentId, "elevated")
 		if b, ok := info.(bool); ok {
 			return rt.ToValue(b)
@@ -640,18 +645,22 @@ func registerAxBridge(engine *ScriptEngine) {
 		if len(call.Arguments) > 6 {
 			cred["host"] = call.Argument(6).String()
 		}
-		_ = engine.manager.teamserver.AxCredentialsAdd([]map[string]interface{}{cred})
-		return goja.Undefined()
+		err := engine.manager.teamserver.AxCredentialsAdd([]map[string]interface{}{cred})
+		if err != nil {
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript", "credentials_add: %v", err)
+			return rt.ToValue(false)
+		}
+		return rt.ToValue(true)
 	})
 
 	axObj.Set("credentials_add_list", func(call goja.FunctionCall) goja.Value {
 		if engine.manager == nil || engine.manager.teamserver == nil || len(call.Arguments) == 0 {
-			return goja.Undefined()
+			return rt.ToValue(false)
 		}
 		exported := call.Argument(0).Export()
 		arr, ok := exported.([]interface{})
 		if !ok {
-			return goja.Undefined()
+			return rt.ToValue(false)
 		}
 		var creds []map[string]interface{}
 		for _, item := range arr {
@@ -659,15 +668,20 @@ func registerAxBridge(engine *ScriptEngine) {
 				creds = append(creds, m)
 			}
 		}
-		if len(creds) > 0 {
-			_ = engine.manager.teamserver.AxCredentialsAdd(creds)
+		if len(creds) == 0 {
+			return rt.ToValue(true)
 		}
-		return goja.Undefined()
+		err := engine.manager.teamserver.AxCredentialsAdd(creds)
+		if err != nil {
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript", "credentials_add_list: %v", err)
+			return rt.ToValue(false)
+		}
+		return rt.ToValue(true)
 	})
 
 	axObj.Set("targets_add", func(call goja.FunctionCall) goja.Value {
 		if engine.manager == nil || engine.manager.teamserver == nil {
-			return goja.Undefined()
+			return rt.ToValue(false)
 		}
 		target := make(map[string]interface{})
 		if len(call.Arguments) > 0 {
@@ -694,18 +708,22 @@ func registerAxBridge(engine *ScriptEngine) {
 		if len(call.Arguments) > 7 {
 			target["alive"] = call.Argument(7).ToBoolean()
 		}
-		_ = engine.manager.teamserver.AxTargetsAdd([]map[string]interface{}{target})
-		return goja.Undefined()
+		err := engine.manager.teamserver.AxTargetsAdd([]map[string]interface{}{target})
+		if err != nil {
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript", "targets_add: %v", err)
+			return rt.ToValue(false)
+		}
+		return rt.ToValue(true)
 	})
 
 	axObj.Set("targets_add_list", func(call goja.FunctionCall) goja.Value {
 		if engine.manager == nil || engine.manager.teamserver == nil || len(call.Arguments) == 0 {
-			return goja.Undefined()
+			return rt.ToValue(false)
 		}
 		exported := call.Argument(0).Export()
 		arr, ok := exported.([]interface{})
 		if !ok {
-			return goja.Undefined()
+			return rt.ToValue(false)
 		}
 		var targets []map[string]interface{}
 		for _, item := range arr {
@@ -713,10 +731,15 @@ func registerAxBridge(engine *ScriptEngine) {
 				targets = append(targets, m)
 			}
 		}
-		if len(targets) > 0 {
-			_ = engine.manager.teamserver.AxTargetsAdd(targets)
+		if len(targets) == 0 {
+			return rt.ToValue(true)
 		}
-		return goja.Undefined()
+		err := engine.manager.teamserver.AxTargetsAdd(targets)
+		if err != nil {
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript", "targets_add_list: %v", err)
+			return rt.ToValue(false)
+		}
+		return rt.ToValue(true)
 	})
 
 	// --- File operations (sandboxed) ---
@@ -751,24 +774,24 @@ func registerAxBridge(engine *ScriptEngine) {
 			return rt.ToValue(false)
 		}
 		path := call.Argument(0).String()
-		_, err := engine.ValidatePath(path)
+		validated, err := engine.ValidatePath(path)
 		if err != nil {
 			return rt.ToValue(false)
 		}
-		_, err = os.Stat(path)
+		_, err = os.Stat(validated)
 		return rt.ToValue(err == nil)
 	})
 
 	axObj.Set("file_read", func(call goja.FunctionCall) goja.Value {
 		if engine.manager == nil || len(call.Arguments) == 0 {
-			return rt.ToValue("")
+			return goja.Null()
 		}
 		path := call.Argument(0).String()
 		data, err := engine.manager.ReadFileSandboxed(engine, path)
 		if err != nil {
-			return rt.ToValue("")
+			return goja.Null()
 		}
-		return rt.ToValue(base64.StdEncoding.EncodeToString(data))
+		return rt.ToValue(rt.NewArrayBuffer(data))
 	})
 
 	axObj.Set("file_size", func(call goja.FunctionCall) goja.Value {
@@ -788,51 +811,41 @@ func registerAxBridge(engine *ScriptEngine) {
 	})
 
 	axObj.Set("file_write", func(call goja.FunctionCall) goja.Value {
-		logs.Warn("", "file_write is disabled on server")
+		engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "file_write is disabled on server")
 		return rt.ToValue(false)
 	})
 
-	axObj.Set("file_write_text", func(call goja.FunctionCall) goja.Value {
-		logs.Warn("", "file_write_text is disabled on server")
-		return rt.ToValue(false)
+	axObj.Set("file_write", func(call goja.FunctionCall) goja.Value {
+		if engine.manager == nil || len(call.Arguments) < 2 {
+			return rt.ToValue(false)
+		}
+		path := call.Argument(0).String()
 
-		// if engine.manager == nil || len(call.Arguments) < 2 {
-		// 	return rt.ToValue(false)
-		// }
-		// path := call.Argument(0).String()
-		// content := call.Argument(1).String()
-		// appendMode := false
-		// if len(call.Arguments) > 2 {
-		// 	appendMode = call.Argument(2).ToBoolean()
-		// }
-		// err := engine.manager.WriteFileSandboxed(engine, path, []byte(content), appendMode)
-		// if err != nil {
-		// 	logs.Warn("", "file_write_text error: %v", err)
-		// 	return rt.ToValue(false)
-		// }
-		// return rt.ToValue(true)
-	})
+		var data []byte
+		switch x := call.Argument(1).Export().(type) {
+		case goja.ArrayBuffer:
+			data = x.Bytes()
+		case []byte:
+			data = x
+		case string:
+			data = []byte(x)
+		default:
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript",
+				"file_write: expected ArrayBuffer/Uint8Array/string, got %T", x)
+			return rt.ToValue(false)
+		}
 
-	axObj.Set("file_write_binary", func(call goja.FunctionCall) goja.Value {
-		logs.Warn("", "file_write_binary is disabled on server")
-		return rt.ToValue(false)
+		appendMode := false
+		if len(call.Arguments) > 2 {
+			appendMode = call.Argument(2).ToBoolean()
+		}
 
-		// if engine.manager == nil || len(call.Arguments) < 2 {
-		// 	return rt.ToValue(false)
-		// }
-		// path := call.Argument(0).String()
-		// b64Content := call.Argument(1).String()
-		// data, err := base64.StdEncoding.DecodeString(b64Content)
-		// if err != nil {
-		// 	logs.Warn("", "file_write_binary: invalid base64: %v", err)
-		// 	return rt.ToValue(false)
-		// }
-		// err = engine.manager.WriteFileSandboxed(engine, path, data, false)
-		// if err != nil {
-		// 	logs.Warn("", "file_write_binary error: %v", err)
-		// 	return rt.ToValue(false)
-		// }
-		// return rt.ToValue(true)
+		if err := engine.manager.WriteFileSandboxed(engine, path, data, appendMode); err != nil {
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript",
+				"file_write %q: %v", path, err)
+			return rt.ToValue(false)
+		}
+		return rt.ToValue(true)
 	})
 
 	// --- Agent management ---
@@ -845,7 +858,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || engine.manager.teamserver == nil || len(call.Arguments) == 0 {
 			return goja.Undefined()
 		}
-		ids := exportStringArray(rt, call.Argument(0))
+		ids := exportInt64Array(rt, call.Argument(0))
 		if len(ids) > 0 {
 			_ = engine.manager.teamserver.AxAgentRemove(ids)
 		}
@@ -856,7 +869,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || engine.manager.teamserver == nil || len(call.Arguments) < 2 {
 			return goja.Undefined()
 		}
-		ids := exportStringArray(rt, call.Argument(0))
+		ids := exportInt64Array(rt, call.Argument(0))
 		bg := call.Argument(1).String()
 		fg := ""
 		if len(call.Arguments) > 2 {
@@ -874,7 +887,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || engine.manager.teamserver == nil || len(call.Arguments) < 2 {
 			return goja.Undefined()
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		impersonate := call.Argument(1).String()
 		elevated := false
 		if len(call.Arguments) > 2 {
@@ -894,7 +907,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || engine.manager.teamserver == nil || len(call.Arguments) < 2 {
 			return goja.Undefined()
 		}
-		ids := exportStringArray(rt, call.Argument(0))
+		ids := exportInt64Array(rt, call.Argument(0))
 		mark := call.Argument(1).String()
 		_ = engine.manager.teamserver.AxAgentSetMark(ids, mark)
 		return goja.Undefined()
@@ -904,7 +917,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || engine.manager.teamserver == nil || len(call.Arguments) < 2 {
 			return goja.Undefined()
 		}
-		ids := exportStringArray(rt, call.Argument(0))
+		ids := exportInt64Array(rt, call.Argument(0))
 		tag := call.Argument(1).String()
 		_ = engine.manager.teamserver.AxAgentSetTag(ids, tag)
 		return goja.Undefined()
@@ -914,7 +927,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || engine.manager.teamserver == nil || len(call.Arguments) < 2 {
 			return goja.Undefined()
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		data := call.Argument(1).Export()
 		if m, ok := data.(map[string]interface{}); ok {
 			_ = engine.manager.teamserver.AxAgentUpdateData(agentId, m)
@@ -944,7 +957,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		if engine.manager == nil || len(call.Arguments) < 2 {
 			return rt.ToValue(map[string]interface{}{"valid": false, "message": "missing arguments"})
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		cmdline := call.Argument(1).String()
 		result, err := engine.manager.ValidateCommand(agentId, cmdline)
 		if err != nil {
@@ -960,7 +973,7 @@ func registerAxBridge(engine *ScriptEngine) {
 
 	axObj.Set("show_message", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) >= 2 {
-			logs.Info("", "[%s] Message: %s - %s", engine.name, call.Argument(0).String(), call.Argument(1).String())
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusInfo, 0, "server:axscript_manager", "[%s] Message: %s - %s", engine.name, call.Argument(0).String(), call.Argument(1).String())
 		}
 		return goja.Undefined()
 	})
@@ -1014,6 +1027,62 @@ func exportStringArray(rt *goja.Runtime, val goja.Value) []string {
 	return nil
 }
 
+func exportInt64(val goja.Value) int64 {
+	if val == nil || goja.IsUndefined(val) || goja.IsNull(val) {
+		return 0
+	}
+	switch v := val.Export().(type) {
+	case int64:
+		return v
+	case int:
+		return int64(v)
+	case float64:
+		if math.IsNaN(v) || math.IsInf(v, 0) {
+			return 0
+		}
+		if v >= float64(maxSafeJSInt) || v <= -float64(maxSafeJSInt) {
+			log.Printf("axscript: int64 precision loss converting %g — pass IDs > 2^53 as strings", v)
+		}
+		return int64(v)
+	case string:
+		n, _ := strconv.ParseInt(v, 10, 64)
+		return n
+	}
+	return val.ToInteger()
+}
+
+func exportInt64Array(rt *goja.Runtime, val goja.Value) []int64 {
+	if val == nil || goja.IsUndefined(val) || goja.IsNull(val) {
+		return nil
+	}
+	exported := val.Export()
+	if arr, ok := exported.([]interface{}); ok {
+		var result []int64
+		for _, item := range arr {
+			switch v := item.(type) {
+			case int64:
+				result = append(result, v)
+			case int:
+				result = append(result, int64(v))
+			case float64:
+				if math.IsNaN(v) || math.IsInf(v, 0) {
+					continue
+				}
+				if v >= float64(maxSafeJSInt) || v <= -float64(maxSafeJSInt) {
+					log.Printf("axscript: int64 precision loss converting %g — pass IDs > 2^53 as strings", v)
+				}
+				result = append(result, int64(v))
+			case string:
+				if n, err := strconv.ParseInt(v, 10, 64); err == nil {
+					result = append(result, n)
+				}
+			}
+		}
+		return result
+	}
+	return nil
+}
+
 func convertQtFormatToGo(qtFmt string) string {
 	r := strings.NewReplacer(
 		"yyyy", "2006", "yy", "06",
@@ -1033,75 +1102,69 @@ func registerAxUtilities(axObj *goja.Object, rt *goja.Runtime, engine *ScriptEng
 		if len(call.Arguments) == 0 {
 			return rt.ToValue("")
 		}
-		data := call.Argument(0).String()
-		return rt.ToValue(base64.StdEncoding.EncodeToString([]byte(data)))
+		data, _ := jsBytes(call.Argument(0))
+		return rt.ToValue(base64.StdEncoding.EncodeToString(data))
 	})
 
 	axObj.Set("base64_decode", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) == 0 {
-			return rt.ToValue("")
+			return rt.ToValue(rt.NewArrayBuffer(nil))
 		}
-		data := call.Argument(0).String()
-		decoded, err := base64.StdEncoding.DecodeString(data)
+		decoded, err := base64.StdEncoding.DecodeString(call.Argument(0).String())
 		if err != nil {
-			return rt.ToValue("")
+			return rt.ToValue(rt.NewArrayBuffer(nil))
 		}
-		return rt.ToValue(string(decoded))
+		return rt.ToValue(rt.NewArrayBuffer(decoded))
 	})
 
 	axObj.Set("hex_encode", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) == 0 {
 			return rt.ToValue("")
 		}
-		data := call.Argument(0).String()
-		return rt.ToValue(hex.EncodeToString([]byte(data)))
+		data, _ := jsBytes(call.Argument(0))
+		return rt.ToValue(hex.EncodeToString(data))
 	})
 
 	axObj.Set("hex_decode", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) == 0 {
-			return rt.ToValue("")
+			return rt.ToValue(rt.NewArrayBuffer(nil))
 		}
-		data := call.Argument(0).String()
-		decoded, err := hex.DecodeString(data)
+		decoded, err := hex.DecodeString(call.Argument(0).String())
 		if err != nil {
-			return rt.ToValue("")
+			return rt.ToValue(rt.NewArrayBuffer(nil))
 		}
-		return rt.ToValue(string(decoded))
+		return rt.ToValue(rt.NewArrayBuffer(decoded))
 	})
 
 	axObj.Set("hash", func(call goja.FunctionCall) goja.Value {
-		if len(call.Arguments) < 2 {
+		if len(call.Arguments) < 3 {
 			return rt.ToValue("")
 		}
 		algorithm := strings.ToLower(call.Argument(0).String())
-		input := call.Argument(1).String()
+		length := int(call.Argument(1).ToInteger())
+		data, _ := jsBytes(call.Argument(2))
 
 		var result string
 		switch algorithm {
 		case "md5":
-			h := md5.Sum([]byte(input))
+			h := md5.Sum(data)
 			result = hex.EncodeToString(h[:])
 		case "sha1":
-			h := sha1.Sum([]byte(input))
+			h := sha1.Sum(data)
 			result = hex.EncodeToString(h[:])
 		case "sha256":
-			h := sha256.Sum256([]byte(input))
+			h := sha256.Sum256(data)
 			result = hex.EncodeToString(h[:])
 		case "sha512":
-			h := sha512.Sum512([]byte(input))
+			h := sha512.Sum512(data)
 			result = hex.EncodeToString(h[:])
 		default:
 			result = ""
 		}
 
-		length := 0
-		if len(call.Arguments) > 2 {
-			length = int(call.Argument(2).ToInteger())
-		}
 		if length > 0 && length < len(result) {
 			result = result[:length]
 		}
-
 		return rt.ToValue(result)
 	})
 
@@ -1110,6 +1173,12 @@ func registerAxUtilities(axObj *goja.Object, rt *goja.Runtime, engine *ScriptEng
 		charset := "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 		if len(call.Arguments) > 0 {
 			length = int(call.Argument(0).ToInteger())
+			if length < 0 {
+				length = 0
+			}
+			if length > 4096 {
+				length = 4096
+			}
 		}
 		if len(call.Arguments) > 1 {
 			setName := call.Argument(1).String()
@@ -1161,7 +1230,7 @@ func registerAxUtilities(axObj *goja.Object, rt *goja.Runtime, engine *ScriptEng
 		if engine.manager == nil || len(call.Arguments) == 0 {
 			return rt.ToValue([]interface{}{})
 		}
-		agentId := call.Argument(0).String()
+		agentId := exportInt64(call.Argument(0))
 		names, err := engine.manager.GetCommandNames(agentId)
 		if err != nil {
 			return rt.ToValue([]interface{}{})
@@ -1210,6 +1279,13 @@ func registerAxUtilities(axObj *goja.Object, rt *goja.Runtime, engine *ScriptEng
 		return rt.ToValue("")
 	})
 
+	axObj.Set("tokenize", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return rt.ToValue([]string{})
+		}
+		return rt.ToValue(Tokenize(call.Argument(0).String()))
+	})
+
 	axObj.Set("open_agent_console", func(call goja.FunctionCall) goja.Value { return goja.Undefined() })
 	axObj.Set("open_access_tunnel", func(call goja.FunctionCall) goja.Value { return goja.Undefined() })
 	axObj.Set("open_browser_files", func(call goja.FunctionCall) goja.Value { return goja.Undefined() })
@@ -1222,17 +1298,15 @@ func registerAxUtilities(axObj *goja.Object, rt *goja.Runtime, engine *ScriptEng
 			return rt.ToValue("")
 		}
 		language := strings.ToLower(call.Argument(0).String())
-		b64Data := call.Argument(1).String()
+		data, ok := jsBytes(call.Argument(1))
+		if !ok {
+			return rt.ToValue("")
+		}
 		varName := "shellcode"
 		if len(call.Arguments) > 2 {
 			varName = call.Argument(2).String()
 		}
-		data, err := base64.StdEncoding.DecodeString(b64Data)
-		if err != nil {
-			return rt.ToValue("")
-		}
-		result := bytesToCode(language, data, varName)
-		return rt.ToValue(result)
+		return rt.ToValue(bytesToCode(language, data, varName))
 	})
 
 	axObj.Set("encode_data", func(call goja.FunctionCall) goja.Value {
@@ -1240,25 +1314,52 @@ func registerAxUtilities(axObj *goja.Object, rt *goja.Runtime, engine *ScriptEng
 			return rt.ToValue("")
 		}
 		alg := strings.ToLower(call.Argument(0).String())
-		data := call.Argument(1).String()
+		data, _ := jsBytes(call.Argument(1))
 		key := ""
 		if len(call.Arguments) > 2 {
 			key = call.Argument(2).String()
 		}
-		return rt.ToValue(encodeData(alg, []byte(data), key))
+		text, raw, isText := encodeData(alg, data, key)
+		if isText {
+			return rt.ToValue(text)
+		}
+		return rt.ToValue(rt.NewArrayBuffer(raw))
 	})
 
 	axObj.Set("decode_data", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) < 2 {
-			return rt.ToValue("")
+			return rt.ToValue(rt.NewArrayBuffer(nil))
 		}
 		alg := strings.ToLower(call.Argument(0).String())
-		data := call.Argument(1).String()
 		key := ""
 		if len(call.Arguments) > 2 {
 			key = call.Argument(2).String()
 		}
-		return rt.ToValue(decodeData(alg, data, key))
+
+		var decoded []byte
+		switch alg {
+		case "base64":
+			s := call.Argument(1).String()
+			b, err := base64.StdEncoding.DecodeString(s)
+			if err != nil {
+				return rt.ToValue(rt.NewArrayBuffer(nil))
+			}
+			decoded = b
+		case "hex":
+			s := call.Argument(1).String()
+			b, err := hex.DecodeString(s)
+			if err != nil {
+				return rt.ToValue(rt.NewArrayBuffer(nil))
+			}
+			decoded = b
+		case "xor":
+			raw, _ := jsBytes(call.Argument(1))
+			decoded = xorBytes(raw, key)
+		default:
+			raw, _ := jsBytes(call.Argument(1))
+			decoded = raw
+		}
+		return rt.ToValue(rt.NewArrayBuffer(decoded))
 	})
 
 	axObj.Set("encode_file", func(call goja.FunctionCall) goja.Value {
@@ -1275,12 +1376,16 @@ func registerAxUtilities(axObj *goja.Object, rt *goja.Runtime, engine *ScriptEng
 		if err != nil {
 			return rt.ToValue("")
 		}
-		return rt.ToValue(encodeData(alg, data, key))
+		text, raw, isText := encodeData(alg, data, key)
+		if isText {
+			return rt.ToValue(text)
+		}
+		return rt.ToValue(rt.NewArrayBuffer(raw))
 	})
 
 	axObj.Set("decode_file", func(call goja.FunctionCall) goja.Value {
 		if engine.manager == nil || len(call.Arguments) < 2 {
-			return rt.ToValue("")
+			return rt.ToValue(rt.NewArrayBuffer(nil))
 		}
 		alg := strings.ToLower(call.Argument(0).String())
 		path := call.Argument(1).String()
@@ -1290,11 +1395,70 @@ func registerAxUtilities(axObj *goja.Object, rt *goja.Runtime, engine *ScriptEng
 		}
 		rawData, err := engine.manager.ReadFileSandboxed(engine, path)
 		if err != nil {
-			return rt.ToValue("")
+			return rt.ToValue(rt.NewArrayBuffer(nil))
 		}
-		decoded := decodeRawData(alg, rawData, key)
-		return rt.ToValue(base64.StdEncoding.EncodeToString(decoded))
+
+		var decoded []byte
+		switch alg {
+		case "base64":
+			b, err := base64.StdEncoding.DecodeString(string(rawData))
+			if err != nil {
+				return rt.ToValue(rt.NewArrayBuffer(nil))
+			}
+			decoded = b
+		case "hex":
+			b, err := hex.DecodeString(strings.TrimSpace(string(rawData)))
+			if err != nil {
+				return rt.ToValue(rt.NewArrayBuffer(nil))
+			}
+			decoded = b
+		case "xor":
+			decoded = xorBytes(rawData, key)
+		default:
+			decoded = rawData
+		}
+		return rt.ToValue(rt.NewArrayBuffer(decoded))
 	})
+}
+
+func parseBofTypes(types string) []string {
+	trimmed := strings.TrimSpace(types)
+	if trimmed == "" {
+		return nil
+	}
+
+	if strings.Contains(trimmed, ",") {
+		items := strings.Split(trimmed, ",")
+		for i := range items {
+			items[i] = strings.TrimSpace(items[i])
+		}
+		return items
+	}
+
+	switch trimmed {
+	case "cstr", "wstr", "bytes", "int", "short":
+		return []string{trimmed}
+	}
+
+	items := make([]string, 0, len(trimmed))
+	for _, r := range trimmed {
+		switch r {
+		case 'z':
+			items = append(items, "cstr")
+		case 'Z':
+			items = append(items, "wstr")
+		case 'b':
+			items = append(items, "bytes")
+		case 'i':
+			items = append(items, "int")
+		case 's':
+			items = append(items, "short")
+		default:
+			// unknown — pass through so caller reports the exact bad char
+			items = append(items, string(r))
+		}
+	}
+	return items
 }
 
 // /---

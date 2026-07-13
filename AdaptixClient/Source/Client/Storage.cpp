@@ -30,8 +30,9 @@ Storage::Storage()
             pragmaQuery.exec("PRAGMA journal_mode=WAL;");
             pragmaQuery.exec("PRAGMA synchronous=FULL;");
             this->checkDatabase();
-        } else
+        } else {
             LogError("Adaptix Database did not opened: %s\n", db.lastError().text().toStdString().c_str());
+        }
     }
 }
 
@@ -94,6 +95,14 @@ void Storage::checkDatabase()
     );
     if ( !queryAgentProfiles.exec() )
         LogError("Table AgentProfiles not created: %s\n", queryAgentProfiles.lastError().text().toStdString().c_str());
+
+    auto queryBuildProfiles = QSqlQuery(QSqlDatabase::database(DB_CONNECTION_NAME));
+    queryBuildProfiles.prepare("CREATE TABLE IF NOT EXISTS BuildProfiles ( "
+                            "name TEXT UNIQUE PRIMARY KEY, "
+                            "data TEXT );"
+    );
+    if ( !queryBuildProfiles.exec() )
+        LogError("Table BuildProfiles not created: %s\n", queryBuildProfiles.lastError().text().toStdString().c_str());
 }
 
 /// PROJECTS
@@ -128,6 +137,7 @@ QVector<AuthProfile> Storage::ListProjects()
                     subs.removeAll("chat");
                     subs.append("chat_history");
                     subs.append("chat_realtime");
+                    subs.append("chat_todo");
                 }
                 if (subs.contains("downloads")) {
                     subs.removeAll("downloads");
@@ -157,7 +167,7 @@ QVector<AuthProfile> Storage::ListProjects()
                 profile.SetSubscriptions(subs);
             } else {
                 profile.SetSubscriptions({
-                    "chat_history", "chat_realtime",
+                    "chat_history", "chat_realtime", "chat_todo",
                     "downloads_history", "downloads_realtime",
                     "screenshot_history", "screenshot_realtime",
                     "credentials_history", "credentials_realtime",
@@ -324,6 +334,10 @@ void Storage::SelectSettingsMain(SettingsData* settingsData)
             settingsData->FontSize    = json["fontSize"].toInt();
         if (json.contains("consoleTime"))
             settingsData->ConsoleTime = json["consoleTime"].toBool();
+        if (json.contains("pageSize"))
+            settingsData->PageSize    = qBound(5, json["pageSize"].toInt(100), 10000);
+        if (json.contains("toolbarPosition"))
+            settingsData->ToolbarPosition = qBound(0, json["toolbarPosition"].toInt(0), 3);
     }
 }
 
@@ -334,6 +348,8 @@ void Storage::UpdateSettingsMain(const SettingsData &settingsData)
     json["fontFamily"]  = settingsData.FontFamily;
     json["fontSize"]    = settingsData.FontSize;
     json["consoleTime"] = settingsData.ConsoleTime;
+    json["pageSize"]    = settingsData.PageSize;
+    json["toolbarPosition"] = settingsData.ToolbarPosition;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
     QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
@@ -357,8 +373,13 @@ void Storage::SelectSettingsConsole(SettingsData* settingsData)
         settingsData->ConsoleNoWrap            = json["noWrap"].toBool();
         settingsData->ConsoleAutoScroll        = json["autoScroll"].toBool();
         settingsData->ConsoleShowBackground    = json.contains("showBackground") ? json["showBackground"].toBool() : true;
+        settingsData->ConsoleUseAppTheme       = json.contains("useAppTheme") ? json["useAppTheme"].toBool() : false;
+        settingsData->ConsoleBgImagePath      = json.contains("bgImagePath") && !json["bgImagePath"].toString().isEmpty() ? json["bgImagePath"].toString() : ":/Back";
+        settingsData->ConsoleBgDimming        = json.contains("bgDimming") ? qBound(0, json["bgDimming"].toInt(80), 100) : 80;
         if (json.contains("consoleTheme"))
             settingsData->ConsoleTheme = json["consoleTheme"].toString();
+        settingsData->ConsoleAutoLoadEarlier = json.contains("autoLoadEarlier") ? json["autoLoadEarlier"].toBool() : true;
+        settingsData->ConsolePageSize = json.contains("consolePageSize") ? qBound(10, json["consolePageSize"].toInt(50), 2000) : 50;
     }
 }
 
@@ -370,7 +391,12 @@ void Storage::UpdateSettingsConsole(const SettingsData &settingsData)
     json["noWrap"]          = settingsData.ConsoleNoWrap;
     json["autoScroll"]      = settingsData.ConsoleAutoScroll;
     json["showBackground"]  = settingsData.ConsoleShowBackground;
+    json["useAppTheme"]     = settingsData.ConsoleUseAppTheme;
+    json["bgImagePath"]     = settingsData.ConsoleBgImagePath;
+    json["bgDimming"]       = settingsData.ConsoleBgDimming;
     json["consoleTheme"]    = settingsData.ConsoleTheme;
+    json["autoLoadEarlier"] = settingsData.ConsoleAutoLoadEarlier;
+    json["consolePageSize"] = settingsData.ConsolePageSize;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
     QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
@@ -392,6 +418,9 @@ void Storage::SelectSettingsSessions(SettingsData* settingsData)
         settingsData->CheckHealth  = json["healthCheck"].toBool();
         settingsData->HealthCoaf   = json["healthCoaf"].toDouble();
         settingsData->HealthOffset = json["healthOffset"].toInt();
+        settingsData->DeadLightnessShift = json["deadLightnessShift"].toDouble();
+        if (settingsData->DeadLightnessShift <= 0.0)
+            settingsData->DeadLightnessShift = 0.15;
 
         QJsonArray columns = json["columns"].toArray();
         for (int i = 0; i < 16 && i < columns.size(); i++)
@@ -400,6 +429,11 @@ void Storage::SelectSettingsSessions(SettingsData* settingsData)
         QJsonArray columnOrder = json["columnOrder"].toArray();
         for (int i = 0; i < 16 && i < columnOrder.size(); i++)
             settingsData->SessionsColumnOrder[i] = columnOrder[i].toInt();
+
+        if (json.contains("viewMode"))
+            settingsData->SessionsViewMode = json["viewMode"].toInt();
+        settingsData->SessionsAutoHideInactive = json.contains("autoHideInactive") ? json["autoHideInactive"].toBool() : false;
+        settingsData->SessionsCompactMode = json.contains("compactMode") ? json["compactMode"].toBool() : false;
     }
 }
 
@@ -417,8 +451,12 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
     json["healthCheck"]   = settingsData.CheckHealth;
     json["healthCoaf"]    = settingsData.HealthCoaf;
     json["healthOffset"]  = settingsData.HealthOffset;
+    json["deadLightnessShift"] = settingsData.DeadLightnessShift;
     json["columns"]       = columns;
     json["columnOrder"]   = columnOrder;
+    json["viewMode"]      = settingsData.SessionsViewMode;
+    json["autoHideInactive"] = settingsData.SessionsAutoHideInactive;
+    json["compactMode"]   = settingsData.SessionsCompactMode;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
     QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
@@ -438,13 +476,17 @@ void Storage::SelectSettingsGraph(SettingsData* settingsData)
         QJsonObject  json  = doc.object();
 
         settingsData->GraphVersion = json["version"].toString();
+        settingsData->GraphAutoHideInactive = json.contains("autoHideInactive") ? json["autoHideInactive"].toBool() : true;
+        settingsData->GraphAutoHideNoChilds = json.contains("autoHideNoChilds") ? json["autoHideNoChilds"].toBool() : false;
     }
 }
 
 void Storage::UpdateSettingsGraph(const SettingsData &settingsData)
 {
     QJsonObject json;
-    json["version"] = settingsData.GraphVersion;
+    json["version"]          = settingsData.GraphVersion;
+    json["autoHideInactive"] = settingsData.GraphAutoHideInactive;
+    json["autoHideNoChilds"] = settingsData.GraphAutoHideNoChilds;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
     QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
@@ -466,6 +508,11 @@ void Storage::SelectSettingsTasks(SettingsData* settingsData)
         QJsonArray columns = json["columns"].toArray();
         for (int i = 0; i < 11 && i < columns.size(); i++)
             settingsData->TasksTableColumns[i] = columns[i].toBool();
+
+        if (json.contains("viewMode"))
+            settingsData->TasksViewMode = json["viewMode"].toInt();
+        settingsData->TasksInProcessOnly = json.contains("inProcessOnly") ? json["inProcessOnly"].toBool() : false;
+        settingsData->TasksCompactMode = json.contains("compactMode") ? json["compactMode"].toBool() : false;
     }
 }
 
@@ -477,6 +524,9 @@ void Storage::UpdateSettingsTasks(const SettingsData &settingsData)
 
     QJsonObject json;
     json["columns"] = columns;
+    json["viewMode"] = settingsData.TasksViewMode;
+    json["inProcessOnly"] = settingsData.TasksInProcessOnly;
+    json["compactMode"] = settingsData.TasksCompactMode;
     QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
 
     QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
@@ -484,6 +534,116 @@ void Storage::UpdateSettingsTasks(const SettingsData &settingsData)
     query.bindValue(":Data", data);
     if (!query.exec())
         LogError("SettingsTasks not updated in database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+void Storage::SelectSettingsTargets(SettingsData* settingsData)
+{
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsTargets' LIMIT 1;");
+    if (query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject   json = doc.object();
+
+        if (json.contains("viewMode"))
+            settingsData->TargetsViewMode = json["viewMode"].toInt();
+
+        QJsonArray columns = json["columns"].toArray();
+        for (int i = 0; i < 10 && i < columns.size(); i++)
+            settingsData->TargetsTableColumns[i] = columns[i].toBool();
+        settingsData->TargetsCompactMode = json.contains("compactMode") ? json["compactMode"].toBool() : false;
+    }
+}
+
+void Storage::UpdateSettingsTargets(const SettingsData &settingsData)
+{
+    QJsonArray columns;
+    for (int i = 0; i < 10; i++)
+        columns.append(settingsData.TargetsTableColumns[i]);
+
+    QJsonObject json;
+    json["viewMode"] = settingsData.TargetsViewMode;
+    json["columns"]  = columns;
+    json["compactMode"] = settingsData.TargetsCompactMode;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsTargets', :Data);");
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("SettingsTargets not updated in database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+void Storage::SelectSettingsCredentials(SettingsData* settingsData)
+{
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsCredentials' LIMIT 1;");
+    if (query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject   json = doc.object();
+
+        if (json.contains("viewMode"))
+            settingsData->CredentialsViewMode = json["viewMode"].toInt();
+
+        QJsonArray columns = json["columns"].toArray();
+        for (int i = 0; i < 10 && i < columns.size(); i++)
+            settingsData->CredentialsTableColumns[i] = columns[i].toBool();
+        settingsData->CredentialsCompactMode = json.contains("compactMode") ? json["compactMode"].toBool() : false;
+    }
+}
+
+void Storage::UpdateSettingsCredentials(const SettingsData &settingsData)
+{
+    QJsonArray columns;
+    for (int i = 0; i < 10; i++)
+        columns.append(settingsData.CredentialsTableColumns[i]);
+
+    QJsonObject json;
+    json["viewMode"] = settingsData.CredentialsViewMode;
+    json["columns"]  = columns;
+    json["compactMode"] = settingsData.CredentialsCompactMode;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsCredentials', :Data);");
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("SettingsCredentials not updated in database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+void Storage::SelectSettingsFiles(SettingsData* settingsData)
+{
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsFiles' LIMIT 1;");
+    if (query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject   json = doc.object();
+
+        QJsonArray columns = json["columns"].toArray();
+        for (int i = 0; i < 11 && i < columns.size(); i++)
+            settingsData->FilesTableColumns[i] = columns[i].toBool();
+        settingsData->FilesCompactMode = json.contains("compactMode") ? json["compactMode"].toBool() : false;
+    }
+}
+
+void Storage::UpdateSettingsFiles(const SettingsData &settingsData)
+{
+    QJsonArray columns;
+    for (int i = 0; i < 11; i++)
+        columns.append(settingsData.FilesTableColumns[i]);
+
+    QJsonObject json;
+    json["columns"] = columns;
+    json["compactMode"] = settingsData.FilesCompactMode;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsFiles', :Data);");
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("SettingsFiles not updated in database: %s\n", query.lastError().text().toStdString().c_str());
 }
 
 void Storage::SelectSettingsTabBlink(SettingsData* settingsData)
@@ -647,4 +807,45 @@ QString Storage::GetAgentProfile(const QString &project, const QString &name)
         return query.value("data").toString();
     }
     return QString();
+}
+
+QVector<QPair<QString, QString>> Storage::ListBuildProfiles()
+{
+    QVector<QPair<QString, QString>> list;
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("SELECT name, data FROM BuildProfiles ORDER BY rowid;");
+    if (query.exec()) {
+        while (query.next()) {
+            list.append({query.value("name").toString(),
+                         query.value("data").toString()});
+        }
+    }
+    return list;
+}
+
+void Storage::AddBuildProfile(const QString &name, const QString &data)
+{
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("INSERT OR REPLACE INTO BuildProfiles (name, data) VALUES (:Name, :Data);");
+    query.bindValue(":Name", name);
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("AddBuildProfile failed: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+void Storage::RemoveBuildProfile(const QString &name)
+{
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("DELETE FROM BuildProfiles WHERE name = :Name;");
+    query.bindValue(":Name", name);
+    if (!query.exec())
+        LogError("RemoveBuildProfile failed: %s\n", query.lastError().text().toStdString().c_str());
+}
+
+bool Storage::ExistsBuildProfile(const QString &name)
+{
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("SELECT 1 FROM BuildProfiles WHERE name = :Name LIMIT 1;");
+    query.bindValue(":Name", name);
+    return query.exec() && query.next();
 }

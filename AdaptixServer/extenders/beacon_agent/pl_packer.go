@@ -200,6 +200,24 @@ func PackArray(array []interface{}) ([]byte, error) {
 			packData = append(packData, num...)
 			break
 
+		case int32:
+			num := make([]byte, 4)
+			binary.LittleEndian.PutUint32(num, uint32(array[i].(int32)))
+			packData = append(packData, num...)
+			break
+
+		case int64:
+			num := make([]byte, 8)
+			binary.LittleEndian.PutUint64(num, uint64(array[i].(int64)))
+			packData = append(packData, num...)
+			break
+
+		case uint32:
+			num := make([]byte, 4)
+			binary.LittleEndian.PutUint32(num, array[i].(uint32))
+			packData = append(packData, num...)
+			break
+
 		case bool:
 			b := array[i].(bool)
 			var bt = make([]byte, 1)

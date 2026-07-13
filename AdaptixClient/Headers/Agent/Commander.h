@@ -31,6 +31,10 @@ struct Command
     QList<Command>  subcommands;
     bool            is_pre_hook;
     QJSValue        pre_hook;
+    bool            is_post_hook;
+    QJSValue        post_hook;
+    bool            is_handler;
+    QJSValue        handler;
 };
 
 struct CommandsGroup
@@ -81,9 +85,9 @@ Q_OBJECT
     QMap<QString, ServerCommandsGroup>  serverGroups;
     QVector<CommandsGroup>              clientGroups;
 
-    QString         ProcessPreHook(QJSEngine *engine, const Command &command, const QString &agentId, const QString &cmdline, const QJsonObject &jsonObj, QStringList args);
+    QString         ProcessPreHook(QJSEngine *engine, const Command &command, qint64 agentId, const QString &cmdline, const QJsonObject &jsonObj, QStringList args);
     CommanderResult ProcessCommand(const Command &command, const QString &commandName, QStringList args, QJsonObject jsonObj);
-    CommanderResult ProcessInputForGroup(const CommandsGroup &group, const QString &commandName, QStringList args, const QString &agentId, const QString &cmdline);
+    CommanderResult ProcessInputForGroup(const CommandsGroup &group, const QString &commandName, QStringList args, qint64 agentId, const QString &cmdline);
     CommanderResult ProcessHelp(QStringList commandParts);
     QString         GenerateCommandHelp(const Command &command, const QString &parentCommand = "");
 
@@ -107,7 +111,7 @@ public:
 
     QString GetError();
     QStringList GetCommands();
-    CommanderResult ProcessInput(QString agentId, QString cmdline);
+    CommanderResult ProcessInput(qint64 agentId, QString cmdline);
 
 Q_SIGNALS:
     void commandsUpdated();

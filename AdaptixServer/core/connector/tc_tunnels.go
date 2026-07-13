@@ -10,7 +10,7 @@ import (
 func (tc *TsConnector) TcTunnelList(ctx *gin.Context) {
 	jsonTunnels, err := tc.teamserver.TsTunnelList()
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		respondError(ctx, http.StatusOK, err.Error())
 		return
 	}
 
@@ -18,7 +18,7 @@ func (tc *TsConnector) TcTunnelList(ctx *gin.Context) {
 }
 
 type TunnelStartSocks5Action struct {
-	AgentId     string `json:"agent_id"`
+	AgentId     int64  `json:"agent_id"`
 	Listen      bool   `json:"listen"`
 	Description string `json:"desc"`
 	Lhost       string `json:"l_host"`
@@ -31,11 +31,9 @@ type TunnelStartSocks5Action struct {
 func (tc *TsConnector) TcTunnelStartSocks5(ctx *gin.Context) {
 	var (
 		ta         TunnelStartSocks5Action
-		value      any
-		exists     bool
 		ok         bool
 		clientName string
-		tunnelId   string
+		tunnelId   int64
 	)
 
 	err := ctx.ShouldBindJSON(&ta)
@@ -44,15 +42,9 @@ func (tc *TsConnector) TcTunnelStartSocks5(ctx *gin.Context) {
 		goto ERR
 	}
 
-	value, exists = ctx.Get("username")
-	if !exists {
-		err = errors.New("Server error: username not found in context")
-		goto ERR
-	}
-	clientName, ok = value.(string)
+	clientName, ok = mustUsername(ctx)
 	if !ok {
-		err = errors.New("Server error: invalid username type in context")
-		goto ERR
+		return
 	}
 
 	if ta.Lhost == "" {
@@ -83,15 +75,15 @@ func (tc *TsConnector) TcTunnelStartSocks5(ctx *gin.Context) {
 		goto ERR
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": tunnelId, "ok": true})
+	respondOKMessage(ctx, tunnelId)
 	return
 
 ERR:
-	ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+	respondError(ctx, http.StatusOK, err.Error())
 }
 
 type TunnelStartSocks4Action struct {
-	AgentId     string `json:"agent_id"`
+	AgentId     int64  `json:"agent_id"`
 	Listen      bool   `json:"listen"`
 	Description string `json:"desc"`
 	Lhost       string `json:"l_host"`
@@ -101,11 +93,9 @@ type TunnelStartSocks4Action struct {
 func (tc *TsConnector) TcTunnelStartSocks4(ctx *gin.Context) {
 	var (
 		ta         TunnelStartSocks4Action
-		value      any
-		exists     bool
 		ok         bool
 		clientName string
-		tunnelId   string
+		tunnelId   int64
 	)
 
 	err := ctx.ShouldBindJSON(&ta)
@@ -114,14 +104,8 @@ func (tc *TsConnector) TcTunnelStartSocks4(ctx *gin.Context) {
 		goto ERR
 	}
 
-	value, exists = ctx.Get("username")
-	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
-		return
-	}
-	clientName, ok = value.(string)
+	clientName, ok = mustUsername(ctx)
 	if !ok {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
 		return
 	}
 
@@ -139,15 +123,15 @@ func (tc *TsConnector) TcTunnelStartSocks4(ctx *gin.Context) {
 		goto ERR
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": tunnelId, "ok": true})
+	respondOKMessage(ctx, tunnelId)
 	return
 
 ERR:
-	ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+	respondError(ctx, http.StatusOK, err.Error())
 }
 
 type TunnelStartLpfAction struct {
-	AgentId     string `json:"agent_id"`
+	AgentId     int64  `json:"agent_id"`
 	Listen      bool   `json:"listen"`
 	Description string `json:"desc"`
 	Lhost       string `json:"l_host"`
@@ -159,11 +143,9 @@ type TunnelStartLpfAction struct {
 func (tc *TsConnector) TcTunnelStartLpf(ctx *gin.Context) {
 	var (
 		ta         TunnelStartLpfAction
-		value      any
-		exists     bool
 		ok         bool
 		clientName string
-		tunnelId   string
+		tunnelId   int64
 	)
 
 	err := ctx.ShouldBindJSON(&ta)
@@ -172,14 +154,8 @@ func (tc *TsConnector) TcTunnelStartLpf(ctx *gin.Context) {
 		goto ERR
 	}
 
-	value, exists = ctx.Get("username")
-	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
-		return
-	}
-	clientName, ok = value.(string)
+	clientName, ok = mustUsername(ctx)
 	if !ok {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
 		return
 	}
 
@@ -205,15 +181,15 @@ func (tc *TsConnector) TcTunnelStartLpf(ctx *gin.Context) {
 		goto ERR
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": tunnelId, "ok": true})
+	respondOKMessage(ctx, tunnelId)
 	return
 
 ERR:
-	ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+	respondError(ctx, http.StatusOK, err.Error())
 }
 
 type TunnelStartRpfAction struct {
-	AgentId     string `json:"agent_id"`
+	AgentId     int64  `json:"agent_id"`
 	Listen      bool   `json:"listen"`
 	Description string `json:"desc"`
 	Port        int    `json:"port"`
@@ -224,11 +200,9 @@ type TunnelStartRpfAction struct {
 func (tc *TsConnector) TcTunnelStartRpf(ctx *gin.Context) {
 	var (
 		ta         TunnelStartRpfAction
-		value      any
-		exists     bool
 		ok         bool
 		clientName string
-		tunnelId   string
+		tunnelId   int64
 	)
 
 	err := ctx.ShouldBindJSON(&ta)
@@ -237,14 +211,8 @@ func (tc *TsConnector) TcTunnelStartRpf(ctx *gin.Context) {
 		goto ERR
 	}
 
-	value, exists = ctx.Get("username")
-	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
-		return
-	}
-	clientName, ok = value.(string)
+	clientName, ok = mustUsername(ctx)
 	if !ok {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
 		return
 	}
 
@@ -266,47 +234,41 @@ func (tc *TsConnector) TcTunnelStartRpf(ctx *gin.Context) {
 		goto ERR
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": tunnelId, "ok": true})
+	respondOKMessage(ctx, tunnelId)
 	return
 
 ERR:
-	ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+	respondError(ctx, http.StatusOK, err.Error())
 }
 
 type TunnelStopAction struct {
-	TunnelId string `json:"p_tunnel_id"`
+	TunnelId int64 `json:"p_tunnel_id"`
 }
 
 func (tc *TsConnector) TcTunnelStop(ctx *gin.Context) {
 	var tunnelAction TunnelStopAction
 	err := ctx.ShouldBindJSON(&tunnelAction)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
+		respondError(ctx, http.StatusOK, "invalid JSON data")
 		return
 	}
 
-	value, exists := ctx.Get("username")
-	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
-		return
-	}
-	clientName, ok := value.(string)
+	clientName, ok := mustUsername(ctx)
 	if !ok {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
 		return
 	}
 
 	err = tc.teamserver.TsTunnelClientStop(tunnelAction.TunnelId, clientName)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		respondError(ctx, http.StatusOK, err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Tunnel stopped", "ok": true})
+	respondOKMessage(ctx, "Tunnel stopped")
 }
 
 type TunnelSetItemAction struct {
-	TunnelId string `json:"p_tunnel_id"`
+	TunnelId int64  `json:"p_tunnel_id"`
 	Info     string `json:"p_info"`
 }
 
@@ -314,15 +276,15 @@ func (tc *TsConnector) TcTunnelSetIno(ctx *gin.Context) {
 	var tunnelAction TunnelSetItemAction
 	err := ctx.ShouldBindJSON(&tunnelAction)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
+		respondError(ctx, http.StatusOK, "invalid JSON data")
 		return
 	}
 
 	err = tc.teamserver.TsTunnelClientSetInfo(tunnelAction.TunnelId, tunnelAction.Info)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		respondError(ctx, http.StatusOK, err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "Tunnel info updated", "ok": true})
+	respondOKMessage(ctx, "Tunnel info updated")
 }

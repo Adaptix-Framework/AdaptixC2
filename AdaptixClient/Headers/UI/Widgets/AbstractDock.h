@@ -95,13 +95,14 @@ public:
         QTimer::singleShot(0, this, &DockTab::setupAutoBlink);
     };
 
-    ~DockTab() override {
+    ~DockTab() override = default;
+
+    void detachDock() {
         if (dockWidget) {
             dockWidget->setWidget(nullptr);
-            delete dockWidget;
             dockWidget = nullptr;
         }
-    };
+    }
 
     KDDockWidgets::QtWidgets::DockWidget* dock() { return this->dockWidget; };
 

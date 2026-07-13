@@ -2,30 +2,33 @@ package server
 
 import (
 	"AdaptixServer/core/eventing"
-	"AdaptixServer/core/utils/krypt"
-	"AdaptixServer/core/utils/logs"
+	"bytes"
 	"fmt"
+	"math/rand/v2"
+	"strings"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 type TaskHandler interface {
-	Create(tm *TaskManager, agent *Agent, taskData *adaptix.TaskData)
-	Update(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData)
-	PostHook(tm *TaskManager, agent *Agent, task *adaptix.TaskData, hookData *adaptix.TaskData, jobIndex int) error
-	OnClientDisconnect(tm *TaskManager, agent *Agent, task *adaptix.TaskData, clientName string)
+	Create(tm *TaskManager, agent *adaptix.Agent, taskData *adaptix.TaskData)
+	Update(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, updateData *adaptix.TaskData)
+	PostHook(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, hookData *adaptix.TaskData, jobIndex int) error
+	OnClientDisconnect(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, clientName string)
 }
 
 type TaskManager struct {
-	ts       *Teamserver
-	handlers map[int]TaskHandler
+	ts          *Teamserver
+	handlers    map[int]TaskHandler
+	deliverySem chan struct{}
 }
 
 func NewTaskManager(ts *Teamserver) *TaskManager {
 	tm := &TaskManager{
-		ts:       ts,
-		handlers: make(map[int]TaskHandler),
+		ts:          ts,
+		handlers:    make(map[int]TaskHandler),
+		deliverySem: make(chan struct{}, 100),
 	}
 
 	taskHandler := &TaskTaskHandler{}
@@ -37,23 +40,15 @@ func NewTaskManager(ts *Teamserver) *TaskManager {
 	return tm
 }
 
-func (tm *TaskManager) getAgent(agentId string) (*Agent, error) {
-	value, ok := tm.ts.Agents.Get(agentId)
-	if !ok {
-		return nil, fmt.Errorf("agent %v not found", agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return nil, fmt.Errorf("invalid agent type for %v", agentId)
-	}
-	return agent, nil
-}
-
-func (tm *TaskManager) prepareTaskData(agent *Agent, cmdline string, client string, taskData *adaptix.TaskData) {
+func (tm *TaskManager) prepareTaskData(agent *adaptix.Agent, cmdline string, client string, taskData *adaptix.TaskData) {
 	agentData := agent.GetData()
 
-	if taskData.TaskId == "" {
-		taskData.TaskId, _ = krypt.GenerateUID(8)
+	if taskData.TaskId == 0 {
+		if taskData.Sync {
+			taskData.TaskId = tm.ts.TsTaskGenID()
+		} else {
+			taskData.TaskId = int64(rand.Uint64() | 1)
+		}
 	}
 	taskData.AgentId = agentData.Id
 	taskData.CommandLine = cmdline
@@ -75,19 +70,22 @@ func (tm *TaskManager) prepareTaskData(agent *Agent, cmdline string, client stri
 	}
 }
 
-func (tm *TaskManager) syncTaskCreate(agentId string, agent *Agent, taskData *adaptix.TaskData) {
-	packet_task := CreateSpAgentTaskSync(*taskData)
-	tm.ts.TsSyncAllClientsWithCategory(packet_task, SyncCategoryTasksManager)
-
+func (tm *TaskManager) syncTaskCreate(agentId int64, taskData *adaptix.TaskData) {
 	if taskData.Type != adaptix.TASK_TYPE_BROWSER {
+		packet_task := CreateSpAgentTaskSync(*taskData)
+		tm.ts.TsSyncAllClientsWithCategory(packet_task, SyncCategoryTasksManager)
+
 		packet_console := CreateSpAgentConsoleTaskSync(*taskData)
 		tm.ts.TsSyncConsole(packet_console, taskData.Client, taskData.Client)
 
-		_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
+		_ = tm.ts.DBMS.DbConsoleInsert(agentId, taskData.Client, packet_console)
 	}
 }
 
-func (tm *TaskManager) syncTaskUpdate(agentId string, agent *Agent, taskData *adaptix.TaskData) {
+func (tm *TaskManager) syncTaskUpdate(agentId int64, taskData *adaptix.TaskData) {
+	if taskData.Type == adaptix.TASK_TYPE_BROWSER {
+		return
+	}
 
 	packet_task := CreateSpAgentTaskUpdate(*taskData)
 	if taskData.HandlerId == "" {
@@ -99,16 +97,20 @@ func (tm *TaskManager) syncTaskUpdate(agentId string, agent *Agent, taskData *ad
 		tm.ts.TsSyncClient(handlerClient, packet_task)
 	}
 
-	if taskData.Type != adaptix.TASK_TYPE_BROWSER {
-		packet_console := CreateSpAgentConsoleTaskUpd(*taskData)
-		tm.ts.TsSyncConsole(packet_console, taskData.Client, taskData.Client)
+	packet_console := CreateSpAgentConsoleTaskUpd(*taskData)
+	tm.ts.TsSyncConsole(packet_console, taskData.Client, taskData.Client)
 
-		_ = tm.ts.DBMS.DbConsoleInsert(agentId, packet_console)
-	}
+	_ = tm.ts.DBMS.DbConsoleInsert(agentId, taskData.Client, packet_console)
 }
 
-func (tm *TaskManager) completeTask(agent *Agent, taskData *adaptix.TaskData) {
-	_ = tm.ts.DBMS.DbTaskInsert(*taskData)
+func (tm *TaskManager) completeTask(taskData *adaptix.TaskData) {
+	if taskData.Sync && taskData.Type != adaptix.TASK_TYPE_BROWSER {
+		_ = tm.ts.DBMS.DbTaskUpdate(*taskData)
+	}
+
+	if taskData.OnComplete != nil {
+		tm.safeRunComplete(taskData)
+	}
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataTaskComplete{
@@ -138,14 +140,14 @@ func (tm *TaskManager) executeServerHandler(taskData *adaptix.TaskData) {
 	taskData.HandlerId = ""
 }
 
-func (tm *TaskManager) Create(agentId string, cmdline string, client string, taskData adaptix.TaskData) {
-	agent, err := tm.getAgent(agentId)
-	if err != nil {
-		logs.Error("", "TsTaskCreate: %v", err)
+func (tm *TaskManager) Create(agentId int64, cmdline string, client string, taskData adaptix.TaskData) {
+	agent, ok := tm.ts.Agents.Get(agentId)
+	if !ok {
+		tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:task_manager", "TsTaskCreate: agent %v not found", agentId)
 		return
 	}
 
-	if !agent.Active {
+	if !agent.IsActive() {
 		return
 	}
 
@@ -165,11 +167,28 @@ func (tm *TaskManager) Create(agentId string, cmdline string, client string, tas
 
 	handler, ok := tm.handlers[taskData.Type]
 	if !ok {
-		logs.Debug("", "Unknown task type: %d", taskData.Type)
+		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "Unknown task type: %d", taskData.Type)
 		return
 	}
 
+	if taskData.Sync && taskData.Type != adaptix.TASK_TYPE_BROWSER {
+		_ = tm.ts.DBMS.DbTaskInsert(taskData)
+	}
+
 	handler.Create(tm, agent, &taskData)
+
+	deliveryFn := tm.ts.TsGetAgentDeliveryFunc(agentId)
+	if deliveryFn != nil {
+		go func() {
+			tm.deliverySem <- struct{}{}
+			defer func() { <-tm.deliverySem }()
+
+			err := deliveryFn(agentId, taskData)
+			if err != nil {
+				tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "delivery callback error for agent %d: %v", agentId, err)
+			}
+		}()
+	}
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataTaskCreate{
@@ -182,21 +201,15 @@ func (tm *TaskManager) Create(agentId string, cmdline string, client string, tas
 	// -----------------
 }
 
-func (tm *TaskManager) Update(agentId string, updateData adaptix.TaskData) {
-	agent, err := tm.getAgent(agentId)
-	if err != nil {
-		logs.Error("", "TsTaskUpdate: %v", err)
+func (tm *TaskManager) Update(agentId int64, updateData adaptix.TaskData) {
+	agent, ok := tm.ts.Agents.Get(agentId)
+	if !ok {
+		tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:task_manager", "TsTaskUpdate: agent %v not found", agentId)
 		return
 	}
 
-	value, ok := agent.RunningTasks.Get(updateData.TaskId)
+	task, ok := agent.RunningTasks.Get(updateData.TaskId)
 	if !ok {
-		return
-	}
-
-	task, ok := value.(adaptix.TaskData)
-	if !ok {
-		logs.Error("", "TsTaskUpdate: invalid task type for %v", updateData.TaskId)
 		return
 	}
 
@@ -204,7 +217,7 @@ func (tm *TaskManager) Update(agentId string, updateData adaptix.TaskData) {
 
 	handler, ok := tm.handlers[task.Type]
 	if !ok {
-		logs.Debug("", "Unknown task type: %d", task.Type)
+		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "Unknown task type: %d", task.Type)
 		return
 	}
 
@@ -212,19 +225,14 @@ func (tm *TaskManager) Update(agentId string, updateData adaptix.TaskData) {
 }
 
 func (tm *TaskManager) PostHook(hookData adaptix.TaskData, jobIndex int) error {
-	agent, err := tm.getAgent(hookData.AgentId)
-	if err != nil {
-		return err
+	agent, ok := tm.ts.Agents.Get(hookData.AgentId)
+	if !ok {
+		return fmt.Errorf("agent %v not found", hookData.AgentId)
 	}
 
-	value, ok := agent.RunningTasks.Get(hookData.TaskId)
+	task, ok := agent.RunningTasks.Get(hookData.TaskId)
 	if !ok {
 		return fmt.Errorf("task %v not found", hookData.TaskId)
-	}
-
-	task, ok := value.(adaptix.TaskData)
-	if !ok {
-		return fmt.Errorf("invalid task type for %v", hookData.TaskId)
 	}
 
 	if task.HookId == "" || task.HookId != hookData.HookId || task.Client != hookData.Client || !tm.ts.TsClientConnected(task.Client) {
@@ -239,10 +247,10 @@ func (tm *TaskManager) PostHook(hookData adaptix.TaskData, jobIndex int) error {
 	return handler.PostHook(tm, agent, &task, &hookData, jobIndex)
 }
 
-func (tm *TaskManager) Cancel(agentId string, taskId string) error {
-	agent, err := tm.getAgent(agentId)
-	if err != nil {
-		return err
+func (tm *TaskManager) Cancel(agentId int64, taskId int64) error {
+	agent, ok := tm.ts.Agents.Get(agentId)
+	if !ok {
+		return fmt.Errorf("agent %v not found", agentId)
 	}
 
 	found, retTask := agent.HostedQueue.RemoveIf(func(v interface{}) bool {
@@ -259,17 +267,25 @@ func (tm *TaskManager) Cancel(agentId string, taskId string) error {
 			if task.HandlerId != "" && tm.ts.TsAxScriptIsServerHook(task.HandlerId) {
 				tm.ts.TsAxScriptRemoveHandler(task.HandlerId)
 			}
+			if task.Sync {
+				_ = tm.ts.DBMS.DbTaskDelete(task.TaskId, 0)
+			}
 			packet := CreateSpAgentTaskRemove(task)
 			tm.ts.TsSyncAllClients(packet)
 		}
+		return nil
+	}
+
+	if agent.RunningTasks.Contains(taskId) {
+		return fmt.Errorf("task %d already dispatched to agent — too late to cancel", taskId)
 	}
 	return nil
 }
 
-func (tm *TaskManager) Delete(agentId string, taskId string) error {
-	agent, err := tm.getAgent(agentId)
-	if err != nil {
-		return err
+func (tm *TaskManager) Delete(agentId int64, taskId int64) error {
+	agent, ok := tm.ts.Agents.Get(agentId)
+	if !ok {
+		return fmt.Errorf("agent %v not found", agentId)
 	}
 
 	found, _ := agent.HostedQueue.FindIf(func(v interface{}) bool {
@@ -280,7 +296,7 @@ func (tm *TaskManager) Delete(agentId string, taskId string) error {
 		return fmt.Errorf("task %v in process", taskId)
 	}
 
-	_, ok := agent.RunningTasks.Get(taskId)
+	_, ok = agent.RunningTasks.Get(taskId)
 	if ok {
 		return fmt.Errorf("task %v in process", taskId)
 	}
@@ -290,7 +306,7 @@ func (tm *TaskManager) Delete(agentId string, taskId string) error {
 		return fmt.Errorf("task %v not found", taskId)
 	}
 
-	_ = tm.ts.DBMS.DbTaskDelete(task.TaskId, "")
+	_ = tm.ts.DBMS.DbTaskDelete(task.TaskId, 0)
 
 	packet := CreateSpAgentTaskRemove(task)
 	tm.ts.TsSyncAllClients(packet)
@@ -298,14 +314,14 @@ func (tm *TaskManager) Delete(agentId string, taskId string) error {
 }
 
 func (tm *TaskManager) Save(taskData adaptix.TaskData) error {
-	agent, err := tm.getAgent(taskData.AgentId)
-	if err != nil {
-		return err
+	agent, ok := tm.ts.Agents.Get(taskData.AgentId)
+	if !ok {
+		return fmt.Errorf("agent %v not found", taskData.AgentId)
 	}
 
 	agentData := agent.GetData()
 	taskData.Type = adaptix.TASK_TYPE_TASK
-	taskData.TaskId, _ = krypt.GenerateUID(8)
+	taskData.TaskId = tm.ts.IdGen.Next("task")
 	taskData.Computer = agentData.Computer
 	taskData.User = agentData.Username
 	taskData.StartDate = time.Now().Unix()
@@ -322,18 +338,15 @@ func (tm *TaskManager) Save(taskData adaptix.TaskData) error {
 }
 
 func (tm *TaskManager) ProcessDisconnectedClient(clientName string) {
-	tm.ts.Agents.ForEach(func(agentId string, agentValue interface{}) bool {
-		agent, ok := agentValue.(*Agent)
-		if !ok {
-			return true
-		}
+	agents := make([]*adaptix.Agent, 0, tm.ts.Agents.Len())
+	tm.ts.Agents.ForEachFast(func(_ int64, agent *adaptix.Agent) bool {
+		agents = append(agents, agent)
+		return true
+	})
 
-		var tasksToProcess []string
-		agent.RunningTasks.ForEach(func(taskId string, taskValue interface{}) bool {
-			task, ok := taskValue.(adaptix.TaskData)
-			if !ok {
-				return true
-			}
+	for _, agent := range agents {
+		var tasksToProcess []int64
+		agent.RunningTasks.ForEachFast(func(taskId int64, task adaptix.TaskData) bool {
 
 			if task.HookId != "" && task.Client == clientName {
 				tasksToProcess = append(tasksToProcess, taskId)
@@ -342,7 +355,7 @@ func (tm *TaskManager) ProcessDisconnectedClient(clientName string) {
 
 			if task.Type == adaptix.TASK_TYPE_TUNNEL && task.Client == clientName {
 				clientHostedTunnel := false
-				tm.ts.TunnelManager.ForEachTunnel(func(_ string, tunnel *Tunnel) bool {
+				tm.ts.TunnelManager.ForEachTunnel(func(_ int64, tunnel *Tunnel) bool {
 					if tunnel != nil && tunnel.TaskId == task.TaskId && tunnel.Data.Client == clientName {
 						clientHostedTunnel = true
 						return false
@@ -358,11 +371,7 @@ func (tm *TaskManager) ProcessDisconnectedClient(clientName string) {
 		})
 
 		for _, taskId := range tasksToProcess {
-			value, ok := agent.RunningTasks.Get(taskId)
-			if !ok {
-				continue
-			}
-			task, ok := value.(adaptix.TaskData)
+			task, ok := agent.RunningTasks.Get(taskId)
 			if !ok {
 				continue
 			}
@@ -374,15 +383,163 @@ func (tm *TaskManager) ProcessDisconnectedClient(clientName string) {
 
 			handler.OnClientDisconnect(tm, agent, &task, clientName)
 		}
-
-		return true
-	})
+	}
 }
 
-func (tm *TaskManager) RunningExists(agentId string, taskId string) bool {
-	agent, err := tm.getAgent(agentId)
-	if err != nil {
+func (tm *TaskManager) RunningExists(agentId int64, taskId int64) bool {
+	agent, ok := tm.ts.Agents.Get(agentId)
+	if !ok {
 		return false
 	}
 	return agent.RunningTasks.Contains(taskId)
+}
+
+func (tm *TaskManager) DispatchPreEncode(agent *adaptix.Agent, tasks []adaptix.TaskData) {
+	for i := range tasks {
+		t := &tasks[i]
+		if t.OnDispatch != nil {
+			tm.safeRunDispatch(t)
+
+			if t.Completed {
+				switch t.Type {
+				case adaptix.TASK_TYPE_JOB:
+					tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "OnDispatch set Completed=true on a JOB task %d — ignored at finalize", t.TaskId)
+				case adaptix.TASK_TYPE_BROWSER:
+					tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "OnDispatch set Completed=true on a BROWSER task %d — ignored at finalize", t.TaskId)
+				}
+			}
+		}
+	}
+}
+
+func (tm *TaskManager) DispatchPostEncode(agent *adaptix.Agent, tasks []adaptix.TaskData) {
+	for i := range tasks {
+		t := &tasks[i]
+
+		switch {
+		case t.Completed && t.Sync && t.Type != adaptix.TASK_TYPE_JOB && t.Type != adaptix.TASK_TYPE_BROWSER:
+			tm.finalizeAtDispatch(agent, t)
+
+		case t.Repeat && t.OnDispatch != nil && !t.Completed:
+			cont := *t
+			cont.Data = nil
+			cont.DispatchBudget = 0
+			agent.HostedQueue.Push(cont.Priority, cont)
+
+		case t.Sync || t.Type == adaptix.TASK_TYPE_BROWSER:
+			agent.RunningTasks.Put(t.TaskId, *t)
+			if t.Sync {
+				_ = tm.ts.DBMS.DbTaskMarkDispatched(t.TaskId)
+			}
+		}
+	}
+}
+
+const onDispatchSlowThreshold = 100 * time.Millisecond
+
+func (tm *TaskManager) safeRunDispatch(t *adaptix.TaskData) {
+	defer func() {
+		if r := recover(); r != nil {
+			tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:task_manager", "OnDispatch panic for task %d: %v", t.TaskId, r)
+			t.Completed = true
+		}
+	}()
+
+	var (
+		auditDispatch = tm.ts.LogManager != nil && tm.ts.LogManager.IsDebug()
+		before        adaptix.TaskData
+	)
+	if auditDispatch {
+		before = *t
+	}
+
+	start := time.Now()
+	t.OnDispatch(tm.ts, t)
+	if elapsed := time.Since(start); elapsed > onDispatchSlowThreshold {
+		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "slow OnDispatch task=%d agent=%d took=%v",
+			t.TaskId, t.AgentId, elapsed)
+	}
+
+	if auditDispatch {
+		if diff := taskDispatchDiff(&before, t); diff != "" {
+			tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager",
+				"OnDispatch mutated task %d: %s", t.TaskId, diff)
+		}
+	}
+}
+
+func taskDispatchDiff(a, b *adaptix.TaskData) string {
+	var parts []string
+	if a.Completed != b.Completed {
+		parts = append(parts, fmt.Sprintf("Completed: %v→%v", a.Completed, b.Completed))
+	}
+	if a.FinishDate != b.FinishDate {
+		parts = append(parts, fmt.Sprintf("FinishDate: %d→%d", a.FinishDate, b.FinishDate))
+	}
+	if a.MessageType != b.MessageType {
+		parts = append(parts, fmt.Sprintf("MessageType: %d→%d", a.MessageType, b.MessageType))
+	}
+	if a.Message != b.Message {
+		parts = append(parts, fmt.Sprintf("Message: %q→%q", a.Message, b.Message))
+	}
+	if a.ClearText != b.ClearText {
+		parts = append(parts, fmt.Sprintf("ClearText: %q→%q", a.ClearText, b.ClearText))
+	}
+	if !bytes.Equal(a.Data, b.Data) {
+		parts = append(parts, fmt.Sprintf("Data: %d→%d bytes", len(a.Data), len(b.Data)))
+	}
+	if a.HookId != b.HookId {
+		parts = append(parts, fmt.Sprintf("HookId: %q→%q", a.HookId, b.HookId))
+	}
+	if a.HandlerId != b.HandlerId {
+		parts = append(parts, fmt.Sprintf("HandlerId: %q→%q", a.HandlerId, b.HandlerId))
+	}
+	return strings.Join(parts, ", ")
+}
+
+func (tm *TaskManager) finalizeAtDispatch(agent *adaptix.Agent, t *adaptix.TaskData) {
+	if t.FinishDate == 0 {
+		t.FinishDate = time.Now().Unix()
+	}
+	if t.MessageType == 0 {
+		t.MessageType = CONSOLE_OUT_SUCCESS
+	}
+
+	_ = tm.ts.DBMS.DbTaskUpdate(*t)
+	_ = tm.ts.DBMS.DbTaskMarkDispatched(t.TaskId)
+
+	upd := CreateSpAgentTaskUpdate(*t)
+	tm.ts.TsSyncAllClientsWithCategory(upd, SyncCategoryTasksManager)
+
+	cu := CreateSpAgentConsoleTaskUpd(*t)
+	tm.ts.TsSyncConsole(cu, t.Client, t.Client)
+	_ = tm.ts.DBMS.DbConsoleInsert(agent.GetData().Id, t.Client, cu)
+
+	if t.OnComplete != nil {
+		tm.safeRunComplete(t)
+	}
+
+	// --- POST HOOK ---
+	postEvent := &eventing.EventDataTaskComplete{
+		AgentId: t.AgentId,
+		Task:    *t,
+	}
+	tm.ts.EventManager.EmitAsync(eventing.EventTaskComplete, postEvent)
+	// -----------------
+}
+
+const onCompleteSlowThreshold = 100 * time.Millisecond
+
+func (tm *TaskManager) safeRunComplete(t *adaptix.TaskData) {
+	defer func() {
+		if r := recover(); r != nil {
+			tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:task_manager", "OnComplete panic for task %d: %v", t.TaskId, r)
+		}
+	}()
+
+	start := time.Now()
+	t.OnComplete(tm.ts, t)
+	if elapsed := time.Since(start); elapsed > onCompleteSlowThreshold {
+		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "slow OnComplete task=%d agent=%d took=%v", t.TaskId, t.AgentId, elapsed)
+	}
 }

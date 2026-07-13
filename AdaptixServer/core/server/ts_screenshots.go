@@ -3,7 +3,6 @@ package server
 import (
 	"AdaptixServer/core/eventing"
 	"AdaptixServer/core/utils/krypt"
-	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/tformat"
 	"encoding/json"
 	"errors"
@@ -11,8 +10,12 @@ import (
 	"os"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
+
+func (ts *Teamserver) TsScreenGenID() int64 {
+	return ts.IdGen.Next("screen")
+}
 
 func (ts *Teamserver) TsScreenshotList() (string, error) {
 	dbScreens := ts.DBMS.DbScreenshotAll()
@@ -30,10 +33,37 @@ func (ts *Teamserver) TsScreenshotList() (string, error) {
 	return string(jsonScreenshot), nil
 }
 
-func (ts *Teamserver) TsScreenshotGetImage(screenId string) ([]byte, error) {
+type ScreenshotsPage struct {
+	Items  []adaptix.ScreenData `json:"items"`
+	Total  int                  `json:"total"`
+	Offset int                  `json:"offset"`
+	Limit  int                  `json:"limit"`
+}
+
+func (ts *Teamserver) TsScreenshotsGetPage(offset, limit int, filterExpr, sortCol, sortOrder string) ([]byte, error) {
+	items, total, err := ts.DBMS.DbScreenshotsGetPage(offset, limit, filterExpr, sortCol, sortOrder)
+	if err != nil {
+		return nil, err
+	}
+	for i := range items {
+		items[i].LocalPath = ""
+		items[i].Content = nil
+	}
+	if items == nil {
+		items = make([]adaptix.ScreenData, 0)
+	}
+	return json.Marshal(ScreenshotsPage{
+		Items:  items,
+		Total:  total,
+		Offset: offset,
+		Limit:  limit,
+	})
+}
+
+func (ts *Teamserver) TsScreenshotGetImage(screenId int64) ([]byte, error) {
 	screenData, err := ts.DBMS.DbScreenshotById(screenId)
 	if err != nil {
-		return []byte(""), errors.New("Screen not found: " + screenId)
+		return []byte(""), fmt.Errorf("Screen not found: %d", screenId)
 	}
 	content, err := os.ReadFile(screenData.LocalPath)
 	if err != nil {
@@ -42,7 +72,7 @@ func (ts *Teamserver) TsScreenshotGetImage(screenId string) ([]byte, error) {
 	return content, nil
 }
 
-func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byte) error {
+func (ts *Teamserver) TsScreenshotAdd(agentId int64, Note string, Content []byte) error {
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataScreenshotAdd{
 		AgentId: agentId,
@@ -68,23 +98,20 @@ func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byt
 		return err
 	}
 
-	value, ok := ts.Agents.Get(agentId)
+	agent, ok := ts.Agents.Get(agentId)
 	if !ok {
-		return errors.New("Agent not found: " + agentId)
-	}
-	agent, ok := value.(*Agent)
-	if !ok {
-		return errors.New("Invalid agent type: " + agentId)
+		return errors.New(fmt.Sprintf("Agent not found: %d", agentId))
 	}
 	agentData := agent.GetData()
+	screenData.AgentId = agentId
 	screenData.User = agentData.Username
 	screenData.Computer = agentData.Computer
-	screenData.ScreenId, _ = krypt.GenerateUID(8)
+	screenData.ScreenId = ts.TsScreenGenID()
 
 	d := time.Now().Format("15:04:05 02.01.2006")
 	saveName := krypt.MD5(append([]byte(d), screenData.Content...)) + "." + format
 
-	dirPath := logs.RepoLogsInstance.ScreenshotPath
+	dirPath := ts.Paths.ScreenshotPath
 	_, err = os.Stat(dirPath)
 	if os.IsNotExist(err) {
 		err = os.MkdirAll(dirPath, os.ModePerm)
@@ -94,7 +121,7 @@ func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byt
 	}
 
 	screenData.LocalPath = dirPath + "/" + saveName
-	err = os.WriteFile(screenData.LocalPath, Content, os.ModePerm)
+	err = os.WriteFile(screenData.LocalPath, Content, 0644)
 	if err != nil {
 		return errors.New("Failed to create file: " + err.Error())
 	}
@@ -117,20 +144,20 @@ func (ts *Teamserver) TsScreenshotAdd(agentId string, Note string, Content []byt
 	return nil
 }
 
-func (ts *Teamserver) TsScreenshotNote(screenId string, note string) error {
+func (ts *Teamserver) TsScreenshotNote(screenId int64, note string) error {
 	_, err := ts.DBMS.DbScreenshotById(screenId)
 	if err != nil {
-		return errors.New("Screen not found: " + screenId)
+		return fmt.Errorf("Screen not found: %d", screenId)
 	}
 
 	_ = ts.DBMS.DbScreenshotUpdate(screenId, note)
 	packet := CreateSpScreenshotUpdate(screenId, note)
-	ts.TsSyncStateWithCategory(packet, "screenshot:"+screenId, SyncCategoryScreenshotRealtime)
+	ts.TsSyncStateWithCategory(packet, fmt.Sprintf("screenshot:%d", screenId), SyncCategoryScreenshotRealtime)
 
 	return nil
 }
 
-func (ts *Teamserver) TsScreenshotDelete(screenId string) error {
+func (ts *Teamserver) TsScreenshotDelete(screenId int64) error {
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataScreenshotRemove{ScreenId: screenId}
 	if !ts.EventManager.Emit(eventing.EventScreenshotRemove, eventing.HookPre, preEvent) {
@@ -143,7 +170,7 @@ func (ts *Teamserver) TsScreenshotDelete(screenId string) error {
 
 	screenData, err := ts.DBMS.DbScreenshotById(screenId)
 	if err != nil {
-		return errors.New("Screen not found: " + screenId)
+		return fmt.Errorf("Screen not found: %d", screenId)
 	}
 
 	_ = os.Remove(screenData.LocalPath)

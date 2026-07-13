@@ -11,7 +11,7 @@ import (
 	"unsafe"
 )
 
-func CreateDefinitionFile(content []byte, tempDir string) (string, error) {
+func CreateDefinitionFile(content []byte, tempDir string, targetArch string) (string, error) {
 	reader := bytes.NewReader(content)
 	file, err := pe.NewFile(reader)
 	if err != nil {
@@ -20,6 +20,14 @@ func CreateDefinitionFile(content []byte, tempDir string) (string, error) {
 	defer func(file *pe.File) {
 		_ = file.Close()
 	}(file)
+
+	dllArch := "x64"
+	if file.Machine == pe.IMAGE_FILE_MACHINE_I386 {
+		dllArch = "x86"
+	}
+	if dllArch != targetArch {
+		return "", fmt.Errorf("Arch mismatch: target is %s but DLL is %s", targetArch, dllArch)
+	}
 
 	exports, dllName, err := getExports(file)
 	if err != nil {
@@ -39,8 +47,15 @@ func CreateDefinitionFile(content []byte, tempDir string) (string, error) {
 		_ = defFile.Close()
 	}(defFile)
 
+	conflictSymbols := map[string]bool{
+		"DllMain": true,
+	}
+
 	_, _ = fmt.Fprintf(defFile, "EXPORTS\n")
 	for i, exportName := range exports {
+		if conflictSymbols[exportName] {
+			continue
+		}
 		_, _ = fmt.Fprintf(defFile, "%s=%s.%s @%v\n", exportName, baseName, exportName, i+1)
 	}
 

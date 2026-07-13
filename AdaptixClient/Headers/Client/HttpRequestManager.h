@@ -51,6 +51,7 @@ public:
 
     int post(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData, const HttpCallback &callback, int timeout = 8000);
     int postWithRetry(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData, const HttpCallback &callback, int maxRetries = 3, int timeout = 8000);
+    int getPage(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QUrlQuery& params, const HttpCallback& callback, int timeout = 8000);
 
     void postFireAndForget(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData);
 
@@ -74,6 +75,13 @@ inline QJsonArray toJsonArray(const QStringList& list) {
     QJsonArray arr;
     for (const QString& item : list)
         arr.append(item);
+    return arr;
+}
+
+inline QJsonArray toJsonArray(const QList<qint64>& list) {
+    QJsonArray arr;
+    for (qint64 item : list)
+        arr.append(static_cast<double>(item));
     return arr;
 }
 

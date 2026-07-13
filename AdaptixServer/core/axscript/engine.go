@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
-	"sync"
 
+	"github.com/Adaptix-Framework/axsafe"
 	"github.com/dop251/goja"
 )
 
 type ScriptEngine struct {
-	mu      sync.Mutex
+	mu      *axsafe.ReentrantMutex
 	runtime *goja.Runtime
 	name    string
 
@@ -29,6 +29,7 @@ func NewScriptEngine(name string, manager *ScriptManager) *ScriptEngine {
 	rt.SetFieldNameMapper(goja.UncapFieldNameMapper())
 
 	engine := &ScriptEngine{
+		mu:        axsafe.NewReentrantMutex(),
 		runtime:   rt,
 		name:      name,
 		manager:   manager,

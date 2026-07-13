@@ -3,8 +3,11 @@ package connector
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -27,7 +30,7 @@ type ChannelOTPData struct {
 }
 
 type FileOTPData struct {
-	Id string `json:"id"`
+	Id int64 `json:"id"`
 }
 
 func (tc *TsConnector) validateOTPMiddleware() gin.HandlerFunc {
@@ -62,7 +65,7 @@ func (tc *TsConnector) tcOTP_Generate(ctx *gin.Context) {
 		return
 	}
 	if len(accessOTP.Data) == 0 {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "data is required", "ok": false})
+		respondError(ctx, http.StatusBadRequest, "data is required")
 		return
 	}
 
@@ -77,7 +80,7 @@ func (tc *TsConnector) tcOTP_Generate(ctx *gin.Context) {
 		var connectData ConnectOTPData
 		err := json.Unmarshal(accessOTP.Data, &connectData)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid connect data: " + err.Error(), "ok": false})
+			respondError(ctx, http.StatusBadRequest, "invalid connect data: "+err.Error())
 			return
 		}
 
@@ -99,34 +102,34 @@ func (tc *TsConnector) tcOTP_Generate(ctx *gin.Context) {
 		var fileData FileOTPData
 		err := json.Unmarshal(accessOTP.Data, &fileData)
 		if err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid file data: " + err.Error(), "ok": false})
+			respondError(ctx, http.StatusBadRequest, "invalid file data: "+err.Error())
 			return
 		}
 		data = fileData.Id
 
 	default:
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "unknown OTP type", "ok": false})
+		respondError(ctx, http.StatusBadRequest, "unknown OTP type")
 		return
 	}
 
 	otp, err := tc.teamserver.CreateOTP(accessOTP.Type, data)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		respondError(ctx, http.StatusOK, err.Error())
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": otp, "ok": true})
+	respondOKMessage(ctx, otp)
 }
 
 func (tc *TsConnector) extractUserContext(ctx *gin.Context) (string, bool) {
 	username, exists := ctx.Get("username")
 	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "username not found in context", "ok": false})
+		respondError(ctx, http.StatusOK, "username not found in context")
 		return "", false
 	}
 	usernameStr, ok := username.(string)
 	if !ok || usernameStr == "" {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid username in context", "ok": false})
+		respondError(ctx, http.StatusOK, "invalid username in context")
 		return "", false
 	}
 
@@ -141,8 +144,8 @@ func (tc *TsConnector) tcOTP_DownloadSync(ctx *gin.Context) {
 	}
 
 	data, _ := ctx.Get("otpData")
-	fileId, ok := data.(string)
-	if !ok || fileId == "" {
+	fileId, ok := data.(int64)
+	if !ok || fileId == 0 {
 		_ = ctx.Error(errors.New("invalid OTP data"))
 		return
 	}
@@ -168,9 +171,9 @@ func (tc *TsConnector) tcOTP_DownloadSync(ctx *gin.Context) {
 		return
 	}
 
-	ctx.Header("Content-Disposition", "attachment; filename="+fileInfo.Name())
+	ctx.Header("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", strings.ReplaceAll(fileInfo.Name(), "\"", "\\\"")))
 	ctx.Header("Content-Type", "application/octet-stream")
-	ctx.Header("Content-Length", string(rune(fileInfo.Size())))
+	ctx.Header("Content-Length", strconv.FormatInt(fileInfo.Size(), 10))
 
 	ctx.File(path)
 }
@@ -183,8 +186,8 @@ func (tc *TsConnector) tcOTP_UploadTemp(ctx *gin.Context) {
 	}
 
 	data, _ := ctx.Get("otpData")
-	fileId, ok := data.(string)
-	if !ok || fileId == "" {
+	fileId, ok := data.(int64)
+	if !ok || fileId == 0 {
 		_ = ctx.Error(errors.New("invalid OTP data"))
 		return
 	}

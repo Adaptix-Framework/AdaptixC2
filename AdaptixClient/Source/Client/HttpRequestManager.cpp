@@ -1,5 +1,6 @@
 #include <Client/HttpRequestManager.h>
 #include <Client/AuthProfile.h>
+#include <QUrlQuery>
 
 HttpRequestManager& HttpRequestManager::instance()
 {
@@ -69,6 +70,50 @@ void HttpRequestManager::postFireAndForget(const QString& baseUrl, const QString
         if (reply)
             reply->ignoreSslErrors();
     });
+}
+
+int HttpRequestManager::getPage(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QUrlQuery& params, const HttpCallback& callback, int timeout)
+{
+    int requestId = ++m_requestIdCounter;
+
+    QString fullUrl = buildFullUrl(baseUrl, endpoint);
+    if (!params.isEmpty())
+        fullUrl += "?" + params.toString(QUrl::FullyEncoded);
+
+    QNetworkRequest request = createRequest(fullUrl, accessToken);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, QVariant());
+
+    QNetworkReply* reply = m_manager->get(request);
+
+    RequestContext ctx;
+    ctx.requestId   = requestId;
+    ctx.url         = fullUrl;
+    ctx.accessToken = accessToken;
+    ctx.callback    = callback;
+    ctx.reply       = reply;
+    ctx.startTime   = QDateTime::currentDateTime();
+    ctx.retryCount  = 0;
+    ctx.maxRetries  = 0;
+    ctx.requestData = {};
+    ctx.timeout     = timeout;
+
+    m_pendingRequests[requestId] = ctx;
+    m_replyToRequestId[reply] = requestId;
+
+    connect(reply, &QNetworkReply::finished, this, [this, reply]() { onReplyFinished(reply); });
+    connect(reply, &QNetworkReply::sslErrors, this, [this, reply](const QList<QSslError>& errors) { onSslErrors(reply, errors); });
+
+    if (timeout > 0) {
+        QTimer* timer = new QTimer(this);
+        timer->setSingleShot(true);
+        timer->setProperty("requestId", requestId);
+        connect(timer, &QTimer::timeout, this, &HttpRequestManager::onRequestTimeout);
+        m_timeoutTimers[requestId] = timer;
+        timer->start(timeout);
+    }
+
+    Q_EMIT requestStarted(requestId);
+    return requestId;
 }
 
 int HttpRequestManager::postWithRetry(const QString& baseUrl, const QString& endpoint, const QString& accessToken, const QByteArray& jsonData, const HttpCallback &callback, const int maxRetries, const int timeout)
@@ -179,6 +224,8 @@ void HttpRequestManager::processResponse(QNetworkReply* reply)
     QString message;
     QJsonObject jsonResponse;
 
+    const int httpStatus = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+
     if (reply->error() == QNetworkReply::NoError) {
         QByteArray responseData = reply->readAll();
         QJsonParseError parseError;
@@ -194,15 +241,34 @@ void HttpRequestManager::processResponse(QNetworkReply* reply)
             }
 
             if (jsonResponse.contains("message")) {
-                message = jsonResponse["message"].toString();
+                QJsonValue msgVal = jsonResponse["message"];
+                if (msgVal.isString())
+                    message = msgVal.toString();
+                else if (msgVal.isDouble())
+                    message = QString::number(static_cast<qint64>(parseI64(msgVal)));
             }
         } else {
             message = "Invalid JSON response";
+            if (httpStatus > 0)
+                message += QStringLiteral(" (HTTP %1)").arg(httpStatus);
         }
     } else if (reply->error() == QNetworkReply::OperationCanceledError) {
         message = "Request canceled";
     } else {
         message = reply->errorString();
+        if (httpStatus > 0)
+            message += QStringLiteral(" (HTTP %1)").arg(httpStatus);
+
+        QByteArray responseData = reply->readAll();
+        QJsonParseError parseError;
+        QJsonDocument jsonDoc = QJsonDocument::fromJson(responseData, &parseError);
+        if (parseError.error == QJsonParseError::NoError && jsonDoc.isObject()) {
+            jsonResponse = jsonDoc.object();
+            if (jsonResponse.contains("message") && jsonResponse["message"].isString())
+                message = jsonResponse["message"].toString();
+            else if (jsonResponse.contains("error") && jsonResponse["error"].isString())
+                message = jsonResponse["error"].toString();
+        }
 
         if (ctx.retryCount < ctx.maxRetries) {
             m_replyToRequestId.remove(reply);
@@ -255,6 +321,7 @@ void HttpRequestManager::cleanupRequest(int requestId)
         if (reply) {
             disconnect(reply, nullptr, this, nullptr);
             m_replyToRequestId.remove(reply);
+            reply->deleteLater();
         }
         m_pendingRequests.remove(requestId);
     }
@@ -298,12 +365,10 @@ void HttpRequestManager::onRequestTimeout()
                 ctx.reply->abort();
             }
 
-            if (ctx.callback) {
-                ctx.callback(false, "Request timeout", QJsonObject());
+            if (m_pendingRequests.contains(requestId)) {
+                Q_EMIT requestFinished(requestId, false, "Request timeout");
+                cleanupRequest(requestId);
             }
-
-            Q_EMIT requestFinished(requestId, false, "Request timeout");
-            cleanupRequest(requestId);
         }
     }
 }

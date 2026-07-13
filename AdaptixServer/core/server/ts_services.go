@@ -20,8 +20,7 @@ func (ts *Teamserver) TsServiceCall(serviceName string, operator string, functio
 func (ts *Teamserver) TsServiceList() (string, error) {
 	var services []extender.ServiceInfo
 
-	ts.service_configs.ForEach(func(key string, value interface{}) bool {
-		serviceInfo := value.(extender.ServiceInfo)
+	ts.service_configs.ForEachFast(func(key string, serviceInfo extender.ServiceInfo) bool {
 		services = append(services, serviceInfo)
 		return true
 	})

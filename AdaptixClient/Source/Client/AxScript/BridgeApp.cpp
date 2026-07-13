@@ -11,8 +11,8 @@
 #include <Client/AxScript/AxScriptUtils.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
-#include <UI/Widgets/CredentialsWidget.h>
-#include <UI/Widgets/TargetsWidget.h>
+#include <UI/Widgets/CredentialsFeedWidget.h>
+#include <UI/Widgets/TargetsFeedWidget.h>
 
 namespace {
 
@@ -72,7 +72,7 @@ QJSValue BridgeApp::agents() const
         map["os_full"]      = agent->data.OsDesc;
         map["os"]           = osToString(agent->data.Os);
 
-        list[agent->data.Id] = map;
+        list[QString::number(agent->data.Id)] = map;
     }
 
     return this->scriptEngine->engine()->toScriptValue(list);
@@ -81,14 +81,14 @@ QJSValue BridgeApp::agents() const
 QJSValue BridgeApp::agent_info(const QString &id, const QString &property) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
-    if (!mapAgents.contains(id))
+    if (!mapAgents.contains(id.toLongLong()))
         return false;
 
     QJSValue ret;
-    auto info = mapAgents[id]->data;
+    auto info = mapAgents[id.toLongLong()]->data;
 
     if (property == "id")
-        return QJSValue(info.Id);
+        return QJSValue(QString::number(info.Id));
     if (property == "type")
         return QJSValue(info.Name);
     if (property == "listener")
@@ -262,10 +262,36 @@ void BridgeApp::agent_update_data(const QString &id, const QJSValue &data)
 QString BridgeApp::arch(const QString &id) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
-    if (!mapAgents.contains(id))
+    if (!mapAgents.contains(id.toLongLong()))
         return "x86";
 
-    return mapAgents[id]->data.Arch;
+    return mapAgents[id.toLongLong()]->data.Arch;
+}
+
+static QStringList parseBofTypes(const QString &types)
+{
+    const QString trimmed = types.trimmed();
+    if (trimmed.isEmpty())
+        return {};
+
+    if (trimmed.contains(','))
+        return trimmed.split(',', Qt::SkipEmptyParts);
+
+    if (trimmed == "cstr" || trimmed == "wstr" || trimmed == "bytes" || trimmed == "int"  || trimmed == "short")
+        return { trimmed };
+
+    QStringList items;
+    for (const QChar ch : trimmed) {
+        switch (ch.unicode()) {
+            case 'z': items.append("cstr");  break;
+            case 'Z': items.append("wstr");  break;
+            case 'b': items.append("bytes"); break;
+            case 'i': items.append("int");   break;
+            case 's': items.append("short"); break;
+            default:  items.append(QString(ch)); break;
+        }
+    }
+    return items;
 }
 
 QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
@@ -275,7 +301,7 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
         return "";
     }
 
-    QStringList items = types.split(",", Qt::SkipEmptyParts);
+    QStringList items = parseBofTypes(types);
     int length = args.property("length").toInt();
 
     if (items.size() != length) {
@@ -325,12 +351,8 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
             data.append(strData);
         }
         else if (items[i] == "bytes") {
-            if (!value.canConvert<QString>()) {
-                Q_EMIT engineError(QString("bof_pack cannot convert argument at index %1 to string").arg(i));
-                return "";
-            }
-
-            QByteArray valueData = QByteArray::fromBase64(value.toString().toUtf8());
+            // Accept ArrayBuffer / Uint8Array (QByteArray after Qt marshal)
+            const QByteArray valueData = value.toByteArray();
             int strLength = valueData.size();
 
             QByteArray valueLengthData;
@@ -379,11 +401,11 @@ void BridgeApp::copy_to_clipboard(const QString &text) { QApplication::clipboard
 void BridgeApp::console_message(const QString &id, const QString &message, const QString &type, const QString &text)
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
-    if (!mapAgents.contains(id))
+    if (!mapAgents.contains(id.toLongLong()))
         return;
 
-    auto agent = mapAgents[id];
-    if (!agent)
+    auto agent = mapAgents[id.toLongLong()];
+    if (!agent || !agent->Console)
         return;
 
     int msgType = CONSOLE_OUT;
@@ -415,7 +437,7 @@ QJSValue BridgeApp::credentials() const
         map["agent_id"] = cred.AgentId;
         map["host"]     = cred.Host;
 
-        list[cred.CredId] = map;
+        list[QString::number(cred.CredId)] = map;
     }
 
     return this->scriptEngine->engine()->toScriptValue(list);
@@ -423,7 +445,7 @@ QJSValue BridgeApp::credentials() const
 
 void BridgeApp::credentials_add(const QString &username, const QString &password, const QString &realm, const QString &type, const QString &tag, const QString &storage, const QString &host)
 {
-    CredentialData cred = {"", username, password, realm, type, tag, "", 0, storage, "", host};
+    CredentialData cred = {0, username, password, realm, type, tag, "", 0, storage, 0, host};
 
     QList<CredentialData> credsList;
     credsList.append(cred);
@@ -476,24 +498,24 @@ QJSValue BridgeApp::downloads() const
 
     for (const auto& download : mapDownloads) {
         QVariantMap map;
-        map["id"]         = download.FileId;
+        map["id"]         = QVariant::fromValue(download.FileId);
         map["agent_id"]   = download.AgentId;
         map["agent_name"] = download.AgentName;
         map["user"]       = download.User;
         map["computer"]   = download.Computer;
         map["filename"]   = download.Filename;
-        map["recv_size"]  = download.RecvSize;
+        map["recv_size"]  = download.Progress;
         map["total_size"] = download.TotalSize;
         map["date"]       = download.Date;
 
         switch (download.State) {
-            case DOWNLOAD_STATE_RUNNING:  map["state"] = "running";  break;
-            case DOWNLOAD_STATE_STOPPED:  map["state"] = "stopped";  break;
-            case DOWNLOAD_STATE_FINISHED: map["state"] = "finished"; break;
+            case TRANSFER_STATE_RUNNING:  map["state"] = "running";  break;
+            case TRANSFER_STATE_STOPPED:  map["state"] = "stopped";  break;
+            case TRANSFER_STATE_FINISHED: map["state"] = "finished"; break;
             default:                      map["state"] = "canceled"; break;
         }
 
-        list[download.FileId] = map;
+        list[QString::number(download.FileId)] = map;
     }
 
     return this->scriptEngine->engine()->toScriptValue(list);
@@ -502,14 +524,14 @@ QJSValue BridgeApp::downloads() const
 void BridgeApp::execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook, const QJSValue &handler) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
-    if (!mapAgents.contains(id))
+    if (!mapAgents.contains(id.toLongLong()))
         return;
 
-    auto agent = mapAgents[id];
-    if (!agent)
+    auto agent = mapAgents[id.toLongLong()];
+    if (!agent || !agent->Console)
         return;
 
-    auto cmdResult = agent->commander->ProcessInput(id, command);
+    auto cmdResult = agent->commander->ProcessInput(id.toLongLong(), command);
     if (!cmdResult.is_pre_hook) {
         if (!message.isEmpty())
             cmdResult.data["message"] = message;
@@ -535,28 +557,28 @@ void BridgeApp::execute_alias_handler(const QString &id, const QString &cmdline,
 void BridgeApp::execute_browser(const QString &id, const QString &command) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
-    if (!mapAgents.contains(id))
+    if (!mapAgents.contains(id.toLongLong()))
         return;
 
-    auto agent = mapAgents[id];
-    if (!agent)
+    auto agent = mapAgents[id.toLongLong()];
+    if (!agent || !agent->Console)
         return;
 
-    auto cmdResult = agent->commander->ProcessInput(id, command);
+    auto cmdResult = agent->commander->ProcessInput(id.toLongLong(), command);
     agent->Console->ProcessCmdResult(command, cmdResult, true);
 }
 
 void BridgeApp::execute_command(const QString &id, const QString &command, const QJSValue &hook, const QJSValue &handler) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
-    if (!mapAgents.contains(id))
+    if (!mapAgents.contains(id.toLongLong()))
         return;
 
-    auto agent = mapAgents[id];
-    if (!agent)
+    auto agent = mapAgents[id.toLongLong()];
+    if (!agent || !agent->Console)
         return;
 
-    auto cmdResult = agent->commander->ProcessInput(id, command);
+    auto cmdResult = agent->commander->ProcessInput(id.toLongLong(), command);
     if (!cmdResult.is_pre_hook) {
 
         if (!hook.isUndefined() && !hook.isNull() && hook.isCallable())
@@ -597,18 +619,17 @@ QString BridgeApp::file_extension(const QString &path) const
 
 bool BridgeApp::file_exists(const QString &path) const { return QFile::exists(path); }
 
-QString BridgeApp::file_read(QString path) const
+QByteArray BridgeApp::file_read(QString path) const
 {
     if (path.startsWith("~/"))
         path = QDir::home().filePath(path.mid(2));
 
     QFile file(path);
-    if (file.open(QIODevice::ReadOnly)) {
-        QByteArray fileData = file.readAll();
-        file.close();
-        return QString::fromLatin1(fileData.toBase64());
-    }
-    return "";
+    if (!file.open(QIODevice::ReadOnly))
+        return {};
+    QByteArray data = file.readAll();
+    file.close();
+    return data;
 }
 
 qint64 BridgeApp::file_size(const QString &path) const
@@ -617,35 +638,19 @@ qint64 BridgeApp::file_size(const QString &path) const
     return fi.size();
 }
 
-bool BridgeApp::file_write_text(QString path, const QString &content, bool append) const
+bool BridgeApp::file_write(QString path, const QByteArray &data, bool append) const
 {
     if (path.startsWith("~/"))
         path = QDir::home().filePath(path.mid(2));
 
     QFile file(path);
-    QIODevice::OpenMode mode = append ? (QIODevice::WriteOnly | QIODevice::Append) : QIODevice::WriteOnly;
-    if (file.open(mode)) {
-        QTextStream stream(&file);
-        stream << content;
-        file.close();
-        return true;
-    }
-    return false;
-}
-
-bool BridgeApp::file_write_binary(QString path, const QString &base64Content) const
-{
-    if (path.startsWith("~/"))
-        path = QDir::home().filePath(path.mid(2));
-
-    QByteArray data = QByteArray::fromBase64(base64Content.toLatin1());
-    QFile file(path);
-    if (file.open(QIODevice::WriteOnly)) {
-        file.write(data);
-        file.close();
-        return true;
-    }
-    return false;
+    QIODevice::OpenMode mode = append ? (QIODevice::WriteOnly | QIODevice::Append)
+                                      : (QIODevice::WriteOnly | QIODevice::Truncate);
+    if (!file.open(mode))
+        return false;
+    const qint64 written = file.write(data);
+    file.close();
+    return written == data.size();
 }
 
 // Encoding methods
@@ -709,44 +714,43 @@ static QByteArray decodeBase32(const QByteArray &data)
     return result;
 }
 
-QString BridgeApp::encode_data(const QString &algorithm, const QString &data, const QString &key) const
-{
-    QByteArray bytes = data.toUtf8();
-    QString alg = algorithm.toLower();
-
-    if (alg == "hex")
-        return QString::fromLatin1(bytes.toHex());
-    if (alg == "base64")
-        return QString::fromLatin1(bytes.toBase64());
-    if (alg == "base32")
-        return QString::fromLatin1(encodeBase32(bytes));
-    if (alg == "zip")
-        return QString::fromLatin1(qCompress(bytes).toBase64());
-    if (alg == "xor")
-        return QString::fromLatin1(applyXor(bytes, key.toUtf8()).toBase64());
-
-    return data;
-}
-
-QString BridgeApp::decode_data(const QString &algorithm, const QString &data, const QString &key) const
+QVariant BridgeApp::encode_data(const QString &algorithm, const QByteArray &data, const QString &key) const
 {
     QString alg = algorithm.toLower();
 
     if (alg == "hex")
-        return QString::fromUtf8(QByteArray::fromHex(data.toLatin1()));
+        return QVariant(QString::fromLatin1(data.toHex()));
     if (alg == "base64")
-        return QString::fromUtf8(QByteArray::fromBase64(data.toLatin1()));
+        return QVariant(QString::fromLatin1(data.toBase64()));
     if (alg == "base32")
-        return QString::fromUtf8(decodeBase32(data.toLatin1()));
+        return QVariant(QString::fromLatin1(encodeBase32(data)));
     if (alg == "zip")
-        return QString::fromUtf8(qUncompress(QByteArray::fromBase64(data.toLatin1())));
+        return QVariant(qCompress(data));
     if (alg == "xor")
-        return QString::fromUtf8(applyXor(QByteArray::fromBase64(data.toLatin1()), key.toUtf8()));
+        return QVariant(applyXor(data, key.toUtf8()));
+
+    return QVariant(QString::fromLatin1(data.toBase64()));
+}
+
+QByteArray BridgeApp::decode_data(const QString &algorithm, const QByteArray &data, const QString &key) const
+{
+    QString alg = algorithm.toLower();
+
+    if (alg == "hex")
+        return QByteArray::fromHex(data);
+    if (alg == "base64")
+        return QByteArray::fromBase64(data);
+    if (alg == "base32")
+        return decodeBase32(data);
+    if (alg == "zip")
+        return qUncompress(data);
+    if (alg == "xor")
+        return applyXor(data, key.toUtf8());
 
     return data;
 }
 
-QString BridgeApp::encode_file(const QString &algorithm, const QString &path, const QString &key) const
+QVariant BridgeApp::encode_file(const QString &algorithm, const QString &path, const QString &key) const
 {
     QString filePath = path;
     if (filePath.startsWith("~/"))
@@ -754,28 +758,15 @@ QString BridgeApp::encode_file(const QString &algorithm, const QString &path, co
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly))
-        return "";
+        return QVariant(QString(""));
 
     QByteArray bytes = file.readAll();
     file.close();
 
-    QString alg = algorithm.toLower();
-
-    if (alg == "hex")
-        return QString::fromLatin1(bytes.toHex());
-    if (alg == "base64")
-        return QString::fromLatin1(bytes.toBase64());
-    if (alg == "base32")
-        return QString::fromLatin1(encodeBase32(bytes));
-    if (alg == "zip")
-        return QString::fromLatin1(qCompress(bytes).toBase64());
-    if (alg == "xor")
-        return QString::fromLatin1(applyXor(bytes, key.toUtf8()).toBase64());
-
-    return QString::fromLatin1(bytes.toBase64());
+    return encode_data(algorithm, bytes, key);
 }
 
-QString BridgeApp::decode_file(const QString &algorithm, const QString &path, const QString &key) const
+QByteArray BridgeApp::decode_file(const QString &algorithm, const QString &path, const QString &key) const
 {
     QString filePath = path;
     if (filePath.startsWith("~/"))
@@ -783,25 +774,25 @@ QString BridgeApp::decode_file(const QString &algorithm, const QString &path, co
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly))
-        return "";
+        return QByteArray();
 
-    QByteArray encodedBytes = file.readAll();
+    QByteArray rawData = file.readAll();
     file.close();
 
     QString alg = algorithm.toLower();
 
     if (alg == "hex")
-        return QString::fromLatin1(QByteArray::fromHex(encodedBytes).toBase64());
+        return QByteArray::fromHex(rawData.trimmed());
     if (alg == "base64")
-        return QString::fromLatin1(QByteArray::fromBase64(encodedBytes).toBase64());
+        return QByteArray::fromBase64(rawData);
     if (alg == "base32")
-        return QString::fromLatin1(decodeBase32(encodedBytes).toBase64());
+        return decodeBase32(rawData);
     if (alg == "zip")
-        return QString::fromLatin1(qUncompress(QByteArray::fromBase64(encodedBytes)).toBase64());
+        return qUncompress(rawData);
     if (alg == "xor")
-        return QString::fromLatin1(applyXor(QByteArray::fromBase64(encodedBytes), key.toUtf8()).toBase64());
+        return applyXor(rawData, key.toUtf8());
 
-    return QString::fromLatin1(encodedBytes.toBase64());
+    return rawData;
 }
 
 // Code conversion
@@ -905,9 +896,8 @@ static QString bytesToCode_PowerShell(const QByteArray &data, const QString &var
     return result + "\n)";
 }
 
-QString BridgeApp::convert_to_code(const QString &language, const QString &base64Data, const QString &varName) const
+QString BridgeApp::convert_to_code(const QString &language, const QByteArray &data, const QString &varName) const
 {
-    QByteArray data = QByteArray::fromBase64(base64Data.toLatin1());
     QString lang = language.toLower();
 
     if (lang == "c" || lang == "cpp" || lang == "c++")
@@ -930,7 +920,7 @@ QString BridgeApp::convert_to_code(const QString &language, const QString &base6
     return "";
 }
 
-QString BridgeApp::format_size(const int &size) const { return BytesToFormat(size); }
+QString BridgeApp::format_size(const qint64 &size) const { return BytesToFormat(size); }
 
 QString BridgeApp::format_time(const QString &format, const int &time) const
 {
@@ -943,14 +933,14 @@ QJSValue BridgeApp::get_commands(const QString &id) const
 {
     QVariantList list;
     auto mapAgents = scriptEngine->manager()->GetAgents();
-    if ( mapAgents.contains(id) ) {
-        for (auto cmd : mapAgents[id]->commander->GetCommands())
+    if ( mapAgents.contains(id.toLongLong()) ) {
+        for (auto cmd : mapAgents[id.toLongLong()]->commander->GetCommands())
             list.append(cmd);
     }
     return this->scriptEngine->engine()->toScriptValue(list);
 }
 
-QString BridgeApp::hash(const QString &algorithm, const int length, const QString &input) { return GenerateHash(algorithm, length, input); }
+QString BridgeApp::hash(const QString &algorithm, const int length, const QByteArray &input) { return GenerateHash(algorithm, length, input); }
 
 QJSValue BridgeApp::ids() const
 {
@@ -958,7 +948,7 @@ QJSValue BridgeApp::ids() const
     auto mapAgents = scriptEngine->manager()->GetAgents();
 
     for (const auto& agent : mapAgents)
-        list.append(agent->data.Id);
+        list.append(QString::number(agent->data.Id));
 
     return this->scriptEngine->engine()->toScriptValue(list);
 }
@@ -977,45 +967,45 @@ QJSValue BridgeApp::interfaces() const
 bool BridgeApp::is64(const QString &id) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
-    if (!mapAgents.contains(id))
+    if (!mapAgents.contains(id.toLongLong()))
         return false;
 
-    return mapAgents[id]->data.Arch == "x64";
+    return mapAgents[id.toLongLong()]->data.Arch == "x64";
 }
 
 bool BridgeApp::isactive(const QString &id) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
-    if (!mapAgents.contains(id))
+    if (!mapAgents.contains(id.toLongLong()))
         return false;
 
-    return mapAgents[id]->active;
+    return mapAgents[id.toLongLong()]->active;
 }
 
 bool BridgeApp::isadmin(const QString &id) const
 {
     auto mapAgents = scriptEngine->manager()->GetAgents();
-    if (!mapAgents.contains(id))
+    if (!mapAgents.contains(id.toLongLong()))
         return false;
 
-    return mapAgents[id]->data.Elevated;
+    return mapAgents[id.toLongLong()]->data.Elevated;
 }
 
 void BridgeApp::log(const QString &text) { Q_EMIT consoleMessage(text); }
 
 void BridgeApp::log_error(const QString &text) { Q_EMIT consoleError(text); }
 
-void BridgeApp::open_agent_console(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadConsoleUI(id); }
+void BridgeApp::open_agent_console(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadConsoleUI(id.toLongLong()); }
 
-void BridgeApp::open_access_tunnel(const QString &id, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd) { scriptEngine->manager()->GetAdaptix()->ShowTunnelCreator(id, socks4, socks5, lportfwd, rportfwd); }
+void BridgeApp::open_access_tunnel(const QString &id, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd) { scriptEngine->manager()->GetAdaptix()->ShowTunnelCreator(id.toLongLong(), socks4, socks5, lportfwd, rportfwd); }
 
-void BridgeApp::open_browser_files(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadFileBrowserUI(id); }
+void BridgeApp::open_browser_files(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadFileBrowserUI(id.toLongLong()); }
 
-void BridgeApp::open_browser_process(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadProcessBrowserUI(id); }
+void BridgeApp::open_browser_process(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadProcessBrowserUI(id.toLongLong()); }
 
-void BridgeApp::open_remote_terminal(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadTerminalUI(id); }
+void BridgeApp::open_remote_terminal(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadTerminalUI(id.toLongLong()); }
 
-void BridgeApp::open_remote_shell(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadShellUI(id); }
+void BridgeApp::open_remote_shell(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadShellUI(id.toLongLong()); }
 
 bool BridgeApp::prompt_confirm(const QString &title, const QString &text)
 {
@@ -1156,8 +1146,7 @@ QJSValue BridgeApp::screenshots()
         map["computer"] = screen.Computer;
         map["note"]     = screen.Note;
         map["date"]     = screen.Date;
-        list[screen.ScreenId] = map;
-    }
+        list[QString::number(screen.ScreenId)] = map;    }
 
     return this->scriptEngine->engine()->toScriptValue(list);
 }
@@ -1208,7 +1197,7 @@ QJSValue BridgeApp::targets() const
         map["os_desc"]  = target.OsDesc;
         map["os"]       = osToString(target.Os);
 
-        list[target.TargetId] = map;
+        list[QString::number(target.TargetId)] = map;
     }
 
     return this->scriptEngine->engine()->toScriptValue(list);
@@ -1216,7 +1205,7 @@ QJSValue BridgeApp::targets() const
 
 void BridgeApp::targets_add(const QString &computer, const QString &domain, const QString &address, const QString &os, const QString &osDesc, const QString &tag, const QString &info, bool alive)
 {
-    TargetData target = {"", computer, domain, address, tag, QIcon(), 0, osDesc, "", 0, info, alive};
+    TargetData target = {0, computer, domain, address, tag, QIcon(), 0, osDesc, "", 0, info, alive};
 
     target.Os = stringToOs(os);
 
@@ -1252,6 +1241,62 @@ void BridgeApp::targets_add_list(const QVariantList &array)
 
 int BridgeApp::ticks() { return QDateTime::currentSecsSinceEpoch(); }
 
+QStringList BridgeApp::tokenize(const QString &cmdline) const
+{
+    QStringList tokens;
+    QString token;
+    bool inQuotes = false;
+    const int length = cmdline.size();
+
+    for (int i = 0; i < length; ) {
+        const QChar c = cmdline.at(i);
+
+        if (c == QLatin1Char(' ') && !inQuotes) {
+            if (!token.isEmpty()) {
+                tokens.append(token);
+                token.clear();
+            }
+            ++i;
+            continue;
+        }
+
+        if (c == QLatin1Char('"')) {
+            inQuotes = !inQuotes;
+            ++i;
+            continue;
+        }
+
+        if (c == QLatin1Char('\\')) {
+            int numBS = 0;
+            while (i < length && cmdline.at(i) == QLatin1Char('\\')) {
+                ++numBS;
+                ++i;
+            }
+            if (i < length && cmdline.at(i) == QLatin1Char('"')) {
+                for (int j = 0; j < numBS / 2; ++j)
+                    token.append(QLatin1Char('\\'));
+                if (numBS % 2 == 0)
+                    inQuotes = !inQuotes;
+                else
+                    token.append(QLatin1Char('"'));
+                ++i;
+            } else {
+                for (int j = 0; j < numBS; ++j)
+                    token.append(QLatin1Char('\\'));
+            }
+            continue;
+        }
+
+        token.append(c);
+        ++i;
+    }
+
+    if (!token.isEmpty())
+        tokens.append(token);
+
+    return tokens;
+}
+
 QJSValue BridgeApp::tunnels()
 {
     QVariantMap list;
@@ -1271,7 +1316,7 @@ QJSValue BridgeApp::tunnels()
         map["client"]    = tun.Client;
         map["f_port"]    = tun.Fport;
         map["f_host"]    = tun.Fhost;
-        list[tun.TunnelId]  = map;
+        list[QString::number(tun.TunnelId)]  = map;
     }
 
     return this->scriptEngine->engine()->toScriptValue(list);
@@ -1282,14 +1327,14 @@ QJSValue BridgeApp::validate_command(const QString &id, const QString &command) 
     auto mapAgents = scriptEngine->manager()->GetAgents();
     QVariantMap result;
 
-    if (!mapAgents.contains(id)) {
+    if (!mapAgents.contains(id.toLongLong())) {
         result["valid"] = false;
         result["message"] = "Agent not found";
         return scriptEngine->engine()->toScriptValue(result);
     }
 
-    auto cmdResult = mapAgents[id]->commander->ProcessInput(id, command);
-    result["valid"]         = !cmdResult.error;
+    auto cmdResult = mapAgents[id.toLongLong()]->commander->ProcessInput(id.toLongLong(), command);
+    result["valid"]            = !cmdResult.error;
     result["message"]       = cmdResult.message;
     result["is_pre_hook"]   = cmdResult.is_pre_hook;
     result["has_output"]    = cmdResult.output;

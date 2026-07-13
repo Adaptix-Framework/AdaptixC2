@@ -1,22 +1,23 @@
 package extender
 
 import (
-	"AdaptixServer/core/utils/logs"
 	"os"
 	"path/filepath"
 	"plugin"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
+	"github.com/Adaptix-Framework/axsafe"
 	"github.com/goccy/go-yaml"
 )
 
-func NewExtender(teamserver Teamserver) *AdaptixExtender {
+func NewExtender(teamserver Teamserver, listenerPath string) *AdaptixExtender {
 	return &AdaptixExtender{
 		ts:              teamserver,
-		listenerModules: make(map[string]adaptix.PluginListener),
-		agentModules:    make(map[string]adaptix.PluginAgent),
-		serviceModules:  make(map[string]adaptix.PluginService),
-		activeListeners: make(map[string]adaptix.ExtenderListener),
+		listenerPath:    listenerPath,
+		listenerModules: axsafe.NewMap[string, adaptix.PluginListener](),
+		agentModules:    axsafe.NewMap[string, adaptix.PluginAgent](),
+		serviceModules:  axsafe.NewMap[string, adaptix.PluginService](),
+		activeListeners: axsafe.NewMap[string, adaptix.ExtenderListener](),
 	}
 }
 
@@ -26,24 +27,24 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFiles []string) {
 
 		_, err := os.Stat(path)
 		if err != nil {
-			logs.Error("", "Config %s not found", path)
+			ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "Config %s not found", path)
 			continue
 		}
 		config_data, err := os.ReadFile(path)
 		if err != nil {
-			logs.Error("", "Read file %s error: %s", path, err.Error())
+			ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "Read file %s error: %s", path, err.Error())
 			continue
 		}
 
 		var config_map map[string]any
 		err = yaml.Unmarshal(config_data, &config_map)
 		if err != nil {
-			logs.Error("", "Error config %s parse: %s", path, err.Error())
+			ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "Error config %s parse: %s", path, err.Error())
 			continue
 		}
 		extender_type, ok_type := config_map["extender_type"].(string)
 		if !ok_type {
-			logs.Error("", "Error config %s parse: extender_type not found", path)
+			ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "Error config %s parse: extender_type not found", path)
 			continue
 		}
 
@@ -54,7 +55,7 @@ func (ex *AdaptixExtender) LoadPlugins(extenderFiles []string) {
 		} else if extender_type == "service" {
 			ex.LoadPluginService(path, config_data)
 		} else {
-			logs.Error("", "Unknown extender_type in %s", path)
+			ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "Unknown extender_type in %s", path)
 		}
 	}
 }
@@ -63,39 +64,39 @@ func (ex *AdaptixExtender) LoadPluginListener(config_path string, config_data []
 	var configListener ExConfigListener
 	err := yaml.Unmarshal(config_data, &configListener)
 	if err != nil {
-		logs.Error("", "Error config parse: %s", err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "Error config parse: %s", err.Error())
 		return
 	}
 
 	plugin_path := filepath.Dir(config_path) + "/" + configListener.ExtenderFile
 	plug, err := plugin.Open(plugin_path)
 	if err != nil {
-		logs.Error("", "failed to open plugin %s: %s", plugin_path, err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "failed to open plugin %s: %s", plugin_path, err.Error())
 		return
 	}
 
 	sym, err := plug.Lookup("InitPlugin")
 	if err != nil {
-		logs.Error("", "failed to find InitPlugin in %s: %s", plugin_path, err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "failed to find InitPlugin in %s: %s", plugin_path, err.Error())
 		return
 	}
 
 	pl_InitPlugin, ok := sym.(func(ts any, moduleDir string, listenerDir string) adaptix.PluginListener)
 	if !ok {
-		logs.Error("", "unexpected signature from InitPlugin in %s", plugin_path)
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "unexpected signature from InitPlugin in %s", plugin_path)
 		return
 	}
 
-	pl_listener := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), logs.RepoLogsInstance.ListenerPath)
+	pl_listener := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), ex.listenerPath)
 	if pl_listener == nil {
-		logs.Error("", "plugin %s returned nil", plugin_path)
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "plugin %s returned nil", plugin_path)
 		return
 	}
 
 	ax_path := filepath.Dir(config_path) + "/" + configListener.AxFile
 	ax_content, err := os.ReadFile(ax_path)
 	if err != nil {
-		logs.Error("", "failed to read ax file %s: %s", ax_path, err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "failed to read ax file %s: %s", ax_path, err.Error())
 		return
 	}
 
@@ -108,25 +109,25 @@ func (ex *AdaptixExtender) LoadPluginListener(config_path string, config_data []
 
 	err = ex.ts.TsListenerReg(listenerInfo)
 	if err != nil {
-		logs.Error("", "plugin %s does not registered: %s", plugin_path, err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "plugin %s does not registered: %s", plugin_path, err.Error())
 		return
 	}
 
-	ex.listenerModules[listenerInfo.Name] = pl_listener
+	ex.listenerModules.Put(listenerInfo.Name, pl_listener)
 }
 
 func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byte) {
 	var configAgent ExConfigAgent
 	err := yaml.Unmarshal(config_data, &configAgent)
 	if err != nil {
-		logs.Error("", "Error config parse: %s", err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "Error config parse: %s", err.Error())
 		return
 	}
 
 	ax_path := filepath.Dir(config_path) + "/" + configAgent.AxFile
 	ax_content, err := os.ReadFile(ax_path)
 	if err != nil {
-		logs.Error("", "failed to read ax file %s: %s", ax_path, err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "failed to read ax file %s: %s", ax_path, err.Error())
 		return
 	}
 
@@ -141,67 +142,67 @@ func (ex *AdaptixExtender) LoadPluginAgent(config_path string, config_data []byt
 	plugin_path := filepath.Dir(config_path) + "/" + configAgent.ExtenderFile
 	plug, err := plugin.Open(plugin_path)
 	if err != nil {
-		logs.Error("", "failed to open plugin %s: %s", plugin_path, err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "failed to open plugin %s: %s", plugin_path, err.Error())
 		return
 	}
 
 	sym, err := plug.Lookup("InitPlugin")
 	if err != nil {
-		logs.Error("", "failed to find InitPlugin in %s: %s", plugin_path, err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "failed to find InitPlugin in %s: %s", plugin_path, err.Error())
 		return
 	}
 
 	pl_InitPlugin, ok := sym.(func(ts any, moduleDir string, watermark string) adaptix.PluginAgent)
 	if !ok {
-		logs.Error("", "unexpected signature from InitPlugin in %s", plugin_path)
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "unexpected signature from InitPlugin in %s", plugin_path)
 		return
 	}
 
 	pl_agent := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), agentInfo.Watermark)
 	if pl_agent == nil {
-		logs.Error("", "plugin %s returned nil", plugin_path)
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "plugin %s returned nil", plugin_path)
 		return
 	}
 
 	err = ex.ts.TsAgentReg(agentInfo)
 	if err != nil {
-		logs.Error("", "plugin %s does not registered: %s", plugin_path, err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "plugin %s does not registered: %s", plugin_path, err.Error())
 		return
 	}
 
-	ex.agentModules[agentInfo.Name] = pl_agent
+	ex.agentModules.Put(agentInfo.Name, pl_agent)
 }
 
 func (ex *AdaptixExtender) LoadPluginService(config_path string, config_data []byte) {
 	var configService ExConfigService
 	err := yaml.Unmarshal(config_data, &configService)
 	if err != nil {
-		logs.Error("", "Error config parse: %s", err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "Error config parse: %s", err.Error())
 		return
 	}
 
 	plugin_path := filepath.Dir(config_path) + "/" + configService.ExtenderFile
 	plug, err := plugin.Open(plugin_path)
 	if err != nil {
-		logs.Error("", "failed to open plugin %s: %s", plugin_path, err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "failed to open plugin %s: %s", plugin_path, err.Error())
 		return
 	}
 
 	sym, err := plug.Lookup("InitPlugin")
 	if err != nil {
-		logs.Error("", "failed to find InitPlugin in %s: %s", plugin_path, err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "failed to find InitPlugin in %s: %s", plugin_path, err.Error())
 		return
 	}
 
 	pl_InitPlugin, ok := sym.(func(ts any, moduleDir string, serviceConfig string) adaptix.PluginService)
 	if !ok {
-		logs.Error("", "unexpected signature from InitPlugin in %s", plugin_path)
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "unexpected signature from InitPlugin in %s", plugin_path)
 		return
 	}
 
 	pl_service := pl_InitPlugin(ex.ts, filepath.Dir(plugin_path), configService.ServiceConfig)
 	if pl_service == nil {
-		logs.Error("", "plugin %s returned nil", plugin_path)
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "plugin %s returned nil", plugin_path)
 		return
 	}
 
@@ -213,7 +214,7 @@ func (ex *AdaptixExtender) LoadPluginService(config_path string, config_data []b
 		ax_path := filepath.Dir(config_path) + "/" + configService.AxFile
 		ax_content, err := os.ReadFile(ax_path)
 		if err != nil {
-			logs.Warn("", "failed to read ax file %s: %s", ax_path, err.Error())
+			ex.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server:extender_manager", "failed to read ax file %s: %s", ax_path, err.Error())
 		} else {
 			serviceInfo.AX = string(ax_content)
 		}
@@ -221,11 +222,11 @@ func (ex *AdaptixExtender) LoadPluginService(config_path string, config_data []b
 
 	err = ex.ts.TsServiceReg(serviceInfo)
 	if err != nil {
-		logs.Error("", "plugin %s does not registered: %s", plugin_path, err.Error())
+		ex.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:extender_manager", "plugin %s does not registered: %s", plugin_path, err.Error())
 		return
 	}
 
-	ex.serviceModules[serviceInfo.Name] = pl_service
+	ex.serviceModules.Put(serviceInfo.Name, pl_service)
 
-	logs.Success("", "Service '%s' loaded", configService.ServiceName)
+	ex.ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server:extender_manager", "Service '%s' loaded", configService.ServiceName)
 }

@@ -29,7 +29,7 @@ public:
 
     void Start() const;
     void NewProject() const;
-    void SetApplicationTheme() const;
+    void SetApplicationTheme();
     void ApplyApplicationFont() const;
 
     static AuthProfile* Login();

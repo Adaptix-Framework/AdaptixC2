@@ -65,8 +65,8 @@ void WebSocketWorker::run()
     otpData["subscriptions"] = subsArray;
 
     QString otp;
-    bool otpResult = HttpReqGetOTP("connect", otpData, profile->GetURL(), profile->GetAccessToken(), &otp);
-    if (!otpResult) {
+    bool ok = false;
+    if (!HttpReqGetOTP("connect", otpData, *profile, &otp, &ok) || !ok) {
         this->ok = false;
         this->message = "Failed to generate OTP for connect";
         Q_EMIT ws_error();
@@ -197,5 +197,4 @@ void WebSocketWorker::stopWorker()
         delete webSocket;
         webSocket = nullptr;
     }
-    quit();
 }

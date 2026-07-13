@@ -1,7 +1,6 @@
 package axscript
 
 import (
-	"AdaptixServer/core/utils/logs"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -10,34 +9,37 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/dop251/goja"
 )
 
 type TeamserverBridge interface {
-	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error
-	TsAgentConsoleOutput(agentId string, client string, messageType int, message string, clearText string, store bool)
-	TsAgentConsoleErrorCommand(agentId string, client string, cmdline string, message string, HookId string, HandlerId string)
+	TsLogAdd(status adaptix.LogStatus, level int, source string, format string, args ...any)
 
-	AxGetAgentContext(agentId string) (agentName string, listenerRegName string, osType int, err error)
+	TsAgentCommand(agentName string, agentId int64, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error
+	TsAgentConsoleOutput(agentId int64, client string, messageType int, message string, clearText string, store bool)
+	TsAgentConsoleErrorCommand(agentId int64, client string, cmdline string, message string, HookId string, HandlerId string)
+
+	AxGetAgentContext(agentId int64) (agentName string, listenerRegName string, osType int, err error)
 	AxGetAgents() map[string]interface{}
-	AxGetAgentInfo(agentId string, property string) interface{}
-	AxGetAgentIds() []string
+	AxGetAgentInfo(agentId int64, property string) interface{}
+	AxGetAgentIds() []int64
 	AxGetCredentials() []interface{}
 	AxGetTargets() []interface{}
 
 	AxCredentialsAdd(creds []map[string]interface{}) error
 	AxTargetsAdd(targets []map[string]interface{}) error
-	AxAgentRemove(agentIds []string) error
-	AxAgentSetTag(agentIds []string, tag string) error
-	AxAgentSetMark(agentIds []string, mark string) error
-	AxAgentSetColor(agentIds []string, background string, foreground string, reset bool) error
-	AxAgentUpdateData(agentId string, updateData map[string]interface{}) error
+	AxAgentRemove(agentIds []int64) error
+	AxAgentSetTag(agentIds []int64, tag string) error
+	AxAgentSetMark(agentIds []int64, mark string) error
+	AxAgentSetColor(agentIds []int64, background string, foreground string, reset bool) error
+	AxAgentUpdateData(agentId int64, updateData map[string]interface{}) error
 
 	AxGetDownloads() []interface{}
 	AxGetScreenshots() []interface{}
 	AxGetTunnels() []interface{}
 	AxGetInterfaces() []string
-	AxGetAgentMark(agentId string) string
+	AxGetAgentMark(agentId int64) string
 	AxUnloadAxScript(name string) error
 }
 
@@ -131,7 +133,7 @@ func (sm *ScriptManager) LoadAxScript(scriptPath string) error {
 	}
 
 	if engine.GetMetadataNoSave() {
-		logs.Success("", "Executed axscript '%s' (nosave)", scriptPath)
+		//sm.teamserver.TsLogAdd(adaptix.LogStatusSuccess, 0, "server:axscript_manager", "Executed axscript '%s' (nosave)", scriptPath)
 		return nil
 	}
 
@@ -149,7 +151,7 @@ func (sm *ScriptManager) LoadAxScript(scriptPath string) error {
 	})
 	sm.mu.Unlock()
 
-	logs.Success("", "Loaded axscript '%s'", scriptPath)
+	sm.teamserver.TsLogAdd(adaptix.LogStatusSuccess, 0, "server:axscript_manager", "Loaded axscript '%s'", scriptPath)
 	return nil
 }
 
@@ -197,7 +199,7 @@ func (sm *ScriptManager) LoadAxScriptChild(parentEngine *ScriptEngine, scriptPat
 	}
 
 	if engine.GetMetadataNoSave() {
-		logs.Success("", "Executed axscript '%s' (nosave)", abs)
+		//sm.teamserver.TsLogAdd(adaptix.LogStatusSuccess, 0, "server:axscript_manager", "Executed axscript '%s' (nosave)", abs)
 		return nil
 	}
 
@@ -215,7 +217,7 @@ func (sm *ScriptManager) LoadAxScriptChild(parentEngine *ScriptEngine, scriptPat
 	})
 	sm.mu.Unlock()
 
-	logs.Success("", "Loaded axscript '%s'", abs)
+	sm.teamserver.TsLogAdd(adaptix.LogStatusSuccess, 0, "server:axscript_manager", "Loaded axscript '%s'", abs)
 	return nil
 }
 
@@ -252,25 +254,25 @@ func (sm *ScriptManager) executeRegisterCommands(engine *ScriptEngine, agentName
 	fn := rt.Get("RegisterCommands")
 	if fn == nil || goja.IsUndefined(fn) {
 		engine.mu.Unlock()
-		logs.Warn("", "No RegisterCommands function found in script for '%s'", agentName)
+		sm.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "No RegisterCommands function found in script for '%s'", agentName)
 		return
 	}
 
 	registerFn, ok := goja.AssertFunction(fn)
 	if !ok {
 		engine.mu.Unlock()
-		logs.Error("", "RegisterCommands is not a function in script for '%s'", agentName)
+		sm.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "RegisterCommands is not a function in script for '%s'", agentName)
 		return
 	}
 
 	result, err := registerFn(goja.Undefined(), rt.ToValue(listenerType))
 	engine.mu.Unlock()
 	if err != nil {
-		logs.Error("", "Error calling RegisterCommands for '%s': %v", agentName, err)
+		sm.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "Error calling RegisterCommands for '%s': %v", agentName, err)
 		return
 	}
 	if result == nil || goja.IsUndefined(result) || goja.IsNull(result) {
-		logs.Warn("", "RegisterCommands returned nil for '%s'", agentName)
+		sm.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "RegisterCommands returned nil for '%s'", agentName)
 		return
 	}
 
@@ -314,7 +316,7 @@ func (sm *ScriptManager) extractCommandsFromResult(engine *ScriptEngine, agentNa
 	}
 
 	if groupBuilder == nil {
-		logs.Warn("", "Property '%s' for agent '%s' is not a CommandGroup", propName, agentName)
+		sm.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "Property '%s' for agent '%s' is not a CommandGroup", propName, agentName)
 		return
 	}
 
@@ -424,7 +426,7 @@ func (sm *ScriptManager) ListProfileScriptsWithContent() []ScriptWithContent {
 	return result
 }
 
-func (sm *ScriptManager) ResolveAndExecutePreHook(agentName string, agentId string, listenerRegName string, os int, cmdline string, args map[string]interface{}, client string) (hookId string, handlerId string, preHookHandled bool, err error) {
+func (sm *ScriptManager) ResolveAndExecutePreHook(agentName string, agentId int64, listenerRegName string, os int, cmdline string, args map[string]interface{}, client string) (hookId string, handlerId string, preHookHandled bool, err error) {
 	resolved, resolveErr := sm.CommandStore.ResolveFromCmdline(agentName, listenerRegName, os, cmdline)
 	if resolveErr != nil {
 		return "", "", false, nil
@@ -456,7 +458,7 @@ func (sm *ScriptManager) ParseCommandPublic(cmdline string, resolved *ResolvedCo
 }
 
 // /---
-func (sm *ScriptManager) ExecutePreHookPublic(engine *ScriptEngine, fn goja.Callable, agentId string, cmdline string, args map[string]interface{}, client string) error {
+func (sm *ScriptManager) ExecutePreHookPublic(engine *ScriptEngine, fn goja.Callable, agentId int64, cmdline string, args map[string]interface{}, client string) error {
 	return sm.executePreHook(engine, fn, agentId, cmdline, args, client)
 }
 
@@ -465,7 +467,7 @@ func (sm *ScriptManager) ResolveFileArgsPublic(engine *ScriptEngine, parsed *Par
 	return sm.resolveFileArgs(engine, parsed)
 }
 
-func (sm *ScriptManager) executePreHook(engine *ScriptEngine, fn goja.Callable, agentId string, cmdline string, args map[string]interface{}, client string) error {
+func (sm *ScriptManager) executePreHook(engine *ScriptEngine, fn goja.Callable, agentId int64, cmdline string, args map[string]interface{}, client string) error {
 	argsCopy := make(map[string]interface{}, len(args))
 	for k, v := range args {
 		argsCopy[k] = v
@@ -505,7 +507,7 @@ type agentCommandContext struct {
 	parsed    *ParsedCommand
 }
 
-func (sm *ScriptManager) resolveAgentCommand(agentId string, cmdline string) (*agentCommandContext, error) {
+func (sm *ScriptManager) resolveAgentCommand(agentId int64, cmdline string) (*agentCommandContext, error) {
 	if sm.teamserver == nil {
 		return nil, fmt.Errorf("teamserver not available")
 	}
@@ -533,7 +535,7 @@ func (sm *ScriptManager) resolveAgentCommand(agentId string, cmdline string) (*a
 }
 
 // /---
-func (sm *ScriptManager) ExecuteCommand(fromEngine *ScriptEngine, agentId string, cmdline string, clientName string, postHookFn goja.Callable, handlerFn goja.Callable) error {
+func (sm *ScriptManager) ExecuteCommand(fromEngine *ScriptEngine, agentId int64, cmdline string, clientName string, postHookFn goja.Callable, handlerFn goja.Callable) error {
 	ctx, err := sm.resolveAgentCommand(agentId, cmdline)
 	if err != nil {
 		return err
@@ -559,7 +561,7 @@ func (sm *ScriptManager) ExecuteCommand(fromEngine *ScriptEngine, agentId string
 }
 
 // /---
-func (sm *ScriptManager) ExecuteAlias(fromEngine *ScriptEngine, agentId string, aliasCmdline string, clientName string) error {
+func (sm *ScriptManager) ExecuteAlias(fromEngine *ScriptEngine, agentId int64, aliasCmdline string, clientName string) error {
 	ctx, err := sm.resolveAgentCommand(agentId, aliasCmdline)
 	if err != nil {
 		return err
@@ -594,7 +596,7 @@ func (sm *ScriptManager) ExecuteAlias(fromEngine *ScriptEngine, agentId string, 
 	return sm.teamserver.TsAgentCommand(ctx.agentName, agentId, clientName, hookId, handlerId, aliasCmdline, false, ctx.parsed.Args)
 }
 
-func (sm *ScriptManager) ExecuteAliasWithHooks(fromEngine *ScriptEngine, agentId string, displayCmdline string, aliasCmdline string, message string, clientName string, postHookFn goja.Callable, handlerFn goja.Callable) error {
+func (sm *ScriptManager) ExecuteAliasWithHooks(fromEngine *ScriptEngine, agentId int64, displayCmdline string, aliasCmdline string, message string, clientName string, postHookFn goja.Callable, handlerFn goja.Callable) error {
 	ctx, err := sm.resolveAgentCommand(agentId, aliasCmdline)
 	if err != nil {
 		return err
@@ -649,7 +651,7 @@ func (sm *ScriptManager) GetAgents() map[string]interface{} {
 	return sm.teamserver.AxGetAgents()
 }
 
-func (sm *ScriptManager) GetAgentInfo(agentId string, property string) interface{} {
+func (sm *ScriptManager) GetAgentInfo(agentId int64, property string) interface{} {
 	if sm.teamserver == nil {
 		return nil
 	}
@@ -657,9 +659,9 @@ func (sm *ScriptManager) GetAgentInfo(agentId string, property string) interface
 }
 
 // /---
-func (sm *ScriptManager) GetAgentIds() []string {
+func (sm *ScriptManager) GetAgentIds() []int64 {
 	if sm.teamserver == nil {
-		return []string{}
+		return []int64{}
 	}
 	return sm.teamserver.AxGetAgentIds()
 }
@@ -680,7 +682,7 @@ func (sm *ScriptManager) GetTargets() []interface{} {
 	return sm.teamserver.AxGetTargets()
 }
 
-func (sm *ScriptManager) ConsoleMessage(agentId string, client string, msgType int, message string, clearText string) {
+func (sm *ScriptManager) ConsoleMessage(agentId int64, client string, msgType int, message string, clearText string) {
 	if sm.teamserver == nil {
 		return
 	}
@@ -768,7 +770,7 @@ func (sm *ScriptManager) GetInterfaces() []string {
 }
 
 // /---
-func (sm *ScriptManager) GetAgentMark(agentId string) string {
+func (sm *ScriptManager) GetAgentMark(agentId int64) string {
 	if sm.teamserver == nil {
 		return ""
 	}
@@ -784,7 +786,7 @@ func (sm *ScriptManager) UnloadAxScript(name string) error {
 }
 
 // /---
-func (sm *ScriptManager) ValidateCommand(agentId string, cmdline string) (map[string]interface{}, error) {
+func (sm *ScriptManager) ValidateCommand(agentId int64, cmdline string) (map[string]interface{}, error) {
 	if sm.teamserver == nil {
 		return nil, fmt.Errorf("teamserver not available")
 	}
@@ -818,7 +820,7 @@ func (sm *ScriptManager) ValidateCommand(agentId string, cmdline string) (map[st
 }
 
 // /---
-func (sm *ScriptManager) GetCommandNames(agentId string) ([]string, error) {
+func (sm *ScriptManager) GetCommandNames(agentId int64) ([]string, error) {
 	if sm.teamserver == nil {
 		return nil, fmt.Errorf("teamserver not available")
 	}

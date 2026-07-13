@@ -72,8 +72,8 @@ DialogConnect::~DialogConnect() = default;
 
 void DialogConnect::createUI()
 {
-    resize(720, 420);
-    setFixedSize(720, 420);
+    resize(720, 380);
+    setFixedSize(720, 380);
     setWindowTitle("Connect");
     setProperty("Main", "base");
 
@@ -175,7 +175,7 @@ void DialogConnect::createUI()
     agentListWidget->setSelectionMode(QAbstractItemView::NoSelection);
 
     agentListWidget->addItem(makeSectionHeader("Data"));
-    for (const QString &cat : {"chat_realtime", "downloads_realtime", "screenshot_realtime", "credentials_realtime", "targets_realtime", "notifications", "tunnels"}) {
+    for (const QString &cat : {"chat_realtime", "chat_todo", "downloads_realtime", "screenshot_realtime", "credentials_realtime", "targets_realtime", "notifications", "tunnels"}) {
         auto *item = new QListWidgetItem(cat);
         item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
         item->setCheckState(Qt::Checked);
@@ -637,6 +637,16 @@ void DialogConnect::onButton_Load()
 
             AuthProfile loadedProfile(project, json["username"].toString(), json["password"].toString(), json["host"].toString(), json["port"].toString(), json["endpoint"].toString(), projectDirFinal);
 
+            if (json.contains("subscriptions") && json["subscriptions"].isArray()) {
+                QStringList subs;
+                for (const QJsonValue& v : json["subscriptions"].toArray()) {
+                    subs.append(v.toString());
+                }
+                loadedProfile.SetSubscriptions(subs);
+                loadedProfile.SetRegisteredCategories(subs);
+            }
+
+
             if (isNewProject)
                 GlobalClient->storage->AddProject(loadedProfile);
             else
@@ -675,6 +685,16 @@ void DialogConnect::onButton_Save()
     json["username"] = lineEdit_User->text().trimmed();
     json["password"] = lineEdit_Password->text();
     json["projectDir"] = projectDir;
+
+    QJsonArray subsArray;
+    for (auto& p : GlobalClient->storage->ListProjects()) {
+        if (p.GetProject() == projectName) {
+            for (const QString& sub : p.GetSubscriptions())
+                subsArray.append(sub);
+            break;
+        }
+    }
+    json["subscriptions"] = subsArray;
 
     QString baseDir = QDir::homePath();
     QString projectDirText = lineEdit_ProjectDir->text().trimmed();

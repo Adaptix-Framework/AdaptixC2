@@ -3,7 +3,6 @@
 
 #include <main.h>
 
-class DialogExtender;
 class MainAdaptix;
 
 class Extender : public QObject
@@ -15,15 +14,18 @@ public:
     explicit Extender(MainAdaptix* m);
     ~Extender() override;
 
-    DialogExtender* dialogExtender = nullptr;
     QMap<QString, ExtensionFile> extenderFiles;
 
     void LoadFromDB();
     void LoadFromFile(const QString &path, bool enabled);
+    bool IsLoaded(const QString &path) const;
     void SetExtension(ExtensionFile extFile );
     void EnableExtension(const QString &path);
     void DisableExtension(const QString &path);
     void RemoveExtension(const QString &path);
+
+Q_SIGNALS:
+    void extensionChanged();
 
 public Q_SLOTS:
     void syncedOnReload(const QString &project);

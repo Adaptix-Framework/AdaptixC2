@@ -2,8 +2,6 @@
 #define ADAPTIXCLIENT_MAINUI_H
 
 #include <main.h>
-#include <functional>
-#include <oclero/qlementine/widgets/Menu.hpp>
 
 class AuthProfile;
 class AdaptixWidget;
@@ -12,19 +10,14 @@ class WebSocketWorker;
 class MainUI : public QMainWindow
 {
     QTabWidget* mainuiTabWidget = nullptr;
+    QPushButton* newProjectButton = nullptr;
 
     QVector<AdaptixWidget*> AdaptixProjects;
-
-    oclero::qlementine::Menu* menuProject    = nullptr;
-    oclero::qlementine::Menu* menuExtensions = nullptr;
-    oclero::qlementine::Menu* menuSettings   = nullptr;
-    QAction* extDocksSeparator = nullptr;
-
-    QMap<QString, QAction*> extDockActions;
 
     void onOpenProjectDirectory();
     void onTabChanged(int index);
     void updateTabButton(int index, const QString& tabName, bool showButton = false);
+    void onTabContextMenu(const QPoint &pos);
 
 public:
     explicit MainUI();
@@ -32,10 +25,10 @@ public:
 
     static void onNewProject();
     void onCloseProject();
+    void onCloseProjectRequested();
     void onProjectSubscriptions();
-    void onAxScriptConsole();
+    void onScriptsDock();
 
-    void onScriptManager();
     static void onSettings();
 
     void AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker);
@@ -45,19 +38,17 @@ public:
     void RemoveExtension(const ExtensionFile &extFile);
 
     void UpdateSessionsTableColumns();
+    void UpdateConsolePrefs();
     void UpdateGraphIcons();
     void UpdateTasksTableColumns();
+    void UpdateTargetsColumns();
+    void UpdateCredentialsColumns();
+    void UpdateFilesColumns();
+    void ApplyFeedViewPreferences();
+    void RebuildToolbars();
 
     AuthProfile* GetCurrentProfile() const;
     QVector<AdaptixWidget*> GetAdaptixProjects() const;
-
-    QMenu* getMenuProject() const;
-    QMenu* getMenuAxScript() const;
-    QMenu* getMenuSettings() const;
-
-    void addExtDockAction(const QString &id, const QString &title, bool checked, const std::function<void(bool)> &callback);
-    void removeExtDockAction(const QString &id);
-    void setExtDockChecked(const QString &id, bool checked);
 
 protected:
     void closeEvent(QCloseEvent *event) override;

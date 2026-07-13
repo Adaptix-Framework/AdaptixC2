@@ -3,142 +3,21 @@ package connector
 import (
 	"AdaptixServer/core/profile"
 	"AdaptixServer/core/utils/krypt"
-	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/token"
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
+	"github.com/Adaptix-Framework/axsafe"
 	"github.com/gin-gonic/gin"
-	"github.com/gorilla/websocket"
 )
 
-const SMALL_VERSION = "v1.3"
-
-type Teamserver interface {
-	CreateOTP(otpType string, data interface{}) (string, error)
-	ValidateOTP(token string) (string, interface{}, bool)
-
-	TsClientExists(username string) bool
-	TsClientDisconnect(username string)
-	TsClientConnect(username string, socket *websocket.Conn, clientType uint8, consoleTeamMode bool, subscriptions []string)
-	TsClientSync(username string)
-	TsClientSubscribe(username string, categories []string, consoleTeamMode *bool)
-
-	TsListenerList() (string, error)
-	TsListenerStart(listenerName string, configType string, config string, createTime int64, watermark string, customData []byte) error
-	TsListenerEdit(listenerName string, configType string, config string) error
-	TsListenerStop(listenerName string, configType string) error
-	TsListenerPause(listenerName string, configType string) error
-	TsListenerResume(listenerName string, configType string) error
-	TsListenerGetProfile(listenerName string) (string, []byte, error)
-	TsListenerInteralHandler(watermark string, data []byte) (string, error)
-
-	TsAgentList() (string, error)
-	TsAgentIsExists(agentId string) bool
-	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
-	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
-	TsAgentCommand(agentName string, agentId string, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error
-	TsAgentBuildSyncOnce(agentName string, config string, listenersName []string) ([]byte, string, error)
-
-	TsAgentUpdateData(newAgentData adaptix.AgentData) error
-	TsAgentUpdateDataPartial(agentId string, updateData interface{}) error
-	TsAgentTerminate(agentId string, terminateTaskId string) error
-	TsAgentRemove(agentId string) error
-	TsAgentConsoleRemove(agentId string) error
-	TsAgentSetTick(agentId string, listenerName string) error
-	TsAgentTickUpdate()
-
-	TsAgentConsoleOutput(agentId string, client string, messageType int, message string, clearText string, store bool)
-	TsAgentConsoleOutputClient(agentId string, client string, messageType int, message string, clearText string)
-	TsAgentConsoleErrorCommand(agentId string, client string, cmdline string, message string, HookId string, HandlerId string)
-
-	TsTaskCreate(agentId string, cmdline string, client string, taskData adaptix.TaskData)
-	TsTaskUpdate(agentId string, data adaptix.TaskData)
-	TsTaskGetAvailableAll(agentId string, availableSize int) ([]adaptix.TaskData, error)
-	TsTaskCancel(agentId string, taskId string) error
-	TsTaskDelete(agentId string, taskId string) error
-	TsTaskPostHook(hookData adaptix.TaskData, jobIndex int) error
-	TsTaskSave(hookData adaptix.TaskData) error
-	TsTaskListCompleted(agentId string, limit int, offset int) ([]byte, error)
-
-	TsChatSendMessage(username string, message string)
-
-	TsDownloadAdd(agentId string, fileId string, fileName string, fileSize int64) error
-	TsDownloadUpdate(fileId string, state int, data []byte) error
-	TsDownloadClose(fileId string, reason int) error
-
-	TsDownloadList() (string, error)
-	TsDownloadSync(fileId string) (string, []byte, error)
-	TsDownloadDelete(fileId []string) error
-	TsDownloadGetFilepath(fileId string) (string, error)
-	TsUploadGetFilepath(fileId string) (string, error)
-	TsUploadGetFileContent(fileId string) ([]byte, error)
-
-	TsScreenshotList() (string, error)
-	TsScreenshotGetImage(screenId string) ([]byte, error)
-	TsScreenshotDelete(screenId string) error
-	TsScreenshotNote(screenId string, note string) error
-
-	TsCredentilsList() (string, error)
-	TsCredentilsAdd(creds []map[string]interface{}) error
-	TsCredentilsEdit(credId string, username string, password string, realm string, credType string, tag string, storage string, host string) error
-	TsCredentilsDelete(credsId []string) error
-	TsCredentialsSetTag(credsId []string, tag string) error
-
-	TsTargetsList() (string, error)
-	TsTargetsAdd(targets []map[string]interface{}) error
-	TsTargetsEdit(targetId string, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error
-	TsTargetDelete(targetsId []string) error
-	TsTargetSetTag(targetsId []string, tag string) error
-	TsTargetRemoveSessions(agentsId []string) error
-
-	TsClientGuiDisksWindows(taskData adaptix.TaskData, drives []adaptix.ListingDrivesDataWin)
-	TsClientGuiFilesStatus(taskData adaptix.TaskData)
-	TsClientGuiFilesWindows(taskData adaptix.TaskData, path string, files []adaptix.ListingFileDataWin)
-	TsClientGuiFilesUnix(taskData adaptix.TaskData, path string, files []adaptix.ListingFileDataUnix)
-	TsClientGuiProcessWindows(taskData adaptix.TaskData, process []adaptix.ListingProcessDataWin)
-	TsClientGuiProcessUnix(taskData adaptix.TaskData, process []adaptix.ListingProcessDataUnix)
-
-	TsAgentTerminalCreateChannel(terminalData string, wsconn *websocket.Conn) error
-	TsAgentBuildCreateChannel(buildData string, wsconn *websocket.Conn) error
-
-	TsTunnelList() (string, error)
-	TsTunnelClientStart(AgentId string, Listen bool, Type int, Info string, Lhost string, Lport int, Client string, Thost string, Tport int, AuthUser string, AuthPass string) (string, error)
-	TsTunnelClientNewChannel(TunnelData string, wsconn *websocket.Conn) error
-	TsTunnelClientStop(TunnelId string, Client string) error
-	TsTunnelStop(TunnelId string) error
-	TsTunnelClientSetInfo(TunnelId string, Info string) error
-	TsTunnelCreateSocks4(AgentId string, Info string, Lhost string, Lport int) (string, error)
-	TsTunnelCreateSocks5(AgentId string, Info string, Lhost string, Lport int, UseAuth bool, Username string, Password string) (string, error)
-	TsTunnelCreateLportfwd(AgentId string, Info string, Lhost string, Lport int, Thost string, Tport int) (string, error)
-	TsTunnelStopSocks(AgentId string, Port int)
-	TsTunnelStopLportfwd(AgentId string, Port int)
-	TsTunnelStopRportfwd(AgentId string, Port int)
-	TsTunnelConnectionClose(channelId int, writeOnly bool)
-	TsTunnelConnectionHalt(channelId int, errorCode byte)
-	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
-	TsTunnelConnectionData(channelId int, data []byte)
-
-	TsServiceLoad(configPath string) error
-	TsServiceUnload(serviceName string) error
-	TsServiceCall(serviceName string, operator string, function string, args string)
-	TsServiceList() (string, error)
-
-	TsAxScriptLoadUser(name string, script string) error
-	TsAxScriptUnloadUser(name string) error
-	TsAxScriptList() (string, error)
-	TsAxScriptCommands() (string, error)
-	TsAxScriptResolveHooks(agentName string, agentId string, listenerRegName string, os int, cmdline string, args map[string]interface{}, client string) (string, string, bool, error)
-	TsAxScriptIsServerHook(id string) bool
-	TsAxScriptParseAndExecute(agentId string, username string, cmdline string) error
-	AxGetAgentContext(agentId string) (agentName string, listenerRegName string, osType int, err error)
-}
+const SMALL_VERSION = "v2.0"
 
 type TsConnector struct {
 	Interface          string
@@ -154,11 +33,11 @@ type TsConnector struct {
 	httpServer *profile.TsHttpServer
 
 	Engine                 *gin.Engine
-	teamserver             Teamserver
+	teamserver             adaptix.Teamserver
 	apiGroup               *gin.RouterGroup
 	publicGroup            *gin.RouterGroup
-	dynamicEndpoints       map[string]gin.HandlerFunc
-	dynamicPublicEndpoints map[string]gin.HandlerFunc
+	dynamicEndpoints       axsafe.Map[string, gin.HandlerFunc]
+	dynamicPublicEndpoints axsafe.Map[string, gin.HandlerFunc]
 }
 
 func tlsVersionFromString(v string) (uint16, error) {
@@ -249,12 +128,38 @@ func default404Middleware(httpError profile.TsHttpError) gin.HandlerFunc {
 	}
 }
 
-func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, httpServer profile.TsHttpServer) (*TsConnector, error) {
+func mustUsername(ctx *gin.Context) (string, bool) {
+	value, exists := ctx.Get("username")
+	if !exists {
+		respondError(ctx, http.StatusOK, "Server error: username not found in context")
+		return "", false
+	}
+	username, ok := value.(string)
+	if !ok {
+		respondError(ctx, http.StatusOK, "Server error: username is not a string")
+		return "", false
+	}
+	return username, true
+}
+
+func respondError(ctx *gin.Context, status int, message string) {
+	ctx.JSON(status, gin.H{"message": message, "ok": false})
+}
+
+func respondOK(ctx *gin.Context) {
+	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+}
+
+func respondOKMessage(ctx *gin.Context, message any) {
+	ctx.JSON(http.StatusOK, gin.H{"message": message, "ok": true})
+}
+
+func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServer profile.TsHttpServer) (*TsConnector, error) {
 	gin.SetMode(gin.ReleaseMode)
 
 	var connector = new(TsConnector)
 	connector.Engine = gin.New()
-	connector.Engine.Use(gin.Recovery())
+	// connector.Engine.Use(gin.LoggerWithWriter(ts.TsLogWriter(adaptix.LogStatusInfo, "server:gin"))) /// ToDo
 	connector.teamserver = ts
 	connector.Interface = tsProfile.Interface
 	connector.Port = tsProfile.Port
@@ -305,8 +210,8 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, httpServer profi
 	}
 
 	connector.httpServer = &httpServer
-	connector.dynamicEndpoints = make(map[string]gin.HandlerFunc)
-	connector.dynamicPublicEndpoints = make(map[string]gin.HandlerFunc)
+	connector.dynamicEndpoints = axsafe.NewMap[string, gin.HandlerFunc]()
+	connector.dynamicPublicEndpoints = axsafe.NewMap[string, gin.HandlerFunc]()
 
 	httpCfg := *httpServer.HTTP
 	httpErr := *httpServer.Error
@@ -345,6 +250,8 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, httpServer profi
 		api_group.POST("/listener/stop", connector.TcListenerStop)
 		api_group.POST("/listener/pause", connector.TcListenerPause)
 		api_group.POST("/listener/resume", connector.TcListenerResume)
+		api_group.POST("/listener/connector", connector.TcListenerConnector)
+		api_group.POST("/listener/tags", connector.TcListenerSetTags)
 
 		api_group.GET("/agent/list", connector.TcAgentList)
 		api_group.POST("/agent/generate", connector.TcAgentGenerate)
@@ -359,17 +266,40 @@ func NewTsConnector(ts Teamserver, tsProfile profile.TsProfile, httpServer profi
 		api_group.POST("/agent/set/color", connector.TcAgentSetColor)
 		api_group.POST("/agent/update/data", connector.TcAgentUpdateData)
 
+		api_group.GET("/group/list", connector.TcGroupList)
+		api_group.POST("/group/create", connector.TcGroupCreate)
+		api_group.POST("/group/rename", connector.TcGroupRename)
+		api_group.POST("/group/delete", connector.TcGroupDelete)
+		api_group.POST("/group/members", connector.TcGroupMembers)
+		api_group.POST("/group/reparent", connector.TcGroupReparent)
+
 		api_group.GET("/agent/task/list", connector.TcAgentTaskList)
+		api_group.GET("/agent/console/list", connector.TcAgentConsoleList)
+		api_group.GET("/agent/console/search", connector.TcAgentConsoleSearch)
 		api_group.POST("/agent/task/cancel", connector.TcAgentTaskCancel)
 		api_group.POST("/agent/task/delete", connector.TcAgentTaskDelete)
 		api_group.POST("/agent/task/hook", connector.TcAgentTaskHook)
 		api_group.POST("/agent/task/save", connector.TcAgentTaskSave)
 
+		api_group.GET("/logs/list", connector.TcLogsList)
+
 		api_group.POST("/chat/send", connector.TcChatSendMessage)
+		api_group.POST("/chat/:id/edit", connector.TcChatEditMessage)
+		api_group.POST("/chat/:id/delete", connector.TcChatDeleteMessage)
+		api_group.POST("/chat/:id/react", connector.TcChatReaction)
+		api_group.GET("/chat/todo", connector.TcChatGetTodo)
+		api_group.POST("/chat/todo", connector.TcChatUpdateTodo)
+		api_group.GET("/chat/history", connector.TcChatHistory)
+		api_group.GET("/chat/search", connector.TcChatSearch)
+		api_group.POST("/chat/clear", connector.TcChatClear)
 
 		api_group.GET("/download/list", connector.TcDownloadList)
 		api_group.POST("/download/sync", connector.TcGuiDownloadSync)
 		api_group.POST("/download/delete", connector.TcGuiDownloadDelete)
+		api_group.POST("/download/set/tag", connector.TcDownloadSetTag)
+
+		api_group.GET("/upload/list", connector.TcUploadList)
+		api_group.POST("/upload/delete", connector.TcUploadDelete)
 
 		api_group.GET("/screen/list", connector.TcScreenshotList)
 		api_group.GET("/screen/image", connector.TcScreenshotGetImage)
@@ -423,9 +353,9 @@ func (tc *TsConnector) RegisterEndpoint(method string, path string, handler func
 
 	key := tc.endpointKey(method, path)
 
-	if _, exists := tc.dynamicEndpoints[key]; !exists {
+	if !tc.dynamicEndpoints.Contains(key) {
 		dispatcher := func(c *gin.Context) {
-			if h, ok := tc.dynamicEndpoints[key]; ok {
+			if h, ok := tc.dynamicEndpoints.Get(key); ok {
 				h(c)
 			} else {
 				c.JSON(404, gin.H{"error": "endpoint not found"})
@@ -448,23 +378,22 @@ func (tc *TsConnector) RegisterEndpoint(method string, path string, handler func
 		}
 	}
 
-	tc.dynamicEndpoints[key] = handler
+	tc.dynamicEndpoints.Put(key, handler)
 	return nil
 }
 
 func (tc *TsConnector) UnregisterEndpoint(method string, path string) error {
 	key := tc.endpointKey(method, path)
-	if _, exists := tc.dynamicEndpoints[key]; !exists {
+	if !tc.dynamicEndpoints.Contains(key) {
 		return errors.New("endpoint not registered: " + key)
 	}
-	delete(tc.dynamicEndpoints, key)
+	tc.dynamicEndpoints.Delete(key)
 	return nil
 }
 
 func (tc *TsConnector) EndpointExists(method string, path string) bool {
 	key := tc.endpointKey(method, path)
-	_, exists := tc.dynamicEndpoints[key]
-	return exists
+	return tc.dynamicEndpoints.Contains(key)
 }
 
 func (tc *TsConnector) RegisterPublicEndpoint(method string, path string, handler func(c *gin.Context)) error {
@@ -474,9 +403,9 @@ func (tc *TsConnector) RegisterPublicEndpoint(method string, path string, handle
 
 	key := tc.endpointKey(method, path)
 
-	if _, exists := tc.dynamicPublicEndpoints[key]; !exists {
+	if !tc.dynamicPublicEndpoints.Contains(key) {
 		dispatcher := func(c *gin.Context) {
-			if h, ok := tc.dynamicPublicEndpoints[key]; ok {
+			if h, ok := tc.dynamicPublicEndpoints.Get(key); ok {
 				h(c)
 			} else {
 				c.JSON(404, gin.H{"error": "endpoint not found"})
@@ -499,30 +428,29 @@ func (tc *TsConnector) RegisterPublicEndpoint(method string, path string, handle
 		}
 	}
 
-	tc.dynamicPublicEndpoints[key] = handler
+	tc.dynamicPublicEndpoints.Put(key, handler)
 	return nil
 }
 
 func (tc *TsConnector) UnregisterPublicEndpoint(method string, path string) error {
 	key := tc.endpointKey(method, path)
-	if _, exists := tc.dynamicPublicEndpoints[key]; !exists {
+	if !tc.dynamicPublicEndpoints.Contains(key) {
 		return errors.New("public endpoint not registered: " + key)
 	}
-	delete(tc.dynamicPublicEndpoints, key)
+	tc.dynamicPublicEndpoints.Delete(key)
 	return nil
 }
 
 func (tc *TsConnector) PublicEndpointExists(method string, path string) bool {
 	key := tc.endpointKey(method, path)
-	_, exists := tc.dynamicPublicEndpoints[key]
-	return exists
+	return tc.dynamicPublicEndpoints.Contains(key)
 }
 
 func (tc *TsConnector) Start(finished *chan bool) {
 	host := fmt.Sprintf("%s:%d", tc.Interface, tc.Port)
 
 	if tc.httpServer == nil || tc.httpServer.HTTP == nil || tc.httpServer.TLS == nil {
-		logs.Error("", "HTTP server configuration is not initialized")
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "HTTP server configuration is not initialized")
 		return
 	}
 
@@ -531,16 +459,16 @@ func (tc *TsConnector) Start(finished *chan bool) {
 
 	minTLS, err := tlsVersionFromString(tlsCfgProfile.MinVersion)
 	if err != nil {
-		logs.Error("", "Invalid TLS min_version: "+err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "Invalid TLS min_version: %s", err.Error())
 		return
 	}
 	maxTLS, err := tlsVersionFromString(tlsCfgProfile.MaxVersion)
 	if err != nil {
-		logs.Error("", "Invalid TLS max_version: "+err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "Invalid TLS max_version: %s", err.Error())
 		return
 	}
 	if minTLS != 0 && maxTLS != 0 && minTLS > maxTLS {
-		logs.Error("", "Invalid TLS version range: min_version (%v) must be <= max_version (%v)", tlsCfgProfile.MinVersion, tlsCfgProfile.MaxVersion)
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "Invalid TLS version range: min_version (%v) must be <= max_version (%v)", tlsCfgProfile.MinVersion, tlsCfgProfile.MaxVersion)
 		return
 	}
 
@@ -550,7 +478,7 @@ func (tc *TsConnector) Start(finished *chan bool) {
 		for _, cs := range tlsCfgProfile.CipherSuites {
 			id, err := tlsCipherSuiteFromString(cs)
 			if err != nil {
-				logs.Error("", "Invalid TLS cipher_suites: "+err.Error())
+				tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "Invalid TLS cipher_suites: %s", err.Error())
 				return
 			}
 			cipherSuites = append(cipherSuites, id)
@@ -581,6 +509,7 @@ func (tc *TsConnector) Start(finished *chan bool) {
 		WriteTimeout:   time.Duration(httpCfg.WriteTimeoutSec) * time.Second,
 		IdleTimeout:    time.Duration(httpCfg.IdleTimeoutSec) * time.Second,
 		MaxHeaderBytes: httpCfg.MaxHeaderBytes,
+		ErrorLog:       log.New(tc.teamserver.TsLogWriter(adaptix.LogStatusWarn, "server:http"), "", 0),
 	}
 	if httpCfg.ReadHeaderTimeoutSec > 0 {
 		server.ReadHeaderTimeout = time.Duration(httpCfg.ReadHeaderTimeoutSec) * time.Second
@@ -593,7 +522,8 @@ func (tc *TsConnector) Start(finished *chan bool) {
 	err = server.ListenAndServeTLS(tc.Cert, tc.Key)
 	//err := tc.Engine.RunTLS(host, tc.Cert, tc.Key)
 	if err != nil {
-		logs.Error("", "Failed to start HTTP Server: "+err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "Failed to start HTTP Server: %s", err.Error())
+		*finished <- true
 		return
 	}
 	*finished <- true

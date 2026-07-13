@@ -13,15 +13,8 @@ func (tc *TsConnector) TcServiceCall(ctx *gin.Context) {
 		Args        string `json:"args"`
 	}
 
-	value, exists := ctx.Get("username")
-	if !exists {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: username not found in context", "ok": false})
-		return
-	}
-
-	username, ok := value.(string)
+	username, ok := mustUsername(ctx)
 	if !ok {
-		ctx.JSON(http.StatusOK, gin.H{"message": "Server error: invalid username type in context", "ok": false})
 		return
 	}
 
@@ -35,7 +28,7 @@ func (tc *TsConnector) TcServiceCall(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, gin.H{"message": "error", "error": "service_name is required"})
 		return
 	}
-	
+
 	go tc.teamserver.TsServiceCall(jsonData.ServiceName, username, jsonData.Command, jsonData.Args)
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "success", "result": "ok"})

@@ -7,6 +7,14 @@ class Agent;
 class SessionsGraph;
 class GraphItemLink;
 
+struct GraphNoteFields {
+    bool id       = true;
+    bool name     = true;
+    bool pid      = true;
+    bool user     = true;
+    bool computer = true;
+};
+
 class GraphItemNote final : public QGraphicsItem
 {
     QString header;
@@ -15,6 +23,9 @@ class GraphItemNote final : public QGraphicsItem
 public:
     explicit GraphItemNote(const QString &h, const QString &t );
     ~GraphItemNote() override;
+
+    void setHeader(const QString &h);
+    void setText(const QString &t);
 
     QRectF boundingRect() const override;
     void   paint( QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget ) override;
@@ -34,7 +45,6 @@ class GraphItem : public QGraphicsItem
 {
     SessionsGraph* sessionsGraph = nullptr;
     QRectF  rect;
-    QPointF point;
     int serverTunnelCount = 0;
     int clientTunnelCount = 0;
 
@@ -65,8 +75,8 @@ public:
 
     void adjust();
 
-    void calculateForces();
-    bool advancePosition();
+    void UpdateNote();
+    void refreshNoteContent();
 
     void AddTunnel(TunnelMarkType type);
     void RemoveTunnel(TunnelMarkType type);
@@ -74,6 +84,9 @@ public:
     TunnelMarkType GetTunnelType() const { return serverTunnelCount > 0 ? TunnelMarkServer : (clientTunnelCount > 0 ? TunnelMarkClient : TunnelMarkNone); }
 
     void invalidateCache();
+
+private:
+    void buildNoteTexts(const GraphNoteFields& nf, QString& header, QString& text) const;
 
 protected:
     QRectF boundingRect() const override;

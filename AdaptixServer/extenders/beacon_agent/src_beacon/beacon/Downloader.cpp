@@ -28,11 +28,11 @@ BOOL Downloader::IsTasks()
 	return false;
 }
 
-DownloadData Downloader::CreateDownloadData(ULONG taskId, HANDLE hFile, ULONG64 size)
+DownloadData Downloader::CreateDownloadData(ULONG taskId, ULONG fileId, HANDLE hFile, ULONG64 size)
 {
 	DownloadData downloadData;
 	downloadData.taskId   = taskId;
-	downloadData.fileId   = GenerateRandom32();
+	downloadData.fileId   = fileId;
 	downloadData.hFile    = hFile;
 	downloadData.fileSize = size;
 	downloadData.index    = 0;

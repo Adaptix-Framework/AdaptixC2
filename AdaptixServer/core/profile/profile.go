@@ -1,12 +1,24 @@
 package profile
 
 import (
-	"AdaptixServer/core/utils/logs"
 	isvalid "AdaptixServer/core/utils/valid"
 	"errors"
 	"os"
 	"strings"
+
+	"github.com/Adaptix-Framework/axc2/v2"
 )
+
+type Teamserver interface {
+	TsLogAdd(status adaptix.LogStatus, level int, source string, format string, args ...any)
+}
+
+func (p *AdaptixProfile) logErr(format string, args ...any) {
+	if p.ts == nil {
+		return
+	}
+	p.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:profile", format, args...)
+}
 
 func tlsVersionRank(v string) (int, bool) {
 	s := normalizeTLSVersion(v)
@@ -87,15 +99,15 @@ func (p *AdaptixProfile) prepareHttpServer() {
 	if p.HttpServer != nil && p.HttpServer.Error != nil && p.HttpServer.Error.PagePath != "" {
 		fileContent, err := os.ReadFile(p.HttpServer.Error.PagePath)
 		if err != nil {
-			logs.Error("", "'HttpServer.error.page': failed to read file: %v", err)
+			p.logErr("'HttpServer.error.page': failed to read file: %v", err)
 			return
 		}
 		p.HttpServer.Error.PageContent = string(fileContent)
 	}
 }
 
-func NewProfile() *AdaptixProfile {
-	return new(AdaptixProfile)
+func NewProfile(ts Teamserver) *AdaptixProfile {
+	return &AdaptixProfile{ts: ts}
 }
 
 func (p *AdaptixProfile) IsValid() error {
@@ -104,51 +116,51 @@ func (p *AdaptixProfile) IsValid() error {
 	p.prepareHttpServer()
 
 	if p.Server == nil {
-		logs.Error("", "'Teamserver' must be set")
+		p.logErr("'Teamserver' must be set")
 		valid = false
 	} else {
 		if p.Server.Port < 1 || 65535 < p.Server.Port {
-			logs.Error("", "'Teamserver.port' must be between 1 and 65535 (current is %v)", p.Server.Port)
+			p.logErr("'Teamserver.port' must be between 1 and 65535 (current is %v)", p.Server.Port)
 			valid = false
 		}
 
 		if isvalid.ValidUriString(p.Server.Endpoint) == false {
-			logs.Error("'Teamserver.endpoint' must be valid URI value (current is %v)", p.Server.Endpoint)
+			p.logErr("'Teamserver.endpoint' must be valid URI value (current is %v)", p.Server.Endpoint)
 			valid = false
 		}
 
 		if p.Server.Password == "" {
-			logs.Error("", "'Teamserver.password' must be set")
+			p.logErr("'Teamserver.password' must be set")
 			valid = false
 		}
 
 		if p.Server.Cert == "" {
-			logs.Error("", "'Teamserver.cert' must be set")
+			p.logErr("'Teamserver.cert' must be set")
 			valid = false
 		} else {
 			_, err := os.Stat(p.Server.Cert)
 			if err != nil {
 				if os.IsNotExist(err) {
-					logs.Error("", "'Teamserver.cert': file does not exists")
+					p.logErr("'Teamserver.cert': file does not exists")
 					valid = false
 				} else {
-					logs.Error("", "'Teamserver.cert': failed to stat file: %v", err)
+					p.logErr("'Teamserver.cert': failed to stat file: %v", err)
 					valid = false
 				}
 			}
 		}
 
 		if p.Server.Key == "" {
-			logs.Error("", "'Teamserver.key' must be set")
+			p.logErr("'Teamserver.key' must be set")
 			valid = false
 		} else {
 			_, err := os.Stat(p.Server.Key)
 			if err != nil {
 				if os.IsNotExist(err) {
-					logs.Error("", "'Teamserver.key': file does not exists")
+					p.logErr("'Teamserver.key': file does not exists")
 					valid = false
 				} else {
-					logs.Error("", "'Teamserver.key': failed to stat file: %v", err)
+					p.logErr("'Teamserver.key': failed to stat file: %v", err)
 					valid = false
 				}
 			}
@@ -160,10 +172,10 @@ func (p *AdaptixProfile) IsValid() error {
 					_, err := os.Stat(ext)
 					if err != nil {
 						if os.IsNotExist(err) {
-							logs.Error("", "Extender %s: file does not exists", ext)
+							p.logErr("Extender %s: file does not exists", ext)
 							valid = false
 						} else {
-							logs.Error("", "Extender %s: failed to stat file: %v", ext, err)
+							p.logErr("Extender %s: failed to stat file: %v", ext, err)
 							valid = false
 						}
 					}
@@ -172,78 +184,78 @@ func (p *AdaptixProfile) IsValid() error {
 		}
 
 		if p.Server.ATokenLive < 1 {
-			logs.Error("", "'Teamserver.access_token_live_hours' must be set")
+			p.logErr("'Teamserver.access_token_live_hours' must be set")
 			valid = false
 		}
 
 		if p.Server.RTokenLive < 1 {
-			logs.Error("", "'Teamserver.refresh_token_live_hours' must be set")
+			p.logErr("'Teamserver.refresh_token_live_hours' must be set")
 			valid = false
 		}
 	}
 
 	if p.HttpServer == nil {
-		logs.Error("", "'HttpServer' must be set")
+		p.logErr("'HttpServer' must be set")
 		valid = false
 	} else {
 		if p.HttpServer.Error.Status < 100 || p.HttpServer.Error.Status > 999 {
-			logs.Error("", "'HttpServer.error.status' must be valid HTTP status (current is %v)", p.HttpServer.Error.Status)
+			p.logErr("'HttpServer.error.status' must be valid HTTP status (current is %v)", p.HttpServer.Error.Status)
 			valid = false
 		}
 		if p.HttpServer.Error.PagePath != "" {
 			_, err := os.Stat(p.HttpServer.Error.PagePath)
 			if err != nil {
 				if os.IsNotExist(err) {
-					logs.Error("", "'HttpServer.error.page': file does not exists")
+					p.logErr("'HttpServer.error.page': file does not exists")
 					valid = false
 				} else {
-					logs.Error("", "'HttpServer.error.page': failed to stat file: %v", err)
+					p.logErr("'HttpServer.error.page': failed to stat file: %v", err)
 					valid = false
 				}
 			}
 			if p.HttpServer.Error.PageContent == "" {
-				logs.Error("", "'HttpServer.error.page': file is empty or cannot be read")
+				p.logErr("'HttpServer.error.page': file is empty or cannot be read")
 				valid = false
 			}
 		}
 		if p.HttpServer.HTTP.MaxHeaderBytes < 0 {
-			logs.Error("", "'HttpServer.http.max_header_bytes' must be >= 0")
+			p.logErr("'HttpServer.http.max_header_bytes' must be >= 0")
 			valid = false
 		}
 		if p.HttpServer.HTTP.ReadHeaderTimeoutSec < 0 {
-			logs.Error("", "'HttpServer.http.read_header_timeout_sec' must be >= 0")
+			p.logErr("'HttpServer.http.read_header_timeout_sec' must be >= 0")
 			valid = false
 		}
 		if p.HttpServer.HTTP.ReadTimeoutSec < 0 {
-			logs.Error("", "'HttpServer.http.read_timeout_sec' must be >= 0")
+			p.logErr("'HttpServer.http.read_timeout_sec' must be >= 0")
 			valid = false
 		}
 		if p.HttpServer.HTTP.WriteTimeoutSec < 0 {
-			logs.Error("", "'HttpServer.http.write_timeout_sec' must be >= 0")
+			p.logErr("'HttpServer.http.write_timeout_sec' must be >= 0")
 			valid = false
 		}
 		if p.HttpServer.HTTP.IdleTimeoutSec < 0 {
-			logs.Error("", "'HttpServer.http.idle_timeout_sec' must be >= 0")
+			p.logErr("'HttpServer.http.idle_timeout_sec' must be >= 0")
 			valid = false
 		}
 		if p.HttpServer.HTTP.RequestTimeoutSec < 0 {
-			logs.Error("", "'HttpServer.http.request_timeout_sec' must be >= 0")
+			p.logErr("'HttpServer.http.request_timeout_sec' must be >= 0")
 			valid = false
 		}
 
 		if p.HttpServer.TLS.MinVersion != "" && !isAllowedTLSVersion(p.HttpServer.TLS.MinVersion) {
-			logs.Error("", "'HttpServer.tls.min_version' has unsupported value (current is %v)", p.HttpServer.TLS.MinVersion)
+			p.logErr("'HttpServer.tls.min_version' has unsupported value (current is %v)", p.HttpServer.TLS.MinVersion)
 			valid = false
 		}
 		if p.HttpServer.TLS.MaxVersion != "" && !isAllowedTLSVersion(p.HttpServer.TLS.MaxVersion) {
-			logs.Error("", "'HttpServer.tls.max_version' has unsupported value (current is %v)", p.HttpServer.TLS.MaxVersion)
+			p.logErr("'HttpServer.tls.max_version' has unsupported value (current is %v)", p.HttpServer.TLS.MaxVersion)
 			valid = false
 		}
 
 		minRank, okMin := tlsVersionRank(p.HttpServer.TLS.MinVersion)
 		maxRank, okMax := tlsVersionRank(p.HttpServer.TLS.MaxVersion)
 		if okMin && okMax && minRank != 0 && maxRank != 0 && minRank > maxRank {
-			logs.Error("", "'HttpServer.tls.min_version' must be <= 'HttpServer.tls.max_version' (current is %v > %v)", p.HttpServer.TLS.MinVersion, p.HttpServer.TLS.MaxVersion)
+			p.logErr("'HttpServer.tls.min_version' must be <= 'HttpServer.tls.max_version' (current is %v > %v)", p.HttpServer.TLS.MinVersion, p.HttpServer.TLS.MaxVersion)
 			valid = false
 		}
 	}

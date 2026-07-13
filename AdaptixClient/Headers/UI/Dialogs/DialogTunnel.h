@@ -3,70 +3,58 @@
 
 #include <main.h>
 #include <oclero/qlementine/widgets/Switch.hpp>
+#include <oclero/qlementine/widgets/SegmentedControl.hpp>
 
 class DialogTunnel : public QDialog
 {
-     QGridLayout*    mainGridLayout       = nullptr;
-     QLabel*         tunnelTypeLabel      = nullptr;
-     QComboBox*      tunnelTypeCombo      = nullptr;
-     QLabel*         tunnelDescLabel      = nullptr;
-     QLineEdit*      tunnelDescInput      = nullptr;
-     QLabel*         tunnelEndpointLabel  = nullptr;
-     QComboBox*      tunnelEndpointCombo  = nullptr;
-     QGroupBox*      tunnelConfigGroupbox = nullptr;
-     QStackedWidget* tunnelStackWidget    = nullptr;
-     QGridLayout*    stackGridLayout      = nullptr;
-     QHBoxLayout*    hLayoutBottom        = nullptr;
+     QVBoxLayout*    mainLayout           = nullptr;
+     QHBoxLayout*    segLayout            = nullptr;
+     QLabel*         descLabel            = nullptr;
+     QLineEdit*      descInput            = nullptr;
+     QGroupBox*      configGroup          = nullptr;
+     QGridLayout*    configGrid           = nullptr;
+     QStackedWidget* stackWidget          = nullptr;
+     QHBoxLayout*    buttonLayout         = nullptr;
      QPushButton*    buttonCancel         = nullptr;
      QPushButton*    buttonCreate         = nullptr;
-     QSpacerItem*    horizontalSpacer_1   = nullptr;
-     QSpacerItem*    horizontalSpacer_2   = nullptr;
+
+     oclero::qlementine::SegmentedControl* typeSegment     = nullptr;
+     oclero::qlementine::SegmentedControl* endpointSegment = nullptr;
 
      QWidget*        socks5Widget         = nullptr;
-     QGridLayout*    socks5GridLayout     = nullptr;
-     QLabel*         socks5LocalAddrLabel = nullptr;
-     QLineEdit*      socks5LocalAddrInput = nullptr;
-     QSpinBox*       socks5LocalPortSpin  = nullptr;
+     QLineEdit*      socks5AddrInput      = nullptr;
+     QSpinBox*       socks5PortSpin       = nullptr;
      oclero::qlementine::Switch* socks5UseAuth = nullptr;
-     QLabel*         socks5AuthUserLabel  = nullptr;
-     QLineEdit*      socks5AuthUserInput  = nullptr;
-     QLabel*         socks5AuthPassLabel  = nullptr;
-     QLineEdit*      socks5AuthPassInput  = nullptr;
+     QLineEdit*      socks5UserInput      = nullptr;
+     QLineEdit*      socks5PassInput      = nullptr;
 
      QWidget*        socks4Widget         = nullptr;
-     QGridLayout*    socks4GridLayout     = nullptr;
-     QLabel*         socks4LocalAddrLabel = nullptr;
-     QLineEdit*      socks4LocalAddrInput = nullptr;
-     QSpinBox*       socks4LocalPortSpin  = nullptr;
+     QLineEdit*      socks4AddrInput      = nullptr;
+     QSpinBox*       socks4PortSpin       = nullptr;
 
-     QWidget*        lpfWidget          = nullptr;
-     QGridLayout*    lpfGridLayout      = nullptr;
-     QLabel*         lpfLocalAddrLabel  = nullptr;
-     QLineEdit*      lpfLocalAddrInput  = nullptr;
-     QSpinBox*       lpfLocalPortSpin   = nullptr;
-     QLabel*         lpfTargetAddrLabel = nullptr;
-     QLineEdit*      lpfTargetAddrInput = nullptr;
-     QSpinBox*       lpfTargetPortSpin  = nullptr;
+     QWidget*        lpfWidget            = nullptr;
+     QLineEdit*      lpfAddrInput         = nullptr;
+     QSpinBox*       lpfPortSpin          = nullptr;
+     QLineEdit*      lpfTargetAddrInput   = nullptr;
+     QSpinBox*       lpfTargetPortSpin    = nullptr;
 
-     QWidget*        rpfWidget          = nullptr;
-     QGridLayout*    rpfGridLayout      = nullptr;
-     QLabel*         rpfPortLabel       = nullptr;
-     QSpinBox*       rpfPortSpin        = nullptr;
-     QLabel*         rpfTargetAddrLabel = nullptr;
-     QLineEdit*      rpfTargetAddrInput = nullptr;
-     QSpinBox*       rpfTargetPortSpin  = nullptr;
+     QWidget*        rpfWidget            = nullptr;
+     QSpinBox*       rpfPortSpin          = nullptr;
+     QLineEdit*      rpfTargetAddrInput   = nullptr;
+     QSpinBox*       rpfTargetPortSpin    = nullptr;
 
      bool       valid      = false;
      QString    message    = "";
      QString    tunnelType = "";
      QByteArray jsonData;
 
-     QString AgentId = "";
+     qint64 AgentId = 0;
+     QStringList typeNames;
 
      void createUI();
 
 public:
-     explicit DialogTunnel(const QString &agentId, bool s4, bool s5, bool lpf, bool rpf);
+     explicit DialogTunnel(qint64 agentId, bool s4, bool s5, bool lpf, bool rpf);
      ~DialogTunnel() override;
 
      void StartDialog();
@@ -77,7 +65,7 @@ public:
      QByteArray GetTunnelData() const;
 
 protected Q_SLOTS:
-     void changeType(const QString &type) const;
+     void changeType(int index) const;
      void onSocks5AuthCheckChange() const;
      void onButtonCreate();
      void onButtonCancel();

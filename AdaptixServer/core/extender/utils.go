@@ -2,8 +2,10 @@ package extender
 
 import (
 	"errors"
+	"io"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
+	"github.com/Adaptix-Framework/axsafe"
 )
 
 var (
@@ -71,6 +73,9 @@ type ServiceInfo struct {
 /// Plugin Interfaces
 
 type Teamserver interface {
+	TsLogAdd(status adaptix.LogStatus, level int, source string, format string, args ...any)
+	TsLogWriter(status adaptix.LogStatus, source string) io.Writer
+
 	TsListenerReg(listenerInfo ListenerInfo) error
 	TsListenerRegByName(listenerName string) (string, error)
 	TsAgentReg(agentInfo AgentInfo) error
@@ -94,16 +99,17 @@ type Teamserver interface {
 
 type AdaptixExtender struct {
 	ts              Teamserver
-	listenerModules map[string]adaptix.PluginListener
-	agentModules    map[string]adaptix.PluginAgent
-	serviceModules  map[string]adaptix.PluginService
-	activeListeners map[string]adaptix.ExtenderListener
+	listenerPath    string
+	listenerModules axsafe.Map[string, adaptix.PluginListener]
+	agentModules    axsafe.Map[string, adaptix.PluginAgent]
+	serviceModules  axsafe.Map[string, adaptix.PluginService]
+	activeListeners axsafe.Map[string, adaptix.ExtenderListener]
 }
 
 /// Helper methods
 
 func (ex *AdaptixExtender) getListenerModule(configType string) (adaptix.PluginListener, error) {
-	module, ok := ex.listenerModules[configType]
+	module, ok := ex.listenerModules.Get(configType)
 	if !ok {
 		return nil, ErrModuleNotFound
 	}
@@ -111,7 +117,7 @@ func (ex *AdaptixExtender) getListenerModule(configType string) (adaptix.PluginL
 }
 
 func (ex *AdaptixExtender) getActiveListener(name string) (adaptix.ExtenderListener, error) {
-	listener, ok := ex.activeListeners[name]
+	listener, ok := ex.activeListeners.Get(name)
 	if !ok {
 		return nil, ErrListenerNotFound
 	}
@@ -119,7 +125,7 @@ func (ex *AdaptixExtender) getActiveListener(name string) (adaptix.ExtenderListe
 }
 
 func (ex *AdaptixExtender) getAgentModule(agentName string) (adaptix.PluginAgent, error) {
-	module, ok := ex.agentModules[agentName]
+	module, ok := ex.agentModules.Get(agentName)
 	if !ok {
 		return nil, ErrModuleNotFound
 	}
@@ -127,7 +133,7 @@ func (ex *AdaptixExtender) getAgentModule(agentName string) (adaptix.PluginAgent
 }
 
 func (ex *AdaptixExtender) getServiceModule(serviceName string) (adaptix.PluginService, error) {
-	module, ok := ex.serviceModules[serviceName]
+	module, ok := ex.serviceModules.Get(serviceName)
 	if !ok {
 		return nil, ErrServiceNotFound
 	}

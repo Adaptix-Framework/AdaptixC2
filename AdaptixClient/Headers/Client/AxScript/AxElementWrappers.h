@@ -2,6 +2,7 @@
 #define AXELEMENTWRAPPERS_H
 
 #include <UI/Widgets/AbstractDock.h>
+#include <Utils/CustomElements/ClickableLabel.h>
 
 #include <QVariant>
 #include <QJSValue>
@@ -18,7 +19,6 @@
 #include <QLabel>
 #include <QPushButton>
 #include <QDialogButtonBox>
-#include <Utils/CustomElements.h>
 #include <QAction>
 #include <QPointer>
 #include <QTableView>
@@ -1045,6 +1045,7 @@ Q_OBJECT
 
 public:
     explicit AxSelectorCreds(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    ~AxSelectorCreds() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
 
     Q_INVOKABLE void     setSize(int w, int h) const;
     Q_INVOKABLE QJSValue exec() const;
@@ -1202,6 +1203,7 @@ Q_OBJECT
 
 public:
     explicit AxSelectorAgents(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    ~AxSelectorAgents() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
 
     Q_INVOKABLE void     setSize(int w, int h) const;
     Q_INVOKABLE QJSValue exec() const;
@@ -1341,6 +1343,7 @@ Q_OBJECT
 
 public:
     explicit AxSelectorListeners(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    ~AxSelectorListeners() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
 
     Q_INVOKABLE void     setSize(int w, int h) const;
     Q_INVOKABLE QJSValue exec() const;
@@ -1394,7 +1397,7 @@ public:
             else if (target.Os == OS_LINUX) os = "linux";
             else if (target.Os == OS_MAC)   os = "macos";
 
-            if (key == "id")       return target.TargetId;
+            if (key == "id")       return QString::number(target.TargetId);
             if (key == "computer") return target.Computer;
             if (key == "domain")   return target.Domain;
             if (key == "address")  return target.Address;
@@ -1487,6 +1490,7 @@ Q_OBJECT
 
 public:
     explicit AxSelectorTargets(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    ~AxSelectorTargets() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
 
     Q_INVOKABLE void     setSize(int w, int h) const;
     Q_INVOKABLE QJSValue exec() const;
@@ -1499,7 +1503,7 @@ public:
 
 class AxDownloadsTableModel : public QAbstractTableModel {
 Q_OBJECT
-    QVector<DownloadData> m_data;
+    QVector<TransferData> m_data;
     QVector<QString> m_headers;
     QVector<QString> m_fieldKeys;
 
@@ -1513,7 +1517,7 @@ public:
         endResetModel();
     }
 
-    void setData(const QVector<DownloadData>& data) {
+    void setData(const QVector<TransferData>& data) {
         beginResetModel();
         m_data = data;
         endResetModel();
@@ -1537,20 +1541,20 @@ public:
 
             QString state;
             switch (download.State) {
-                case DOWNLOAD_STATE_RUNNING:  state = "running";  break;
-                case DOWNLOAD_STATE_STOPPED:  state = "stopped";  break;
-                case DOWNLOAD_STATE_FINISHED: state = "finished"; break;
+                case TRANSFER_STATE_RUNNING:  state = "running";  break;
+                case TRANSFER_STATE_STOPPED:  state = "stopped";  break;
+                case TRANSFER_STATE_FINISHED: state = "finished"; break;
                 default:                      state = "canceled"; break;
             }
 
-            if (key == "id")         return download.FileId;
+            if (key == "id")         return QVariant::fromValue(download.FileId);
             if (key == "agent_id")   return download.AgentId;
             if (key == "agent_name") return download.AgentName;
             if (key == "user")       return download.User;
             if (key == "computer")   return download.Computer;
             if (key == "filename")   return download.Filename;
             if (key == "total_size") return download.TotalSize;
-            if (key == "recv_size")  return download.RecvSize;
+            if (key == "recv_size")  return download.Progress;
             if (key == "state")      return state;
             if (key == "date")       return download.Date;
         }
@@ -1563,10 +1567,10 @@ public:
         return QVariant();
     }
 
-    DownloadData getDownload(int row) const {
+    TransferData getDownload(int row) const {
         if (row >= 0 && row < m_data.size())
             return m_data[row];
-        return DownloadData();
+        return TransferData();
     }
 };
 
@@ -1616,12 +1620,12 @@ Q_OBJECT
     AxDownloadsTableModel*       tableModel = nullptr;
     AxDownloadsFilterProxyModel* proxyModel = nullptr;
 
-    QVector<DownloadData> selectedData;
+    QVector<TransferData> selectedData;
 
 public:
-    explicit AxDialogDownloads(const QJSValue &headers, const QVector<DownloadData> &vecDownloads, QWidget* parent = nullptr);
+    explicit AxDialogDownloads(const QJSValue &headers, const QVector<TransferData> &vecDownloads, QWidget* parent = nullptr);
 
-    QVector<DownloadData> data();
+    QVector<TransferData> data();
 
 public Q_SLOTS:
     void onClicked();
@@ -1636,6 +1640,7 @@ Q_OBJECT
 
 public:
     explicit AxSelectorDownloads(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    ~AxSelectorDownloads() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
 
     Q_INVOKABLE void     setSize(int w, int h) const;
     Q_INVOKABLE QJSValue exec() const;

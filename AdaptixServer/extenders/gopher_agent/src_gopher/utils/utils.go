@@ -17,11 +17,12 @@ type Connection struct {
 
 const (
 	INIT_PACK     = 1
-	EXFIL_PACK    = 2
-	JOB_PACK      = 3
-	TUNNEL_PACK   = 4
-	TERMINAL_PACK = 5
-	BOF_PACK      = 6
+	RESUME_PACK   = 2
+	EXFIL_PACK    = 3
+	JOB_PACK      = 4
+	TUNNEL_PACK   = 5
+	TERMINAL_PACK = 6
+	BOF_PACK      = 7
 )
 
 type StartMsg struct {
@@ -30,25 +31,28 @@ type StartMsg struct {
 }
 
 type InitPack struct {
-	Id   uint   `msgpack:"id"`
 	Type uint   `msgpack:"type"`
 	Data []byte `msgpack:"data"`
 }
 
+type ResumePack struct {
+	Id int64 `msgpack:"id"`
+}
+
 type ExfilPack struct {
-	Id   uint   `msgpack:"id"`
+	Id   int64  `msgpack:"id"`
 	Type uint   `msgpack:"type"`
 	Task string `msgpack:"task"`
 }
 
 type JobPack struct {
-	Id   uint   `msgpack:"id"`
+	Id   int64  `msgpack:"id"`
 	Type uint   `msgpack:"type"`
 	Task string `msgpack:"task"`
 }
 
 type TunnelPack struct {
-	Id        uint   `msgpack:"id"`
+	Id        int64  `msgpack:"id"`
 	Type      uint   `msgpack:"type"`
 	ChannelId int    `msgpack:"channel_id"`
 	Key       []byte `msgpack:"key"`
@@ -58,7 +62,7 @@ type TunnelPack struct {
 }
 
 type TermPack struct {
-	Id     uint   `msgpack:"id"`
+	Id     int64  `msgpack:"id"`
 	TermId int    `msgpack:"term_id"`
 	Key    []byte `msgpack:"key"`
 	Iv     []byte `msgpack:"iv"`

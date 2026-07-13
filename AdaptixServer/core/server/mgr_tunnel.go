@@ -4,11 +4,13 @@ import (
 	"context"
 	"io"
 	"net"
-	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axsafe"
+
+	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/gorilla/websocket"
 )
 
@@ -19,51 +21,72 @@ const (
 	tunnelIngressQueueDepth = 1024
 	tunnelIngressHiWM       = 80
 	tunnelIngressLoWM       = 20
+
+	tunnelIngressBlockTimeout = 2 * time.Second
+
+	tunnelChannelResumeTimeout = 60 * time.Second
 )
 
 type TunnelManager struct {
 	ts *Teamserver
 
-	tunnels      sync.Map // tunnelId string -> *Tunnel
-	channelIndex sync.Map // "tunnelId:channelId" string -> *ChannelEntry
+	tunnels       axsafe.Map[int64, *Tunnel]       // tunnelId
+	channelIndex  axsafe.Map[int64, *ChannelEntry] // channelId
+	nextChannelId atomic.Int64
 
 	bufferPool sync.Pool
 
 	stats TunnelStats
 }
 
-func (tm *TunnelManager) SendTunnelFlowControl(channelId int, pause bool) {
-	entry, ok := tm.GetChannelByIdOnly(channelId)
+func (tm *TunnelManager) SendTunnelFlowControl(channelId int64, pause bool) {
+	entry, ok := tm.GetChannel(channelId)
 	if !ok || entry.Tunnel == nil {
 		return
 	}
 	if tm.ts == nil {
 		return
 	}
-	agent, err := tm.ts.getAgent(entry.Tunnel.Data.AgentId)
-	if err != nil {
-		return
-	}
 
 	var task adaptix.TaskData
 	if pause {
+		if entry.Tunnel.Callbacks.Pause == nil {
+			return
+		}
 		task = entry.Tunnel.Callbacks.Pause(channelId)
 	} else {
+		if entry.Tunnel.Callbacks.Resume == nil {
+			return
+		}
 		task = entry.Tunnel.Callbacks.Resume(channelId)
 	}
 
-	if task.Type == 0 {
+	if task.Type == 0 && len(task.Data) == 0 {
 		return
 	}
-	tunnelManageTask(agent, task)
+	tunnelManageTask(tm.ts, entry.Tunnel.Data.AgentId, task)
 }
 
-func channelKey(tunnelId string, channelId int) string {
-	return tunnelId + ":" + strconv.Itoa(channelId)
+func (tc *TunnelChannel) writeWsBinary(data []byte) error {
+	if tc == nil || tc.wsconn == nil {
+		return io.ErrClosedPipe
+	}
+	tc.wsWriteMu.Lock()
+	defer tc.wsWriteMu.Unlock()
+	return tc.wsconn.WriteMessage(websocket.BinaryMessage, data)
+}
+
+func (tc *TunnelChannel) closeWs() {
+	if tc == nil || tc.wsconn == nil {
+		return
+	}
+	tc.wsWriteMu.Lock()
+	_ = tc.wsconn.Close()
+	tc.wsWriteMu.Unlock()
 }
 
 type ChannelEntry struct {
-	TunnelId string
+	TunnelId int64
 	Tunnel   *Tunnel
 	Channel  *TunnelChannel
 }
@@ -85,124 +108,106 @@ type TunnelChannelSafe struct {
 
 func NewTunnelManager(ts *Teamserver) *TunnelManager {
 	tm := &TunnelManager{
-		ts: ts,
+		ts:           ts,
+		tunnels:      axsafe.NewMap[int64, *Tunnel](),
+		channelIndex: axsafe.NewMap[int64, *ChannelEntry](),
 		bufferPool: sync.Pool{
 			New: func() interface{} {
-				return new(make([]byte, TunnelBufferSize))
+				buf := make([]byte, TunnelBufferSize)
+				return buf
 			},
 		},
 	}
 	return tm
 }
 
+func (tm *TunnelManager) Start(ctx context.Context) {
+	go tm.statsLoop(ctx)
+}
+
+func (tm *TunnelManager) statsLoop(ctx context.Context) {
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			tm.ForEachTunnel(func(key int64, tunnel *Tunnel) bool {
+				packet := CreateSpTunnelCreate(tunnel.Data, tunnel.BytesSent.Load(), tunnel.BytesRecv.Load())
+				tm.ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
+				return true
+			})
+		}
+	}
+}
+
 func (tm *TunnelManager) GetBuffer() []byte {
-	return *tm.bufferPool.Get().(*[]byte)
+	buf, ok := tm.bufferPool.Get().([]byte)
+	if !ok || cap(buf) < TunnelBufferSize {
+		return make([]byte, TunnelBufferSize)
+	}
+	return buf[:TunnelBufferSize]
 }
 
 func (tm *TunnelManager) PutBuffer(buf []byte) {
 	if cap(buf) >= TunnelBufferSize {
-		tm.bufferPool.Put(&buf)
+		tm.bufferPool.Put(buf[:TunnelBufferSize])
 	}
 }
 
-func (tm *TunnelManager) GetTunnel(tunnelId string) (*Tunnel, bool) {
-	value, ok := tm.tunnels.Load(tunnelId)
-	if !ok {
-		return nil, false
-	}
-	return value.(*Tunnel), true
+func (tm *TunnelManager) GetTunnel(tunnelId int64) (*Tunnel, bool) {
+	return tm.tunnels.Get(tunnelId)
 }
 
 func (tm *TunnelManager) PutTunnel(tunnel *Tunnel) {
-	tm.tunnels.Store(tunnel.Data.TunnelId, tunnel)
+	tm.tunnels.Put(tunnel.Data.TunnelId, tunnel)
 	tm.stats.ActiveTunnels.Add(1)
 }
 
-func (tm *TunnelManager) DeleteTunnel(tunnelId string) (*Tunnel, bool) {
-	value, ok := tm.tunnels.LoadAndDelete(tunnelId)
+func (tm *TunnelManager) DeleteTunnel(tunnelId int64) (*Tunnel, bool) {
+	tunnel, ok := tm.tunnels.GetDelete(tunnelId)
 	if !ok {
 		return nil, false
 	}
 	tm.stats.ActiveTunnels.Add(-1)
-	return value.(*Tunnel), true
+	return tunnel, true
 }
 
-func (tm *TunnelManager) TunnelExists(tunnelId string) bool {
-	_, ok := tm.tunnels.Load(tunnelId)
-	return ok
+func (tm *TunnelManager) TunnelExists(tunnelId int64) bool {
+	return tm.tunnels.Contains(tunnelId)
 }
 
-func (tm *TunnelManager) ForEachTunnel(fn func(tunnelId string, tunnel *Tunnel) bool) {
-	tm.tunnels.Range(func(key, value interface{}) bool {
-		return fn(key.(string), value.(*Tunnel))
-	})
+func (tm *TunnelManager) ForEachTunnel(fn func(tunnelId int64, tunnel *Tunnel) bool) {
+	tm.tunnels.ForEachFast(fn)
 }
 
-func (tm *TunnelManager) RegisterChannel(tunnelId string, tunnel *Tunnel, channel *TunnelChannel) {
+func (tm *TunnelManager) RegisterChannel(tunnel *Tunnel, channel *TunnelChannel) {
 	entry := &ChannelEntry{
-		TunnelId: tunnelId,
+		TunnelId: tunnel.Data.TunnelId,
 		Tunnel:   tunnel,
 		Channel:  channel,
 	}
-	key := channelKey(tunnelId, channel.channelId)
-	tm.channelIndex.Store(key, entry)
-	tunnel.connections.Put(strconv.Itoa(channel.channelId), channel)
+	tm.channelIndex.Put(channel.channelId, entry)
 	tm.stats.ActiveChannels.Add(1)
 }
 
-func (tm *TunnelManager) UnregisterChannel(tunnelId string, channelId int) {
-	key := channelKey(tunnelId, channelId)
-	if value, ok := tm.channelIndex.LoadAndDelete(key); ok {
-		entry := value.(*ChannelEntry)
-		entry.Tunnel.connections.Delete(strconv.Itoa(channelId))
+func (tm *TunnelManager) UnregisterChannel(channelId int64) {
+	if _, ok := tm.channelIndex.GetDelete(channelId); ok {
 		tm.stats.ActiveChannels.Add(-1)
 	}
 }
 
-func (tm *TunnelManager) GetChannel(tunnelId string, channelId int) (*ChannelEntry, bool) {
-	key := channelKey(tunnelId, channelId)
-	value, ok := tm.channelIndex.Load(key)
-	if !ok {
-		return nil, false
-	}
-	return value.(*ChannelEntry), true
+func (tm *TunnelManager) GetChannel(channelId int64) (*ChannelEntry, bool) {
+	return tm.channelIndex.Get(channelId)
 }
 
-func (tm *TunnelManager) GetChannelByIdOnly(channelId int) (*ChannelEntry, bool) {
-	var result *ChannelEntry
-	found := false
-	tm.channelIndex.Range(func(key, value interface{}) bool {
-		entry := value.(*ChannelEntry)
-		if entry.Channel.channelId == channelId {
-			result = entry
-			found = true
-			return false
-		}
-		return true
-	})
-	return result, found
+func (tm *TunnelManager) ChannelExists(channelId int64) bool {
+	return tm.channelIndex.Contains(channelId)
 }
 
-func (tm *TunnelManager) ChannelExists(tunnelId string, channelId int) bool {
-	key := channelKey(tunnelId, channelId)
-	_, ok := tm.channelIndex.Load(key)
-	return ok
-}
-
-func (tm *TunnelManager) ChannelExistsInTunnel(tunnel *Tunnel, channelId int) bool {
-	return tunnel.connections.Contains(strconv.Itoa(channelId))
-}
-
-func (tm *TunnelManager) CloseChannel(tunnelId string, channelId int) {
-	entry, ok := tm.GetChannel(tunnelId, channelId)
-	if !ok {
-		return
-	}
-	tm.closeChannelInternal(entry.Tunnel, entry.Channel)
-}
-
-func (tm *TunnelManager) CloseChannelByIdOnly(channelId int, writeOnly bool) {
-	entry, ok := tm.GetChannelByIdOnly(channelId)
+func (tm *TunnelManager) CloseChannel(channelId int64, writeOnly bool) {
+	entry, ok := tm.GetChannel(channelId)
 	if !ok {
 		return
 	}
@@ -211,11 +216,14 @@ func (tm *TunnelManager) CloseChannelByIdOnly(channelId int, writeOnly bool) {
 			_ = entry.Channel.pwTun.Close()
 		}
 	} else {
-		tm.closeChannelInternal(entry.Tunnel, entry.Channel)
+		tm.closeChannelInternal(entry.Channel)
+		if _, deleted := tm.channelIndex.GetDelete(channelId); deleted {
+			tm.stats.ActiveChannels.Add(-1)
+		}
 	}
 }
 
-func (tm *TunnelManager) closeChannelInternal(tunnel *Tunnel, channel *TunnelChannel) {
+func (tm *TunnelManager) closeChannelInternal(channel *TunnelChannel) {
 	if channel == nil {
 		return
 	}
@@ -225,9 +233,7 @@ func (tm *TunnelManager) closeChannelInternal(tunnel *Tunnel, channel *TunnelCha
 	if channel.conn != nil {
 		_ = channel.conn.Close()
 	}
-	if channel.wsconn != nil {
-		_ = channel.wsconn.Close()
-	}
+	channel.closeWs()
 
 	if channel.pwTun != nil {
 		_ = channel.pwTun.Close()
@@ -241,112 +247,174 @@ func (tm *TunnelManager) closeChannelInternal(tunnel *Tunnel, channel *TunnelCha
 	if channel.prSrv != nil {
 		_ = channel.prSrv.Close()
 	}
+}
 
-	if tunnel != nil {
-		tm.UnregisterChannel(tunnel.Data.TunnelId, channel.channelId)
+func (tm *TunnelManager) ArmChannelResumeWatchdog(channelId int64, agentId int64, tunnel *Tunnel) {
+	if tm == nil || tunnel == nil {
+		return
 	}
+	go func() {
+		timer := time.NewTimer(tunnelChannelResumeTimeout)
+		defer timer.Stop()
+		<-timer.C
+
+		entry, ok := tm.GetChannel(channelId)
+		if !ok || entry.Channel == nil {
+			return
+		}
+		ch := entry.Channel
+		if ch.resumed.Load() {
+			return
+		}
+		if !ch.resumed.CompareAndSwap(false, true) {
+			return
+		}
+
+		if tunnel.Data.Client == "" {
+			if ch.conn != nil {
+				if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
+					_, _ = ch.conn.Write([]byte{0x05, adaptix.SOCKS5_CONNECTION_REFUSED, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+				} else if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS4 {
+					_, _ = ch.conn.Write([]byte{0x00, 0x5b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+				}
+			}
+		} else if ch.wsconn != nil {
+			if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
+				_ = ch.writeWsBinary([]byte{0x05, adaptix.SOCKS5_CONNECTION_REFUSED, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+			} else if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS4 {
+				_ = ch.writeWsBinary([]byte{0x00, 0x5b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+			}
+		}
+
+		if tunnel.Callbacks.Close != nil {
+			tunnelManageTask(tm.ts, agentId, tunnel.Callbacks.Close(channelId))
+		}
+		ch.skipAgentClose.Store(true)
+		tm.CloseChannel(channelId, false)
+	}()
 }
 
 func (tm *TunnelManager) CloseAllChannels(tunnel *Tunnel) {
-	var channelKeys []string
-	tm.channelIndex.Range(func(key, value interface{}) bool {
-		entry := value.(*ChannelEntry)
-		if entry.TunnelId == tunnel.Data.TunnelId {
-			channelKeys = append(channelKeys, key.(string))
+	var channelIds []int64
+	tm.channelIndex.ForEachFast(func(channelId int64, entry *ChannelEntry) bool {
+		if entry.Tunnel == tunnel {
+			channelIds = append(channelIds, channelId)
 		}
 		return true
 	})
-
-	for _, k := range channelKeys {
-		if value, ok := tm.channelIndex.LoadAndDelete(k); ok {
-			entry := value.(*ChannelEntry)
-			tm.closeChannelInternal(nil, entry.Channel)
+	for _, id := range channelIds {
+		if entry, ok := tm.channelIndex.GetDelete(id); ok {
+			tm.closeChannelInternal(entry.Channel)
 			tm.stats.ActiveChannels.Add(-1)
 		}
 	}
-
-	tunnel.connections.CutMap()
 }
 
-func (tm *TunnelManager) WriteToChannel(tunnelId string, channelId int, data []byte) bool {
-	entry, ok := tm.GetChannel(tunnelId, channelId)
-	if !ok {
-		return false
+func (tm *TunnelManager) WriteToChannel(channelId int64, data []byte) bool {
+	if len(data) == 0 {
+		return true
 	}
 
-	if entry.Channel != nil && entry.Channel.ingressChan != nil {
-		curLen := len(entry.Channel.ingressChan)
-		capLen := cap(entry.Channel.ingressChan)
+	entry, ok := tm.GetChannel(channelId)
+	if !ok || entry.Channel == nil {
+		return false
+	}
+	ch := entry.Channel
+
+	if ch.ingressChan != nil {
+		if ch.ingressClosed.Load() {
+			return false
+		}
+
+		curLen := len(ch.ingressChan)
+		capLen := cap(ch.ingressChan)
 		if capLen > 0 && curLen > (capLen*tunnelIngressHiWM)/100 {
-			if entry.Channel.flowPaused.CompareAndSwap(false, true) {
+			if ch.flowPaused.CompareAndSwap(false, true) {
 				tm.SendTunnelFlowControl(channelId, true)
 			}
 		}
 
-		select {
-		case entry.Channel.ingressChan <- data:
-			tm.stats.TotalBytesRecv.Add(uint64(len(data)))
+		payload := make([]byte, len(data))
+		copy(payload, data)
+
+		record := func() {
+			tm.stats.TotalBytesRecv.Add(uint64(len(payload)))
+			if entry.Tunnel != nil {
+				entry.Tunnel.BytesRecv.Add(int64(len(payload)))
+			}
+		}
+
+		sendIngress := func(block <-chan time.Time) (ok bool) {
+			defer func() {
+				if recover() != nil {
+					ok = false
+				}
+			}()
+			if ch.ingressClosed.Load() {
+				return false
+			}
+			if block == nil {
+				select {
+				case ch.ingressChan <- payload:
+					return true
+				default:
+					return false
+				}
+			}
+			select {
+			case ch.ingressChan <- payload:
+				return true
+			case <-block:
+				return false
+			}
+		}
+
+		if sendIngress(nil) {
+			record()
 			return true
-		default:
+		}
+
+		if ch.flowPaused.CompareAndSwap(false, true) {
+			tm.SendTunnelFlowControl(channelId, true)
+		}
+
+		timer := time.NewTimer(tunnelIngressBlockTimeout)
+		ok := sendIngress(timer.C)
+		if !ok {
+			if !timer.Stop() {
+				select {
+				case <-timer.C:
+				default:
+				}
+			}
 			return false
 		}
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+		record()
+		return true
 	}
 
-	if entry.Channel != nil && entry.Channel.pwTun != nil {
-		_, err := entry.Channel.pwTun.Write(data)
+	if ch.pwTun != nil {
+		_, err := ch.pwTun.Write(data)
 		if err == nil {
 			tm.stats.TotalBytesRecv.Add(uint64(len(data)))
+			if entry.Tunnel != nil {
+				entry.Tunnel.BytesRecv.Add(int64(len(data)))
+			}
 			return true
 		}
 	}
 	return false
 }
 
-func (tm *TunnelManager) WriteToChannelByIdOnly(channelId int, data []byte) bool {
-	entry, ok := tm.GetChannelByIdOnly(channelId)
-	if !ok {
-		return false
-	}
-
-	if entry.Channel != nil && entry.Channel.ingressChan != nil {
-		curLen := len(entry.Channel.ingressChan)
-		capLen := cap(entry.Channel.ingressChan)
-		if capLen > 0 && curLen > (capLen*tunnelIngressHiWM)/100 {
-			if entry.Channel.flowPaused.CompareAndSwap(false, true) {
-				tm.SendTunnelFlowControl(channelId, true)
-			}
-		}
-
-		select {
-		case entry.Channel.ingressChan <- data:
-			tm.stats.TotalBytesRecv.Add(uint64(len(data)))
-			return true
-		default:
-			return false
-		}
-	}
-
-	if entry.Channel != nil && entry.Channel.pwTun != nil {
-		_, err := entry.Channel.pwTun.Write(data)
-		if err == nil {
-			tm.stats.TotalBytesRecv.Add(uint64(len(data)))
-			return true
-		}
-	}
-	return false
-}
-
-func (tm *TunnelManager) GetChannelPipes(tunnelId string, channelId int) (*io.PipeReader, *io.PipeWriter, error) {
-	entry, ok := tm.GetChannel(tunnelId, channelId)
-	if !ok {
-		return nil, nil, ErrChannelNotFound
-	}
-	return entry.Channel.prSrv, entry.Channel.pwTun, nil
-}
-
-func (tm *TunnelManager) GetChannelPipesByIdOnly(channelId int) (*io.PipeReader, *io.PipeWriter, error) {
-	entry, ok := tm.GetChannelByIdOnly(channelId)
-	if !ok {
+func (tm *TunnelManager) GetChannelPipes(channelId int64) (*io.PipeReader, *io.PipeWriter, error) {
+	entry, ok := tm.GetChannel(channelId)
+	if !ok || entry.Channel == nil {
 		return nil, nil, ErrChannelNotFound
 	}
 	return entry.Channel.prSrv, entry.Channel.pwTun, nil
@@ -356,15 +424,15 @@ func (tm *TunnelManager) GetStats() *TunnelStats {
 	return &tm.stats
 }
 
-func (tm *TunnelManager) PauseChannel(channelId int) {
-	entry, ok := tm.GetChannelByIdOnly(channelId)
+func (tm *TunnelManager) PauseChannel(channelId int64) {
+	entry, ok := tm.GetChannel(channelId)
 	if ok && entry.Channel != nil {
 		entry.Channel.paused.Store(true)
 	}
 }
 
-func (tm *TunnelManager) ResumeChannel(channelId int) {
-	entry, ok := tm.GetChannelByIdOnly(channelId)
+func (tm *TunnelManager) ResumeChannel(channelId int64) {
+	entry, ok := tm.GetChannel(channelId)
 	if ok && entry.Channel != nil {
 		entry.Channel.paused.Store(false)
 	}
@@ -372,9 +440,10 @@ func (tm *TunnelManager) ResumeChannel(channelId int) {
 
 func (tm *TunnelManager) ListTunnels() []adaptix.TunnelData {
 	var tunnels []adaptix.TunnelData
-	tm.tunnels.Range(func(key, value interface{}) bool {
-		tunnel := value.(*Tunnel)
+	tm.tunnels.ForEachFast(func(key int64, tunnel *Tunnel) bool {
+		tunnel.mu.RLock()
 		tunnels = append(tunnels, tunnel.Data)
+		tunnel.mu.RUnlock()
 		return true
 	})
 	return tunnels
@@ -392,7 +461,7 @@ type SafeTunnelChannel struct {
 	cancel  context.CancelFunc
 }
 
-func NewSafeTunnelChannel(tm *TunnelManager, channelId int, conn net.Conn, wsconn *websocket.Conn, protocol string) *SafeTunnelChannel {
+func NewSafeTunnelChannel(tm *TunnelManager, channelId int64, conn net.Conn, wsconn adaptix.WebSocketConn, protocol string) *SafeTunnelChannel {
 	ctx, cancel := context.WithCancel(context.Background())
 	stc := &SafeTunnelChannel{
 		TunnelChannel: &TunnelChannel{
@@ -419,30 +488,50 @@ func (stc *SafeTunnelChannel) ingressPump() {
 		}
 	}()
 
-	for data := range stc.ingressChan {
-		// RESUME
-		if stc.flowPaused.Load() {
-			capLen := cap(stc.ingressChan)
-			if capLen > 0 && len(stc.ingressChan) < (capLen*tunnelIngressLoWM)/100 {
-				if stc.flowPaused.CompareAndSwap(true, false) {
-					if stc.tm != nil {
-						stc.tm.SendTunnelFlowControl(stc.channelId, false)
+	resumeTicker := time.NewTicker(500 * time.Millisecond)
+	defer resumeTicker.Stop()
+
+	for {
+		select {
+		case data, ok := <-stc.ingressChan:
+			if !ok {
+				return
+			}
+			if stc.flowPaused.Load() {
+				capLen := cap(stc.ingressChan)
+				if capLen > 0 && len(stc.ingressChan) < (capLen*tunnelIngressLoWM)/100 {
+					if stc.flowPaused.CompareAndSwap(true, false) {
+						if stc.tm != nil {
+							stc.tm.SendTunnelFlowControl(stc.channelId, false)
+						}
 					}
 				}
 			}
-		}
 
-		if stc.conn != nil {
-			if _, err := stc.conn.Write(data); err != nil {
-				return
+			if stc.conn != nil {
+				if _, err := stc.conn.Write(data); err != nil {
+					return
+				}
+			} else if stc.wsconn != nil {
+				if err := stc.writeWsBinary(data); err != nil {
+					return
+				}
+			} else if stc.pwTun != nil {
+				if _, err := stc.pwTun.Write(data); err != nil {
+					return
+				}
 			}
-		} else if stc.wsconn != nil {
-			if err := stc.wsconn.WriteMessage(websocket.BinaryMessage, data); err != nil {
-				return
-			}
-		} else if stc.pwTun != nil {
-			if _, err := stc.pwTun.Write(data); err != nil {
-				return
+
+		case <-resumeTicker.C:
+			if stc.flowPaused.Load() {
+				capLen := cap(stc.ingressChan)
+				if capLen > 0 && len(stc.ingressChan) < (capLen*tunnelIngressLoWM)/100 {
+					if stc.flowPaused.CompareAndSwap(true, false) {
+						if stc.tm != nil {
+							stc.tm.SendTunnelFlowControl(stc.channelId, false)
+						}
+					}
+				}
 			}
 		}
 	}
@@ -464,9 +553,7 @@ func (stc *SafeTunnelChannel) Close() bool {
 	if stc.conn != nil {
 		_ = stc.conn.Close()
 	}
-	if stc.wsconn != nil {
-		_ = stc.wsconn.Close()
-	}
+	stc.closeWs()
 	if stc.pwTun != nil {
 		_ = stc.pwTun.Close()
 	}

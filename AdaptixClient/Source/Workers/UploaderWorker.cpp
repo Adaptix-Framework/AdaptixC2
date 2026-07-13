@@ -29,6 +29,7 @@ void UploaderWorker::start() {
     if (useFilePath) {
         QFile* file = new QFile(filePath, multiPart);
         if (!file->open(QIODevice::ReadOnly)) {
+            delete multiPart;
             Q_EMIT failed("Failed to open file: " + filePath);
             return;
         }
@@ -66,7 +67,8 @@ void UploaderWorker::onProgress(const qint64 sent, const qint64 total) {
     Q_EMIT progress(sent, total);
 
     if (timer.elapsed() >= 1000) {
-        double kbps = (sent - lastBytes) / 1024.0;
+        double seconds = timer.elapsed() / 1000.0;
+        double kbps = (sent - lastBytes) / 1024.0 / seconds;
         Q_EMIT speedUpdated(kbps);
         lastBytes = sent;
         timer.restart();

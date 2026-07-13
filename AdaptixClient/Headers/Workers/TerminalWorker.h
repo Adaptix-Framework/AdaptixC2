@@ -3,28 +3,32 @@
 
 #include <main.h>
 
-class TerminalTab;
-
 class TerminalWorker : public QObject
 {
 Q_OBJECT
 
-     TerminalTab* terminalTab = nullptr;
      QWebSocket* websocket = nullptr;
      QUrl        wsUrl;
      QString     otp;
-     bool        started = false;
-     std::atomic<bool> stopped = false;
+     QString     lastStatus;
+     bool        wsEverConnected = false;
+     bool        gotBinaryData = false;
+     std::atomic<bool> stopped{false};
+     std::atomic<bool> finishedEmitted{false};
+
+     void finishWorker();
 
 public:
-     TerminalWorker(TerminalTab* terminalTab, const QString &otp, const QUrl& wsUrl, QObject* parent = nullptr);
+     TerminalWorker(const QString &otp, const QUrl& wsUrl, QObject* parent = nullptr);
      ~TerminalWorker() override;
 
 Q_SIGNALS:
      void binaryMessageToTerminal(const QByteArray& msg);
      void connectedToTerminal();
+     void terminalReady();
+     void statusMessage(const QString& status);
      void finished();
-     void errorStop();
+     void errorStop(const QString& reason);
 
 public Q_SLOTS:
      void start();
@@ -33,7 +37,9 @@ public Q_SLOTS:
 
 private Q_SLOTS:
      void onWsConnected();
+     void onWsDisconnected();
      void onWsBinaryMessageReceived(const QByteArray& msg);
+     void onWsTextMessageReceived(const QString& msg);
      void onWsError(QAbstractSocket::SocketError error);
 };
 

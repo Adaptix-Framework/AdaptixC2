@@ -3,30 +3,58 @@ package connector
 import (
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 func (tc *TsConnector) TcScreenshotList(ctx *gin.Context) {
-	jsonScreen, err := tc.teamserver.TsScreenshotList()
+	limit := 100
+	offset := 0
+	filterExpr := ctx.Query("q")
+	sortCol := ctx.Query("sort")
+	sortOrder := ctx.Query("order")
+
+	if raw := ctx.Query("limit"); raw != "" {
+		v, err := strconv.Atoi(raw)
+		if err != nil || v < 0 {
+			respondError(ctx, http.StatusBadRequest, "limit must be a non-negative integer")
+			return
+		}
+		if v > 1000 {
+			v = 1000
+		}
+		limit = v
+	}
+
+	if raw := ctx.Query("offset"); raw != "" {
+		v, err := strconv.Atoi(raw)
+		if err != nil || v < 0 {
+			respondError(ctx, http.StatusBadRequest, "offset must be a non-negative integer")
+			return
+		}
+		offset = v
+	}
+
+	jsonData, err := tc.teamserver.TsScreenshotsGetPage(offset, limit, filterExpr, sortCol, sortOrder)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		respondError(ctx, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonScreen))
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", jsonData)
 }
 
 func (tc *TsConnector) TcScreenshotGetImage(ctx *gin.Context) {
-	screenId := ctx.Query("screen_id")
-	if screenId == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "screen_id is required", "ok": false})
+	screenId, err := strconv.ParseInt(ctx.Query("screen_id"), 10, 64)
+	if err != nil || screenId <= 0 {
+		respondError(ctx, http.StatusBadRequest, "screen_id must be a positive integer")
 		return
 	}
 
 	content, err := tc.teamserver.TsScreenshotGetImage(screenId)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": err.Error(), "ok": false})
+		respondError(ctx, http.StatusOK, err.Error())
 		return
 	}
 
@@ -34,14 +62,14 @@ func (tc *TsConnector) TcScreenshotGetImage(ctx *gin.Context) {
 }
 
 type ScreenRemove struct {
-	ScreenIdArray []string `json:"screen_id_array"`
+	ScreenIdArray []int64 `json:"screen_id_array"`
 }
 
 func (tc *TsConnector) TcScreenshotRemove(ctx *gin.Context) {
 	var screenRemove ScreenRemove
 	err := ctx.ShouldBindJSON(&screenRemove)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
+		respondError(ctx, http.StatusOK, "invalid JSON data")
 		return
 	}
 
@@ -59,16 +87,16 @@ func (tc *TsConnector) TcScreenshotRemove(ctx *gin.Context) {
 			message += fmt.Sprintf("%d. %s\n", i+1, errorMessage)
 		}
 
-		ctx.JSON(http.StatusOK, gin.H{"message": message, "ok": false})
+		respondError(ctx, http.StatusOK, message)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+	respondOK(ctx)
 }
 
 type ScreenNote struct {
-	ScreenIdArray []string `json:"screen_id_array"`
-	Note          string   `json:"note"`
+	ScreenIdArray []int64 `json:"screen_id_array"`
+	Note          string  `json:"note"`
 }
 
 func (tc *TsConnector) TcScreenshotSetNote(ctx *gin.Context) {
@@ -79,7 +107,7 @@ func (tc *TsConnector) TcScreenshotSetNote(ctx *gin.Context) {
 
 	err = ctx.ShouldBindJSON(&screenNote)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"message": "invalid JSON data", "ok": false})
+		respondError(ctx, http.StatusOK, "invalid JSON data")
 		return
 	}
 
@@ -97,9 +125,9 @@ func (tc *TsConnector) TcScreenshotSetNote(ctx *gin.Context) {
 			message += fmt.Sprintf("%d. %s\n", i+1, errorMessage)
 		}
 
-		ctx.JSON(http.StatusOK, gin.H{"message": message, "ok": false})
+		respondError(ctx, http.StatusOK, message)
 		return
 	}
 
-	ctx.JSON(http.StatusOK, gin.H{"message": "", "ok": true})
+	respondOK(ctx)
 }

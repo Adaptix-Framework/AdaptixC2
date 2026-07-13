@@ -33,7 +33,8 @@ int main(int argc, char *argv[])
         "qt.text.font.db.warning=false\n"
         "qt.text.font.db.info=false\n"
         "qt.text.font.db.critical=false\n"
-        "qt.core.qobject.connect=false"
+        "qt.core.qobject.connect=false\n"
+        "kf.kio.widgets.kdirmodel=false"
     );
 
     QApplication a(argc, argv);

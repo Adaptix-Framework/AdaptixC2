@@ -41,6 +41,9 @@ void DownloaderWorker::start()
     this->savedFile.setFileName(this->savedPath);
     if (!this->savedFile.open(QIODevice::WriteOnly)) {
         this->error = true;
+        this->networkReply->abort();
+        this->networkReply->deleteLater();
+        this->networkReply = nullptr;
         Q_EMIT failed("Cannot open file: " + this->savedFile.errorString());
         return;
     }

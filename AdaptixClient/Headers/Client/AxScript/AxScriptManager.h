@@ -17,14 +17,14 @@ class  AdaptixWidget;
 class  Agent;
 
 struct DataMenuFileBrowser {
-    QString agentId;
+    qint64 agentId;
     QString path;
     QString name;
     QString type;
 };
 
 struct DataMenuProcessBrowser {
-    QString agentId;
+    qint64 agentId;
     QString pid;
     QString ppid;
     QString arch;
@@ -34,8 +34,8 @@ struct DataMenuProcessBrowser {
 };
 
 struct DataMenuDownload {
-    QString agentId;
-    QString fileId;
+    qint64 agentId;
+    qint64  fileId = 0;
     QString path;
     QString state;
 };
@@ -71,6 +71,7 @@ Q_OBJECT
     QMap<QString, ConfigScriptEntry> config_scripts;
     QMap<QString, AxScriptEngine*>   server_scripts;
     QMap<QString, ServerScriptData>  server_scripts_data;
+    QList<AxScriptWorker*>           activeWorkers;
 
 public:
     AxScriptManager(AdaptixWidget* main_widget, QObject *parent = nullptr);
@@ -83,11 +84,11 @@ public:
 
     QJSEngine*                  GetEngine(const QString &name);
     AdaptixWidget*              GetAdaptix() const;
-    QMap<QString, Agent*>       GetAgents() const;
+    QMap<qint64, Agent*>        GetAgents() const;
     QVector<CredentialData>     GetCredentials() const;
     QVector<ListenerData>       GetListeners() const;
-    QMap<QString, DownloadData> GetDownloads() const;
-    QMap<QString, ScreenData>   GetScreenshots() const;
+    QMap<qint64, TransferData>  GetDownloads() const;
+    QMap<qint64, ScreenData>    GetScreenshots() const;
     QVector<TargetData>         GetTargets() const;
     QVector<TunnelData>         GetTunnels() const;
     QStringList                 GetInterfaces() const;
@@ -130,8 +131,8 @@ public:
     void        RegisterCommandsGroup(const CommandsGroup &group, const QStringList &listeners, const QStringList &agents, const QList<int> &os);
     void        EventRemove(const QString &event_id);
     QStringList EventList();
-    QList<AxMenuItem> FilterMenuItems(const QStringList &agentIds, const QString &menuType, const bool &agentsNeed);
-    QList<AxEvent>    FilterEvents(const QString &agentId, const QString &eventType);
+    QList<AxMenuItem> FilterMenuItems(const QList<qint64> &agentIds, const QString &menuType, const bool &agentsNeed);
+    QList<AxEvent>    FilterEvents(qint64 agentId, const QString &eventType);
 
     QList<AxScriptEngine*> getAllEngines() const;
     QList<AxMenuItem> collectMenuItems(const QString &menuType) const;
@@ -146,23 +147,27 @@ public:
     void AppAgentSetTag(const QStringList &agents, const QString &tag);
     void AppAgentUpdateData(const QString &id, const QJsonObject &updateData);
 
-    int AddMenuSession(QMenu* menu, const QString &menuType, QStringList agentIds);
+    int AddMenuSession(QMenu* menu, const QString &menuType, QList<qint64> agentIds);
     int AddMenuFileBrowser(QMenu* menu, QVector<DataMenuFileBrowser> files);
     int AddMenuProcessBrowser(QMenu* menu, QVector<DataMenuProcessBrowser> processes);
     int AddMenuDownload(QMenu* menu, const QString &menuType, QVector<DataMenuDownload> files, const bool &agnetNeed);
-    int AddMenuTask(QMenu* menu, const QString &menuType, const QStringList &tasks);
+    int AddMenuTask(QMenu* menu, const QString &menuType, const QList<qint64> &tasks);
     int AddMenuTargets(QMenu* menu, const QString &menuType, const QStringList &targets);
     int AddMenuCreds(QMenu* menu, const QString &menuType, const QStringList &creds);
+
+Q_SIGNALS:
+    void consoleMessage(const QString& message);
+    void consoleError(const QString& message);
 
 public Q_SLOTS:
     void consolePrintMessage(const QString &message);
     void consolePrintError(const QString &message);
 
-    void emitNewAgent(const QString &agentId);
-    void emitFileBrowserDisks(const QString &agentId);
-    void emitFileBrowserList(const QString &agentId, const QString &path);
-    void emitFileBrowserUpload(const QString &agentId, const QString &path, const QString &localFilename);
-    void emitProcessBrowserList(const QString &agentId);
+    void emitNewAgent(qint64 agentId);
+    void emitFileBrowserDisks(qint64 agentId);
+    void emitFileBrowserList(qint64 agentId, const QString &path);
+    void emitFileBrowserUpload(qint64 agentId, const QString &path, const QString &localFilename);
+    void emitProcessBrowserList(qint64 agentId);
     void emitReadyClient();
     void emitDisconnectClient();
 };

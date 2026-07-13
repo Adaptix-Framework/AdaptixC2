@@ -175,7 +175,7 @@ void Vt102Emulation::initTokenizer() {
         charClass[*s] |= DIG;
     for (s = (quint8 *)"()+*%"; *s; ++s)
         charClass[*s] |= SCS;
-    for (s = (quint8 *)"()+*#[]%"; *s; ++s)
+    for (s = (quint8 *)"()+*#[]%_^PX"; *s; ++s)
         charClass[*s] |= GRP;
 
     resetTokenizer();
@@ -212,9 +212,9 @@ void Vt102Emulation::initTokenizer() {
 #define eeq()        (p >= 3 && s[2] == '=')
 #define egt()        (p >= 3 && s[2] == '>')
 #define esp()        (p == 4 && s[3] == ' ')
-#define Xpe          (tokenBufferPos >= 2 && tokenBuffer[1] == ']')
-#define Xte          (Xpe && (cc == 7 || (prevCC == 27 && cc == 92)))
-#define ces(C)       (cc < 256 && (charClass[cc] & (C)) == (C) && !Xte)
+#define Cse          (tokenBufferPos >= 2 && (tokenBuffer[1] == ']' || tokenBuffer[1] == 'P' || tokenBuffer[1] == '_' || tokenBuffer[1] == '^' || tokenBuffer[1] == 'X'))
+#define Cte          (Cse && ((tokenBuffer[1] == ']' && cc == 7) || (prevCC == 27 && cc == 92)))
+#define ces(C)       (cc < 256 && (charClass[cc] & (C)) == (C) && !Cte)
 
 #define CNTL(c)      ((c) - '@')
 #define ESC 27
@@ -227,7 +227,7 @@ void Vt102Emulation::receiveChar(wchar_t cc) {
         return;
 
     if (ces(CTL)) {
-        if (Xpe) {
+        if (Cse) {
             prevCC = cc;
             return;
         }
@@ -256,12 +256,13 @@ void Vt102Emulation::receiveChar(wchar_t cc) {
         if (les(2, 1, GRP)) {
             return;
         }
-        if (Xte) {
-            processOSC();
+        if (Cte) {
+            if (tokenBufferPos >= 2 && tokenBuffer[1] == ']')
+                processOSC();
             resetTokenizer();
             return;
         }
-        if (Xpe) {
+        if (Cse) {
             prevCC = cc;
             return;
         }

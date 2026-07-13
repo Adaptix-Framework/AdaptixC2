@@ -2,6 +2,7 @@ package server
 
 import (
 	"AdaptixServer/core/eventing"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/gorilla/websocket"
 )
 
@@ -44,7 +45,7 @@ type BuildChannelData struct {
 	ListenersName []string `json:"listeners_name"`
 }
 
-func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websocket.Conn) error {
+func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn adaptix.WebSocketConn) error {
 	var bd BuildChannelData
 	if err := json.Unmarshal([]byte(buildData), &bd); err != nil {
 		if wsconn != nil {
@@ -104,6 +105,7 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 		} else {
 			_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, "Error: operation cancelled by hook")
 		}
+		err = fmt.Errorf("operation cancelled by hook")
 		goto RET
 	}
 	// ----------------
@@ -151,6 +153,7 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn *websoc
 		} else {
 			_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, "Error: operation cancelled by hook")
 		}
+		err = fmt.Errorf("operation cancelled by hook")
 		goto RET
 	}
 	fileName = postEvent.FileName
@@ -169,17 +172,19 @@ func (ts *Teamserver) TsAgentBuildClose(builderId string) {
 		return
 	}
 
-	value, ok := ts.builders.GetDelete(builderId)
+	builder, ok := ts.builders.GetDelete(builderId)
 	if !ok {
 		return
 	}
-	builder, _ := value.(*AgentBuilder)
 
 	builder.mu.Lock()
 	defer builder.mu.Unlock()
 
 	if !builder.closed {
 		builder.closed = true
+		if builder.cancel != nil {
+			builder.cancel()
+		}
 		if builder.wsconn != nil {
 			_ = builder.wsconn.Close()
 		}
@@ -187,10 +192,9 @@ func (ts *Teamserver) TsAgentBuildClose(builderId string) {
 }
 
 func (ts *Teamserver) TsAgentBuildExecute(builderId string, workingDir string, program string, args ...string) error {
-	runner := exec.Command(program, args...)
-	runner.Dir = workingDir
-
 	if builderId == "" {
+		runner := exec.Command(program, args...)
+		runner.Dir = workingDir
 		var stderr strings.Builder
 		runner.Stderr = &stderr
 
@@ -201,11 +205,10 @@ func (ts *Teamserver) TsAgentBuildExecute(builderId string, workingDir string, p
 		return nil
 	}
 
-	value, ok := ts.builders.Get(builderId)
+	builder, ok := ts.builders.Get(builderId)
 	if !ok {
 		return errors.New("builder not found")
 	}
-	builder, _ := value.(*AgentBuilder)
 
 	builder.mu.Lock()
 	if builder.closed {
@@ -213,6 +216,14 @@ func (ts *Teamserver) TsAgentBuildExecute(builderId string, workingDir string, p
 		return errors.New("channel closed")
 	}
 	builder.mu.Unlock()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	builder.mu.Lock()
+	builder.cancel = cancel
+	builder.mu.Unlock()
+
+	runner := exec.CommandContext(ctx, program, args...)
+	runner.Dir = workingDir
 
 	var (
 		stdoutPipe io.ReadCloser
@@ -282,11 +293,10 @@ func (ts *Teamserver) TsAgentBuildLog(builderId string, status int, message stri
 		return errors.New("builder ID is empty")
 	}
 
-	value, ok := ts.builders.Get(builderId)
+	builder, ok := ts.builders.Get(builderId)
 	if !ok {
 		return errors.New("builder not found")
 	}
-	builder, _ := value.(*AgentBuilder)
 
 	builder.mu.Lock()
 	defer builder.mu.Unlock()
@@ -314,11 +324,10 @@ func (ts *Teamserver) TsAgentBuildSendFile(builderId string, filename string, co
 		return errors.New("builder ID is empty")
 	}
 
-	value, ok := ts.builders.Get(builderId)
+	builder, ok := ts.builders.Get(builderId)
 	if !ok {
 		return errors.New("builder not found")
 	}
-	builder, _ := value.(*AgentBuilder)
 
 	builder.mu.Lock()
 	defer builder.mu.Unlock()

@@ -5,11 +5,14 @@ import (
 	"AdaptixServer/core/utils/std"
 	"encoding/json"
 	"fmt"
-	"math/rand/v2"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
+
+func (ts *Teamserver) TsTargetGenID() int64 {
+	return ts.IdGen.Next("target")
+}
 
 func (ts *Teamserver) TsTargetsList() (string, error) {
 	dbTargets := ts.DBMS.DbTargetsAll()
@@ -23,6 +26,29 @@ func (ts *Teamserver) TsTargetsList() (string, error) {
 		return "", err
 	}
 	return string(jsonTarget), nil
+}
+
+type TargetsPage struct {
+	Items  []adaptix.TargetData `json:"items"`
+	Total  int                  `json:"total"`
+	Offset int                  `json:"offset"`
+	Limit  int                  `json:"limit"`
+}
+
+func (ts *Teamserver) TsTargetsGetPage(offset, limit int, filterExpr, sortCol, sortOrder string) ([]byte, error) {
+	items, total, err := ts.DBMS.DbTargetsGetPage(offset, limit, filterExpr, sortCol, sortOrder)
+	if err != nil {
+		return nil, err
+	}
+	if items == nil {
+		items = make([]adaptix.TargetData, 0)
+	}
+	return json.Marshal(TargetsPage{
+		Items:  items,
+		Total:  total,
+		Offset: offset,
+		Limit:  limit,
+	})
 }
 
 func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
@@ -60,7 +86,7 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 			continue
 		}
 
-		target.TargetId = fmt.Sprintf("%08x", rand.Uint32())
+		target.TargetId = ts.TsTargetGenID()
 		target.Date = time.Now().Unix()
 		if target.OsDesk == "" {
 			if target.Os == 1 {
@@ -95,8 +121,11 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 		}
 		// ----------------
 
-		_ = ts.DBMS.DbTargetsAdd(newTargets)
-
+		err := ts.DBMS.DbTargetsAdd(newTargets)
+		if err != nil {
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:targets", "%s", err.Error())
+			return nil
+		}
 		packet := CreateSpTargetsAdd(newTargets)
 		ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
 
@@ -109,9 +138,9 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 	return nil
 }
 
-func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (string, error) {
+func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (int64, error) {
 	target := &adaptix.TargetData{
-		TargetId: fmt.Sprintf("%08x", rand.Uint32()),
+		TargetId: ts.TsTargetGenID(),
 		Computer: agentData.Computer,
 		Domain:   agentData.Domain,
 		Address:  agentData.InternalIP,
@@ -124,12 +153,20 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (string,
 
 	existing, _ := ts.DBMS.DbTargetFindByMatch(target.Address, target.Computer, target.Domain)
 	if existing != nil {
-		existing.Agents = append(existing.Agents, agentData.Id)
-
+		alreadyExists := false
+		for _, id := range existing.Agents {
+			if id == agentData.Id {
+				alreadyExists = true
+				break
+			}
+		}
+		if !alreadyExists {
+			existing.Agents = append(existing.Agents, agentData.Id)
+		}
 		_ = ts.DBMS.DbTargetUpdate(existing)
 
 		packet := CreateSpTargetUpdate(*existing)
-		ts.TsSyncStateWithCategory(packet, "target:"+existing.TargetId, SyncCategoryTargetsRealtime)
+		ts.TsSyncStateWithCategory(packet, fmt.Sprintf("target:%d", existing.TargetId), SyncCategoryTargetsRealtime)
 
 		return existing.TargetId, nil
 	}
@@ -147,7 +184,11 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (string,
 	var newTargets []*adaptix.TargetData
 	newTargets = append(newTargets, target)
 
-	_ = ts.DBMS.DbTargetsAdd(newTargets)
+	err := ts.DBMS.DbTargetsAdd(newTargets)
+	if err != nil {
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:targets", "%s", err.Error())
+		return 0, err
+	}
 
 	packet := CreateSpTargetsAdd(newTargets)
 	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
@@ -155,7 +196,7 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (string,
 	return target.TargetId, nil
 }
 
-func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error {
+func (ts *Teamserver) TsTargetsEdit(targetId int64, computer string, domain string, address string, os int, osDesk string, tag string, info string, alive bool) error {
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataTargetEdit{Target: adaptix.TargetData{
 		TargetId: targetId,
@@ -179,7 +220,7 @@ func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain str
 
 	target, err := ts.DBMS.DbTargetById(targetId)
 	if err != nil {
-		return fmt.Errorf("target %s not exists", targetId)
+		return fmt.Errorf("target %d not exists", targetId)
 	}
 
 	if target.Computer == modified.Computer && target.Domain == modified.Domain && target.Address == modified.Address && target.Os == modified.Os && target.OsDesk == modified.OsDesk && target.Tag == modified.Tag && target.Info == modified.Info && target.Alive == modified.Alive {
@@ -199,7 +240,7 @@ func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain str
 	_ = ts.DBMS.DbTargetUpdate(target)
 
 	packet := CreateSpTargetUpdate(*target)
-	ts.TsSyncStateWithCategory(packet, "target:"+target.TargetId, SyncCategoryTargetsRealtime)
+	ts.TsSyncStateWithCategory(packet, fmt.Sprintf("target:%d", target.TargetId), SyncCategoryTargetsRealtime)
 
 	// --- POST HOOK ---
 	postEvent := &eventing.EventDataTargetEdit{Target: *target}
@@ -209,7 +250,7 @@ func (ts *Teamserver) TsTargetsEdit(targetId string, computer string, domain str
 	return nil
 }
 
-func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
+func (ts *Teamserver) TsTargetDelete(targetsId []int64) error {
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataTargetRemove{TargetIds: targetsId}
 	if !ts.EventManager.Emit(eventing.EventTargetRemove, eventing.HookPre, preEvent) {
@@ -221,7 +262,7 @@ func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
 	targetsId = preEvent.TargetIds
 	// ----------------
 
-	go func(ids []string) {
+	go func(ids []int64) {
 		_ = ts.DBMS.DbTargetDeleteBatch(ids)
 	}(targetsId)
 
@@ -238,8 +279,8 @@ func (ts *Teamserver) TsTargetDelete(targetsId []string) error {
 
 /// Setters
 
-func (ts *Teamserver) TsTargetSetTag(targetsId []string, tag string) error {
-	go func(ids []string, t string) {
+func (ts *Teamserver) TsTargetSetTag(targetsId []int64, tag string) error {
+	go func(ids []int64, t string) {
 		_ = ts.DBMS.DbTargetSetTagBatch(ids, t)
 	}(targetsId, tag)
 
@@ -249,21 +290,17 @@ func (ts *Teamserver) TsTargetSetTag(targetsId []string, tag string) error {
 	return nil
 }
 
-func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
-	targetsIdSet := make(map[string]struct{})
+func (ts *Teamserver) TsTargetRemoveSessions(agentsId []int64) error {
+	targetsIdSet := make(map[int64]struct{})
 
 	for _, agentId := range agentsId {
-		value, ok := ts.Agents.Get(agentId)
-		if !ok {
-			continue
-		}
-		agent, ok := value.(*Agent)
+		agent, ok := ts.Agents.Get(agentId)
 		if !ok {
 			continue
 		}
 
 		agentData := agent.GetData()
-		if agentData.TargetId != "" {
+		if agentData.TargetId != 0 {
 			targetsIdSet[agentData.TargetId] = struct{}{}
 		}
 	}
@@ -276,7 +313,7 @@ func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
 		if err != nil {
 			continue
 		}
-		t.Agents = std.DifferenceStringsArray(t.Agents, agentsId)
+		t.Agents = std.DifferenceInt64Array(t.Agents, agentsId)
 		updatedTargets = append(updatedTargets, t)
 		packets = append(packets, CreateSpTargetUpdate(*t))
 	}
@@ -287,7 +324,7 @@ func (ts *Teamserver) TsTargetRemoveSessions(agentsId []string) error {
 
 	for _, packet := range packets {
 		if upd, ok := packet.(SyncPackerTargetUpdate); ok {
-			ts.TsSyncStateWithCategory(upd, "target:"+upd.TargetId, SyncCategoryTargetsRealtime)
+			ts.TsSyncStateWithCategory(upd, fmt.Sprintf("target:%d", upd.TargetId), SyncCategoryTargetsRealtime)
 		} else {
 			ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTargetsRealtime)
 		}

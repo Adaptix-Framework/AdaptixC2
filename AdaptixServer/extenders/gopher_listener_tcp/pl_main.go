@@ -4,49 +4,26 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"io"
 	"strconv"
 	"strings"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
-type Teamserver interface {
-	TsAgentIsExists(agentId string) bool
-	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
-	TsAgentSetTick(agentId string, listenerName string) error
-	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
-	TsAgentGetHostedTasks(agentId string, maxDataSize int) ([]byte, error)
-	TsAgentUpdateDataPartial(agentId string, updateData interface{}) error
-
-	TsTaskRunningExists(agentId string, taskId string) bool
-	TsTunnelChannelExists(channelId int) bool
-
-	TsAgentTerminalCloseChannel(terminalId string, status string) error
-	TsTerminalConnExists(terminalId string) bool
-	TsTerminalConnResume(agentId string, terminalId string, ioDirect bool)
-	TsTerminalGetPipe(AgentId string, terminalId string) (*io.PipeReader, *io.PipeWriter, error)
-
-	TsTunnelGetPipe(AgentId string, channelId int) (*io.PipeReader, *io.PipeWriter, error)
-	TsTunnelConnectionResume(AgentId string, channelId int, ioDirect bool)
-	TsTunnelConnectionClose(channelId int, writeOnly bool)
-	TsTunnelConnectionHalt(channelId int, errorCode byte)
-	TsTunnelConnectionData(channelId int, data []byte)
-}
-
 type PluginListener struct{}
+
+const logSrc = "listener:gopher_tcp"
 
 var (
 	ModuleDir       string
 	ListenerDataDir string
-	Ts              Teamserver
+	Ts              adaptix.Teamserver
 )
 
 func InitPlugin(ts any, moduleDir string, listenerDir string) adaptix.PluginListener {
 	ModuleDir = moduleDir
 	ListenerDataDir = listenerDir
-	Ts = ts.(Teamserver)
+	Ts = ts.(adaptix.Teamserver)
 	return &PluginListener{}
 }
 
@@ -86,8 +63,8 @@ func (p *PluginListener) Create(name string, config string, customData []byte) (
 	transport := &TransportTCP{
 		Name:          name,
 		Config:        conf,
-		AgentConnects: NewMap(),
-		JobConnects:   NewMap(),
+		AgentConnects: NewMap[int64, Connection](),
+		JobConnects:   NewMap[string, Connection](),
 		Active:        false,
 	}
 
@@ -193,8 +170,8 @@ func (l *Listener) GetProfile() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (l *Listener) InternalHandler(data []byte) (string, error) {
-	var agentId = ""
+func (l *Listener) InternalHandler(data []byte) (int64, error) {
+	var agentId int64 = 0
 
 	/// START CODE HERE
 

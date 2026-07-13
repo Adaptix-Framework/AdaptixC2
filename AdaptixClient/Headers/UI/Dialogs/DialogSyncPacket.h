@@ -16,7 +16,12 @@ public:
 protected:
     void mousePressEvent(QMouseEvent *event) override;
     void keyPressEvent(QKeyEvent *event) override;
+    void drawContents(QPainter* painter) override;
 };
+
+
+
+
 
 class DialogSyncPacket : public QObject
 {

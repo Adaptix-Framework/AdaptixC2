@@ -47,6 +47,15 @@ public:
     static void SelectSettingsTasks(SettingsData* settingsData);
     static void UpdateSettingsTasks(const SettingsData &settingsData);
 
+    static void SelectSettingsTargets(SettingsData* settingsData);
+    static void UpdateSettingsTargets(const SettingsData &settingsData);
+
+    static void SelectSettingsCredentials(SettingsData* settingsData);
+    static void UpdateSettingsCredentials(const SettingsData &settingsData);
+
+    static void SelectSettingsFiles(SettingsData* settingsData);
+    static void UpdateSettingsFiles(const SettingsData &settingsData);
+
     static void SelectSettingsTabBlink(SettingsData* settingsData);
     static void UpdateSettingsTabBlink(const SettingsData &settingsData);
 
@@ -61,6 +70,11 @@ public:
     static void RemoveAgentProfile(const QString &project, const QString &name);
     static void RemoveAllAgentProfiles(const QString &project);
     static QString GetAgentProfile(const QString &project, const QString &name);
+
+    static QVector<QPair<QString, QString>> ListBuildProfiles();
+    static void AddBuildProfile(const QString &name, const QString &data);
+    static void RemoveBuildProfile(const QString &name);
+    static bool ExistsBuildProfile(const QString &name);
 };
 
 #endif

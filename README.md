@@ -1,6 +1,4 @@
-# AdaptixC2 v1.3
-
-FEB, 28: [What has changed in version v1.3](https://adaptix-framework.gitbook.io/adaptix-framework/changelog-and-updates/v1.1-greater-than-v1.2)?
+# AdaptixC2 v2.0
 
 Adaptix is an extensible post-exploitation and adversarial emulation framework made for authorized penetration testing. The Adaptix server is written in Golang and to allow operator flexibility. The GUI Client is written in C++ QT, allowing it to be used on Linux, Windows, and MacOS operating systems. [Full documentation is available here](https://adaptix-framework.gitbook.io/adaptix-framework).
 
@@ -26,6 +24,7 @@ Please checkout the [wiki](https://adaptix-framework.gitbook.io/adaptix-framewor
 * Fully encrypted communications 
 * Listener and Agents as Plugin (Extender)
 * AxScript Engine
+* Code Editor
 * Task and Jobs storage 
 * Credentials Manager
 * Targets Manager

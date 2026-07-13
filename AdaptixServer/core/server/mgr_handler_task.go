@@ -1,17 +1,17 @@
 package server
 
-import "github.com/Adaptix-Framework/axc2"
+import "github.com/Adaptix-Framework/axc2/v2"
 
 type TaskTaskHandler struct{}
 
-func (h *TaskTaskHandler) Create(tm *TaskManager, agent *Agent, taskData *adaptix.TaskData) {
+func (h *TaskTaskHandler) Create(tm *TaskManager, agent *adaptix.Agent, taskData *adaptix.TaskData) {
 	if taskData.Sync {
-		tm.syncTaskCreate(taskData.AgentId, agent, taskData)
+		tm.syncTaskCreate(taskData.AgentId, taskData)
 	}
 	agent.HostedQueue.Push(taskData.Priority, *taskData)
 }
 
-func (h *TaskTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
+func (h *TaskTaskHandler) Update(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, updateData *adaptix.TaskData) {
 	agent.RunningTasks.Delete(updateData.TaskId)
 
 	task.FinishDate = updateData.FinishDate
@@ -46,12 +46,12 @@ func (h *TaskTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.Ta
 			if task.Completed {
 				tm.ts.TsAxScriptRemovePostHook(task.HookId)
 				task.HookId = ""
-				tm.completeTask(agent, task)
+				tm.completeTask(task)
 				tm.executeServerHandler(task)
 			} else {
 				agent.RunningTasks.Put(task.TaskId, *task)
 			}
-			tm.syncTaskUpdate(task.AgentId, agent, task)
+			tm.syncTaskUpdate(task.AgentId, task)
 		}
 		return
 	}
@@ -66,18 +66,18 @@ func (h *TaskTaskHandler) Update(tm *TaskManager, agent *Agent, task *adaptix.Ta
 
 	if task.Sync {
 		if task.Completed {
-			tm.completeTask(agent, task)
+			tm.completeTask(task)
 			tm.executeServerHandler(task)
 			updateData.HandlerId = task.HandlerId
 		} else {
 			agent.RunningTasks.Put(task.TaskId, *task)
 		}
 
-		tm.syncTaskUpdate(task.AgentId, agent, task)
+		tm.syncTaskUpdate(task.AgentId, task)
 	}
 }
 
-func (h *TaskTaskHandler) PostHook(tm *TaskManager, agent *Agent, task *adaptix.TaskData, hookData *adaptix.TaskData, jobIndex int) error {
+func (h *TaskTaskHandler) PostHook(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, hookData *adaptix.TaskData, jobIndex int) error {
 	_, ok := agent.RunningTasks.GetDelete(hookData.TaskId)
 	if !ok {
 		return nil
@@ -90,18 +90,18 @@ func (h *TaskTaskHandler) PostHook(tm *TaskManager, agent *Agent, task *adaptix.
 	if task.Sync {
 		if task.Completed {
 			task.HookId = ""
-			tm.completeTask(agent, task)
+			tm.completeTask(task)
 		} else {
 			agent.RunningTasks.Put(task.TaskId, *task)
 		}
 
-		tm.syncTaskUpdate(task.AgentId, agent, task)
+		tm.syncTaskUpdate(task.AgentId, task)
 	}
 
 	return nil
 }
 
-func (h *TaskTaskHandler) OnClientDisconnect(tm *TaskManager, agent *Agent, task *adaptix.TaskData, clientName string) {
+func (h *TaskTaskHandler) OnClientDisconnect(tm *TaskManager, agent *adaptix.Agent, task *adaptix.TaskData, clientName string) {
 	if !task.Sync {
 		return
 	}
@@ -109,8 +109,8 @@ func (h *TaskTaskHandler) OnClientDisconnect(tm *TaskManager, agent *Agent, task
 	if task.Completed {
 		task.HookId = ""
 		agent.RunningTasks.Delete(task.TaskId)
-		tm.completeTask(agent, task)
+		tm.completeTask(task)
 	}
 
-	tm.syncTaskUpdate(task.AgentId, agent, task)
+	tm.syncTaskUpdate(task.AgentId, task)
 }

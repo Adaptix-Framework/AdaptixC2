@@ -5,6 +5,25 @@
 #include <UI/Graph/GraphScene.h>
 #include <UI/Widgets/AdaptixWidget.h>
 
+namespace {
+    constexpr qreal kNodeSize   = 100.0;
+
+    constexpr qreal kNotePadX   = 6.0;
+    constexpr qreal kNoteHeight = 50.0;
+
+    constexpr qreal kBadgeW        = 42.0;
+    constexpr qreal kBadgeH        = 24.0;
+    constexpr qreal kBadgeOffsetX  = 38.0;
+    constexpr qreal kBadgeOffsetY  = -6.0;
+    constexpr int   kBadgeFontSize = 11;
+    const QColor    kBadgeColor    = QColor(0, 200, 0);
+
+    QRectF badgeRect(const QRectF& nodeRect)
+    {
+        return QRectF(nodeRect.right() - kBadgeOffsetX, nodeRect.top() + kBadgeOffsetY, kBadgeW, kBadgeH);
+    }
+}
+
 GraphItemNote::GraphItemNote(const QString &h, const QString &t)
 {
     this->header = h;
@@ -16,20 +35,37 @@ GraphItemNote::GraphItemNote(const QString &h, const QString &t)
 
 GraphItemNote::~GraphItemNote() = default;
 
+void GraphItemNote::setHeader(const QString &h)
+{
+    if (header == h)
+        return;
+    prepareGeometryChange();
+    header = h;
+    update();
+}
+
+void GraphItemNote::setText(const QString &t)
+{
+    if (text == t)
+        return;
+    prepareGeometryChange();
+    text = t;
+    update();
+}
+
 QRectF GraphItemNote::boundingRect() const
 {
-    qreal width = this->text.length();
-    if (this->text.length() < this->header.length())
-        width = this->header.length();
-
-    return QRectF( 0, 0, width * 8, 50 );
+    const QFontMetrics fm{QFont{}};
+    const qreal w = std::max(fm.horizontalAdvance(this->header), fm.horizontalAdvance(this->text));
+    return QRectF(0, 0, w + kNotePadX * 2, kNoteHeight);
 }
 
 void GraphItemNote::paint( QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
-     painter->setPen( COLOR_White );
-     painter->drawText( this->boundingRect(), Qt::AlignCenter | Qt::AlignTop,    this->header);
-     painter->drawText( this->boundingRect(), Qt::AlignCenter | Qt::AlignBottom, this->text);
+    painter->setPen( COLOR_White );
+    if (!this->header.isEmpty())
+        painter->drawText( this->boundingRect(), Qt::AlignCenter | Qt::AlignTop,    this->header);
+    painter->drawText( this->boundingRect(), Qt::AlignCenter | Qt::AlignBottom, this->text);
 }
 
 
@@ -49,16 +85,64 @@ GraphItem::GraphItem( SessionsGraph* graphView, Agent* agent )
     this->setFlag( QGraphicsItem::ItemIsSelectable );
 
     if ( agent ) {
-        const QString note1 = QString("%1 @ %2").arg( agent->data.Username ).arg( agent->data.Computer );
-        const QString note2 = QString("%1 (%2) : %3").arg( agent->data.Id ).arg( agent->data.Name ).arg( agent->data.Pid );
-        this->note = new GraphItemNote( note1, note2 );
+        const GraphNoteFields& nf = sessionsGraph->GetNoteFields();
+        QString noteHeader, noteText;
+        buildNoteTexts(nf, noteHeader, noteText);
+        this->note = new GraphItemNote( noteHeader, noteText );
         sessionsGraph->scene()->addItem( this->note );
     }
 }
 
+void GraphItem::buildNoteTexts(const GraphNoteFields& nf, QString& header, QString& text) const
+{
+    if (!this->agent)
+        return;
+
+    if (nf.user || nf.computer) {
+        QString user = nf.user ? agent->data.Username : QString();
+        QString host = nf.computer ? agent->data.Computer : QString();
+        if (user.isEmpty() && host.isEmpty()) {
+            header = QString();
+        } else if (user.isEmpty()) {
+            header = host;
+        } else if (host.isEmpty()) {
+            header = user;
+        } else {
+            header = QString("%1 @ %2").arg(user).arg(host);
+        }
+    } else {
+        header = QString();
+    }
+
+    QStringList parts;
+    if (nf.id)
+        parts.append(QString::number(agent->data.Id));
+    if (nf.name)
+        parts.append(QString("(%1)").arg(agent->data.Name));
+    if (nf.pid)
+        parts.append(QString(": %1").arg(agent->data.Pid));
+    text = parts.join(' ').simplified();
+}
+
+void GraphItem::refreshNoteContent()
+{
+    if (!this->note || !this->agent || !this->sessionsGraph)
+        return;
+    const GraphNoteFields& nf = sessionsGraph->GetNoteFields();
+    QString header, text;
+    buildNoteTexts(nf, header, text);
+    this->note->setHeader(header);
+    this->note->setText(text);
+}
+
+void GraphItem::UpdateNote()
+{
+    refreshNoteContent();
+}
+
 GraphItem::~GraphItem()
 {
-    if (this->note) {
+    if (this->note && this->note->scene()) {
         this->sessionsGraph->GetGraphScene()->removeItem(this->note);
         delete this->note;
         this->note = nullptr;
@@ -67,7 +151,10 @@ GraphItem::~GraphItem()
 
 QRectF GraphItem::boundingRect() const
 {
-    return this->rect;
+    QRectF br = this->rect;
+    if (HasTunnel())
+        br |= ::badgeRect(this->rect);
+    return br;
 }
 
 static QImage s_firewallImage;
@@ -84,14 +171,14 @@ void GraphItem::paint( QPainter* painter, const QStyleOptionGraphicsItem* option
 
     if (HasTunnel()) {
         painter->save();
-        QRectF badgeRect(rect.right() - 38, rect.top() - 6, 42, 24);
-        painter->setBrush(QColor(0, 200, 0));
+        const QRectF br = ::badgeRect(rect);
+        painter->setBrush(kBadgeColor);
         painter->setPen(QPen(QColor(0, 0, 0), 2));
-        painter->drawRoundedRect(badgeRect, 10, 10);
+        painter->drawRoundedRect(br, 10, 10);
         painter->setPen(QColor(0, 0, 0));
-        painter->setFont(QFont("Arial", 11, QFont::Bold));
-        QString label = (GetTunnelType() == TunnelMarkServer) ? "TunS" : "TunC";
-        painter->drawText(badgeRect, Qt::AlignCenter, label);
+        painter->setFont(QFont("Arial", kBadgeFontSize, QFont::Bold));
+        const QString label = (GetTunnelType() == TunnelMarkServer) ? "TunS" : "TunC";
+        painter->drawText(br, Qt::AlignCenter, label);
         painter->restore();
     }
 
@@ -157,11 +244,6 @@ void GraphItem::adjust()
         link->adjust();
 }
 
-void GraphItem::calculateForces()
-{
-    this->point = this->pos();
-}
-
 void GraphItem::AddTunnel(TunnelMarkType type)
 {
     if (type == TunnelMarkServer)
@@ -178,15 +260,6 @@ void GraphItem::RemoveTunnel(TunnelMarkType type)
     else if (type == TunnelMarkClient && clientTunnelCount > 0)
         clientTunnelCount--;
     update();
-}
-
-bool GraphItem::advancePosition()
-{
-    if ( this->point == this->pos() )
-        return false;
-
-    setPos( this->point );
-    return true;
 }
 
 void GraphItem::invalidateCache()

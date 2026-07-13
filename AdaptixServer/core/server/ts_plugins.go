@@ -2,17 +2,16 @@ package server
 
 import (
 	"AdaptixServer/core/extender"
-	"AdaptixServer/core/utils/logs"
 	isvalid "AdaptixServer/core/utils/valid"
 	"errors"
 	"fmt"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
 
-	if listenerInfo.Type != "internal" && listenerInfo.Type != "external" {
+	if listenerInfo.Type != "internal" && listenerInfo.Type != "external" && listenerInfo.Type != "bind" {
 		return errors.New("invalid listener type: must be internal or external")
 	}
 
@@ -21,7 +20,7 @@ func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
 	}
 
 	if !isvalid.ValidSBNString(listenerInfo.Name) {
-		return errors.New("invalid listener name (must only contain letters and numbers): " + listenerInfo.Type)
+		return errors.New("invalid listener name (must only contain letters and numbers): " + listenerInfo.Name)
 	}
 
 	if ts.listener_configs.Contains(listenerInfo.Name) {
@@ -34,13 +33,11 @@ func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
 }
 
 func (ts *Teamserver) TsListenerRegByName(listenerName string) (string, error) {
-
-	value, ok := ts.listeners.Get(listenerName)
+	listenerData, ok := ts.listeners.Get(listenerName)
 	if !ok {
 		return "", errors.New("listener not found: " + listenerName)
 	}
-
-	return value.(adaptix.ListenerData).RegName, nil
+	return listenerData.RegName, nil
 }
 
 func (ts *Teamserver) TsAgentReg(agentInfo extender.AgentInfo) error {
@@ -53,13 +50,13 @@ func (ts *Teamserver) TsAgentReg(agentInfo extender.AgentInfo) error {
 		return fmt.Errorf("agent %s has invalid watermark %s... must be 8 digit hex value", agentInfo.Name, agentInfo.Watermark)
 	}
 
-	ts.wm_agent_types[agentInfo.Watermark] = agentInfo.Name
+	ts.wm_agent_types.Put(agentInfo.Watermark, agentInfo.Name)
 	ts.agent_configs.Put(agentInfo.Name, agentInfo)
 
 	if ts.ScriptManager != nil && agentInfo.AX != "" {
 		err := ts.TsAxScriptLoadAgent(agentInfo.Name, agentInfo.AX, agentInfo.Listeners)
 		if err != nil {
-			logs.Warn("", "Agent %s: AxScript load failed (commands will come from client): %v", agentInfo.Name, err)
+			ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server:extender_manager", "Agent %s: AxScript load failed (commands will come from client): %v", agentInfo.Name, err)
 		}
 	}
 	return nil

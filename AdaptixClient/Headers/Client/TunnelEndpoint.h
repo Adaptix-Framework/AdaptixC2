@@ -8,9 +8,9 @@ class TunnelWorker;
 class SocksHandshakeWorker;
 
 class TunnelEndpoint : public QObject {
-Q_OBJECT
+    Q_OBJECT
 
-    QString tunnelId;
+        qint64  tunnelId = 0;
     QString tunnelType;
     QUrl    wsUrl;
     quint16 lPort = 0;
@@ -22,33 +22,35 @@ Q_OBJECT
     QTcpServer*  tcpServer = nullptr;
     AuthProfile* profile   = nullptr;
 
+    quint64 endpointGeneration = 0;
+
     struct ChannelHandle {
         QThread*      thread;
         TunnelWorker* worker;
-        QString       channelId;
+        qint64        channelId;
     };
-    QMap<QString, ChannelHandle>  tunnelChannels;
+    QMap<qint64, ChannelHandle> tunnelChannels;
 
-    void startWorker(QTcpSocket* clientSock, const QJsonObject& otpData, const QString& channelId);
+    void startWorker(QTcpSocket* clientSock, const QJsonObject& otpData, qint64 channelId);
+    void launchChannelWorker(QTcpSocket* clientSock, const QString& otp, qint64 channelId);
     void startHandshakeWorker(QTcpSocket* clientSock, const QString& type);
 
 public:
     TunnelEndpoint(QObject* parent = nullptr);
     ~TunnelEndpoint() override;
 
-
     bool StartTunnel(AuthProfile* profile, const QString &type, const QByteArray &jsonData);
-    void SetTunnelId(const QString &tunnelId);
+    void SetTunnelId(qint64 tunnelId);
 
     bool Listen(const QJsonObject &obj);
     void Stop();
 
-    void StopChannel(const QString& tunnelId);
+    void StopChannel(qint64 channelId);
 
 private Q_SLOTS:
     void onStartLpfChannel();
     void onStartSocksChannel();
-    void onWorkerReady(TunnelWorker* worker, const QString& channelId);
+    void onWorkerReady(TunnelWorker* worker, qint64 channelId);
     void onHandshakeFailed();
 };
 

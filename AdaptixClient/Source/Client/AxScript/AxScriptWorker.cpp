@@ -8,7 +8,7 @@ AxScriptWorker::AxScriptWorker(AxScriptManager* manager, const QString& name, co
     , scriptManager(manager)
     , scriptName(name)
 {
-    Q_UNUSED(parent);
+    (void)parent;
     
     workerThread = new QThread();
 
@@ -22,14 +22,14 @@ AxScriptWorker::AxScriptWorker(AxScriptManager* manager, const QString& name, co
 
 AxScriptWorker::~AxScriptWorker()
 {
-    if (workerThread && workerThread->isRunning()) {
-        workerThread->quit();
-        workerThread->wait();
-    }
-
     if (scriptEngine) {
         delete scriptEngine;
         scriptEngine = nullptr;
+    }
+
+    if (workerThread && workerThread->isRunning()) {
+        workerThread->quit();
+        workerThread->wait();
     }
 
     delete workerThread;
@@ -112,4 +112,10 @@ void AxScriptWorker::doExecute(const QString& code)
     }
 
     Q_EMIT executionFinished(success, error);
+}
+
+void AxScriptWorker::stop()
+{
+    if (workerThread && workerThread->isRunning())
+        workerThread->quit();
 }

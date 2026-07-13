@@ -57,6 +57,8 @@ public:
     BrowserProcessWidget(const AdaptixWidget* w, Agent* a);
     ~BrowserProcessWidget() override;
 
+    void clearAgent() { agent = nullptr; }
+
     void SetProcess(int msgType, const QString &data) const;
     void SetStatus(qint64 time, int msgType, const QString &message) const;
 

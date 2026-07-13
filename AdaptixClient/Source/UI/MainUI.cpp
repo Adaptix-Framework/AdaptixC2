@@ -1,10 +1,14 @@
 #include <Agent/Agent.h>
 #include <UI/MainUI.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <UI/Widgets/SessionsTableWidget.h>
-#include <UI/Widgets/TasksWidget.h>
+#include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/SessionsFeedWidget.h>
+#include <UI/Widgets/TasksFeedWidget.h>
+#include <UI/Widgets/TargetsFeedWidget.h>
+#include <UI/Widgets/CredentialsFeedWidget.h>
+#include <UI/Widgets/FilesFeedWidget.h>
+#include <Utils/CustomElements/ListFeed.h>
 #include <UI/Graph/SessionsGraph.h>
-#include <UI/Dialogs/DialogExtender.h>
 #include <UI/Dialogs/DialogSettings.h>
 #include <UI/Dialogs/DialogSubscriptions.h>
 #include <Client/Extender.h>
@@ -28,43 +32,6 @@ MainUI::MainUI()
     this->setWindowTitle( FRAMEWORK_VERSION );
     this->setProperty("Main", "base");
 
-    auto newProjectAction = new QAction("New Project", this);
-    connect(newProjectAction, &QAction::triggered, this, &MainUI::onNewProject);
-    auto closeProjectAction = new QAction("Close Project", this);
-    connect(closeProjectAction, &QAction::triggered, this, &MainUI::onCloseProject);
-
-    auto projectSettingsAction = new QAction("Subscriptions", this);
-    connect(projectSettingsAction, &QAction::triggered, this, &MainUI::onProjectSubscriptions);
-
-    menuProject = new oclero::qlementine::Menu("Projects", this);
-    menuProject->addAction(newProjectAction);
-    menuProject->addAction(closeProjectAction);
-    menuProject->addSeparator();
-    menuProject->addAction(projectSettingsAction);
-
-    auto axConsoleAction = new QAction("AxScript console ", this);
-    connect(axConsoleAction, &QAction::triggered, this, &MainUI::onAxScriptConsole);
-    auto scriptManagerAction = new QAction("Script manager", this);
-    connect(scriptManagerAction, &QAction::triggered, this, &MainUI::onScriptManager);
-
-    menuExtensions = new oclero::qlementine::Menu("Extensions", this);
-    menuExtensions->addAction(axConsoleAction);
-    menuExtensions->addAction(scriptManagerAction);
-    extDocksSeparator = menuExtensions->addSeparator();
-    extDocksSeparator->setVisible(false);
-
-    menuSettings = new oclero::qlementine::Menu("Settings", this);
-    auto settingsAction = new QAction("Open settings", this);
-    connect(settingsAction, &QAction::triggered, this, &MainUI::onSettings);
-    menuSettings->addAction(settingsAction);
-
-    auto mainMenuBar = new QMenuBar(this);
-    mainMenuBar->addMenu(menuProject);
-    mainMenuBar->addMenu(menuExtensions);
-    mainMenuBar->addMenu(menuSettings);
-
-    this->setMenuBar(mainMenuBar);
-
     mainuiTabWidget = new QTabWidget();
     mainuiTabWidget->setTabPosition(QTabWidget::South);
     mainuiTabWidget->tabBar()->setMovable(true);
@@ -75,6 +42,16 @@ MainUI::MainUI()
     connect(mainuiTabWidget, &QTabWidget::currentChanged, this, &MainUI::onTabChanged);
 
     this->setCentralWidget(mainuiTabWidget);
+
+    newProjectButton = new QPushButton(QIcon(":/icons/plus"), "", this);
+    newProjectButton->setIconSize(QSize(20, 20));
+    newProjectButton->setFixedSize(37, 28);
+    newProjectButton->setToolTip("New Project");
+    mainuiTabWidget->setCornerWidget(newProjectButton, Qt::TopLeftCorner);
+    connect(newProjectButton, &QPushButton::clicked, this, [](){ GlobalClient->NewProject(); });
+
+    mainuiTabWidget->tabBar()->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(mainuiTabWidget->tabBar(), &QWidget::customContextMenuRequested, this, &MainUI::onTabContextMenu);
 
     qApp->installEventFilter(this);
 
@@ -192,7 +169,7 @@ MainUI::MainUI()
     shortcutScriptManager->setContext(Qt::ApplicationShortcut);
     connect(shortcutScriptManager, &QShortcut::activated, this, [this, isTerminalFocused]() {
         if (isTerminalFocused()) return;
-        this->onScriptManager();
+        this->onScriptsDock();
     });
 
     auto shortcutDownloads = new QShortcut(QKeySequence("Ctrl+Shift+F"), this);
@@ -260,10 +237,26 @@ bool MainUI::eventFilter(QObject *obj, QEvent *event)
 {
     if (event->type() == QEvent::ShortcutOverride) {
         auto *ke = static_cast<QKeyEvent*>(event);
-        if (ke->modifiers() == Qt::ControlModifier &&
-            (ke->key() == Qt::Key_Left || ke->key() == Qt::Key_Right)) {
-            event->ignore();
-            return true;
+        if (ke->modifiers() == Qt::ControlModifier) {
+            const int k = ke->key();
+            const bool isDockNavKey = (k == Qt::Key_Left || k == Qt::Key_Right || k == Qt::Key_D || k == Qt::Key_W);
+            if (isDockNavKey) {
+                auto* registry = KDDockWidgets::DockRegistry::self();
+                bool terminalFocused = false;
+                if (registry) {
+                    if (auto* dw = registry->focusedDockWidget()) {
+                        QString name = dw->uniqueName();
+                        terminalFocused = name.startsWith("Terminal [") || name.startsWith("Shell [");
+                    }
+                }
+                if (terminalFocused) {
+                    event->accept();
+                    return true;
+                }
+
+                event->ignore();
+                return true;
+            }
         }
     }
     return QMainWindow::eventFilter(obj, event);
@@ -322,6 +315,19 @@ void MainUI::RemoveExtension(const ExtensionFile &extFile)
     }
 }
 
+void MainUI::UpdateConsolePrefs()
+{
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (!adaptixWidget)
+            continue;
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        for (auto agent : adaptixWidget->AgentsMap.values()) {
+            if (agent && agent->Console)
+                agent->Console->ApplyConsolePrefs();
+        }
+    }
+}
+
 void MainUI::UpdateSessionsTableColumns()
 {
     for (auto adaptixWidget : AdaptixProjects) {
@@ -346,6 +352,76 @@ void MainUI::UpdateTasksTableColumns()
     for (auto adaptixWidget : AdaptixProjects) {
         if (adaptixWidget)
             adaptixWidget->TasksDock->UpdateColumnsVisible();
+    }
+}
+
+void MainUI::UpdateTargetsColumns()
+{
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget && adaptixWidget->TargetsDock)
+            adaptixWidget->TargetsDock->UpdateColumnsVisible();
+    }
+}
+
+void MainUI::UpdateCredentialsColumns()
+{
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget && adaptixWidget->CredentialsDock)
+            adaptixWidget->CredentialsDock->UpdateColumnsVisible();
+    }
+}
+
+void MainUI::UpdateFilesColumns()
+{
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget && adaptixWidget->DownloadsDock)
+            adaptixWidget->DownloadsDock->UpdateColumnsVisible();
+    }
+}
+
+void MainUI::ApplyFeedViewPreferences()
+{
+    if (!GlobalClient || !GlobalClient->settings)
+        return;
+    const auto& d = GlobalClient->settings->data;
+
+    for (auto* adaptixWidget : AdaptixProjects) {
+        if (!adaptixWidget)
+            continue;
+
+        if (auto* sessions = adaptixWidget->SessionsTableDock) {
+            sessions->setCompactMode(d.SessionsCompactMode);
+            if (sessions->activeFilter())
+                sessions->activeFilter()->setChecked(d.SessionsAutoHideInactive);
+            sessions->onFilterChanged();
+        }
+
+        if (auto* tasks = adaptixWidget->TasksDock) {
+            tasks->setCompactMode(d.TasksCompactMode);
+            if (tasks->activeFilter())
+                tasks->activeFilter()->setChecked(d.TasksInProcessOnly);
+            tasks->onFilterChanged();
+        }
+
+        if (auto* targets = adaptixWidget->TargetsDock) {
+            targets->setCompactMode(d.TargetsCompactMode);
+        }
+
+        if (auto* creds = adaptixWidget->CredentialsDock) {
+            creds->setCompactMode(d.CredentialsCompactMode);
+        }
+
+        if (adaptixWidget->DownloadsDock)
+            adaptixWidget->DownloadsDock->setCompactMode(d.FilesCompactMode);
+    }
+}
+
+void MainUI::RebuildToolbars()
+{
+    const int pos = (GlobalClient && GlobalClient->settings) ? GlobalClient->settings->data.ToolbarPosition : 0;
+    for (auto* adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget)
+            adaptixWidget->rebuildToolbarLayout(pos);
     }
 }
 
@@ -381,24 +457,31 @@ void MainUI::onCloseProject()
     }
 
     adaptixWidget->Close();
-    delete adaptixWidget;
-
     mainuiTabWidget->removeTab(currentIndex);
+    delete adaptixWidget;
 }
 
-void MainUI::onAxScriptConsole()
+void MainUI::onCloseProjectRequested()
+{
+    QString projectName;
+    if (auto* p = GetCurrentProfile())
+        projectName = p->GetProject();
+    QString text = projectName.isEmpty()
+        ? QStringLiteral("Close the current project?")
+        : QStringLiteral("Close project '%1'?").arg(projectName);
+    auto reply = QMessageBox::question(this, "Close project", text,
+        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    if (reply == QMessageBox::Yes)
+        onCloseProject();
+}
+
+void MainUI::onScriptsDock()
 {
     auto adaptixWidget = qobject_cast<AdaptixWidget*>( mainuiTabWidget->currentWidget() );
     if (!adaptixWidget)
         return;
 
-    adaptixWidget->LoadAxConsoleUI();
-}
-
-void MainUI::onScriptManager()
-{
-    GlobalClient->extender->dialogExtender->SetMainUI(this);
-    GlobalClient->extender->dialogExtender->show();
+    adaptixWidget->LoadScriptsUI();
 }
 
 void MainUI::onSettings() { GlobalClient->settings->getDialogSettings()->show(); }
@@ -419,45 +502,19 @@ void MainUI::onProjectSubscriptions()
 
 /// EXT MENU
 
-QMenu* MainUI::getMenuProject() const { return menuProject; }
-
-QMenu* MainUI::getMenuAxScript() const { return menuExtensions; }
-
-QMenu* MainUI::getMenuSettings() const { return menuSettings; }
-
-void MainUI::addExtDockAction(const QString &id, const QString &title, bool checked, const std::function<void(bool)> &callback)
+void MainUI::onTabContextMenu(const QPoint &pos)
 {
-    if (extDockActions.contains(id))
+    int index = mainuiTabWidget->tabBar()->tabAt(pos);
+    if (index < 0)
         return;
 
-    auto *action = new QAction(title, this);
-    action->setCheckable(true);
-    action->setChecked(checked);
-    connect(action, &QAction::toggled, this, callback);
-    menuExtensions->addAction(action);
-    extDockActions[id] = action;
+    mainuiTabWidget->setCurrentIndex(index);
 
-    if (extDocksSeparator && !extDocksSeparator->isVisible())
-        extDocksSeparator->setVisible(true);
-}
-
-void MainUI::removeExtDockAction(const QString &id)
-{
-    if (!extDockActions.contains(id))
-        return;
-
-    auto *action = extDockActions.take(id);
-    menuExtensions->removeAction(action);
-    delete action;
-
-    if (extDockActions.isEmpty() && extDocksSeparator)
-        extDocksSeparator->setVisible(false);
-}
-
-void MainUI::setExtDockChecked(const QString &id, bool checked)
-{
-    if (extDockActions.contains(id))
-        extDockActions[id]->setChecked(checked);
+    QMenu menu(this);
+    menu.addAction("Subscriptions", this, &MainUI::onProjectSubscriptions);
+    menu.addSeparator();
+    menu.addAction("Close project", this, &MainUI::onCloseProjectRequested);
+    menu.exec(mainuiTabWidget->tabBar()->mapToGlobal(pos));
 }
 
 void MainUI::onOpenProjectDirectory()
@@ -477,7 +534,7 @@ void MainUI::onTabChanged(int index)
 {
     for (int i = 0; i < mainuiTabWidget->count(); ++i) {
         auto adaptixWidget = qobject_cast<AdaptixWidget*>(mainuiTabWidget->widget(i));
-        if (adaptixWidget) {
+        if (adaptixWidget && adaptixWidget->GetProfile()) {
             QString tabName = adaptixWidget->GetProfile()->GetProject();
             bool showButton = (i == index);
             updateTabButton(i, tabName, showButton);

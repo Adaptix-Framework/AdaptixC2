@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 func (ts *Teamserver) TsNotifyClient(connected bool, username string) {
@@ -45,23 +45,39 @@ func (ts *Teamserver) TsNotifyListenerStop(listenerName string, listenerType str
 
 func (ts *Teamserver) TsNotifyAgent(restore bool, agentData adaptix.AgentData) {
 	message := "New "
-	postMsg := agentData.Computer
+	postMsg := ""
+
+	if len(agentData.Username) > 0 {
+		postMsg += agentData.Username
+	}
+
+	if len(agentData.Computer) > 0 {
+		if len(agentData.Username) > 0 {
+			postMsg += " @ "
+		} else {
+			postMsg += "'"
+		}
+		postMsg += agentData.Computer
+	}
 
 	if len(agentData.Domain) != 0 && strings.ToLower(agentData.Computer) != strings.ToLower(agentData.Domain) {
 		postMsg += "." + agentData.Domain + "'"
-	} else {
-		postMsg += "'"
 	}
 	if len(agentData.InternalIP) != 0 {
 		postMsg = postMsg + " (" + agentData.InternalIP + ")"
 	}
+
+	if len(postMsg) > 0 {
+		postMsg = "on '" + postMsg
+	}
+
 	if restore {
 		message = "Restore "
 		createdAt := time.Unix(agentData.CreateTime, 0).Format("15:04:05 02.01.2006")
 		postMsg = postMsg + fmt.Sprintf(" [created '%v']", createdAt)
 	}
 
-	message += fmt.Sprintf("'%v' (%v) executed on '%v @ %v", agentData.Name, agentData.Id, agentData.Username, postMsg)
+	message += fmt.Sprintf("'%v' (%v) executed %v", agentData.Name, agentData.Id, postMsg)
 
 	packet := CreateSpNotification(NOTIFY_AGENT_NEW, message)
 	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryNotifications)

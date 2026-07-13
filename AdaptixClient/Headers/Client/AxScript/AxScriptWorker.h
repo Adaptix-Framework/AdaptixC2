@@ -37,6 +37,7 @@ public:
 public Q_SLOTS:
     void initialize();
     void doExecute(const QString& code);
+    void stop();
 
 Q_SIGNALS:
     void executeRequested(const QString& code);

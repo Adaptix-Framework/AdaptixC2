@@ -1,6 +1,6 @@
 package eventing
 
-import "github.com/Adaptix-Framework/axc2"
+import "github.com/Adaptix-Framework/axc2/v2"
 
 type EventType string
 
@@ -31,6 +31,10 @@ const (
 	EventDownloadStart  EventType = "download.start"
 	EventDownloadFinish EventType = "download.finish"
 	EventDownloadRemove EventType = "download.remove"
+
+	EventUploadStart  EventType = "upload.start"
+	EventUploadFinish EventType = "upload.finish"
+	EventUploadRemove EventType = "upload.remove"
 
 	EventScreenshotAdd    EventType = "screenshot.add"
 	EventScreenshotRemove EventType = "screenshot.remove"
@@ -74,14 +78,14 @@ type EventCredentialsAdd struct {
 
 type EventCredentialsEdit struct {
 	BaseEvent
-	CredId  string
+	CredId  int64
 	OldCred adaptix.CredsData
 	NewCred adaptix.CredsData
 }
 
 type EventCredentialsRemove struct {
 	BaseEvent
-	CredIds []string
+	CredIds []int64
 }
 
 /// AGENT
@@ -119,8 +123,8 @@ type EventDataAgentActivate struct {
 
 type EventDataAgentTerminate struct {
 	BaseEvent
-	AgentId string
-	TaskId  string
+	AgentId int64
+	TaskId  int64
 }
 
 type EventDataAgentRemove struct {
@@ -132,7 +136,7 @@ type EventDataAgentRemove struct {
 
 type EventDataTaskCreate struct {
 	BaseEvent
-	AgentId string
+	AgentId int64
 	Task    adaptix.TaskData
 	Cmdline string
 	Client  string
@@ -140,19 +144,19 @@ type EventDataTaskCreate struct {
 
 type EventDataTaskStart struct {
 	BaseEvent
-	AgentId string
+	AgentId int64
 	Task    adaptix.TaskData
 }
 
 type EventDataTaskUpdateJob struct {
 	BaseEvent
-	AgentId string
+	AgentId int64
 	Task    adaptix.TaskData
 }
 
 type EventDataTaskComplete struct {
 	BaseEvent
-	AgentId string
+	AgentId int64
 	Task    adaptix.TaskData
 }
 
@@ -175,43 +179,65 @@ type EventDataListenerStop struct {
 
 type EventDataDownloadStart struct {
 	BaseEvent
-	AgentId  string
-	FileId   string
+	AgentId  int64
+	FileId   int64
 	FileName string
 	FileSize int64
 }
 
 type EventDataDownloadFinish struct {
 	BaseEvent
-	Download adaptix.DownloadData
+	Download adaptix.TransferData
 	Canceled bool
 }
 
 type EventDataDownloadRemove struct {
 	BaseEvent
-	FileIds []string
+	FileIds []int64
+}
+
+/// UPLOAD
+
+type EventDataUploadStart struct {
+	BaseEvent
+	AgentId    int64
+	FileId     int64
+	FileName   string
+	RemotePath string
+	FileSize   int64
+}
+
+type EventDataUploadFinish struct {
+	BaseEvent
+	FileId   int64
+	Canceled bool
+}
+
+type EventDataUploadRemove struct {
+	BaseEvent
+	FileIds []int64
 }
 
 /// SCREENSHOT
 
 type EventDataScreenshotAdd struct {
 	BaseEvent
-	AgentId string
+	AgentId int64
 	Note    string
 	Content []byte
 }
 
 type EventDataScreenshotRemove struct {
 	BaseEvent
-	ScreenId string
+	ScreenId int64
 }
 
 /// TUNNEL
 
 type EventDataTunnelStart struct {
 	BaseEvent
-	AgentId    string
-	TunnelId   string
+	AgentId    int64
+	TunnelId   int64
 	TunnelType int
 	Port       int
 	Info       string
@@ -219,8 +245,8 @@ type EventDataTunnelStart struct {
 
 type EventDataTunnelStop struct {
 	BaseEvent
-	AgentId    string
-	TunnelId   string
+	AgentId    int64
+	TunnelId   int64
 	TunnelType int
 	Port       int
 }
@@ -251,7 +277,7 @@ type EventDataTargetEdit struct {
 
 type EventDataTargetRemove struct {
 	BaseEvent
-	TargetIds []string
+	TargetIds []int64
 }
 
 /// PIVOT
@@ -259,8 +285,8 @@ type EventDataTargetRemove struct {
 type EventDataPivotCreate struct {
 	BaseEvent
 	PivotId       string
-	ParentAgentId string
-	ChildAgentId  string
+	ParentAgentId int64
+	ChildAgentId  int64
 	PivotName     string
 }
 

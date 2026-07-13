@@ -1,9 +1,25 @@
 #include <Workers/SocksHandshakeWorker.h>
 #include <Workers/TunnelWorker.h>
 #include <Client/Requestor.h>
+#include <QRandomGenerator>
 
-SocksHandshakeWorker::SocksHandshakeWorker(QTcpSocket* sock, const QString& tunnelId, const QString& type, bool useAuth, const QString& username, const QString& password, const QString& accessToken, const QString& baseUrl, const QUrl& wsUrl)
-    : clientSock(sock), tunnelId(tunnelId), tunnelType(type), useAuth(useAuth), username(username), password(password), accessToken(accessToken), baseUrl(baseUrl), wsUrl(wsUrl)
+static QByteArray readExact(QTcpSocket* sock, int n) {
+    QByteArray result;
+    while (result.size() < n) {
+        if (sock->bytesAvailable() == 0) {
+            if (!sock->waitForReadyRead(3000))
+                return QByteArray();
+        }
+        QByteArray chunk = sock->read(n - result.size());
+        if (chunk.isEmpty())
+            return QByteArray();
+        result += chunk;
+    }
+    return result;
+}
+
+SocksHandshakeWorker::SocksHandshakeWorker(QTcpSocket* sock, qint64 tunnelId, const QString& type, bool useAuth, const QString& username, const QString& password, const AuthProfile& profile, const QUrl& wsUrl)
+    : clientSock(sock), tunnelId(tunnelId), tunnelType(type), useAuth(useAuth), username(username), password(password), profile(profile), wsUrl(wsUrl)
 {
 }
 
@@ -19,7 +35,7 @@ void SocksHandshakeWorker::rejectAndClose(QTcpSocket* sock, const QByteArray& re
 void SocksHandshakeWorker::process()
 {
     QJsonObject otpData;
-    QString channelId;
+    qint64 channelId = 0;
     bool success = false;
 
     if (tunnelType == "socks4") {
@@ -37,8 +53,8 @@ void SocksHandshakeWorker::process()
     }
 
     QString otp;
-    bool otpResult = HttpReqGetOTP("channel_tunnel", otpData, baseUrl, accessToken, &otp);
-    if (!otpResult) {
+    bool ok = false;
+    if (!HttpReqGetOTP("channel_tunnel", otpData, profile, &otp, &ok) || !ok) {
         if (clientSock)
             clientSock->deleteLater();
         Q_EMIT handshakeFailed();
@@ -51,49 +67,94 @@ void SocksHandshakeWorker::process()
     Q_EMIT workerReady(worker, channelId);
 }
 
-bool SocksHandshakeWorker::processSocks4(QJsonObject& otpData, QString& channelId)
+bool SocksHandshakeWorker::processSocks4(QJsonObject& otpData, qint64& channelId)
 {
     if (!clientSock->waitForReadyRead(3000) || clientSock->bytesAvailable() < 8) {
         rejectAndClose(clientSock, QByteArray("\x00\x5b\x00\x00\x00\x00\x00\x00", 8));
         return false;
     }
 
-    QByteArray bufArray = clientSock->read(8);
+    QByteArray bufArray = readExact(clientSock, 8);
+    if (bufArray.size() != 8) {
+        rejectAndClose(clientSock, QByteArray("\x00\x5b\x00\x00\x00\x00\x00\x00", 8));
+        return false;
+    }
     const uchar* buf = reinterpret_cast<const uchar*>(bufArray.constData());
     if (buf[0] != 0x04 || buf[1] != 0x01) {
         rejectAndClose(clientSock, QByteArray("\x00\x5b\x00\x00\x00\x00\x00\x00", 8));
         return false;
     }
 
-    int tPort = (static_cast<quint16>(buf[2]) << 8) | static_cast<quint16>(buf[3]);
-    QHostAddress dstIp((static_cast<quint32>(buf[4]) << 24) | (static_cast<quint32>(buf[5]) << 16) |
-                       (static_cast<quint32>(buf[6]) << 8) | static_cast<quint32>(buf[7]));
+    const int tPort = (static_cast<quint16>(buf[2]) << 8) | static_cast<quint16>(buf[3]);
+    const quint32 ipRaw = (static_cast<quint32>(buf[4]) << 24) | (static_cast<quint32>(buf[5]) << 16) | (static_cast<quint32>(buf[6]) << 8) | static_cast<quint32>(buf[7]);
+    QHostAddress dstIp(ipRaw);
 
-    channelId = GenerateRandomString(8, "hex");
+    QByteArray userId;
+    while (true) {
+        QByteArray b = readExact(clientSock, 1);
+        if (b.isEmpty()) {
+            rejectAndClose(clientSock, QByteArray("\x00\x5b\x00\x00\x00\x00\x00\x00", 8));
+            return false;
+        }
+        if (static_cast<uchar>(b[0]) == 0x00)
+            break;
+        userId.append(b);
+        if (userId.size() > 256) {
+            rejectAndClose(clientSock, QByteArray("\x00\x5b\x00\x00\x00\x00\x00\x00", 8));
+            return false;
+        }
+    }
+    Q_UNUSED(userId);
 
-    otpData["tunnel_id"]  = tunnelId;
-    otpData["channel_id"] = channelId;
-    otpData["host"]       = dstIp.toString();
+    QString host = dstIp.toString();
+    if (buf[4] == 0 && buf[5] == 0 && buf[6] == 0 && buf[7] != 0) {
+        QByteArray domain;
+        while (true) {
+            QByteArray b = readExact(clientSock, 1);
+            if (b.isEmpty()) {
+                rejectAndClose(clientSock, QByteArray("\x00\x5b\x00\x00\x00\x00\x00\x00", 8));
+                return false;
+            }
+            if (static_cast<uchar>(b[0]) == 0x00)
+                break;
+            domain.append(b);
+            if (domain.size() > 255) {
+                rejectAndClose(clientSock, QByteArray("\x00\x5b\x00\x00\x00\x00\x00\x00", 8));
+                return false;
+            }
+        }
+        if (domain.isEmpty()) {
+            rejectAndClose(clientSock, QByteArray("\x00\x5b\x00\x00\x00\x00\x00\x00", 8));
+            return false;
+        }
+        host = QString::fromUtf8(domain);
+    }
+
+    channelId = static_cast<qint64>(QRandomGenerator::global()->generate());
+
+    otpData["tunnel_id"]  = toJsonI64(tunnelId);
+    otpData["channel_id"] = toJsonI64(channelId);
+    otpData["host"]       = host;
     otpData["port"]       = QString::number(tPort);
 
     return true;
 }
 
-bool SocksHandshakeWorker::processSocks5(QJsonObject& otpData, QString& channelId)
+bool SocksHandshakeWorker::processSocks5(QJsonObject& otpData, qint64& channelId)
 {
     if (!clientSock->waitForReadyRead(3000) || clientSock->bytesAvailable() < 2) {
         rejectAndClose(clientSock, QByteArray("\x00\x01\x00", 3));
         return false;
     }
 
-    QByteArray buf = clientSock->read(2);
+    QByteArray buf = readExact(clientSock, 2);
     if (buf.size() != 2 || static_cast<uchar>(buf[0]) != 0x05) {
         rejectAndClose(clientSock, QByteArray("\x00\x01\x00", 3));
         return false;
     }
 
     uchar socksAuthCount = static_cast<uchar>(buf[1]);
-    buf = clientSock->read(socksAuthCount);
+    buf = readExact(clientSock, socksAuthCount);
     if (buf.size() != socksAuthCount) {
         rejectAndClose(clientSock, QByteArray("\x05\xFF\x00", 3));
         return false;
@@ -111,26 +172,26 @@ bool SocksHandshakeWorker::processSocks5(QJsonObject& otpData, QString& channelI
             rejectAndClose(clientSock, QByteArray("\x01\x01", 2));
             return false;
         }
-        buf = clientSock->read(2);
+        buf = readExact(clientSock, 2);
         if (buf.size() != 2 || static_cast<uchar>(buf[0]) != 0x01) {
             rejectAndClose(clientSock, QByteArray("\x01\x01", 2));
             return false;
         }
         uchar usernameLen = static_cast<uchar>(buf[1]);
-        buf = clientSock->read(usernameLen);
+        buf = readExact(clientSock, usernameLen);
         if (buf.size() != usernameLen) {
             rejectAndClose(clientSock, QByteArray("\x01\x01", 2));
             return false;
         }
         QString recvUsername = QString::fromUtf8(buf);
 
-        buf = clientSock->read(1);
+        buf = readExact(clientSock, 1);
         if (buf.size() != 1) {
             rejectAndClose(clientSock, QByteArray("\x01\x01", 2));
             return false;
         }
         uchar passwordLen = static_cast<uchar>(buf[0]);
-        buf = clientSock->read(passwordLen);
+        buf = readExact(clientSock, passwordLen);
         if (buf.size() != passwordLen) {
             rejectAndClose(clientSock, QByteArray("\x01\x01", 2));
             return false;
@@ -158,7 +219,7 @@ bool SocksHandshakeWorker::processSocks5(QJsonObject& otpData, QString& channelI
         return false;
     }
 
-    buf = clientSock->read(4);
+    buf = readExact(clientSock, 4);
     if (buf.size() != 4 || static_cast<uchar>(buf[0]) != 0x05 || static_cast<uchar>(buf[1]) != 0x01) {
         rejectAndClose(clientSock, QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00", 10));
         return false;
@@ -170,7 +231,7 @@ bool SocksHandshakeWorker::processSocks5(QJsonObject& otpData, QString& channelI
 
     switch (addrType) {
         case 0x01: {
-            buf = clientSock->read(4);
+            buf = readExact(clientSock, 4);
             if (buf.size() != 4) {
                 rejectAndClose(clientSock, QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00", 10));
                 return false;
@@ -181,13 +242,13 @@ bool SocksHandshakeWorker::processSocks5(QJsonObject& otpData, QString& channelI
             break;
         }
         case 0x03: {
-            buf = clientSock->read(1);
+            buf = readExact(clientSock, 1);
             if (buf.size() != 1) {
                 rejectAndClose(clientSock, QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00", 10));
                 return false;
             }
             uchar domainLen = static_cast<uchar>(buf[0]);
-            buf = clientSock->read(domainLen);
+            buf = readExact(clientSock, domainLen);
             if (buf.size() != domainLen) {
                 rejectAndClose(clientSock, QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00", 10));
                 return false;
@@ -196,7 +257,7 @@ bool SocksHandshakeWorker::processSocks5(QJsonObject& otpData, QString& channelI
             break;
         }
         case 0x04: {
-            buf = clientSock->read(16);
+            buf = readExact(clientSock, 16);
             if (buf.size() != 16) {
                 rejectAndClose(clientSock, QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00", 10));
                 return false;
@@ -211,17 +272,17 @@ bool SocksHandshakeWorker::processSocks5(QJsonObject& otpData, QString& channelI
         }
     }
 
-    buf = clientSock->read(2);
+    buf = readExact(clientSock, 2);
     if (buf.size() != 2) {
         rejectAndClose(clientSock, QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00", 10));
         return false;
     }
     quint16 dstPort = (static_cast<uchar>(buf[0]) << 8) | static_cast<uchar>(buf[1]);
 
-    channelId = GenerateRandomString(8, "hex");
+    channelId = static_cast<qint64>(QRandomGenerator::global()->generate());
 
-    otpData["tunnel_id"]  = tunnelId;
-    otpData["channel_id"] = channelId;
+    otpData["tunnel_id"]  = toJsonI64(tunnelId);
+    otpData["channel_id"] = toJsonI64(channelId);
     otpData["mode"]       = mode;
     otpData["host"]       = dstAddress;
     otpData["port"]       = QString::number(dstPort);

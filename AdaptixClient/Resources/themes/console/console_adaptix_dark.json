@@ -1,8 +1,6 @@
 {
     "background": {
-        "color": "#000000",
-        "image": ":/backgrounds/adaptix_background",
-        "dimming": 85
+        "color": "#000000"
     },
     "text": "#E0E0E0",
     "console": {

@@ -2220,7 +2220,7 @@ void QlementineStyle::drawControl(ControlElement ce, const QStyleOption* opt, QP
         const auto& totalRect = optComboBox->rect;
         // Draw text and icon.
         const auto mouse = getMouseState(optComboBox->state);
-        const auto& fgColor = comboBoxForegroundColor(mouse);
+        const auto& fgColor = buttonForegroundColor(mouse, ColorRole::Secondary, w);
         const auto& currentFgColor =
           _impl->animations.animateForegroundColor(w, fgColor, _impl->theme.animationDuration);
         const auto indicatorSize = _impl->theme.iconSize;

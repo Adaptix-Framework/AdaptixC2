@@ -2,8 +2,11 @@
 #define ADAPTIXCLIENT_LOGSWIDGET_H
 
 #include <main.h>
+#include <Client/ConsoleTheme.h>
 #include <UI/Widgets/AbstractDock.h>
-#include <Utils/CustomElements.h>
+#include <Utils/CustomElements/TextEditConsole.h>
+#include <Utils/CustomElements/ClickableLabel.h>
+#include <Utils/CustomElements/SearchPanel.h>
 
 class AdaptixWidget;
 
@@ -11,32 +14,38 @@ class LogsWidget : public DockTab
 {
     QGridLayout*     mainGridLayout      = nullptr;
     QGridLayout*     logsGridLayout      = nullptr;
-    // QGridLayout*     todoGridLayout      = nullptr;
     TextEditConsole* logsConsoleTextEdit = nullptr;
     QLabel*          logsLabel           = nullptr;
-    // QLabel*          todoLabel           = nullptr;
     QSplitter*       mainHSplitter       = nullptr;
     QWidget*         logsWidget          = nullptr;
-    // QWidget*         todoWidget          = nullptr;
+    QGridLayout*     serverLogsLayout    = nullptr;
+    TextEditConsole* serverLogsTextEdit  = nullptr;
+    QWidget*         serverLogsWidget    = nullptr;
 
-    QWidget*        searchWidget   = nullptr;
-    QHBoxLayout*    searchLayout   = nullptr;
-    ClickableLabel* prevButton     = nullptr;
-    ClickableLabel* nextButton     = nullptr;
-    QLabel*         searchLabel    = nullptr;
-    QLineEdit*      searchLineEdit = nullptr;
-    ClickableLabel* hideButton     = nullptr;
-    QSpacerItem*    spacer         = nullptr;
-    QShortcut*      shortcutSearch = nullptr;
+    ClickableLabel*      loadEarlierButton = nullptr;
+    int                  serverPageSize    = 50;
+    int                  serverLoadedCount = 0;
+    int                  serverTotalKnown  = 0;
+    bool                 serverLoadingPage = false;
 
-    bool userSelectedCompletion = false;
-    int  currentIndex = -1;
-    QVector<QTextEdit::ExtraSelection> allSelections;
+    bool                 serverLogsReady = false;
+    int                  serverLogsEpoch = 0;
+    QList<QJsonObject>   pendingServerLogs;
+    QSet<qint64>         seenLogIds;
+    qint64               oldestLoadedId  = 0;
+
+    SearchPanel* searchPanel       = nullptr;
+    SearchPanel* serverSearchPanel = nullptr;
+
+    const AdaptixWidget* adaptixWidget = nullptr;
 
     void createUI();
-    void findAndHighlightAll(const QString& pattern);
-    void highlightCurrent() const;
     void applyTheme();
+    ConsoleThemeData getActiveTheme() const;
+    void appendServerLogEntry(qint64 id, qint64 time, int status, int level, const QString& source, const QString& message);
+    void loadInitialServerPage();
+    void loadMoreServerPage();
+    void updateLoadEarlierVisibility();
 
 public:
     explicit LogsWidget(const AdaptixWidget* w);
@@ -44,13 +53,11 @@ public:
 
     void SetUpdatesEnabled(bool enabled);
 
-     void AddLogs(int type, qint64 time, const QString &Message);
-     void Clear() const;
-
-public Q_SLOTS:
-    void toggleSearchPanel();
-    void handleSearch();
-    void handleSearchBackward();
+    void AddLogs(int type, qint64 time, const QString &Message);
+    void AddServerLogBatch(const QJsonArray& items);
+    void ReloadServerLogs();
+    void ResetServerLogs();
+    void Clear() const;
 };
 
 #endif

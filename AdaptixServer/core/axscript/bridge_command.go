@@ -244,6 +244,26 @@ func (b *jsCommandBuilder) SetPreHook(call goja.FunctionCall) goja.Value {
 	return goja.Undefined()
 }
 
+func (b *jsCommandBuilder) SetPostHook(call goja.FunctionCall) goja.Value {
+	fn, ok := goja.AssertFunction(call.Argument(0))
+	if !ok {
+		panic(b.engine.runtime.NewTypeError("setPostHook: argument is not a function"))
+	}
+	b.command.HasPostHook = true
+	b.command.PostHookFunc = fn
+	return goja.Undefined()
+}
+
+func (b *jsCommandBuilder) SetHandler(call goja.FunctionCall) goja.Value {
+	fn, ok := goja.AssertFunction(call.Argument(0))
+	if !ok {
+		panic(b.engine.runtime.NewTypeError("setHandler: argument is not a function"))
+	}
+	b.command.HasHandler = true
+	b.command.HandlerFunc = fn
+	return goja.Undefined()
+}
+
 /// CommandGroup
 
 type jsCommandGroupBuilder struct {

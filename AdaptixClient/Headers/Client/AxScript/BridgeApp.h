@@ -30,8 +30,8 @@ public Q_SLOTS:
     QString  arch(const QString &id) const;
     QString  bof_pack(const QString &types, const QJSValue &args);
     void     copy_to_clipboard(const QString &text);
-    // Code conversion (language: "c", "csharp", "python", "golang", "vbs", "nim", "rust", "powershell")
-    QString  convert_to_code(const QString &language, const QString &base64Data, const QString &varName = "shellcode") const;
+    // Code conversion (language: "c", "csharp", "python", "golang", "vbs", "nim", "rust", "powershell").
+    QString  convert_to_code(const QString &language, const QByteArray &data, const QString &varName = "shellcode") const;
     void     console_message(const QString &id, const QString &message, const QString &type = "", const QString &text = "");
     QJSValue credentials() const;
     void     credentials_add(const QString &username, const QString &password, const QString &realm = "", const QString &type = "password", const QString &tag = "", const QString &storage = "manual", const QString &host = "");
@@ -40,10 +40,16 @@ public Q_SLOTS:
     QObject* create_commands_group(const QString &name, const QJSValue& array);
     QJSValue downloads() const;
     // (algorithm: "hex", "base64", "base32", "zip", "xor")
-    QString  decode_data(const QString &algorithm, const QString &data, const QString &key = QString()) const;
-    QString  decode_file(const QString &algorithm, const QString &path, const QString &key = QString()) const;
-    QString  encode_data(const QString &algorithm, const QString &data, const QString &key = QString()) const;
-    QString  encode_file(const QString &algorithm, const QString &path, const QString &key = QString()) const;
+    // encode_data / encode_file: `data` may be ArrayBuffer / Uint8Array / string. Return shape depends on alg:
+    //   - text-format algs ("hex" / "base64" / "base32") return a JS string
+    //   - binary-format algs ("xor" / "zip")             return ArrayBuffer
+    // decode_data / decode_file: input shape depends on alg:
+    //   - text-format algs accept the encoded string
+    //   - binary-format algs accept ArrayBuffer / Uint8Array / string-as-bytes
+    QVariant   encode_data(const QString &algorithm, const QByteArray &data, const QString &key = QString()) const;
+    QVariant   encode_file(const QString &algorithm, const QString &path, const QString &key = QString()) const;
+    QByteArray decode_data(const QString &algorithm, const QByteArray &data, const QString &key = QString()) const;
+    QByteArray decode_file(const QString &algorithm, const QString &path, const QString &key = QString()) const;
     void     execute_alias(const QString &id, const QString &cmdline, const QString &command, const QString &message = "", const QJSValue &hook = QJSValue(), const QJSValue &handler = QJSValue()) const;
     void     execute_alias_hook(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &hook) const;
     void     execute_alias_handler(const QString &id, const QString &cmdline, const QString &command, const QString &message, const QJSValue &handler) const;
@@ -55,15 +61,14 @@ public Q_SLOTS:
     QString  file_dirname(const QString &path) const;
     QString  file_extension(const QString &path) const;
     bool     file_exists(const QString &path) const;
-    QString  file_read(QString path) const;
-    qint64   file_size(const QString &path) const;
-    bool     file_write_text(QString path, const QString &content, bool append = false) const;
-    bool     file_write_binary(QString path, const QString &base64Content) const;
-    QString  format_size(const int &size) const;
+    QByteArray file_read(QString path) const;
+    qint64     file_size(const QString &path) const;
+    bool       file_write(QString path, const QByteArray &data, bool append = false) const;
+    QString  format_size(const qint64 &size) const;
     QString  format_time(const QString &format, const int &time) const;
     QJSValue get_commands(const QString &id) const;
     QString  get_project() const;
-    QString  hash(const QString &algorithm, int length, const QString &input);
+    QString  hash(const QString &algorithm, int length, const QByteArray &input);
     QJSValue ids() const;
     QJSValue interfaces() const;
     bool     is64(const QString &id) const;
@@ -95,6 +100,7 @@ public Q_SLOTS:
     void     targets_add(const QString &computer, const QString &domain, const QString &address, const QString &os = "unknown", const QString &osDesc = "", const QString &tag = "", const QString &info = "", bool alive = true);
     void     targets_add_list(const QVariantList &array);
     int      ticks();
+    QStringList tokenize(const QString &cmdline) const;
     QJSValue tunnels();
     QJSValue validate_command(const QString &id, const QString &command) const;
 

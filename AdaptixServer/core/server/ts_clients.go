@@ -4,7 +4,7 @@ import (
 	"AdaptixServer/core/eventing"
 	"strings"
 
-	"github.com/gorilla/websocket"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 func (ts *Teamserver) TsClientExists(username string) bool {
@@ -17,9 +17,10 @@ var InitialSyncCategories = []string{
 	SyncCategoryListeners,
 	SyncCategoryAgents,
 	SyncCategoryPivots,
+	SyncCategoryGroups,
 }
 
-func (ts *Teamserver) TsClientConnect(username string, socket *websocket.Conn, clientType uint8, consoleTeamMode bool, subscriptions []string) {
+func (ts *Teamserver) TsClientConnect(username string, socket adaptix.WebSocketConn, clientType uint8, consoleTeamMode bool, subscriptions []string) {
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataClientConnect{Username: username}
 	if !ts.EventManager.Emit(eventing.EventClientConnect, eventing.HookPre, preEvent) {
@@ -67,8 +68,8 @@ func (ts *Teamserver) TsClientDisconnect(username string) {
 
 	ts.TsNotifyClient(false, username)
 
-	var tunnelIds []string
-	ts.TunnelManager.ForEachTunnel(func(key string, tunnel *Tunnel) bool {
+	var tunnelIds []int64
+	ts.TunnelManager.ForEachTunnel(func(key int64, tunnel *Tunnel) bool {
 		if tunnel.Data.Client == username {
 			tunnelIds = append(tunnelIds, tunnel.Data.TunnelId)
 		}

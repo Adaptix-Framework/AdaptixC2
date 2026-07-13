@@ -5,6 +5,7 @@
 #include <UI/Graph/LayoutTreeTop.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Graph/GraphScene.h>
+#include <UI/Graph/GraphControlPanel.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
 
@@ -20,27 +21,34 @@ SessionsGraph::SessionsGraph(QWidget* parent) : QGraphicsView(parent)
     dockWidget->setIcon(QIcon( ":/icons/graph" ), KDDockWidgets::IconPlace::TabBar);
 
     setDragMode( QGraphicsView::RubberBandDrag );
-    setCacheMode( QGraphicsView::CacheBackground );
-    setViewportUpdateMode( QGraphicsView::MinimalViewportUpdate );
+    setCacheMode( QGraphicsView::CacheNone );
+    setViewportUpdateMode( QGraphicsView::FullViewportUpdate );
     setTransformationAnchor( QGraphicsView::AnchorUnderMouse );
     setRenderHint( QPainter::Antialiasing );
     setAlignment( Qt::AlignLeft | Qt::AlignTop );
     this->scaleView( 0.8 );
+
+    {
+        QPalette pal = this->palette();
+        pal.setColor(QPalette::Active,   QPalette::Highlight, QColor(COLOR_BrightOrange));
+        pal.setColor(QPalette::Inactive, QPalette::Highlight, QColor(COLOR_BrightOrange));
+        this->setPalette(pal);
+        viewport()->setPalette(pal);
+    }
 
     this->graphScene = new GraphScene( 10, this->mainWidget, this );
     this->graphScene->setItemIndexMethod( QGraphicsScene::NoIndex );
     setScene( this->graphScene );
 
     this->RootInit();
+
+    this->controlPanel = new GraphControlPanel(this, this->viewport());
+    this->controlPanel->show();
 }
 
 SessionsGraph::~SessionsGraph()
 {
-    if (dockWidget) {
-        dockWidget->setWidget(nullptr);
-        delete dockWidget;
-        dockWidget = nullptr;
-    }
+    dockWidget = nullptr;
 }
 
 void SessionsGraph::RootInit()
@@ -61,25 +69,22 @@ void SessionsGraph::LinkToRoot(GraphItem *item) const
     item->parentLink = new GraphItemLink(this->rootItem, item, "");
     item->parentItem = this->rootItem;
     this->rootItem->AddChild( item );
+    this->graphScene->addItem( item->parentLink );
 }
 
 void SessionsGraph::AddAgent(Agent *agent, bool drawTree)
 {
-    if (agent->data.Mark == "Terminated" || agent->data.Mark == "Inactive")
-        return;
-
     GraphItem* item = new GraphItem( this, agent );
     agent->graphItem = item;
 
-    if (agent->parentId.isEmpty())
+    if (agent->parentId == 0)
         this->LinkToRoot(item);
 
     this->graphScene->addItem( item );
-    this->graphScene->addItem( item->parentLink );
     this->items.push_back( item );
 
     if (drawTree)
-        this->TreeDraw();
+        this->ApplyFiltersAndLayout();
 }
 
 void SessionsGraph::RemoveAgent(Agent* agent, bool drawTree)
@@ -134,10 +139,10 @@ void SessionsGraph::RemoveAgent(Agent* agent, bool drawTree)
     agent->graphItem = nullptr;
 
     if (drawTree)
-        this->TreeDraw();
+        this->ApplyFiltersAndLayout();
 }
 
-void SessionsGraph::RelinkAgent(const Agent* parentAgent, const Agent* childAgent, const QString &linkName, const bool drawTree) const
+void SessionsGraph::RelinkAgent(const Agent* parentAgent, const Agent* childAgent, const QString &linkName, const bool drawTree)
 {
     if (!parentAgent || !childAgent || !parentAgent->graphItem || !childAgent->graphItem)
         return;
@@ -163,10 +168,10 @@ void SessionsGraph::RelinkAgent(const Agent* parentAgent, const Agent* childAgen
     this->graphScene->addItem( childAgent->graphItem->parentLink );
 
     if (drawTree)
-        this->TreeDraw();
+        this->ApplyFiltersAndLayout();
 }
 
-void SessionsGraph::UnlinkAgent(const Agent* parentAgent, const Agent* childAgent, bool drawTree) const
+void SessionsGraph::UnlinkAgent(const Agent* parentAgent, const Agent* childAgent, bool drawTree)
 {
     Q_UNUSED(parentAgent);
     if (!childAgent || !childAgent->graphItem)
@@ -184,12 +189,11 @@ void SessionsGraph::UnlinkAgent(const Agent* parentAgent, const Agent* childAgen
     }
 
     this->LinkToRoot(childAgent->graphItem);
-    this->graphScene->addItem( childAgent->graphItem->parentLink );
 
     childAgent->graphItem->update();
 
     if (drawTree)
-        this->TreeDraw();
+        this->ApplyFiltersAndLayout();
 }
 
 void SessionsGraph::TreeDraw() const
@@ -251,29 +255,6 @@ void SessionsGraph::scaleView(qreal scaleFactor)
     scale(scaleFactor, scaleFactor);
 }
 
-void SessionsGraph::itemMoved()
-{
-    if ( !timerId )
-        timerId = this->startTimer( 40 );
-}
-
-void SessionsGraph::timerEvent( QTimerEvent* event )
-{
-    Q_UNUSED(event);
-    bool itemsMoved = false;
-
-    for ( auto item : this->items ) {
-        item->calculateForces();
-        if (item->advancePosition())
-            itemsMoved = true;
-    }
-
-    if ( !itemsMoved ) {
-        killTimer( timerId );
-        timerId = 0;
-    }
-}
-
 void SessionsGraph::wheelEvent( QWheelEvent* event )
 {
     if ( QApplication::keyboardModifiers() & Qt::ShiftModifier ) {
@@ -288,4 +269,108 @@ void SessionsGraph::wheelEvent( QWheelEvent* event )
         verticalScrollBar()->event( event );
     }
     event->accept();
+}
+
+void SessionsGraph::resizeEvent( QResizeEvent* event )
+{
+    QGraphicsView::resizeEvent( event );
+    if (this->controlPanel)
+        this->controlPanel->reposition();
+}
+
+void SessionsGraph::drawForeground( QPainter* painter, const QRectF& rect )
+{
+    Q_UNUSED(rect);
+    const QRect rb = rubberBandRect();
+    if (rb.isNull())
+        return;
+
+    painter->save();
+    painter->resetTransform();
+    QColor line(COLOR_BrightOrange);
+    QColor fill(line);
+    fill.setAlpha(50);
+    painter->setPen(QPen(line, 1));
+    painter->setBrush(fill);
+    painter->drawRect(rb.adjusted(0, 0, -1, -1));
+    painter->restore();
+}
+
+static bool agentIsActive(const Agent* agent)
+{
+    if (!agent)
+        return true;
+    const QString& m = agent->data.Mark;
+    return m != "Terminated" && m != "Inactive" && m != "Disconnect" && m != "Unlink";
+}
+
+static void applyVisibility(GraphItem* item, const SessionsGraph* view, bool hideAncestral)
+{
+    if (!item)
+        return;
+
+    bool hide = hideAncestral;
+    if (!hide && item->agent) {
+        if (view->GetFilterActiveOnlyActive() && !agentIsActive(item->agent))
+            hide = true;
+        else if (view->GetFilterWithChildOnly() && item->agent->childsId.isEmpty())
+            hide = true;
+    }
+
+    item->setVisible(!hide);
+    if (item->note)
+        item->note->setVisible(!hide);
+    if (item->parentLink)
+        item->parentLink->setVisible(!hide && !(item->parentItem && !item->parentItem->isVisible()));
+
+    for (GraphItem* child : item->childItems)
+        applyVisibility(child, view, hide);
+}
+
+void SessionsGraph::ApplyFiltersAndLayout()
+{
+    applyVisibility(this->rootItem, this, /*hideAncestral=*/false);
+    this->TreeDraw();
+
+    this->graphScene->invalidate(this->graphScene->sceneRect(), QGraphicsScene::AllLayers);
+    if (auto* vp = this->viewport())
+        vp->update();
+}
+
+void SessionsGraph::SetFilterActiveOnly(bool on)
+{
+    filterActiveOnly = on;
+    ApplyFiltersAndLayout();
+}
+
+void SessionsGraph::SetFilterWithChildOnly(bool on)
+{
+    filterWithChildOnly = on;
+    ApplyFiltersAndLayout();
+}
+
+void SessionsGraph::SetNoteField(int field, bool on)
+{
+    switch (field) {
+        case 0: noteFields.id       = on; break;
+        case 1: noteFields.name     = on; break;
+        case 2: noteFields.pid      = on; break;
+        case 3: noteFields.user     = on; break;
+        case 4: noteFields.computer = on; break;
+        default: return;
+    }
+    RefreshAllNotes();
+}
+
+void SessionsGraph::SetNoteFields(const GraphNoteFields& f)
+{
+    noteFields = f;
+    RefreshAllNotes();
+}
+
+void SessionsGraph::RefreshAllNotes() const
+{
+    for (GraphItem* item : this->items)
+        if (item && item->agent)
+            item->refreshNoteContent();
 }

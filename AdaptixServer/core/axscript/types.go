@@ -91,7 +91,7 @@ type PendingHook struct {
 	ID      string
 	Engine  *ScriptEngine
 	Func    goja.Callable
-	AgentID string
+	AgentID int64
 	Client  string
 }
 

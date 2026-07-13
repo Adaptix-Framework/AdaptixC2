@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 /// SYNC
@@ -16,17 +16,15 @@ func (ts *Teamserver) TsClientGuiDisksWindows(taskData adaptix.TaskData, drives 
 		return
 	}
 
-	value, ok := ts.Agents.Get(taskData.AgentId)
+	agent, ok := ts.Agents.Get(taskData.AgentId)
 	if !ok {
 		return
 	}
-	agent := value.(*Agent)
 
-	value, ok = agent.RunningTasks.Get(taskData.TaskId)
+	task, ok := agent.RunningTasks.Get(taskData.TaskId)
 	if !ok {
 		return
 	}
-	task := value.(adaptix.TaskData)
 
 	if task.Type != adaptix.TASK_TYPE_BROWSER {
 		return
@@ -60,17 +58,15 @@ func (ts *Teamserver) TsClientGuiFilesUnix(taskData adaptix.TaskData, path strin
 }
 
 func (ts *Teamserver) TsClientGuiFiles(taskData adaptix.TaskData, path string, jsonFiles string) {
-	value, ok := ts.Agents.Get(taskData.AgentId)
+	agent, ok := ts.Agents.Get(taskData.AgentId)
 	if !ok {
 		return
 	}
-	agent := value.(*Agent)
 
-	value, ok = agent.RunningTasks.Get(taskData.TaskId)
+	task, ok := agent.RunningTasks.Get(taskData.TaskId)
 	if !ok {
 		return
 	}
-	task := value.(adaptix.TaskData)
 
 	if task.Type != adaptix.TASK_TYPE_BROWSER {
 		return
@@ -91,17 +87,15 @@ func (ts *Teamserver) TsClientGuiFiles(taskData adaptix.TaskData, path string, j
 }
 
 func (ts *Teamserver) TsClientGuiFilesStatus(taskData adaptix.TaskData) {
-	value, ok := ts.Agents.Get(taskData.AgentId)
+	agent, ok := ts.Agents.Get(taskData.AgentId)
 	if !ok {
 		return
 	}
-	agent := value.(*Agent)
 
-	value, ok = agent.RunningTasks.Get(taskData.TaskId)
+	task, ok := agent.RunningTasks.Get(taskData.TaskId)
 	if !ok {
 		return
 	}
-	task := value.(adaptix.TaskData)
 
 	if task.Type != adaptix.TASK_TYPE_BROWSER {
 		return
@@ -132,17 +126,15 @@ func (ts *Teamserver) TsClientGuiProcessUnix(taskData adaptix.TaskData, process 
 }
 
 func (ts *Teamserver) TsClientGuiProcess(taskData adaptix.TaskData, jsonFiles string) {
-	value, ok := ts.Agents.Get(taskData.AgentId)
+	agent, ok := ts.Agents.Get(taskData.AgentId)
 	if !ok {
 		return
 	}
-	agent := value.(*Agent)
 
-	value, ok = agent.RunningTasks.Get(taskData.TaskId)
+	task, ok := agent.RunningTasks.Get(taskData.TaskId)
 	if !ok {
 		return
 	}
-	task := value.(adaptix.TaskData)
 
 	if task.Type != adaptix.TASK_TYPE_BROWSER {
 		return

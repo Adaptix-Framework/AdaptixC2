@@ -121,6 +121,17 @@ void Commander::SetServerGroupEngine(const QString &scriptName, QJSEngine* engin
 {
     if (!serverGroups.contains(scriptName))
         return;
+
+    if (!engine) {
+        for (auto& cmd : serverGroups[scriptName].group.commands) {
+            cmd.pre_hook = QJSValue();
+            cmd.post_hook = QJSValue();
+            cmd.handler = QJSValue();
+            cmd.is_pre_hook = false;
+            cmd.is_post_hook = false;
+            cmd.is_handler = false;
+        }
+    }
     serverGroups[scriptName].group.engine = engine;
 }
 
@@ -162,7 +173,7 @@ void Commander::RemoveClientGroup(const QString &filepath)
     Q_EMIT commandsUpdated();
 }
 
-CommanderResult Commander::ProcessInputForGroup(const CommandsGroup &group, const QString &commandName, QStringList args, const QString &agentId, const QString &cmdline)
+CommanderResult Commander::ProcessInputForGroup(const CommandsGroup &group, const QString &commandName, QStringList args, qint64 agentId, const QString &cmdline)
 {
     for (const Command &command : group.commands) {
         if (command.name != commandName)
@@ -181,6 +192,10 @@ CommanderResult Commander::ProcessInputForGroup(const CommandsGroup &group, cons
                 cmdResult.error = true;
                 cmdResult.message = hook_result;
             }
+            if (!cmdResult.output && command.is_post_hook && command.post_hook.isCallable())
+                cmdResult.post_hook = {true, group.filepath, command.post_hook};
+            if (!cmdResult.output && command.is_handler && command.handler.isCallable())
+                cmdResult.handler = {true, group.filepath, command.handler};
             return cmdResult;
         }
 
@@ -204,6 +219,10 @@ CommanderResult Commander::ProcessInputForGroup(const CommandsGroup &group, cons
                 cmdResult.error = true;
                 cmdResult.message = hook_result;
             }
+            if (!cmdResult.output && subcommand.is_post_hook && subcommand.post_hook.isCallable())
+                cmdResult.post_hook = {true, group.filepath, subcommand.post_hook};
+            if (!cmdResult.output && subcommand.is_handler && subcommand.handler.isCallable())
+                cmdResult.handler = {true, group.filepath, subcommand.handler};
             return cmdResult;
         }
         return CommanderResult{true, true, "Subcommand not found", {}, false, {}};
@@ -211,7 +230,7 @@ CommanderResult Commander::ProcessInputForGroup(const CommandsGroup &group, cons
     return CommanderResult{false, false, "__not_found__", {}, false, {}};
 }
 
-CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
+CommanderResult Commander::ProcessInput(qint64 agentId, QString cmdline)
 {
     QStringList parts = unserializeParams(cmdline);
     if (parts.isEmpty())
@@ -244,7 +263,7 @@ CommanderResult Commander::ProcessInput(QString agentId, QString cmdline)
     return CommanderResult{true, true, "Command not found", {}, false, {}};
 }
 
-QString Commander::ProcessPreHook(QJSEngine *engine, const Command &command, const QString &agentId, const QString &cmdline, const QJsonObject &jsonObj, QStringList args)
+QString Commander::ProcessPreHook(QJSEngine *engine, const Command &command, qint64 agentId, const QString &cmdline, const QJsonObject &jsonObj, QStringList args)
 {
     if (!engine)
         return "Ax Engine is not available";
@@ -310,14 +329,14 @@ QString Commander::GenerateCommandHelp(const Command &command, const QString &pa
 CommanderResult Commander::ProcessCommand(const Command &command, const QString &commandName, QStringList args, QJsonObject jsonObj)
 {
     QMap<QString, QString> parsedArgsMap;
-    QString wideKey;
+    QString wideKey = args.isEmpty() ? "" : args[0];
 
     for (int i = 0; i < args.size(); ++i) {
         QString arg = args[i];
 
         bool isWideArgs = true;
 
-        for (Argument commandArg : command.args) {
+        for (const Argument& commandArg : command.args) {
             if (commandArg.flag) {
                 if (commandArg.type == "BOOL" && commandArg.mark == arg) {
                     parsedArgsMap[commandArg.mark] = "true";
@@ -349,7 +368,7 @@ CommanderResult Commander::ProcessCommand(const Command &command, const QString 
         }
     }
 
-    for (Argument commandArg : command.args) {
+    for (const Argument& commandArg : command.args) {
         if (parsedArgsMap.contains(commandArg.name) || parsedArgsMap.contains(commandArg.mark)) {
             if (commandArg.type == "STRING") {
                 jsonObj[commandArg.name] = parsedArgsMap[commandArg.name];

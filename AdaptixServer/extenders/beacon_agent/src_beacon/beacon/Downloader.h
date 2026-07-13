@@ -32,7 +32,7 @@ public:
 
 	Downloader( ULONG chunk_size );
 
-	DownloadData CreateDownloadData(ULONG taskId, HANDLE hFile, ULONG64 size);
+	DownloadData CreateDownloadData(ULONG taskId, ULONG fileId, HANDLE hFile, ULONG64 size);
 	void         ProcessDownloader(Packer* packer);
 	BOOL		 IsTasks();
 

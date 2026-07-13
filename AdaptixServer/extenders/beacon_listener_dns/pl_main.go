@@ -3,39 +3,26 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	mrand "math/rand/v2"
 	"strconv"
 	"strings"
-	"time"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
-type Teamserver interface {
-	TsAgentIsExists(agentId string) bool
-	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
-	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentSetTick(agentId string, listenerName string) error
-	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
-
-	TsFrameHasPending(sessionId string) bool
-	TsFramePut(sessionId string, index uint32, data []byte, totalSize uint32, chunkCount uint16) (complete bool, nextExpected uint32, received uint32, sackBitmap uint32, assembled []byte)
-	TsFrameGetChunk(sessionId string, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (total uint32, offset uint32, data []byte, taskNonce uint32, isEmpty bool)
-	TsFrameAckDelivery(sessionId string, ackOffset uint32, ackNonce uint32)
-}
+const logSrc = "listener:beacon_dns"
 
 type PluginListener struct{}
 
 var (
 	ModuleDir       string
 	ListenerDataDir string
-	Ts              Teamserver
+	Ts              adaptix.Teamserver
 )
 
 func InitPlugin(ts any, moduleDir string, listenerDir string) adaptix.PluginListener {
 	ModuleDir = moduleDir
 	ListenerDataDir = listenerDir
-	Ts = ts.(Teamserver)
+	Ts = ts.(adaptix.Teamserver)
 	return &PluginListener{}
 }
 
@@ -58,7 +45,6 @@ func (p *PluginListener) Create(name string, config string, customData []byte) (
 		if err != nil {
 			return nil, listenerData, customdData, err
 		}
-		//conf.EncryptKey = normalizeEncryptKey(conf.EncryptKey)
 	} else {
 		err = json.Unmarshal(customData, &conf)
 		if err != nil {
@@ -74,23 +60,22 @@ func (p *PluginListener) Create(name string, config string, customData []byte) (
 			conf.Domains = append(conf.Domains, d)
 		}
 	}
-	if conf.BurstSleep <= 0 {
-		conf.BurstSleep = 50
-	}
-	if conf.BurstJitter < 0 || conf.BurstJitter > 90 {
-		conf.BurstJitter = 0
-	}
 	if conf.TTL <= 0 {
 		conf.TTL = 10
 	}
 	if conf.PktSize <= 0 || conf.PktSize > 64000 {
 		conf.PktSize = defaultChunkSize
 	}
+	if conf.BurstSleep <= 0 {
+		conf.BurstSleep = 50
+	}
+	if conf.BurstJitter < 0 || conf.BurstJitter > 90 {
+		conf.BurstJitter = 0
+	}
 
 	transport := &TransportDNS{
 		Name:   name,
 		Config: conf,
-		rng:    mrand.New(mrand.NewPCG(uint64(time.Now().UnixNano()), uint64(time.Now().UnixNano()))),
 	}
 
 	listenerData = adaptix.ListenerData{
@@ -141,6 +126,7 @@ func (l *Listener) Edit(config string) (adaptix.ListenerData, []byte, error) {
 
 	if conf.Domain != "" {
 		l.transport.Config.Domain = conf.Domain
+		l.transport.Config.Domains = nil
 		for _, d := range strings.Split(conf.Domain, ",") {
 			d = strings.TrimSpace(d)
 			d = strings.ToLower(d)
@@ -156,15 +142,13 @@ func (l *Listener) Edit(config string) (adaptix.ListenerData, []byte, error) {
 	if conf.PktSize != 0 {
 		l.transport.Config.PktSize = conf.PktSize
 	}
+	l.transport.Config.BurstEnabled = conf.BurstEnabled
 	if conf.BurstSleep > 0 {
 		l.transport.Config.BurstSleep = conf.BurstSleep
 	}
-	if conf.BurstJitter >= 0 {
+	if conf.BurstJitter >= 0 && conf.BurstJitter <= 90 {
 		l.transport.Config.BurstJitter = conf.BurstJitter
 	}
-	l.transport.Config.BurstEnabled = conf.BurstEnabled
-
-	/////
 
 	listenerData = adaptix.ListenerData{
 		BindHost:  l.transport.Config.HostBind,
@@ -173,7 +157,7 @@ func (l *Listener) Edit(config string) (adaptix.ListenerData, []byte, error) {
 		Status:    "Listen",
 		Protocol:  "dns",
 	}
-	if !l.transport.Active {
+	if !l.transport.IsActive() {
 		listenerData.Status = "Closed"
 	}
 
@@ -212,8 +196,8 @@ func (l *Listener) GetProfile() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (l *Listener) InternalHandler(data []byte) (string, error) {
-	var agentId = ""
+func (l *Listener) InternalHandler(data []byte) (int64, error) {
+	var agentId int64 = 0
 
 	/// START CODE HERE
 

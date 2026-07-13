@@ -3,8 +3,9 @@
 
 #include <main.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Utils/CustomElements/CardListWidget.h>
 #include <Client/AuthProfile.h>
-#include <Utils/CustomElements.h>
+
 #include <oclero/qlementine/widgets/PopoverButton.hpp>
 #include <oclero/qlementine/widgets/Popover.hpp>
 #include <oclero/qlementine/widgets/Menu.hpp>
@@ -18,14 +19,12 @@ class DialogAgent : public QDialog
 Q_OBJECT
 
     QLabel*         listenerLabel       = nullptr;
-    QLineEdit*      listenerInput       = nullptr;
-    QLineEdit*      listenerDisplayEdit = nullptr;
     oclero::qlementine::PopoverButton* listenerSelectBtn   = nullptr;
     oclero::qlementine::Popover*       listenerPopover     = nullptr;
     QListWidget*    listenerListWidget  = nullptr;
     QPushButton*    btnMoveUp           = nullptr;
     QPushButton*    btnMoveDown         = nullptr;
-    QWidget*        listenerSelectionWidget = nullptr;
+    QWidget*        listenerChipsContainer  = nullptr;
     QLabel*         agentLabel          = nullptr;
     QComboBox*      agentCombobox       = nullptr;
     QLabel*         profileLabel        = nullptr;
@@ -33,6 +32,7 @@ Q_OBJECT
     QLineEdit*      inputProfileName    = nullptr;
     bool            profileNameManuallyEdited = false;
     QPushButton*    buildButton         = nullptr;
+    QPushButton*    cancelButton        = nullptr;
     QGroupBox*      agentConfigGroupbox = nullptr;
     QStackedWidget* configStackWidget   = nullptr;
 
@@ -42,6 +42,9 @@ Q_OBJECT
     QTextEdit*      buildLogOutput      = nullptr;
     QThread*        buildThread         = nullptr;
     BuildWorker*    buildWorker         = nullptr;
+    QString         buildFileName;
+    QByteArray      buildFileContent;
+    QPushButton*    fileLinkButton      = nullptr;
 
     QLabel*           label_Profiles    = nullptr;
     CardListWidget*   cardWidget        = nullptr;
@@ -61,6 +64,8 @@ Q_OBJECT
     QMap<QString, AxUI> ax_uis;
 
     void regenerateAgentUI(const QString &agentName, const QStringList &selectedListeners);
+    void rebuildListenerChips();
+    void rebuildSingleListenerChip(const QString &name);
 
     void createUI();
     void loadProfiles();
@@ -92,6 +97,7 @@ protected Q_SLOTS:
     void onBuildConnected();
     void onBuildMessage(const QString &msg);
     void onBuildFinished();
+    void onSaveBuildFile();
     void stopBuild();
     void onListenerSelectionChanged(const QListWidgetItem *item);
     void onMoveListenerUp();

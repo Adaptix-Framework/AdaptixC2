@@ -1,12 +1,12 @@
 package extender
 
 import (
-	"AdaptixServer/core/utils/logs"
+	"fmt"
 	"os"
 	"path/filepath"
 	"plugin"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/goccy/go-yaml"
 )
 
@@ -27,7 +27,7 @@ func (ex *AdaptixExtender) ExServiceLoad(configPath string) error {
 		return err
 	}
 
-	if _, exists := ex.serviceModules[configService.ServiceName]; exists {
+	if ex.serviceModules.Contains(configService.ServiceName) {
 		return ErrServiceAlreadyLoaded
 	}
 
@@ -44,12 +44,12 @@ func (ex *AdaptixExtender) ExServiceLoad(configPath string) error {
 
 	plInitPlugin, ok := sym.(func(ts any, moduleDir string, serviceConfig string) adaptix.PluginService)
 	if !ok {
-		return err
+		return fmt.Errorf("unexpected InitPlugin signature in %s", pluginPath)
 	}
 
 	plService := plInitPlugin(ex.ts, filepath.Dir(pluginPath), configService.ServiceConfig)
 	if plService == nil {
-		return err
+		return fmt.Errorf("InitPlugin returned nil for %s", pluginPath)
 	}
 
 	serviceInfo := ServiceInfo{
@@ -60,7 +60,7 @@ func (ex *AdaptixExtender) ExServiceLoad(configPath string) error {
 		axPath := filepath.Dir(configPath) + "/" + configService.AxFile
 		axContent, err := os.ReadFile(axPath)
 		if err != nil {
-			logs.Warn("", "failed to read ax file %s: %s", axPath, err.Error())
+			ex.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server:extender_manager", "failed to read ax file %s: %s", axPath, err.Error())
 		} else {
 			serviceInfo.AX = string(axContent)
 		}
@@ -71,13 +71,13 @@ func (ex *AdaptixExtender) ExServiceLoad(configPath string) error {
 		return err
 	}
 
-	ex.serviceModules[serviceInfo.Name] = plService
-	logs.Success("", "Service '%s' loaded", configService.ServiceName)
+	ex.serviceModules.Put(serviceInfo.Name, plService)
+	ex.ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server:extender_manager", "Service '%s' loaded", configService.ServiceName)
 	return nil
 }
 
 func (ex *AdaptixExtender) ExServiceUnload(serviceName string) error {
-	if _, exists := ex.serviceModules[serviceName]; !exists {
+	if !ex.serviceModules.Contains(serviceName) {
 		return ErrServiceNotFound
 	}
 
@@ -86,8 +86,8 @@ func (ex *AdaptixExtender) ExServiceUnload(serviceName string) error {
 		return err
 	}
 
-	delete(ex.serviceModules, serviceName)
-	logs.Success("", "Service '%s' unloaded", serviceName)
+	ex.serviceModules.Delete(serviceName)
+	ex.ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server:extender_manager", "Service '%s' unloaded", serviceName)
 	return nil
 }
 
@@ -100,8 +100,9 @@ func (ex *AdaptixExtender) ExServiceCall(serviceName string, operator string, fu
 
 func (ex *AdaptixExtender) ExServiceList() []string {
 	var services []string
-	for name := range ex.serviceModules {
+	ex.serviceModules.ForEachFast(func(name string, _ adaptix.PluginService) bool {
 		services = append(services, name)
-	}
+		return true
+	})
 	return services
 }

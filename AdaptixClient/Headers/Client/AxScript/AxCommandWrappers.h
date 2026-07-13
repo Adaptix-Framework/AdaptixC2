@@ -29,6 +29,9 @@ public:
     Q_INVOKABLE void addArgFlagFile(const QString &flag, const QString &name, bool required = false, const QString &description = "");
 
     Q_INVOKABLE void setPreHook(const QJSValue& handler);
+    Q_INVOKABLE void setPostHook(const QJSValue& handler);
+    Q_INVOKABLE void setHandler(const QJSValue& handler);
+
 
 Q_SIGNALS:
     void scriptError(const QString &msg);
@@ -40,7 +43,6 @@ Q_SIGNALS:
 
 class AxCommandGroupWrapper : public QObject {
 Q_OBJECT
-    QObject*       parent;
     QString        name;
     QList<Command> commands;
     QJSEngine*     engine;

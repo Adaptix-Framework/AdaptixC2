@@ -216,7 +216,9 @@ function GenerateUI(listeners_type)
     let comboFormat = form.create_combo()
     comboFormat.addItems(["Binary EXE"]);
 
-    let checkWin7 = form.create_check("Windows 7 support");
+    let switchWin7   = form.create_switch("Windows 7 support");
+    let switchDaemon = form.create_switch("Daemon mode");
+    switchDaemon.setVisible(false);
 
     let hline = form.create_hline()
 
@@ -230,41 +232,46 @@ function GenerateUI(listeners_type)
     spinReconnCount.setValue(1000000000);
 
     let layout = form.create_gridlayout();
-    layout.addWidget(labelOS, 0, 0, 1, 1);
-    layout.addWidget(comboOS, 0, 1, 1, 1);
-    layout.addWidget(labelArch, 1, 0, 1, 1);
-    layout.addWidget(comboArch, 1, 1, 1, 1);
-    layout.addWidget(labelFormat, 2, 0, 1, 1);
-    layout.addWidget(comboFormat, 2, 1, 1, 1);
-    layout.addWidget(checkWin7, 3, 1, 1, 1);
-    layout.addWidget(hline, 4, 0, 1, 2);
-    layout.addWidget(labelReconnTimeout, 5, 0, 1, 1);
-    layout.addWidget(textReconnTimeout, 5, 1, 1, 1);
-    layout.addWidget(labelReconnCount, 6, 0, 1, 1);
-    layout.addWidget(spinReconnCount, 6, 1, 1, 1);
+    layout.addWidget(labelOS,            0, 0, 1, 1);
+    layout.addWidget(comboOS,            0, 1, 1, 2);
+    layout.addWidget(labelArch,          1, 0, 1, 1);
+    layout.addWidget(comboArch,          1, 1, 1, 2);
+    layout.addWidget(labelFormat,        2, 0, 1, 1);
+    layout.addWidget(comboFormat,        2, 1, 1, 2);
+    layout.addWidget(switchWin7,         3, 1, 1, 2);
+    layout.addWidget(switchDaemon,       4, 1, 1, 2);
+    layout.addWidget(hline,              5, 0, 1, 3);
+    layout.addWidget(labelReconnTimeout, 6, 0, 1, 2);
+    layout.addWidget(textReconnTimeout,  6, 2, 1, 1);
+    layout.addWidget(labelReconnCount,   7, 0, 1, 2);
+    layout.addWidget(spinReconnCount,    7, 2, 1, 1);
 
     form.connect(comboOS, "currentTextChanged", function(text) {
         if(text == "windows") {
             comboFormat.setItems(["Binary EXE"]);
-            checkWin7.setVisible(true);
+            switchWin7.setVisible(true);
+            switchDaemon.setVisible(false);
         }
         else if (text == "linux") {
             comboFormat.setItems(["Binary .ELF"]);
-            checkWin7.setVisible(false);
+            switchWin7.setVisible(false);
+            switchDaemon.setVisible(true);
         }
         else {
             comboFormat.setItems(["Binary Mach-O"]);
-            checkWin7.setVisible(false);
+            switchWin7.setVisible(false);
+            switchDaemon.setVisible(true);
         }
     });
 
     let container = form.create_container()
-    container.put("os", comboOS)
-    container.put("arch", comboArch)
-    container.put("format", comboFormat)
+    container.put("os",             comboOS)
+    container.put("arch",           comboArch)
+    container.put("format",         comboFormat)
     container.put("reconn_timeout", textReconnTimeout)
-    container.put("reconn_count", spinReconnCount)
-    container.put("win7_support", checkWin7)
+    container.put("reconn_count",   spinReconnCount)
+    container.put("win7_support",   switchWin7)
+    container.put("daemon_mode",    switchDaemon)
 
     let panel = form.create_panel()
     panel.setLayout(layout)
@@ -273,6 +280,6 @@ function GenerateUI(listeners_type)
         ui_panel: panel,
         ui_container: container,
         ui_height: 450,
-        ui_width: 550
+        ui_width: 650
     }
 }

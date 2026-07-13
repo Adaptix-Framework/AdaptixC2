@@ -4,6 +4,7 @@
 //
 // Minimal CRT replacements for -nostdlib linking.
 // Eliminates KERNEL32.dll and msvcrt.dll from the IAT.
+// Compatible with MinGW (GCC), MSVC, Clang, and Zig.
 //
 
 //=============================================================================
@@ -388,7 +389,7 @@ extern "C" {
     // Some linkers look for _alloca or _chkstk aliases
     NAKED_FUNC void _chkstk(void)
     {
-        asm volatile("jmp ___chkstk_ms\n");
+        asm volatile("jmp ____chkstk_ms\n");
     }
 
 #ifdef _alloca
@@ -396,7 +397,7 @@ extern "C" {
 #endif
     NAKED_FUNC void _alloca(void)
     {
-        asm volatile("jmp ___chkstk_ms\n");
+        asm volatile("jmp ____chkstk_ms\n");
     }
 #endif // _WIN64
 
@@ -441,6 +442,7 @@ extern "C" {
 #if COMPILER_GCC || COMPILER_CLANG
 
 void operator delete(void* p, unsigned long long) noexcept { free(p); }
+void operator delete(void* p, unsigned int) noexcept { free(p); }
 void operator delete(void* p) noexcept { free(p); }
 
 namespace std {

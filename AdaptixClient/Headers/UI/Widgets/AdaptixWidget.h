@@ -7,6 +7,10 @@
 #include <kddockwidgets/qtwidgets/views/DockWidget.h>
 #include <kddockwidgets/qtwidgets/views/MainWindow.h>
 
+#include <oclero/qlementine/widgets/PopoverButton.hpp>
+#include <oclero/qlementine/widgets/Popover.hpp>
+#include <oclero/qlementine/widgets/NotificationBadge.hpp>
+
 #include <QJSValue>
 #include <QQueue>
 #include <QReadWriteLock>
@@ -14,29 +18,29 @@
 #include <QListWidget>
 #include <QDialog>
 #include <functional>
-#include <oclero/qlementine/widgets/PopoverButton.hpp>
-#include <oclero/qlementine/widgets/Popover.hpp>
 
 class Task;
 class Agent;
 class LastTickWorker;
 class WebSocketWorker;
-class SessionsTableWidget;
+class SessionsFeedWidget;
 class SessionsGraph;
-class AxConsoleWidget;
+class ScriptsWidget;
+class CodeEditorWidget;
 class LogsWidget;
 class ChatWidget;
-class ListenersWidget;
-class DownloadsWidget;
-class ScreenshotsWidget;
-class CredentialsWidget;
-class TargetsWidget;
-class TasksWidget;
-class TunnelsWidget;
+class ListenersFeedWidget;
+class FilesFeedWidget;
+class ScreenshotsFeedWidget;
+class CredentialsFeedWidget;
+class TargetsFeedWidget;
+class TasksFeedWidget;
+class TunnelsFeedWidget;
 class TunnelEndpoint;
 class DialogSyncPacket;
 class AuthProfile;
 class AxScriptManager;
+class ConnectionStatusWidget;
 struct ServerScriptGroup;
 
 typedef struct RegListenerConfig {
@@ -68,10 +72,17 @@ class AdaptixWidget : public QWidget
 {
 Q_OBJECT
     QGridLayout*    mainGridLayout    = nullptr;
-    QHBoxLayout*    topHLayout        = nullptr;
+    QWidget*        toolbarWidget     = nullptr;
+    QBoxLayout*     toolbarLayout     = nullptr;
+    QFrame*         groupView         = nullptr;
+    QFrame*         groupInfra        = nullptr;
+    QObject*        m_groupPainter    = nullptr;
+    QFrame*         groupData         = nullptr;
+    QFrame*         groupDev          = nullptr;
     QPushButton*    listenersButton   = nullptr;
     QPushButton*    logsButton        = nullptr;
     QPushButton*    chatButton        = nullptr;
+    oclero::qlementine::NotificationBadge* chatBadge = nullptr;
     QPushButton*    sessionsButton    = nullptr;
     QPushButton*    graphButton       = nullptr;
     QPushButton*    tasksButton       = nullptr;
@@ -81,13 +92,11 @@ Q_OBJECT
     QPushButton*    credsButton       = nullptr;
     QPushButton*    screensButton     = nullptr;
     QPushButton*    keysButton        = nullptr;
-    QPushButton*    reconnectButton   = nullptr;
+    QPushButton*    scriptManagerButton = nullptr;
+    QPushButton*    codeEditorButton    = nullptr;
+    QPushButton*    settingsButton      = nullptr;
+    ConnectionStatusWidget* connStatusWidget = nullptr;
     oclero::qlementine::PopoverButton* extDocksButton = nullptr;
-    QSpacerItem*    horizontalSpacer1 = nullptr;
-    QFrame*         line_1            = nullptr;
-    QFrame*         line_2            = nullptr;
-    QFrame*         line_3            = nullptr;
-    QFrame*         line_4            = nullptr;
 
     oclero::qlementine::Popover* extDocksPopover = nullptr;
     QListWidget*    extDocksListWidget = nullptr;
@@ -111,6 +120,12 @@ Q_OBJECT
     QQueue<QJsonObject> pendingPackets;
     QTimer*             pendingPacketsTimer = nullptr;
 
+    QMultiMap<qint64, QJsonObject> deferredTaskPackets;
+    QMultiMap<qint64, QJsonObject> deferredTransferPackets;
+
+    void replayDeferredTaskPackets(qint64 taskId);
+    void replayDeferredTransferPackets(qint64 fileId);
+
     void createUI();
 
     static bool isValidSyncPacket(QJsonObject jsonObj);
@@ -121,6 +136,14 @@ Q_OBJECT
     void finalizeSyncIfReady();
 
     void setSyncUpdateUI(bool enabled);
+    void createButtons();
+    void buildSegmentedGroups(bool vertical = false);
+    void buildToolbarLayout(int position);
+    void placeToolbarInGrid(QGridLayout* grid, int position);
+    void applyThemeColorsToToolbar();
+
+protected:
+    void changeEvent(QEvent* event) override;
 
 public:
     QThread*         ChannelThread   = nullptr;
@@ -130,41 +153,51 @@ public:
 
     AxScriptManager* ScriptManager = nullptr;
 
-    AxConsoleWidget*     AxConsoleDock     = nullptr;
-    LogsWidget*          LogsDock          = nullptr;
-    ChatWidget*          ChatDock          = nullptr;
-    ListenersWidget*     ListenersDock     = nullptr;
-    SessionsTableWidget* SessionsTableDock = nullptr;
-    SessionsGraph*       SessionsGraphDock = nullptr;
-    TunnelsWidget*       TunnelsDock       = nullptr;
-    DownloadsWidget*     DownloadsDock     = nullptr;
-    ScreenshotsWidget*   ScreenshotsDock   = nullptr;
-    CredentialsWidget*   CredentialsDock   = nullptr;
-    TasksWidget*         TasksDock         = nullptr;
-    TargetsWidget*       TargetsDock       = nullptr;
+    ScriptsWidget*         ScriptsDock       = nullptr;
+    CodeEditorWidget*      CodeEditorDock    = nullptr;
+    LogsWidget*            LogsDock          = nullptr;
+    ChatWidget*            ChatDock          = nullptr;
+    ListenersFeedWidget*   ListenersDock     = nullptr;
+    SessionsFeedWidget*    SessionsTableDock = nullptr;
+    SessionsGraph*         SessionsGraphDock = nullptr;
+    TunnelsFeedWidget*     TunnelsDock       = nullptr;
+    FilesFeedWidget*       DownloadsDock     = nullptr;
+    ScreenshotsFeedWidget* ScreenshotsDock   = nullptr;
+    CredentialsFeedWidget* CredentialsDock   = nullptr;
+    TasksFeedWidget*       TasksDock         = nullptr;
+    TargetsFeedWidget*     TargetsDock       = nullptr;
+
+    mutable bool CodeEditorDockPlaced = false;
+    mutable bool TasksDockPlaced      = false;
+    mutable bool TasksOutputDockPlaced = false;
 
     QVector<RegListenerConfig>       RegisterListeners;
     QVector<RegAgentConfig>          RegisterAgents;
     QMap<QString, AgentTypeInfo>     AgentTypes;
     QVector<ListenerData>            Listeners;
     QVector<TunnelData>              Tunnels;
-    QMap<QString, DownloadData>      Downloads;
-    QMap<QString, ScreenData>        Screenshots;
+    QMap<qint64, TransferData>       Downloads;
+    QMap<qint64, TransferData>       Uploads;
+    QMap<qint64, ScreenData>         Screenshots;
     QVector<CredentialData>          Credentials;
     QVector<TargetData>              Targets;
     QMap<QString, PivotData>         Pivots;
-    QMap<QString, TaskData>          TasksMap;
-    QMap<QString, Agent*>            AgentsMap;
+    QMap<qint64, TaskData>           TasksMap;
+    QMap<qint64, Agent*>             AgentsMap;
     mutable QReadWriteLock           AgentsMapLock;
     mutable QReadWriteLock           TasksMapLock;
     mutable QReadWriteLock           CredentialsLock;
     mutable QReadWriteLock           DownloadsLock;
+    mutable QReadWriteLock           UploadsLock;
     mutable QReadWriteLock           ScreenshotsLock;
     mutable QReadWriteLock           TargetsLock;
     mutable QReadWriteLock           TunnelsLock;
     QMap<QString, AxExecutor>        PostHooksJS;
     QMap<QString, AxExecutor>        PostHandlersJS;
-    QMap<QString, TunnelEndpoint*>   ClientTunnels;
+    mutable QReadWriteLock           PostHooksLock;
+    mutable QReadWriteLock           PostHandlersLock;
+    QMap<qint64, TunnelEndpoint*>    ClientTunnels;
+    QMap<qint64, QPair<qint64, int>> GraphTunnelMarks;
     QStringList addresses;
 
     struct ExtDockEntry {
@@ -179,6 +212,8 @@ public:
 
     AuthProfile* GetProfile() const;
 
+    void rebuildToolbarLayout(int position);
+
     void PlaceDock(KDDockWidgets::QtWidgets::DockWidget* parentDock, KDDockWidgets::QtWidgets::DockWidget* dock) const;
     KDDockWidgets::QtWidgets::DockWidget* get_dockTop() {return dockTop;}
     KDDockWidgets::QtWidgets::DockWidget* get_dockBottom() {return dockBottom;}
@@ -189,6 +224,8 @@ public:
     void Close();
     void ClearAdaptix();
     void ClearChatStream();
+    void ChatUnreadIncrement();
+    void ChatUnreadClear();
     void ClearConsoleStreams();
     void ClearNotificationsStream();
 
@@ -215,27 +252,28 @@ public:
     void RemoveExtDock(const QString &id);
     void ShowExtDocksPopup();
 
-    void LoadConsoleUI(const QString &AgentId);
+    void LoadConsoleUI(qint64 AgentId);
     void LoadTasksOutput() const;
-    void LoadFileBrowserUI(const QString &AgentId);
-    void LoadProcessBrowserUI(const QString &AgentId);
-    void LoadTerminalUI(const QString &AgentId);
-    void LoadShellUI(const QString &AgentId);
-    void LoadVncUI(const QString &AgentId);
-    void LoadHvncUI(const QString &AgentId);
-    void ShowTunnelCreator(const QString &AgentId, bool socks4, bool socks5, bool lportfwd, bool rportfwd);
+    void LoadFileBrowserUI(qint64 AgentId);
+    void LoadProcessBrowserUI(qint64 AgentId);
+    void LoadTerminalUI(qint64 AgentId);
+    void LoadShellUI(qint64 AgentId);
+    void ShowTunnelCreator(qint64 AgentId, bool socks4, bool socks5, bool lportfwd, bool rportfwd);
 
 Q_SIGNALS:
     void SyncedSignal();
     void SyncedOnReloadSignal(QString project);
     void LoadGlobalScriptSignal(QString path);
     void UnloadGlobalScriptSignal(QString path);
+    void serverScriptsChanged();
 
-    void eventNewAgent(QString agentId);
-    void eventFileBrowserDisks(QString agentId);
-    void eventFileBrowserList(QString agentId, QString path);
-    void eventFileBrowserUpload(QString agentId, QString path, QString localFilename);
-    void eventProcessBrowserList(QString agentId);
+    void agentTickUpdated(qint64 agentId);
+
+    void eventNewAgent(qint64 agentId);
+    void eventFileBrowserDisks(qint64 agentId);
+    void eventFileBrowserList(qint64 agentId, QString path);
+    void eventFileBrowserUpload(qint64 agentId, QString path, QString localFilename);
+    void eventProcessBrowserList(qint64 agentId);
 
 public Q_SLOTS:
     void ChannelClose() const;
@@ -247,7 +285,9 @@ public Q_SLOTS:
     void SetSessionsTableUI() const;
     void SetGraphUI() const;
     void SetTasksUI() const;
-    void LoadAxConsoleUI() const;
+    void LoadScriptsUI() const;
+    void LoadCodeEditorUI() const;
+    void OpenInDevTools(const QString& filePath);
     void LoadLogsUI() const;
     void LoadChatUI() const;
     void LoadListenersUI() const;

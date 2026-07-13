@@ -20,7 +20,7 @@ QString ValidCommandsFile(const QByteArray &jsonData, bool* result)
     QJsonParseError parseError;
     QJsonDocument document = QJsonDocument::fromJson(jsonData, &parseError);
 
-    if (parseError.error != QJsonParseError::NoError && document.isObject()) {
+    if (parseError.error != QJsonParseError::NoError) {
         *result = false;
         return QString("JSON parse error: %1").arg(parseError.errorString());
     }
@@ -328,19 +328,26 @@ int GenerateRandomInt(const int min, const int max)
 }
 
 
-QString GenerateHash(const QString &algorithm, int length, const QString &inputString)
+QString GenerateHash(const QString &algorithm, int length, const QByteArray &input)
 {
     QCryptographicHash::Algorithm hashAlgo;
 
-    if (algorithm == "sha1") {
+    const QString alg = algorithm.toLower();
+    if (alg == "sha1") {
         hashAlgo = QCryptographicHash::Sha1;
-    } else {
+    } else if (alg == "sha256") {
+        hashAlgo = QCryptographicHash::Sha256;
+    } else if (alg == "sha512") {
+        hashAlgo = QCryptographicHash::Sha512;
+    } else if (alg == "md5") {
         hashAlgo = QCryptographicHash::Md5;
+    } else {
+        return QString();
     }
 
-    QByteArray hash = QCryptographicHash::hash(inputString.toUtf8(), hashAlgo).toHex();
-    if (length > hash.size()) {
-        length = hash.size();
+    const QByteArray hash = QCryptographicHash::hash(input, hashAlgo).toHex();
+    if (length <= 0 || length >= hash.size()) {
+        return QString::fromLatin1(hash);
     }
-    return QString(hash.left(length));
+    return QString::fromLatin1(hash.left(length));
 }

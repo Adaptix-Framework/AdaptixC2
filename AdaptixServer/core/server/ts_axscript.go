@@ -1,13 +1,14 @@
 package server
 
 import (
-	"AdaptixServer/core/utils/logs"
 	"AdaptixServer/core/utils/std"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
+	"strconv"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 func (ts *Teamserver) TsAxScriptLoadAgent(agentName string, axScript string, listeners []string) error {
@@ -19,10 +20,10 @@ func (ts *Teamserver) TsAxScriptLoadAgent(agentName string, axScript string, lis
 
 ////////////////////
 
-func (ts *Teamserver) AxGetAgentContext(agentId string) (agentName string, listenerRegName string, osType int, err error) {
-	agent, err := ts.getAgent(agentId)
-	if err != nil {
-		return "", "", 0, err
+func (ts *Teamserver) AxGetAgentContext(agentId int64) (agentName string, listenerRegName string, osType int, err error) {
+	agent, ok := ts.Agents.Get(agentId)
+	if !ok {
+		return "", "", 0, fmt.Errorf("agent %v not found", agentId)
 	}
 	data := agent.GetData()
 	regName, _ := ts.TsListenerRegByName(data.Listener)
@@ -32,11 +33,7 @@ func (ts *Teamserver) AxGetAgentContext(agentId string) (agentName string, liste
 func (ts *Teamserver) AxGetAgents() map[string]interface{} {
 	result := make(map[string]interface{})
 
-	ts.Agents.ForEach(func(key string, value interface{}) bool {
-		agent, ok := value.(*Agent)
-		if !ok {
-			return true
-		}
+	ts.Agents.ForEachFast(func(key int64, agent *adaptix.Agent) bool {
 		data := agent.GetData()
 		agentMap := map[string]interface{}{
 			"id":           data.Id,
@@ -62,16 +59,16 @@ func (ts *Teamserver) AxGetAgents() map[string]interface{} {
 			"os_full":      data.OsDesc,
 			"os":           osToString(data.Os),
 		}
-		result[data.Id] = agentMap
+		result[strconv.FormatInt(data.Id, 10)] = agentMap
 		return true
 	})
 
 	return result
 }
 
-func (ts *Teamserver) AxGetAgentInfo(agentId string, property string) interface{} {
-	agent, err := ts.getAgent(agentId)
-	if err != nil {
+func (ts *Teamserver) AxGetAgentInfo(agentId int64, property string) interface{} {
+	agent, ok := ts.Agents.Get(agentId)
+	if !ok {
 		return nil
 	}
 	data := agent.GetData()
@@ -127,9 +124,9 @@ func (ts *Teamserver) AxGetAgentInfo(agentId string, property string) interface{
 }
 
 // /---
-func (ts *Teamserver) AxGetAgentIds() []string {
-	var ids []string
-	ts.Agents.ForEach(func(key string, value interface{}) bool {
+func (ts *Teamserver) AxGetAgentIds() []int64 {
+	var ids []int64
+	ts.Agents.ForEachFast(func(key int64, _ *adaptix.Agent) bool {
 		ids = append(ids, key)
 		return true
 	})
@@ -177,7 +174,8 @@ func (ts *Teamserver) TsAxScriptUnloadUser(name string) error {
 	if ts.ScriptManager == nil {
 		return fmt.Errorf("script manager not initialized")
 	}
-	return ts.ScriptManager.UnloadUserScript(name)
+	_ = name
+	return fmt.Errorf("user-script unload is currently disabled")
 }
 
 // /---
@@ -202,7 +200,7 @@ func (ts *Teamserver) TsAxScriptCommands() (string, error) {
 }
 
 // /---
-func (ts *Teamserver) TsAxScriptParseAndExecute(agentId string, username string, cmdline string) error {
+func (ts *Teamserver) TsAxScriptParseAndExecute(agentId int64, username string, cmdline string) error {
 	if ts.ScriptManager == nil {
 		return fmt.Errorf("script manager not initialized")
 	}
@@ -256,7 +254,7 @@ func (ts *Teamserver) TsAxScriptParseAndExecute(agentId string, username string,
 	return ts.TsAgentCommand(agentName, agentId, username, hookId, handlerId, cmdline, false, parsed.Args)
 }
 
-func (ts *Teamserver) TsAxScriptResolveHooks(agentName string, agentId string, listenerRegName string, os int, cmdline string, args map[string]interface{}, client string) (string, string, bool, error) {
+func (ts *Teamserver) TsAxScriptResolveHooks(agentName string, agentId int64, listenerRegName string, os int, cmdline string, args map[string]interface{}, client string) (string, string, bool, error) {
 	if ts.ScriptManager == nil {
 		return "", "", false, nil
 	}
@@ -270,7 +268,6 @@ func (ts *Teamserver) TsAxScriptExecPostHook(hookId string, data map[string]inte
 	return ts.ScriptManager.HookStore.ExecutePostHook(hookId, data, client)
 }
 
-// /---
 func (ts *Teamserver) TsAxScriptExecHandler(handlerId string, data map[string]interface{}, client string) error {
 	if ts.ScriptManager == nil {
 		return nil
@@ -338,7 +335,7 @@ func (ts *Teamserver) TsPresyncAxScriptData() []interface{} {
 
 			data, err := json.Marshal([]interface{}{group})
 			if err != nil {
-				logs.Error("", "Presync marshal error for group '%s': %v", group.GroupName, err)
+				ts.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "Presync marshal error for group '%s': %v", group.GroupName, err)
 				continue
 			}
 
@@ -390,7 +387,7 @@ func (ts *Teamserver) TsGetAgentCommandGroups(agentName string) []AxCommandBatch
 
 		data, err := json.Marshal(batch.Groups)
 		if err != nil {
-			logs.Error("", "Marshal error for agent '%s': %v", agentName, err)
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "Marshal error for agent '%s': %v", agentName, err)
 			continue
 		}
 
@@ -405,7 +402,6 @@ func (ts *Teamserver) TsGetAgentCommandGroups(agentName string) []AxCommandBatch
 	return result
 }
 
-// /---
 func (ts *Teamserver) AxCredentialsAdd(creds []map[string]interface{}) error {
 	return ts.TsCredentilsAdd(creds)
 }
@@ -416,15 +412,18 @@ func (ts *Teamserver) AxTargetsAdd(targets []map[string]interface{}) error {
 }
 
 // /---
-func (ts *Teamserver) AxAgentRemove(agentIds []string) error {
+func (ts *Teamserver) AxAgentRemove(agentIds []int64) error {
+	var errs []error
 	for _, id := range agentIds {
-		_ = ts.TsAgentRemove(id)
+		if err := ts.TsAgentRemove(id); err != nil {
+			errs = append(errs, err)
+		}
 	}
-	return nil
+	return errors.Join(errs...)
 }
 
 // /---
-func (ts *Teamserver) AxAgentSetTag(agentIds []string, tag string) error {
+func (ts *Teamserver) AxAgentSetTag(agentIds []int64, tag string) error {
 	for _, id := range agentIds {
 		updateData := map[string]interface{}{"tags": tag}
 		_ = ts.TsAgentUpdateDataPartial(id, updateData)
@@ -433,7 +432,7 @@ func (ts *Teamserver) AxAgentSetTag(agentIds []string, tag string) error {
 }
 
 // /---
-func (ts *Teamserver) AxAgentSetMark(agentIds []string, mark string) error {
+func (ts *Teamserver) AxAgentSetMark(agentIds []int64, mark string) error {
 	for _, id := range agentIds {
 		updateData := map[string]interface{}{"mark": mark}
 		_ = ts.TsAgentUpdateDataPartial(id, updateData)
@@ -442,12 +441,12 @@ func (ts *Teamserver) AxAgentSetMark(agentIds []string, mark string) error {
 }
 
 // /---
-func (ts *Teamserver) AxAgentSetColor(agentIds []string, background string, foreground string, reset bool) error {
+func (ts *Teamserver) AxAgentSetColor(agentIds []int64, background string, foreground string, reset bool) error {
 	// Agent color is a client-only visual property, no server-side storage
 	return nil
 }
 
-func (ts *Teamserver) AxAgentUpdateData(agentId string, updateData map[string]interface{}) error {
+func (ts *Teamserver) AxAgentUpdateData(agentId int64, updateData map[string]interface{}) error {
 	return ts.TsAgentUpdateDataPartial(agentId, updateData)
 }
 
@@ -463,7 +462,7 @@ func (ts *Teamserver) TsAxScriptLoadFromProfile() {
 	for _, scriptPath := range ts.Profile.Server.AxScripts {
 		err := ts.ScriptManager.LoadAxScript(scriptPath)
 		if err != nil {
-			logs.Error("", "Failed to load profile axscript '%s': %v", scriptPath, err)
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "Failed to load profile axscript '%s': %v", scriptPath, err)
 		}
 	}
 }
@@ -539,9 +538,9 @@ func (ts *Teamserver) AxGetInterfaces() []string {
 }
 
 // /---
-func (ts *Teamserver) AxGetAgentMark(agentId string) string {
-	agent, err := ts.getAgent(agentId)
-	if err != nil {
+func (ts *Teamserver) AxGetAgentMark(agentId int64) string {
+	agent, ok := ts.Agents.Get(agentId)
+	if !ok {
 		return ""
 	}
 	data := agent.GetData()
@@ -553,7 +552,8 @@ func (ts *Teamserver) AxUnloadAxScript(name string) error {
 	if ts.ScriptManager == nil {
 		return fmt.Errorf("script manager not initialized")
 	}
-	return ts.ScriptManager.UnloadUserScript(name)
+	_ = name
+	return fmt.Errorf("user-script unload is currently disabled")
 }
 
 func osToString(os int) string {

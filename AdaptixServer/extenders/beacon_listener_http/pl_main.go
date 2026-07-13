@@ -6,30 +6,24 @@ import (
 	"strconv"
 	"strings"
 
-	adaptix "github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/gin-gonic/gin"
 )
 
-type Teamserver interface {
-	TsAgentIsExists(agentId string) bool
-	TsAgentCreate(agentCrc string, agentId string, beat []byte, listenerName string, ExternalIP string, Async bool) (adaptix.AgentData, error)
-	TsAgentProcessData(agentId string, bodyData []byte) error
-	TsAgentSetTick(agentId string, listenerName string) error
-	TsAgentGetHostedAll(agentId string, maxDataSize int) ([]byte, error)
-}
+const logSrc = "listener:beacon_http"
 
 type PluginListener struct{}
 
 var (
 	ModuleDir       string
 	ListenerDataDir string
-	Ts              Teamserver
+	Ts              adaptix.Teamserver
 )
 
 func InitPlugin(ts any, moduleDir string, listenerDir string) adaptix.PluginListener {
 	ModuleDir = moduleDir
 	ListenerDataDir = listenerDir
-	Ts = ts.(Teamserver)
+	Ts = ts.(adaptix.Teamserver)
 	return &PluginListener{}
 }
 
@@ -194,8 +188,8 @@ func (l *Listener) GetProfile() ([]byte, error) {
 	return buffer.Bytes(), nil
 }
 
-func (l *Listener) InternalHandler(data []byte) (string, error) {
-	var agentId = ""
+func (l *Listener) InternalHandler(data []byte) (int64, error) {
+	var agentId int64 = 0
 
 	/// START CODE HERE
 

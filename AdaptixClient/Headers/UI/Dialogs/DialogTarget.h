@@ -3,34 +3,34 @@
 
 #include <main.h>
 
+#include <oclero/qlementine/widgets/Switch.hpp>
+
 class DialogTarget : public QDialog
 {
-    QGridLayout* mainGridLayout = nullptr;
-    QLabel*      computerLabel  = nullptr;
-    QLineEdit*   computerInput  = nullptr;
-    QLabel*      domainLabel    = nullptr;
-    QLineEdit*   domainInput    = nullptr;
-    QLabel*      addressLabel   = nullptr;
-    QLineEdit*   addressInput   = nullptr;
-    QCheckBox*   aliveCheck     = nullptr;
-    QLabel*      osLabel        = nullptr;
-    QComboBox*   osCombo        = nullptr;
-    QLabel*      osDescLabel    = nullptr;
-    QLineEdit*   osDescInput    = nullptr;
-    QLabel*      tagLabel       = nullptr;
-    QLineEdit*   tagInput       = nullptr;
-    QLabel*      infoLabel      = nullptr;
-    QLineEdit*   infoInput      = nullptr;
-    QHBoxLayout* hLayoutBottom  = nullptr;
-    QSpacerItem* spacer_1       = nullptr;
-    QSpacerItem* spacer_2       = nullptr;
+    QVBoxLayout* mainLayout     = nullptr;
+    QGroupBox*   hostGroup      = nullptr;
+    QGridLayout* hostGrid       = nullptr;
+    QGroupBox*   systemGroup    = nullptr;
+    QGridLayout* systemGrid     = nullptr;
+    QHBoxLayout* buttonLayout   = nullptr;
     QPushButton* createButton   = nullptr;
     QPushButton* cancelButton   = nullptr;
 
+    QLineEdit*   computerInput  = nullptr;
+    QLineEdit*   domainInput    = nullptr;
+    QLineEdit*   addressInput   = nullptr;
+    oclero::qlementine::Switch* aliveSwitch = nullptr;
+    QComboBox*   osCombo        = nullptr;
+    QLineEdit*   osDescInput    = nullptr;
+    QLineEdit*   tagInput       = nullptr;
+    QLineEdit*   infoInput      = nullptr;
+
     bool       valid    = false;
     QString    message  = "";
-    QString    targetId = "";
+    qint64     targetId = 0;
     TargetData data = {};
+
+    bool editMode = false;
 
     void createUI();
 
@@ -49,4 +49,4 @@ protected Q_SLOTS:
     void onButtonCancel();
 };
 
-#endif //DIALOGTARGET_H
+#endif

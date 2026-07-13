@@ -2,35 +2,43 @@ package server
 
 import (
 	"AdaptixServer/core/eventing"
-	"AdaptixServer/core/utils/logs"
 	"fmt"
 
-	"github.com/Adaptix-Framework/axc2"
+	"github.com/Adaptix-Framework/axc2/v2"
 )
 
-func (ts *Teamserver) TsGetPivotInfoByName(pivotName string) (string, string, string) {
+func (ts *Teamserver) TsGetPivotInfoByName(pivotName string) (string, int64, int64) {
 	for value := range ts.pivots.Iterator() {
-		pivot := value.Item.(*adaptix.PivotData)
+		pivot, ok := value.Item.(*adaptix.PivotData)
+		if !ok {
+			continue
+		}
 		if pivot.PivotName == pivotName {
 			return pivot.PivotId, pivot.ParentAgentId, pivot.ChildAgentId
 		}
 	}
-	return "", "", ""
+	return "", 0, 0
 }
 
-func (ts *Teamserver) TsGetPivotInfoById(pivotId string) (string, string, string) {
+func (ts *Teamserver) TsGetPivotInfoById(pivotId string) (string, int64, int64) {
 	for value := range ts.pivots.Iterator() {
-		pivot := value.Item.(*adaptix.PivotData)
+		pivot, ok := value.Item.(*adaptix.PivotData)
+		if !ok {
+			continue
+		}
 		if pivot.PivotId == pivotId {
 			return pivot.PivotName, pivot.ParentAgentId, pivot.ChildAgentId
 		}
 	}
-	return "", "", ""
+	return "", 0, 0
 }
 
 func (ts *Teamserver) TsGetPivotByName(pivotName string) *adaptix.PivotData {
 	for value := range ts.pivots.Iterator() {
-		pivot := value.Item.(*adaptix.PivotData)
+		pivot, ok := value.Item.(*adaptix.PivotData)
+		if !ok {
+			continue
+		}
 		if pivot.PivotName == pivotName {
 			return pivot
 		}
@@ -40,7 +48,10 @@ func (ts *Teamserver) TsGetPivotByName(pivotName string) *adaptix.PivotData {
 
 func (ts *Teamserver) TsGetPivotById(pivotId string) *adaptix.PivotData {
 	for value := range ts.pivots.Iterator() {
-		pivot := value.Item.(*adaptix.PivotData)
+		pivot, ok := value.Item.(*adaptix.PivotData)
+		if !ok {
+			continue
+		}
 		if pivot.PivotId == pivotId {
 			return pivot
 		}
@@ -48,7 +59,7 @@ func (ts *Teamserver) TsGetPivotById(pivotId string) *adaptix.PivotData {
 	return nil
 }
 
-func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId string, pivotName string, isRestore bool) error {
+func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId int64, chAgentId int64, pivotName string, isRestore bool) error {
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataPivotCreate{
 		PivotId:       pivotId,
@@ -74,7 +85,10 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId s
 	if pivotData.PivotName == "" || ts.TsGetPivotByName(pivotData.PivotName) != nil {
 		usedNames := make(map[string]bool)
 		for value := range ts.pivots.Iterator() {
-			pivot := value.Item.(*adaptix.PivotData)
+			pivot, ok := value.Item.(*adaptix.PivotData)
+			if !ok {
+				continue
+			}
 			usedNames[pivot.PivotName] = true
 		}
 
@@ -92,12 +106,14 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId s
 		}
 	}
 
-	if parentAgent, err := ts.getAgent(pivotData.ParentAgentId); err == nil {
+	parentAgent, ok := ts.Agents.Get(pivotData.ParentAgentId)
+	if ok {
 		parentAgent.PivotChilds.Put(pivotData)
 	}
 
-	if childAgent, err := ts.getAgent(pivotData.ChildAgentId); err == nil {
-		childAgent.PivotParent = pivotData
+	childAgent, ok := ts.Agents.Get(pivotData.ChildAgentId)
+	if ok {
+		childAgent.SetPivotParent(pivotData)
 	}
 
 	//emptyMark := ""
@@ -110,7 +126,7 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId string, chAgentId s
 	if !isRestore {
 		err := ts.DBMS.DbPivotInsert(*pivotData)
 		if err != nil {
-			logs.Error("", err.Error())
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:pivot", "%s", err.Error())
 		}
 	}
 
@@ -146,39 +162,30 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 		return fmt.Errorf("pivotId %s does not exist", pivotId)
 	}
 
-	if parentAgent, err := ts.getAgent(pivotData.ParentAgentId); err == nil {
-		for i := uint(0); i < parentAgent.PivotChilds.Len(); i++ {
-			valuePivot, ok := parentAgent.PivotChilds.Get(i)
-			if ok {
-				if pivot, ok := valuePivot.(*adaptix.PivotData); ok && pivot.PivotId == pivotId {
-					parentAgent.PivotChilds.Delete(i)
-					break
-				}
+	if parentAgent, ok := ts.Agents.Get(pivotData.ParentAgentId); ok {
+		parentAgent.PivotChilds.DeleteIf(func(i uint, value interface{}) bool {
+			if pivot, ok := value.(*adaptix.PivotData); ok {
+				return pivot.PivotId == pivotId
 			}
-		}
+			return false
+		})
 	}
 
-	if childAgent, err := ts.getAgent(pivotData.ChildAgentId); err == nil {
-		childAgent.PivotParent = nil
+	if childAgent, ok := ts.Agents.Get(pivotData.ChildAgentId); ok {
+		childAgent.SetPivotParent(nil)
 	}
 
 	_ = ts.TsAgentUpdateDataPartial(pivotData.ChildAgentId, struct {
 		Mark *string `json:"mark"`
 	}{Mark: new("Unlink")})
 
-	for i := uint(0); i < ts.pivots.Len(); i++ {
-		valuePivot, ok := ts.pivots.Get(i)
-		if ok {
-			if valuePivot.(*adaptix.PivotData).PivotId == pivotId {
-				ts.pivots.Delete(i)
-				break
-			}
-		}
-	}
+	ts.pivots.DeleteIf(func(i uint, value interface{}) bool {
+		return value.(*adaptix.PivotData).PivotId == pivotId
+	})
 
 	err := ts.DBMS.DbPivotDelete(pivotId)
 	if err != nil {
-		logs.Error("", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:pivot", "%s", err.Error())
 	}
 
 	packet := CreateSpPivotDelete(pivotId)

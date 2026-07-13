@@ -23,7 +23,7 @@ func NewHookStore() *HookStore {
 	return hs
 }
 
-func (hs *HookStore) RegisterPostHook(engine *ScriptEngine, fn goja.Callable, agentId string, client string) string {
+func (hs *HookStore) RegisterPostHook(engine *ScriptEngine, fn goja.Callable, agentId int64, client string) string {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
 
@@ -40,7 +40,7 @@ func (hs *HookStore) RegisterPostHook(engine *ScriptEngine, fn goja.Callable, ag
 	return id
 }
 
-func (hs *HookStore) RegisterHandler(engine *ScriptEngine, fn goja.Callable, agentId string, client string) string {
+func (hs *HookStore) RegisterHandler(engine *ScriptEngine, fn goja.Callable, agentId int64, client string) string {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
 
@@ -64,7 +64,6 @@ func (hs *HookStore) GetPostHook(hookId string) *PendingHook {
 	return hs.pendingPostHooks[hookId]
 }
 
-// /---
 func (hs *HookStore) GetHandler(handlerId string) *PendingHook {
 	hs.mu.RLock()
 	defer hs.mu.RUnlock()
@@ -79,7 +78,6 @@ func (hs *HookStore) RemovePostHook(hookId string) {
 	delete(hs.pendingPostHooks, hookId)
 }
 
-// /---
 func (hs *HookStore) RemoveHandler(handlerId string) {
 	hs.mu.Lock()
 	defer hs.mu.Unlock()
@@ -109,7 +107,6 @@ func (hs *HookStore) ExecutePostHook(hookId string, data map[string]interface{},
 	return data, nil
 }
 
-// /---
 func (hs *HookStore) ExecuteHandler(handlerId string, data map[string]interface{}, client string) error {
 	hook := hs.GetHandler(handlerId)
 	if hook == nil {

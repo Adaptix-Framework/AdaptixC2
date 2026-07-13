@@ -35,6 +35,21 @@ func DifferenceStringsArray(a, b []string) []string {
 	return result
 }
 
+func DifferenceInt64Array(a, b []int64) []int64 {
+	remove := make(map[int64]struct{}, len(b))
+	for _, v := range b {
+		remove[v] = struct{}{}
+	}
+
+	var result []int64
+	for _, v := range a {
+		if _, found := remove[v]; !found {
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
 func ExtractJsErrorMessage(err error) string {
 	if err == nil {
 		return ""

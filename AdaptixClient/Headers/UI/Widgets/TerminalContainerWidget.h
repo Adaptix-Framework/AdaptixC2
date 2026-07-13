@@ -3,7 +3,8 @@
 
 #include <main.h>
 #include <UI/Widgets/AbstractDock.h>
-#include <Utils/CustomElements.h>
+#include <Utils/CustomElements/VerticalTabWidget.h>
+
 #include <oclero/qlementine/widgets/Switch.hpp>
 #include <oclero/qlementine/widgets/LoadingSpinner.hpp>
 
@@ -54,6 +55,9 @@ Q_OBJECT
     QTermWidget*    termWidget      = nullptr;
     QThread*        terminalThread  = nullptr;
     TerminalWorker* terminalWorker  = nullptr;
+    QString         pendingStatus;
+    QTimer*         startTimeoutTimer = nullptr;
+    quint64         otpGeneration = 0;
 
     AdaptixWidget* adaptixWidget   = nullptr;
     Agent*         agent           = nullptr;
@@ -62,6 +66,10 @@ Q_OBJECT
     void SetFont();
     void SetSettings();
     void SetKeys();
+    void clearSessionState();
+    void bindWorkerLifecycle(TerminalWorker* worker, QThread* thread);
+    void armStartTimeout(TerminalWorker* worker);
+    void cancelStartTimeout();
 
 public:
     explicit TerminalTab(Agent* a, AdaptixWidget* w, TerminalMode mode, QWidget* parent = nullptr);

@@ -46,11 +46,6 @@ public Q_SLOTS:
     void add_targets(AbstractAxMenuItem* item, const QString &position = "center");
 
     void add_credentials(AbstractAxMenuItem* item);
-
-    void add_main(AbstractAxMenuItem* item);
-    void add_main_projects(AbstractAxMenuItem* item);
-    void add_main_axscript(AbstractAxMenuItem* item);
-    void add_main_settings(AbstractAxMenuItem* item);
 };
 
 #endif

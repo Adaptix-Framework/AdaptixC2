@@ -13,130 +13,136 @@ DialogAgentData::~DialogAgentData() = default;
 
 void DialogAgentData::createUI()
 {
-    this->setWindowTitle("Set Agent Data");
+    this->setWindowTitle("Edit Agent Data");
     this->setProperty("Main", "base");
-    this->setMinimumWidth(450);
+    this->setMinimumWidth(600);
 
-    groupNetwork = new QGroupBox("Network", this);
-    layoutNetwork = new QGridLayout(groupNetwork);
+    groupIdentity = new QGroupBox("Identity", this);
+    layoutIdentity = new QGridLayout(groupIdentity);
+    layoutIdentity->setContentsMargins(12, 12, 12, 12);
+    layoutIdentity->setSpacing(8);
 
-    labelInternalIP = new QLabel("Internal IP:", this);
-    inputInternalIP = new QLineEdit(this);
-    labelExternalIP = new QLabel("External IP:", this);
-    inputExternalIP = new QLineEdit(this);
+    auto* labelDomain = new QLabel("Domain", groupIdentity);
+    inputDomain = new QLineEdit(groupIdentity);
+    auto* labelComputer = new QLabel("Computer", groupIdentity);
+    inputComputer = new QLineEdit(groupIdentity);
+    auto* labelUsername = new QLabel("Username", groupIdentity);
+    inputUsername = new QLineEdit(groupIdentity);
+    auto* labelImpersonated = new QLabel("Impersonated", groupIdentity);
+    inputImpersonated = new QLineEdit(groupIdentity);
 
-    layoutNetwork->addWidget(labelInternalIP, 0, 0);
-    layoutNetwork->addWidget(inputInternalIP, 0, 1);
-    layoutNetwork->addWidget(labelExternalIP, 0, 2);
-    layoutNetwork->addWidget(inputExternalIP, 0, 3);
-
-    groupCoding = new QGroupBox("Coding", this);
-    layoutCoding = new QGridLayout(groupCoding);
-
-    labelACP = new QLabel("ACP:", this);
-    inputACP = new QSpinBox(this);
-    inputACP->setRange(0, 65535);
-
-    labelOemCP = new QLabel("OEM CP:", this);
-    inputOemCP = new QSpinBox(this);
-    inputOemCP->setRange(0, 65535);
-
-    layoutCoding->addWidget(labelACP,    0, 0);
-    layoutCoding->addWidget(inputACP,    0, 1);
-    layoutCoding->addWidget(labelOemCP,  0, 2);
-    layoutCoding->addWidget(inputOemCP,  0, 3);
+    layoutIdentity->addWidget(labelDomain,       0, 0);
+    layoutIdentity->addWidget(inputDomain,       0, 1);
+    layoutIdentity->addWidget(labelComputer,     1, 0);
+    layoutIdentity->addWidget(inputComputer,     1, 1);
+    layoutIdentity->addWidget(labelUsername,     2, 0);
+    layoutIdentity->addWidget(inputUsername,     2, 1);
+    layoutIdentity->addWidget(labelImpersonated, 3, 0);
+    layoutIdentity->addWidget(inputImpersonated, 3, 1);
 
     groupProcess = new QGroupBox("Process", this);
     layoutProcess = new QGridLayout(groupProcess);
+    layoutProcess->setContentsMargins(12, 12, 12, 12);
+    layoutProcess->setSpacing(8);
 
-    labelProcess = new QLabel("Process:", this);
-    inputProcess = new QLineEdit(this);
+    auto* labelProcess = new QLabel("Process", groupProcess);
+    inputProcess = new QLineEdit(groupProcess);
+    auto* labelArch = new QLabel("Arch", groupProcess);
+    inputArch = new QComboBox(groupProcess);
+    inputArch->addItems({"x64", "x86"});
+    auto* labelPid = new QLabel("PID", groupProcess);
+    inputPid = new QSpinBox(groupProcess);
+    inputPid->setRange(0, 999999);
+    auto* labelTid = new QLabel("TID", groupProcess);
+    inputTid = new QSpinBox(groupProcess);
+    inputTid->setRange(0, 999999);
+    auto* labelElevated = new QLabel("Elevated", groupProcess);
+    inputElevated = new oclero::qlementine::Switch(groupProcess);
 
-    inputArch = new QComboBox(this);
-    inputArch->addItems({"x86", "x64"});
+    layoutProcess->addWidget(labelProcess,  0, 0);
+    layoutProcess->addWidget(inputProcess,  0, 1);
+    layoutProcess->addWidget(labelArch,     1, 0);
+    layoutProcess->addWidget(inputArch,     1, 1);
+    layoutProcess->addWidget(labelPid,      2, 0);
+    layoutProcess->addWidget(inputPid,      2, 1);
+    layoutProcess->addWidget(labelTid,      3, 0);
+    layoutProcess->addWidget(inputTid,      3, 1);
+    layoutProcess->addWidget(labelElevated, 4, 0);
+    layoutProcess->addWidget(inputElevated, 4, 1);
 
-    inputElevated = new QCheckBox("Elevated", this);
+    auto* leftLayout = new QVBoxLayout();
+    leftLayout->addWidget(groupIdentity);
+    leftLayout->addWidget(groupProcess);
 
-    labelPid = new QLabel("PID:", this);
-    inputPid = new QLineEdit(this);
-    labelTid = new QLabel("TID:", this);
-    inputTid = new QLineEdit(this);
+    groupNetwork = new QGroupBox("Network", this);
+    layoutNetwork = new QGridLayout(groupNetwork);
+    layoutNetwork->setContentsMargins(12, 12, 12, 12);
+    layoutNetwork->setSpacing(8);
 
-    layoutProcess->addWidget(labelProcess,   0, 0);
-    layoutProcess->addWidget(inputProcess,   0, 1);
-    layoutProcess->addWidget(inputArch,      0, 2);
-    layoutProcess->addWidget(inputElevated,  0, 3);
-    layoutProcess->addWidget(labelPid,       1, 0);
-    layoutProcess->addWidget(inputPid,       1, 1);
-    layoutProcess->addWidget(labelTid,       1, 2);
-    layoutProcess->addWidget(inputTid,       1, 3);
+    auto* labelInternalIP = new QLabel("Internal IP", groupNetwork);
+    inputInternalIP = new QLineEdit(groupNetwork);
+    auto* labelExternalIP = new QLabel("External IP", groupNetwork);
+    inputExternalIP = new QLineEdit(groupNetwork);
+
+    layoutNetwork->addWidget(labelInternalIP, 0, 0);
+    layoutNetwork->addWidget(inputInternalIP, 0, 1);
+    layoutNetwork->addWidget(labelExternalIP, 1, 0);
+    layoutNetwork->addWidget(inputExternalIP, 1, 1);
 
     groupOS = new QGroupBox("OS", this);
     layoutOS = new QGridLayout(groupOS);
+    layoutOS->setContentsMargins(12, 12, 12, 12);
+    layoutOS->setSpacing(8);
 
-    labelOs = new QLabel("OS:", this);
-    inputOs = new QComboBox(this);
+    auto* labelOs = new QLabel("Type", groupOS);
+    inputOs = new QComboBox(groupOS);
     inputOs->addItem("Windows", OS_WINDOWS);
     inputOs->addItem("Linux", OS_LINUX);
     inputOs->addItem("macOS", OS_MAC);
     inputOs->addItem("Unknown", OS_UNKNOWN);
-
-    inputOsDesc = new QLineEdit(this);
-    inputOsDesc->setPlaceholderText("description");
-
-    labelGmtOffset = new QLabel("GMT Offset:", this);
-    inputGmtOffset = new QSpinBox(this);
+    auto* labelOsDesc = new QLabel("Description", groupOS);
+    inputOsDesc = new QLineEdit(groupOS);
+    auto* labelGmtOffset = new QLabel("GMT", groupOS);
+    inputGmtOffset = new QSpinBox(groupOS);
     inputGmtOffset->setRange(-12, 14);
+    auto* labelACP = new QLabel("ACP", groupOS);
+    inputACP = new QSpinBox(groupOS);
+    inputACP->setRange(0, 65535);
+    auto* labelOemCP = new QLabel("OEM CP", groupOS);
+    inputOemCP = new QSpinBox(groupOS);
+    inputOemCP->setRange(0, 65535);
 
     layoutOS->addWidget(labelOs,        0, 0);
     layoutOS->addWidget(inputOs,        0, 1);
-    layoutOS->addWidget(inputOsDesc,    0, 2);
-    layoutOS->addWidget(labelGmtOffset, 0, 3);
-    layoutOS->addWidget(inputGmtOffset, 0, 4);
+    layoutOS->addWidget(labelOsDesc,    1, 0);
+    layoutOS->addWidget(inputOsDesc,    1, 1);
+    layoutOS->addWidget(labelGmtOffset, 2, 0);
+    layoutOS->addWidget(inputGmtOffset, 2, 1);
+    layoutOS->addWidget(labelACP,       3, 0);
+    layoutOS->addWidget(inputACP,       3, 1);
+    layoutOS->addWidget(labelOemCP,     4, 0);
+    layoutOS->addWidget(inputOemCP,     4, 1);
 
-    groupContext = new QGroupBox("Context", this);
-    layoutContext = new QGridLayout(groupContext);
+    auto* rightLayout = new QVBoxLayout();
+    rightLayout->addWidget(groupNetwork);
+    rightLayout->addWidget(groupOS);
 
-    labelDomain = new QLabel("Domain:", this);
-    inputDomain = new QLineEdit(this);
-
-    labelComputer = new QLabel("Computer:", this);
-    inputComputer = new QLineEdit(this);
-
-    labelUsername = new QLabel("Username:", this);
-    inputUsername = new QLineEdit(this);
-
-    labelImpersonated = new QLabel("Impersonated:", this);
-    inputImpersonated = new QLineEdit(this);
-
-    layoutContext->addWidget(labelDomain,       0, 0);
-    layoutContext->addWidget(inputDomain,       0, 1);
-    layoutContext->addWidget(labelComputer,     0, 2);
-    layoutContext->addWidget(inputComputer,     0, 3);
-    layoutContext->addWidget(labelUsername,     1, 0);
-    layoutContext->addWidget(inputUsername,     1, 1);
-    layoutContext->addWidget(labelImpersonated, 1, 2);
-    layoutContext->addWidget(inputImpersonated, 1, 3);
+    columnsLayout = new QHBoxLayout();
+    columnsLayout->addLayout(leftLayout);
+    columnsLayout->addLayout(rightLayout);
 
     buttonUpdate = new QPushButton("Update", this);
     buttonUpdate->setDefault(true);
-
     buttonCancel = new QPushButton("Cancel", this);
 
-    horizontalSpacer = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Minimum);
-
-    hLayoutBottom = new QHBoxLayout();
-    hLayoutBottom->addItem(horizontalSpacer);
-    hLayoutBottom->addWidget(buttonUpdate);
-    hLayoutBottom->addWidget(buttonCancel);
+    buttonLayout = new QHBoxLayout();
+    buttonLayout->addStretch();
+    buttonLayout->addWidget(buttonCancel);
+    buttonLayout->addWidget(buttonUpdate);
 
     mainLayout = new QVBoxLayout(this);
-    mainLayout->addWidget(groupNetwork);
-    mainLayout->addWidget(groupCoding);
-    mainLayout->addWidget(groupProcess);
-    mainLayout->addWidget(groupOS);
-    mainLayout->addWidget(groupContext);
-    mainLayout->addLayout(hLayoutBottom);
+    mainLayout->addLayout(columnsLayout);
+    mainLayout->addLayout(buttonLayout);
 
     this->setLayout(mainLayout);
 }
@@ -155,8 +161,8 @@ void DialogAgentData::SetAgentData(const AgentData &data)
     originalGmtOffset    = data.GmtOffset;
     originalACP          = data.ACP;
     originalOemCP        = data.OemCP;
-    originalPid          = data.Pid;
-    originalTid          = data.Tid;
+    originalPid          = data.Pid.toInt();
+    originalTid          = data.Tid.toInt();
     originalArch         = data.Arch;
     originalElevated     = data.Elevated;
     originalProcess      = data.Process;
@@ -167,26 +173,26 @@ void DialogAgentData::SetAgentData(const AgentData &data)
     originalUsername     = data.Username;
     originalImpersonated = data.Impersonated;
 
+    inputDomain->setText(data.Domain);
+    inputComputer->setText(data.Computer);
+    inputUsername->setText(data.Username);
+    inputImpersonated->setText(data.Impersonated);
+    inputProcess->setText(data.Process);
+    inputArch->setCurrentText(data.Arch);
+    inputPid->setValue(data.Pid.toInt());
+    inputTid->setValue(data.Tid.toInt());
+    inputElevated->setChecked(data.Elevated);
     inputInternalIP->setText(data.InternalIP);
     inputExternalIP->setText(data.ExternalIP);
-    inputGmtOffset->setValue(data.GmtOffset);
-    inputACP->setValue(data.ACP);
-    inputOemCP->setValue(data.OemCP);
-    inputPid->setText(data.Pid);
-    inputTid->setText(data.Tid);
-    inputArch->setCurrentText(data.Arch);
-    inputElevated->setChecked(data.Elevated);
-    inputProcess->setText(data.Process);
 
     int osIndex = inputOs->findData(data.Os);
     if (osIndex >= 0)
         inputOs->setCurrentIndex(osIndex);
 
     inputOsDesc->setText(data.OsDesc);
-    inputDomain->setText(data.Domain);
-    inputComputer->setText(data.Computer);
-    inputUsername->setText(data.Username);
-    inputImpersonated->setText(data.Impersonated);
+    inputGmtOffset->setValue(data.GmtOffset);
+    inputACP->setValue(data.ACP);
+    inputOemCP->setValue(data.OemCP);
 }
 
 void DialogAgentData::Start()
@@ -199,43 +205,6 @@ void DialogAgentData::onButtonUpdate()
 {
     QJsonObject updateData;
 
-    if (inputInternalIP->text() != originalInternalIP)
-        updateData["internal_ip"] = inputInternalIP->text();
-
-    if (inputExternalIP->text() != originalExternalIP)
-        updateData["external_ip"] = inputExternalIP->text();
-
-    if (inputGmtOffset->value() != originalGmtOffset)
-        updateData["gmt_offset"] = inputGmtOffset->value();
-
-    if (inputACP->value() != originalACP)
-        updateData["acp"] = inputACP->value();
-
-    if (inputOemCP->value() != originalOemCP)
-        updateData["oemcp"] = inputOemCP->value();
-
-    if (inputPid->text() != originalPid)
-        updateData["pid"] = inputPid->text();
-
-    if (inputTid->text() != originalTid)
-        updateData["tid"] = inputTid->text();
-
-    if (inputArch->currentText() != originalArch)
-        updateData["arch"] = inputArch->currentText();
-
-    if (inputElevated->isChecked() != originalElevated)
-        updateData["elevated"] = inputElevated->isChecked();
-
-    if (inputProcess->text() != originalProcess)
-        updateData["process"] = inputProcess->text();
-
-    int currentOs = inputOs->currentData().toInt();
-    if (currentOs != originalOs)
-        updateData["os"] = currentOs;
-
-    if (inputOsDesc->text() != originalOsDesc)
-        updateData["os_desc"] = inputOsDesc->text();
-
     if (inputDomain->text() != originalDomain)
         updateData["domain"] = inputDomain->text();
 
@@ -247,6 +216,43 @@ void DialogAgentData::onButtonUpdate()
 
     if (inputImpersonated->text() != originalImpersonated)
         updateData["impersonated"] = inputImpersonated->text();
+
+    if (inputProcess->text() != originalProcess)
+        updateData["process"] = inputProcess->text();
+
+    if (inputArch->currentText() != originalArch)
+        updateData["arch"] = inputArch->currentText();
+
+    if (inputPid->value() != originalPid)
+        updateData["pid"] = QString::number(inputPid->value());
+
+    if (inputTid->value() != originalTid)
+        updateData["tid"] = QString::number(inputTid->value());
+
+    if (inputElevated->isChecked() != originalElevated)
+        updateData["elevated"] = inputElevated->isChecked();
+
+    if (inputInternalIP->text() != originalInternalIP)
+        updateData["internal_ip"] = inputInternalIP->text();
+
+    if (inputExternalIP->text() != originalExternalIP)
+        updateData["external_ip"] = inputExternalIP->text();
+
+    int currentOs = inputOs->currentData().toInt();
+    if (currentOs != originalOs)
+        updateData["os"] = currentOs;
+
+    if (inputOsDesc->text() != originalOsDesc)
+        updateData["os_desc"] = inputOsDesc->text();
+
+    if (inputGmtOffset->value() != originalGmtOffset)
+        updateData["gmt_offset"] = inputGmtOffset->value();
+
+    if (inputACP->value() != originalACP)
+        updateData["acp"] = inputACP->value();
+
+    if (inputOemCP->value() != originalOemCP)
+        updateData["oemcp"] = inputOemCP->value();
 
     if (updateData.isEmpty()) {
         this->close();
