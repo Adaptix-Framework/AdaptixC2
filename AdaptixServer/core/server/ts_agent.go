@@ -447,6 +447,7 @@ func (ts *Teamserver) applyAgentUpdate(agent *adaptix.Agent, updateData interfac
 		Color        *string `json:"color,omitempty"`
 		Listener     *string `json:"listener,omitempty"`
 		CustomData   *string `json:"custom_data,omitempty"`
+		SessionKey   *[]byte `json:"a_session_key,omitempty"`
 		Sleep        *uint   `json:"sleep,omitempty"`
 		Jitter       *uint   `json:"jitter,omitempty"`
 		WorkingTime  *int    `json:"working_time,omitempty"`
@@ -593,6 +594,10 @@ func (ts *Teamserver) applyAgentUpdate(agent *adaptix.Agent, updateData interfac
 		}
 		if fields.CustomData != nil {
 			d.CustomData = []byte(*fields.CustomData)
+			updated = true
+		}
+		if fields.SessionKey != nil {
+			d.SessionKey = *fields.SessionKey
 			updated = true
 		}
 		if fields.Sleep != nil {
