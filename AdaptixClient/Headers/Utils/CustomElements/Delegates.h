@@ -31,10 +31,18 @@ public:
 
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
         QSize size = QStyledItemDelegate::sizeHint(option, index);
-        int hPad = (index.column() == 0) ? m_padding : m_padding * 2;
+
+        int treeCol = 0;
+        if (const auto* tree = qobject_cast<const QTreeView*>(option.widget)) {
+            const int pos = tree->treePosition();
+            if (pos >= 0)
+                treeCol = pos;
+        }
+
+        int hPad = (index.column() == treeCol) ? m_padding : m_padding * 2;
 
         int indentExtra = 0;
-        if (index.column() == 0) {
+        if (index.column() == treeCol) {
             if (const auto* tree = qobject_cast<const QTreeView*>(option.widget)) {
                 int depth = 0;
                 for (QModelIndex p = index.parent(); p.isValid(); p = p.parent())
@@ -319,7 +327,6 @@ protected:
             style()->drawPrimitive(QStyle::PE_IndicatorBranch, &arrowOpt, painter, this);
         }
 
-        // Tree lines
         if (m_guidesEnabled && depth > 0) {
             painter->save();
 

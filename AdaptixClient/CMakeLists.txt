@@ -216,7 +216,9 @@ SET( HEADERS
         Headers/Utils/CustomElements/TextEditConsole.h
         Headers/Utils/CustomElements/VerticalTabWidget.h
         Headers/Utils/CustomElements/ListFeed.h
+        Headers/UI/Widgets/SessionsTableWidget.h
         Headers/UI/Widgets/SessionsFeedWidget.h
+        Headers/UI/Widgets/SessionWidgetIface.h
         Headers/UI/Widgets/TasksFeedWidget.h
         Headers/UI/Widgets/ListenersFeedWidget.h
         Headers/UI/Widgets/TunnelsFeedWidget.h
@@ -227,8 +229,12 @@ SET( HEADERS
         Headers/UI/Widgets/ScriptsWidget.h
         Headers/Client/CodeEditorProfileManager.h
         Headers/Utils/CustomElements/ConnectionStatusWidget.h
+        Headers/UI/Widgets/CredentialsWidget.h
         Headers/UI/Widgets/CredentialsFeedWidget.h
+        Headers/UI/Widgets/CredentialWidgetIface.h
+        Headers/UI/Widgets/TargetsWidget.h
         Headers/UI/Widgets/TargetsFeedWidget.h
+        Headers/UI/Widgets/TargetWidgetIface.h
         Headers/UI/Dialogs/DialogConsoleSearch.h
         Headers/UI/Models/AgentsFilterProxyModel.h
         Headers/UI/Widgets/TaskOutputWidget.h
@@ -325,6 +331,7 @@ add_executable(AdaptixClient
         Source/Utils/CustomElements/ConsoleHighlighter.cpp
         Source/Utils/CustomElements/VerticalTabWidget.cpp
         Source/Utils/CustomElements/ListFeed.cpp
+        Source/UI/Widgets/SessionsTableWidget.cpp
         Source/UI/Widgets/SessionsFeedWidget.cpp
         Source/UI/Widgets/TasksFeedWidget.cpp
         Source/UI/Widgets/ListenersFeedWidget.cpp
@@ -336,7 +343,9 @@ add_executable(AdaptixClient
         Source/UI/Widgets/ScriptsWidget.cpp
         Source/Client/CodeEditorProfileManager.cpp
         Source/Utils/CustomElements/ConnectionStatusWidget.cpp
+        Source/UI/Widgets/CredentialsWidget.cpp
         Source/UI/Widgets/CredentialsFeedWidget.cpp
+        Source/UI/Widgets/TargetsWidget.cpp
         Source/UI/Widgets/TargetsFeedWidget.cpp
         Source/UI/Dialogs/DialogConsoleSearch.cpp
         Source/UI/Widgets/TaskOutputWidget.cpp

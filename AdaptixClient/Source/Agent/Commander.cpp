@@ -395,6 +395,7 @@ CommanderResult Commander::ProcessCommand(const Command &command, const QString 
                     if (file.open(QIODevice::ReadOnly)) {
                         QByteArray fileData = file.readAll();
                         jsonObj[commandArg.name] = QString::fromLatin1(fileData.toBase64());
+                        jsonObj[commandArg.name + "_path"] = path;
                         file.close();
                     } else {
                         return CommanderResult{true, true, "Failed to open file: " + path, {}, false, {}};

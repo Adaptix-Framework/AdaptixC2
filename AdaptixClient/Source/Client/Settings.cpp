@@ -42,14 +42,14 @@ void Settings::SetDefault()
     this->data.ConsoleNoWrap = true;
     this->data.ConsoleAutoScroll = false;
     this->data.ConsoleShowBackground = true;
-    this->data.ConsoleUseAppTheme = false;
+    this->data.ConsoleUseAppTheme = true;
     this->data.ConsoleBgImagePath = ":/Back";
     this->data.ConsoleBgDimming = 80;
     this->data.ConsoleTheme = "console_adaptix_dark";
     this->data.ConsoleAutoLoadEarlier = true;
     this->data.ConsolePageSize = 50;
 
-    for ( int i = 0; i < 16; i++) {
+    for ( int i = 0; i < 17; i++) {
         data.SessionsTableColumns[i] = true;
         data.SessionsColumnOrder[i] = i;
     }
@@ -58,7 +58,7 @@ void Settings::SetDefault()
     this->data.HealthCoaf = 2.0;
     this->data.HealthOffset = 40;
     this->data.DeadLightnessShift = 0.15;
-    this->data.SessionsViewMode = 1; // feed only
+    this->data.SessionsViewMode = 1;
     this->data.SessionsAutoHideInactive = false;
     this->data.SessionsCompactMode = false;
 
@@ -70,12 +70,12 @@ void Settings::SetDefault()
 
     for (int i = 0; i < 10; i++)
         data.TargetsTableColumns[i] = true;
-    this->data.TargetsViewMode = 1; // feed only
+    this->data.TargetsViewMode = 1;
     this->data.TargetsCompactMode = false;
 
     for (int i = 0; i < 10; i++)
         data.CredentialsTableColumns[i] = true;
-    this->data.CredentialsViewMode = 1; // feed only
+    this->data.CredentialsViewMode = 1;
     this->data.CredentialsCompactMode = false;
 
     for (int i = 0; i < 11; i++)

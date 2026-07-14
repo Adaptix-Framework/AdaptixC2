@@ -3,13 +3,14 @@
 
 #include <Utils/CustomElements/ListFeed.h>
 #include <UI/Widgets/AbstractDock.h>
+#include <UI/Widgets/TargetWidgetIface.h>
 #include <Client/PagedTableHelper.h>
 
 #include <main.h>
 
 class AdaptixWidget;
 
-class TargetsFeedWidget : public ListFeedWidget
+class TargetsFeedWidget : public ListFeedWidget, public TargetWidgetIface
 {
 Q_OBJECT
     AdaptixWidget* m_adaptixWidget = nullptr;
@@ -33,21 +34,21 @@ public:
     explicit TargetsFeedWidget(AdaptixWidget* w);
     ~TargetsFeedWidget() override;
 
-    KDDockWidgets::QtWidgets::DockWidget* dock();
+    KDDockWidgets::QtWidgets::DockWidget* dock() override;
 
-    void SetUpdatesEnabled(bool enabled);
-    void Clear();
+    void SetUpdatesEnabled(bool enabled) override;
+    void Clear() override;
 
-    void AddTargetsItems(QList<TargetData> targetList);
-    void EditTargetsItem(const TargetData& newTarget);
-    void RemoveTargetsItem(const QList<qint64>& targetsId);
-    void TargetsSetTag(const QList<qint64>& targetIds, const QString& tag);
+    void AddTargetsItems(QList<TargetData> targetList) override;
+    void EditTargetsItem(const TargetData& newTarget) override;
+    void RemoveTargetsItem(const QList<qint64>& targetsId) override;
+    void TargetsSetTag(const QList<qint64>& targetIds, const QString& tag) override;
 
-    void TargetsAdd(QList<TargetData> targetList);
+    void TargetsAdd(QList<TargetData> targetList) override;
 
-    void UpdateColumnsSize() const {}
-    void UpdateColumnsVisible();
-
+    void UpdateColumnsSize() const override {}
+    void UpdateColumnsVisible() override;
+    QWidget* asWidget() override { return this; }
 
 protected:
     void onFilterChanged() override;

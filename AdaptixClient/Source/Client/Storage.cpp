@@ -373,9 +373,9 @@ void Storage::SelectSettingsConsole(SettingsData* settingsData)
         settingsData->ConsoleNoWrap            = json["noWrap"].toBool();
         settingsData->ConsoleAutoScroll        = json["autoScroll"].toBool();
         settingsData->ConsoleShowBackground    = json.contains("showBackground") ? json["showBackground"].toBool() : true;
-        settingsData->ConsoleUseAppTheme       = json.contains("useAppTheme") ? json["useAppTheme"].toBool() : false;
-        settingsData->ConsoleBgImagePath      = json.contains("bgImagePath") && !json["bgImagePath"].toString().isEmpty() ? json["bgImagePath"].toString() : ":/Back";
-        settingsData->ConsoleBgDimming        = json.contains("bgDimming") ? qBound(0, json["bgDimming"].toInt(80), 100) : 80;
+        settingsData->ConsoleUseAppTheme       = json.contains("useAppTheme") ? json["useAppTheme"].toBool() : true;
+        settingsData->ConsoleBgImagePath       = json.contains("bgImagePath") && !json["bgImagePath"].toString().isEmpty() ? json["bgImagePath"].toString() : ":/Back";
+        settingsData->ConsoleBgDimming         = json.contains("bgDimming") ? qBound(0, json["bgDimming"].toInt(80), 100) : 80;
         if (json.contains("consoleTheme"))
             settingsData->ConsoleTheme = json["consoleTheme"].toString();
         settingsData->ConsoleAutoLoadEarlier = json.contains("autoLoadEarlier") ? json["autoLoadEarlier"].toBool() : true;
@@ -423,12 +423,35 @@ void Storage::SelectSettingsSessions(SettingsData* settingsData)
             settingsData->DeadLightnessShift = 0.15;
 
         QJsonArray columns = json["columns"].toArray();
-        for (int i = 0; i < 16 && i < columns.size(); i++)
-            settingsData->SessionsTableColumns[i] = columns[i].toBool();
+        if (columns.size() == 16) {
+            settingsData->SessionsTableColumns[0] = columns[11].toBool();
+            for (int i = 0; i < 11; i++)
+                settingsData->SessionsTableColumns[i + 1] = columns[i].toBool();
+            settingsData->SessionsTableColumns[12] = true;
+            for (int i = 12; i < 16; i++)
+                settingsData->SessionsTableColumns[i + 1] = columns[i].toBool();
+        } else if (columns.size() == 17) {
+            const QString layout = json["columnsLayout"].toString();
+            if (layout == "iconFirst") {
+                for (int i = 0; i < 17; i++)
+                    settingsData->SessionsTableColumns[i] = columns[i].toBool();
+            } else {
+                settingsData->SessionsTableColumns[0] = columns[12].toBool();
+                for (int i = 0; i < 12; i++)
+                    settingsData->SessionsTableColumns[i + 1] = columns[i].toBool();
+                for (int i = 13; i < 17; i++)
+                    settingsData->SessionsTableColumns[i] = columns[i].toBool();
+            }
+        }
 
         QJsonArray columnOrder = json["columnOrder"].toArray();
-        for (int i = 0; i < 16 && i < columnOrder.size(); i++)
-            settingsData->SessionsColumnOrder[i] = columnOrder[i].toInt();
+        if (columnOrder.size() == 17 && json["columnsLayout"].toString() == "iconFirst") {
+            for (int i = 0; i < 17; i++)
+                settingsData->SessionsColumnOrder[i] = columnOrder[i].toInt();
+        } else {
+            for (int i = 0; i < 17; i++)
+                settingsData->SessionsColumnOrder[i] = i;
+        }
 
         if (json.contains("viewMode"))
             settingsData->SessionsViewMode = json["viewMode"].toInt();
@@ -440,11 +463,11 @@ void Storage::SelectSettingsSessions(SettingsData* settingsData)
 void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
 {
     QJsonArray columns;
-    for (int i = 0 ; i < 16; i++)
+    for (int i = 0 ; i < 17; i++)
         columns.append(settingsData.SessionsTableColumns[i]);
 
     QJsonArray columnOrder;
-    for (int i = 0 ; i < 16; i++)
+    for (int i = 0 ; i < 17; i++)
         columnOrder.append(settingsData.SessionsColumnOrder[i]);
 
     QJsonObject json;
@@ -454,6 +477,7 @@ void Storage::UpdateSettingsSessions(const SettingsData &settingsData)
     json["deadLightnessShift"] = settingsData.DeadLightnessShift;
     json["columns"]       = columns;
     json["columnOrder"]   = columnOrder;
+    json["columnsLayout"] = QStringLiteral("iconFirst");
     json["viewMode"]      = settingsData.SessionsViewMode;
     json["autoHideInactive"] = settingsData.SessionsAutoHideInactive;
     json["compactMode"]   = settingsData.SessionsCompactMode;

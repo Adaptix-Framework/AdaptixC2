@@ -9,6 +9,7 @@
 #include <QSortFilterProxyModel>
 
 enum SessionsColumns {
+    SC_Icon,
     SC_AgentID,
     SC_AgentType,
     SC_External,
@@ -20,7 +21,7 @@ enum SessionsColumns {
     SC_Os,
     SC_Process,
     SC_Pid,
-    SC_Icon,
+    SC_Tid,
     SC_Tags,
     SC_Created,
     SC_Last,
@@ -47,8 +48,7 @@ public:
     }
 
     void setSearchVisible(bool visible) {
-        if (searchVisible == visible)
-            return;
+        if (searchVisible == visible) return;
         searchVisible = visible;
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
@@ -56,8 +56,7 @@ QT_WARNING_DISABLE_DEPRECATED
 QT_WARNING_POP
     }
     void setOnlyActive(bool active) {
-        if (onlyActive == active)
-            return;
+        if (onlyActive == active) return;
         onlyActive = active;
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED
@@ -75,8 +74,7 @@ QT_WARNING_DISABLE_DEPRECATED
 QT_WARNING_POP
     }
     void setAgentTypes(const QSet<QString>& types) {
-        if (agentTypes == types)
-            return;
+        if (agentTypes == types) return;
         agentTypes = types;
 QT_WARNING_PUSH
 QT_WARNING_DISABLE_DEPRECATED

@@ -11,7 +11,7 @@
 #include <Client/AxScript/AxUiFactory.h>
 #include <Client/AxScript/BridgeEvent.h>
 #include <UI/Widgets/AdaptixWidget.h>
-#include <UI/Widgets/SessionsFeedWidget.h>
+#include <UI/Widgets/SessionWidgetIface.h>
 
 namespace {
 

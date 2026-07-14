@@ -2,8 +2,11 @@
 #include <UI/MainUI.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/SessionWidgetIface.h>
 #include <UI/Widgets/SessionsFeedWidget.h>
 #include <UI/Widgets/TasksFeedWidget.h>
+#include <UI/Widgets/TargetWidgetIface.h>
+#include <UI/Widgets/CredentialWidgetIface.h>
 #include <UI/Widgets/TargetsFeedWidget.h>
 #include <UI/Widgets/CredentialsFeedWidget.h>
 #include <UI/Widgets/FilesFeedWidget.h>
@@ -389,7 +392,7 @@ void MainUI::ApplyFeedViewPreferences()
         if (!adaptixWidget)
             continue;
 
-        if (auto* sessions = adaptixWidget->SessionsTableDock) {
+        if (auto* sessions = qobject_cast<SessionsFeedWidget*>(adaptixWidget->SessionsTableDock ? adaptixWidget->SessionsTableDock->asWidget() : nullptr)) {
             sessions->setCompactMode(d.SessionsCompactMode);
             if (sessions->activeFilter())
                 sessions->activeFilter()->setChecked(d.SessionsAutoHideInactive);
@@ -403,11 +406,11 @@ void MainUI::ApplyFeedViewPreferences()
             tasks->onFilterChanged();
         }
 
-        if (auto* targets = adaptixWidget->TargetsDock) {
+        if (auto* targets = qobject_cast<TargetsFeedWidget*>(adaptixWidget->TargetsDock ? adaptixWidget->TargetsDock->asWidget() : nullptr)) {
             targets->setCompactMode(d.TargetsCompactMode);
         }
 
-        if (auto* creds = adaptixWidget->CredentialsDock) {
+        if (auto* creds = qobject_cast<CredentialsFeedWidget*>(adaptixWidget->CredentialsDock ? adaptixWidget->CredentialsDock->asWidget() : nullptr)) {
             creds->setCompactMode(d.CredentialsCompactMode);
         }
 

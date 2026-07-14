@@ -15,13 +15,16 @@
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/TerminalContainerWidget.h>
 #include <UI/Widgets/SessionsFeedWidget.h>
+#include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ChatWidget.h>
 #include <UI/Widgets/ListenersFeedWidget.h>
 #include <UI/Widgets/FilesFeedWidget.h>
 #include <UI/Widgets/ScreenshotsFeedWidget.h>
 #include <UI/Widgets/CredentialsFeedWidget.h>
+#include <UI/Widgets/CredentialsWidget.h>
 #include <UI/Widgets/TargetsFeedWidget.h>
+#include <UI/Widgets/TargetsWidget.h>
 #include <UI/Widgets/TasksFeedWidget.h>
 #include <UI/Widgets/TunnelsFeedWidget.h>
 #include <UI/Graph/SessionsGraph.h>
@@ -70,13 +73,22 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     ChatDock          = new ChatWidget(this);
     ListenersDock     = new ListenersFeedWidget(this);
     SessionsGraphDock = new SessionsGraph(this);
-    SessionsTableDock = new SessionsFeedWidget(this);
+    if (GlobalClient && GlobalClient->settings && GlobalClient->settings->data.SessionsViewMode == 1)
+        SessionsTableDock = new SessionsFeedWidget(this);
+    else
+        SessionsTableDock = new SessionsTableWidget(this);
     TasksDock         = new TasksFeedWidget(this);
     TunnelsDock       = new TunnelsFeedWidget(this);
     DownloadsDock     = new FilesFeedWidget(this);
     ScreenshotsDock   = new ScreenshotsFeedWidget(this);
-    CredentialsDock   = new CredentialsFeedWidget(this);
-    TargetsDock       = new TargetsFeedWidget(this);
+    if (GlobalClient && GlobalClient->settings && GlobalClient->settings->data.CredentialsViewMode == 0)
+        CredentialsDock = new CredentialsWidget(this);
+    else
+        CredentialsDock = new CredentialsFeedWidget(this);
+    if (GlobalClient && GlobalClient->settings && GlobalClient->settings->data.TargetsViewMode == 0)
+        TargetsDock = new TargetsWidget(this);
+    else
+        TargetsDock = new TargetsFeedWidget(this);
 
     dockTop->toggleAction()->trigger();
     this->PlaceDock( dockTop, SessionsTableDock->dock() );
@@ -754,15 +766,18 @@ void AdaptixWidget::Close()
     DownloadsDock->deleteLater();
     ScreenshotsDock->deleteLater();
     if (CredentialsDock) {
-        CredentialsDock->deleteLater();
+        if (auto* w = CredentialsDock->asWidget())
+            w->deleteLater();
         CredentialsDock = nullptr;
     }
     if (TargetsDock) {
-        TargetsDock->deleteLater();
+        if (auto* w = TargetsDock->asWidget())
+            w->deleteLater();
         TargetsDock = nullptr;
     }
     if (SessionsTableDock) {
-        SessionsTableDock->deleteLater();
+        if (auto* w = SessionsTableDock->asWidget())
+            w->deleteLater();
         SessionsTableDock = nullptr;
     }
 

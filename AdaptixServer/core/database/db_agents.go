@@ -49,13 +49,13 @@ func (dbms *DBMS) DbAgentUpdate(agentData adaptix.AgentData) error {
 
 	updateQuery := `UPDATE Agents SET ExternalIP = ?, InternalIP = ?, GmtOffset = ?, Sleep = ?, Jitter = ?, Pid = ?, Tid = ?, Arch = ?, Elevated = ?,
                      Process = ?, Os = ?, OsDesc = ?, Domain = ?, Computer = ?, Username = ?, Impersonated = ?, OemCP = ?, ACP = ?,
-                     WorkingTime = ?, KillDate = ?, Tags = ?, Mark = ?, Color = ?, CustomData = ? WHERE Id = ?;`
+                     WorkingTime = ?, KillDate = ?, Tags = ?, Mark = ?, Color = ?, CustomData = ?, SessionKey = ? WHERE Id = ?;`
 	result, err := dbms.database.Exec(updateQuery,
 		agentData.ExternalIP, agentData.InternalIP, agentData.GmtOffset, agentData.Sleep, agentData.Jitter,
 		agentData.Pid, agentData.Tid, agentData.Arch, agentData.Elevated, agentData.Process,
 		agentData.Os, agentData.OsDesc, agentData.Domain, agentData.Computer, agentData.Username, agentData.Impersonated,
 		agentData.OemCP, agentData.ACP, agentData.WorkingTime, agentData.KillDate,
-		agentData.Tags, agentData.Mark, agentData.Color, agentData.CustomData, agentData.Id,
+		agentData.Tags, agentData.Mark, agentData.Color, agentData.CustomData, agentData.SessionKey, agentData.Id,
 	)
 	if err != nil {
 		return err

@@ -92,6 +92,9 @@ func (tc *TsConnector) resolveFileRefs(args map[string]any) error {
 			return fmt.Errorf("failed to resolve file ref '%d' for arg '%s': %w", ref, key, err)
 		}
 		args[key] = base64.StdEncoding.EncodeToString(data)
+		if path, ok := m["__file_path"].(string); ok && path != "" {
+			args[key+"_path"] = path
+		}
 	}
 	return nil
 }

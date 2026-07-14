@@ -236,8 +236,8 @@ typedef struct SettingsData {
     bool ConsoleAutoLoadEarlier;
     int  ConsolePageSize;
 
-    bool   SessionsTableColumns[16];
-    int    SessionsColumnOrder[16];
+    bool   SessionsTableColumns[17];
+    int    SessionsColumnOrder[17];
     int    SessionsViewMode;
     bool   SessionsAutoHideInactive;
     bool   SessionsCompactMode;

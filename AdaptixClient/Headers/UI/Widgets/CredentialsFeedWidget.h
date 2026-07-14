@@ -3,13 +3,14 @@
 
 #include <Utils/CustomElements/ListFeed.h>
 #include <UI/Widgets/AbstractDock.h>
+#include <UI/Widgets/CredentialWidgetIface.h>
 #include <Client/PagedTableHelper.h>
 
 #include <main.h>
 
 class AdaptixWidget;
 
-class CredentialsFeedWidget : public ListFeedWidget
+class CredentialsFeedWidget : public ListFeedWidget, public CredentialWidgetIface
 {
 Q_OBJECT
     AdaptixWidget* m_adaptixWidget = nullptr;
@@ -33,22 +34,22 @@ public:
     explicit CredentialsFeedWidget(AdaptixWidget* w);
     ~CredentialsFeedWidget() override;
 
-    KDDockWidgets::QtWidgets::DockWidget* dock();
+    KDDockWidgets::QtWidgets::DockWidget* dock() override;
 
-    void SetUpdatesEnabled(bool enabled);
-    void Clear();
+    void SetUpdatesEnabled(bool enabled) override;
+    void Clear() override;
 
-    void AddCredentialsItems(QList<CredentialData> credsList);
-    void EditCredentialsItem(const CredentialData& newCredentials);
-    void RemoveCredentialsItem(const QList<qint64>& credsId);
-    void CredsSetTag(const QList<qint64>& credsIds, const QString& tag);
+    void AddCredentialsItems(QList<CredentialData> credsList) override;
+    void EditCredentialsItem(const CredentialData& newCredentials) override;
+    void RemoveCredentialsItem(const QList<qint64>& credsId) override;
+    void CredsSetTag(const QList<qint64>& credsIds, const QString& tag) override;
 
-    void CredentialsAdd(QList<CredentialData> credsList);
+    void CredentialsAdd(QList<CredentialData> credsList) override;
 
-    void UpdateColumnsSize() const {}
-    void UpdateColumnsVisible();
-    void UpdateFilterComboBoxes() const {}
-
+    void UpdateColumnsSize() const override {}
+    void UpdateColumnsVisible() override;
+    void UpdateFilterComboBoxes() const override {}
+    QWidget* asWidget() override { return this; }
 
 protected:
     void onFilterChanged() override;

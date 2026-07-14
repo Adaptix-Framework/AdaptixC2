@@ -3,6 +3,7 @@
 
 #include <Utils/CustomElements/ListFeed.h>
 #include <UI/Widgets/AbstractDock.h>
+#include <UI/Widgets/SessionWidgetIface.h>
 #include <UI/Models/GroupingProxyModel.h>
 #include <UI/Models/AgentsFilterProxyModel.h>
 
@@ -11,7 +12,7 @@
 class AdaptixWidget;
 class Agent;
 
-class SessionsFeedWidget : public ListFeedWidget
+class SessionsFeedWidget : public ListFeedWidget, public SessionWidgetIface
 {
 Q_OBJECT
     AdaptixWidget* adaptixWidget = nullptr;
@@ -28,23 +29,25 @@ public:
     explicit SessionsFeedWidget(AdaptixWidget* w);
     ~SessionsFeedWidget() override;
 
-    KDDockWidgets::QtWidgets::DockWidget* dock();
-    void SetUpdatesEnabled(bool enabled);
-    void AddAgentItem(Agent* agent);
-    void UpdateAgentItem(const AgentData& oldData, const Agent* agent);
-    void RemoveAgentItem(qint64 agentId);
-    void UpdateData();
-    void UpdateLastColumn(const QList<qint64>& agentIds);
-    void UpdateColumnsVisible();
-    void UpdateColumnsSize() {}
-    void UpdateAgentTypeComboBox();
-    void Clear();
+    KDDockWidgets::QtWidgets::DockWidget* dock() override;
+    void SetUpdatesEnabled(bool enabled) override;
+    void AddAgentItem(Agent* agent) override;
+    void UpdateAgentItem(const AgentData& oldData, const Agent* agent) override;
+    void RemoveAgentItem(qint64 agentId) override;
+    void UpdateData() override;
+    void UpdateLastColumn(const QList<qint64>& agentIds) override;
+    void UpdateColumnsVisible() override;
+    void UpdateColumnsSize() override {}
+    void UpdateAgentTypeComboBox() override;
+    void Clear() override;
+    QWidget* asWidget() override { return this; }
 
-    void OnGroupCreated(int64_t groupId, int64_t parentId, const QString& name, const QVector<qint64>& members);
-    void OnGroupRenamed(int64_t groupId, const QString& name);
-    void OnGroupDeleted(int64_t groupId);
-    void OnGroupMembersChanged(int64_t groupId, const QVector<qint64>& add, const QVector<qint64>& remove);
-    void OnGroupReparented(int64_t groupId, int64_t newParentId);
+    void OnGroupCreated(int64_t groupId, int64_t parentId, const QString& name, const QVector<qint64>& members) override;
+    void OnGroupRenamed(int64_t groupId, const QString& name) override;
+    void OnGroupDeleted(int64_t groupId) override;
+    void OnGroupMembersChanged(int64_t groupId, const QVector<qint64>& add, const QVector<qint64>& remove) override;
+    void OnGroupReparented(int64_t groupId, int64_t newParentId) override;
+
 
     void onFilterChanged() override;
 

@@ -11,8 +11,8 @@
 #include <Client/AxScript/AxScriptUtils.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
-#include <UI/Widgets/CredentialsFeedWidget.h>
-#include <UI/Widgets/TargetsFeedWidget.h>
+#include <UI/Widgets/CredentialWidgetIface.h>
+#include <UI/Widgets/TargetWidgetIface.h>
 
 namespace {
 

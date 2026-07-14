@@ -87,7 +87,7 @@ static FeedRow agentToFeedRow(const Agent* agent) {
     if (sessionsCol(SC_Os) && !d.OsDesc.isEmpty())
         secondParts << d.OsDesc;
 
-    if (sessionsCol(SC_Process) || sessionsCol(SC_Pid)) {
+    if (sessionsCol(SC_Process) || sessionsCol(SC_Pid) || sessionsCol(SC_Tid)) {
         QString procPart;
         if (sessionsCol(SC_Process) && !d.Process.isEmpty()) {
             procPart = d.Process;
@@ -96,10 +96,17 @@ static FeedRow agentToFeedRow(const Agent* agent) {
                 extras << d.Arch;
             if (sessionsCol(SC_Pid) && !d.Pid.isEmpty())
                 extras << d.Pid;
+            if (sessionsCol(SC_Tid) && !d.Tid.isEmpty())
+                extras << d.Tid;
             if (!extras.isEmpty())
                 procPart += QString(" (%1)").arg(extras.join(", "));
-        } else if (sessionsCol(SC_Pid) && !d.Pid.isEmpty()) {
-            procPart = d.Pid;
+        } else {
+            QStringList ids;
+            if (sessionsCol(SC_Pid) && !d.Pid.isEmpty())
+                ids << d.Pid;
+            if (sessionsCol(SC_Tid) && !d.Tid.isEmpty())
+                ids << d.Tid;
+            procPart = ids.join(", ");
         }
         if (!procPart.isEmpty())
             secondParts << procPart;

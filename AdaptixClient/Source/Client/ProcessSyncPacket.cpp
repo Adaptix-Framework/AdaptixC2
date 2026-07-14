@@ -5,7 +5,7 @@
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
-#include <UI/Widgets/SessionsFeedWidget.h>
+#include <UI/Widgets/SessionWidgetIface.h>
 #include <UI/Widgets/ListenersFeedWidget.h>
 #include <UI/Widgets/TasksFeedWidget.h>
 #include <UI/Widgets/LogsWidget.h>
@@ -13,10 +13,8 @@
 #include <UI/Widgets/FilesFeedWidget.h>
 #include <UI/Widgets/ScreenshotsFeedWidget.h>
 #include <UI/Widgets/TunnelsFeedWidget.h>
-#include <UI/Widgets/CredentialsFeedWidget.h>
-#include <UI/Widgets/TargetsFeedWidget.h>
-#include <UI/Widgets/TargetsFeedWidget.h>
-#include <UI/Widgets/CredentialsFeedWidget.h>
+#include <UI/Widgets/CredentialWidgetIface.h>
+#include <UI/Widgets/TargetWidgetIface.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Dialogs/DialogSyncPacket.h>
@@ -782,26 +780,24 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_AGENT_REMOVE: {
         qint64 agentId = parseI64(jsonObj, "a_id");
-        {
-            QWriteLocker locker(&AgentsMapLock);
-            if (!AgentsMap.contains(agentId))
-                break;
-        }
         Agent* agentToRemove = nullptr;
         {
-            QReadLocker locker(&AgentsMapLock);
-            agentToRemove = AgentsMap.value(agentId, nullptr);
+            QWriteLocker locker(&AgentsMapLock);
+            agentToRemove = AgentsMap.take(agentId);
         }
         if (agentToRemove) {
             SessionsGraphDock->RemoveAgent(agentToRemove, this->synchronized);
-            SessionsTableDock->RemoveAgentItem(agentId);
-            TasksDock->RemoveAgentTasksItem(agentId);
+            if (SessionsTableDock)
+                SessionsTableDock->RemoveAgentItem(agentId);
+            if (TasksDock)
+                TasksDock->RemoveAgentTasksItem(agentId);
             for (auto it = GraphTunnelMarks.begin(); it != GraphTunnelMarks.end(); ) {
                 if (it.value().first == agentId)
                     it = GraphTunnelMarks.erase(it);
                 else
                     ++it;
             }
+            delete agentToRemove;
         }
         break;
     }

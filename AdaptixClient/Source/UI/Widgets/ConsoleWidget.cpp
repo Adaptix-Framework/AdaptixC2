@@ -982,19 +982,21 @@ void ConsoleWidget::processFileUploads(const QList<QPair<QString, QString>>& fil
             auto* uploaderDialog = new DialogUploader(sUrl, otp, filePath, self->agent->adaptixWidget->DownloadsDock);
             uploaderDialog->setAttribute(Qt::WA_DeleteOnClose);
 
-            connect(uploaderDialog, &DialogUploader::uploadFinished, self, [self, fileTasks, index, data, commandLine, UI, hookId, handlerId, hasHook, hasHandler, argName, objId] (bool uploadSuccess) mutable {
-                    if (!self || !self->agent) return;
-                    if (!uploadSuccess) {
-                        self->cleanupHooksOnError(hookId, handlerId, hasHook, hasHandler);
-                        return;
-                    }
+            connect(uploaderDialog, &DialogUploader::uploadFinished, self, [self, fileTasks, index, data, commandLine, UI, hookId, handlerId, hasHook, hasHandler, argName, filePath, objId] (bool uploadSuccess) mutable {
+                if (!self || !self->agent)
+                    return;
+                if (!uploadSuccess) {
+                    self->cleanupHooksOnError(hookId, handlerId, hasHook, hasHandler);
+                    return;
+                }
 
-                    QJsonObject fileRef;
-                    fileRef["__file_ref"] = toJsonI64(objId);
-                    data[argName] = fileRef;
+                QJsonObject fileRef;
+                fileRef["__file_ref"] = toJsonI64(objId);
+                fileRef["__file_path"] = filePath;
+                data[argName] = fileRef;
 
-                    self->processFileUploads(fileTasks, index + 1, data, commandLine, UI, hookId, handlerId, hasHook, hasHandler);
-                });
+                self->processFileUploads(fileTasks, index + 1, data, commandLine, UI, hookId, handlerId, hasHook, hasHandler);
+            });
 
             uploaderDialog->show();
         });

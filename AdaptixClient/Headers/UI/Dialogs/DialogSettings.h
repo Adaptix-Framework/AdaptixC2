@@ -81,12 +81,14 @@ Q_OBJECT
 
     QWidget*     sessionsWidget       = nullptr;
     QGridLayout* sessionsLayout       = nullptr;
+    QLabel*      sessionsViewLabel    = nullptr;
+    QComboBox*   sessionsViewCombo    = nullptr;
     oclero::qlementine::Switch* sessionsAutoHideInactiveSwitch = nullptr;
     oclero::qlementine::Switch* sessionsCompactSwitch = nullptr;
     QGroupBox*   sessionsGroup        = nullptr;
     QVBoxLayout* sessionsGroupLayout  = nullptr;
-    int          sessionsCheckCount   = 16;
-    QCheckBox*   sessionsCheck[16];
+    int          sessionsCheckCount   = 17;
+    QCheckBox*   sessionsCheck[17];
     oclero::qlementine::Switch* sessionsHealthCheck = nullptr;
     QLabel*      sessionsLabel1       = nullptr;
     QLabel*      sessionsLabel2       = nullptr;
@@ -106,6 +108,8 @@ Q_OBJECT
 
     QWidget*     targetsWidget     = nullptr;
     QGridLayout* targetsLayout     = nullptr;
+    QLabel*      targetsViewLabel  = nullptr;
+    QComboBox*   targetsViewCombo  = nullptr;
     oclero::qlementine::Switch* targetsCompactSwitch = nullptr;
     QGroupBox*   targetsGroup      = nullptr;
     int          targetsCheckCount = 10;
@@ -113,6 +117,8 @@ Q_OBJECT
 
     QWidget*     credsWidget     = nullptr;
     QGridLayout* credsLayout     = nullptr;
+    QLabel*      credsViewLabel  = nullptr;
+    QComboBox*   credsViewCombo  = nullptr;
     oclero::qlementine::Switch* credsCompactSwitch = nullptr;
     QGroupBox*   credsGroup      = nullptr;
     int          credsCheckCount = 10;

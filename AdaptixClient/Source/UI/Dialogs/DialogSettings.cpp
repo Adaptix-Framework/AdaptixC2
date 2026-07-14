@@ -70,10 +70,13 @@ DialogSettings::DialogSettings(Settings* s)
         connect(toolbarPosBtn[i], &QPushButton::toggled, buttonApply, [this](bool){ buttonApply->setEnabled(true); });
     }
 
+    connect(sessionsViewCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int){buttonApply->setEnabled(true);});
     connect(sessionsAutoHideInactiveSwitch, &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);});
     connect(sessionsCompactSwitch,          &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);});
     connect(tasksInProcessSwitch,           &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);});
     connect(tasksCompactSwitch,             &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);});
+    connect(targetsViewCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int){buttonApply->setEnabled(true);});
+    connect(credsViewCombo,   QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int){buttonApply->setEnabled(true);});
     connect(targetsCompactSwitch,           &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);});
     connect(credsCompactSwitch,             &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);});
     connect(filesCompactSwitch,             &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);});
@@ -88,7 +91,7 @@ DialogSettings::DialogSettings(Settings* s)
 void DialogSettings::createUI()
 {
     this->setWindowTitle("Adaptix Settings");
-    this->resize(600, 300);
+    this->resize(700, 400);
     this->setProperty("Main", "base");
 
     appearanceWidget = new QWidget(this);
@@ -401,27 +404,49 @@ void DialogSettings::createUI()
     sessionsWidget = new QWidget(this);
     sessionsLayout = new QGridLayout(sessionsWidget);
 
+    sessionsViewLabel = new QLabel("View mode:", sessionsWidget);
+    sessionsViewLabel->setStyleSheet("font-weight: 500;");
+    sessionsViewCombo = new QComboBox(sessionsWidget);
+    sessionsViewCombo->addItem("Table (classic)");
+    sessionsViewCombo->addItem("Feed (activity stream)");
+    sessionsViewCombo->setToolTip("Choose how sessions are displayed. Requires reconnect/reopen of the project.");
+    sessionsViewCombo->setMinimumWidth(180);
+    connect(sessionsViewCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
+        if (sessionsCompactSwitch)
+            sessionsCompactSwitch->setEnabled(index == 1);
+        buttonApply->setEnabled(true);
+    });
+
     sessionsAutoHideInactiveSwitch = new oclero::qlementine::Switch(sessionsWidget);
     sessionsAutoHideInactiveSwitch->setText("Auto hide inactive");
     sessionsAutoHideInactiveSwitch->setToolTip("When enabled, sessions with status Terminated/Inactive/Disconnect are hidden by default.");
     sessionsCompactSwitch = new oclero::qlementine::Switch(sessionsWidget);
     sessionsCompactSwitch->setText("Compact mode");
-    sessionsCompactSwitch->setToolTip("Single-line feed rows for Sessions.");
+    sessionsCompactSwitch->setToolTip("Single-line feed rows for Sessions (Feed mode only).");
+
+    auto* sessionsViewRow = new QHBoxLayout();
+    sessionsViewRow->setContentsMargins(0, 0, 0, 0);
+    sessionsViewRow->setSpacing(16);
+    sessionsViewRow->addWidget(sessionsViewLabel);
+    sessionsViewRow->addWidget(sessionsViewCombo);
+    sessionsViewRow->addStretch();
+    sessionsLayout->addLayout(sessionsViewRow, 0, 0, 1, 1);
+
     auto* sessionsPrefsRow = new QHBoxLayout();
     sessionsPrefsRow->setContentsMargins(0, 0, 0, 0);
     sessionsPrefsRow->setSpacing(16);
     sessionsPrefsRow->addWidget(sessionsAutoHideInactiveSwitch);
     sessionsPrefsRow->addWidget(sessionsCompactSwitch);
     sessionsPrefsRow->addStretch();
-    sessionsLayout->addLayout(sessionsPrefsRow, 0, 0, 1, 1);
+    sessionsLayout->addLayout(sessionsPrefsRow, 1, 0, 1, 1);
 
-    sessionsGroup = new QGroupBox("Visible fields", sessionsWidget);
-    sessionsGroup->setToolTip("Fields map to feed card blocks.");
+    sessionsGroup = new QGroupBox("Visible fields / columns", sessionsWidget);
+    sessionsGroup->setToolTip("Controls table columns and feed card blocks.");
 
     QStringList sessionsCheckboxLabels = {
-        "Agent ID", "Agent Type", "External", "Listener", "Internal",
+        "Icon", "Agent ID", "Agent Type", "External", "Listener", "Internal",
         "Domain", "Computer", "User", "OS", "Process",
-        "PID", "Icon", "Tags", "Created", "Last", "Sleep"
+        "PID", "TID", "Tags", "Created", "Last", "Sleep"
     };
 
     for (int i = 0; i < sessionsCheckCount; ++i)
@@ -436,28 +461,28 @@ void DialogSettings::createUI()
     auto* identityGroup = new QGroupBox("Identity", sessionsGroup);
     auto* identityLayout = new QVBoxLayout(identityGroup);
     identityLayout->setContentsMargins(8, 8, 8, 8);
-    identityLayout->addWidget(sessionsCheck[11]); // Icon
-    identityLayout->addWidget(sessionsCheck[0]);  // Agent ID
-    identityLayout->addWidget(sessionsCheck[1]);  // Agent Type
-    identityLayout->addWidget(sessionsCheck[13]); // Created
+    identityLayout->addWidget(sessionsCheck[0]);  // Icon
+    identityLayout->addWidget(sessionsCheck[1]);  // Agent ID
+    identityLayout->addWidget(sessionsCheck[2]);  // Agent Type
+    identityLayout->addWidget(sessionsCheck[14]); // Created
     identityLayout->addStretch();
     topRow->addWidget(identityGroup, 1);
 
     auto* mainGroup = new QGroupBox("Main", sessionsGroup);
     auto* mainLayout = new QVBoxLayout(mainGroup);
     mainLayout->setContentsMargins(8, 8, 8, 8);
-    mainLayout->addWidget(sessionsCheck[7]); // User
-    mainLayout->addWidget(sessionsCheck[6]); // Computer
-    mainLayout->addWidget(sessionsCheck[5]); // Domain
-    mainLayout->addWidget(sessionsCheck[4]); // Internal
+    mainLayout->addWidget(sessionsCheck[8]); // User
+    mainLayout->addWidget(sessionsCheck[7]); // Computer
+    mainLayout->addWidget(sessionsCheck[6]); // Domain
+    mainLayout->addWidget(sessionsCheck[5]); // Internal
     mainLayout->addStretch();
     topRow->addWidget(mainGroup, 1);
 
     auto* statusGroup = new QGroupBox("Status", sessionsGroup);
     auto* statusLayout = new QVBoxLayout(statusGroup);
     statusLayout->setContentsMargins(8, 8, 8, 8);
-    statusLayout->addWidget(sessionsCheck[14]); // Last
-    statusLayout->addWidget(sessionsCheck[15]); // Sleep
+    statusLayout->addWidget(sessionsCheck[15]); // Last
+    statusLayout->addWidget(sessionsCheck[16]); // Sleep
     statusLayout->addStretch();
     topRow->addWidget(statusGroup, 1);
 
@@ -466,17 +491,18 @@ void DialogSettings::createUI()
     auto* detailsGroup = new QGroupBox("Details", sessionsGroup);
     auto* detailsLayout = new QGridLayout(detailsGroup);
     detailsLayout->setContentsMargins(8, 8, 8, 8);
-    detailsLayout->addWidget(sessionsCheck[3], 0, 0); // Listener
-    detailsLayout->addWidget(sessionsCheck[2], 0, 1); // External
-    detailsLayout->addWidget(sessionsCheck[8], 0, 2); // OS
-    detailsLayout->addWidget(sessionsCheck[9], 1, 0); // Process
-    detailsLayout->addWidget(sessionsCheck[10], 1, 1); // PID
+    detailsLayout->addWidget(sessionsCheck[4], 0, 0); // Listener
+    detailsLayout->addWidget(sessionsCheck[3], 0, 1); // External
+    detailsLayout->addWidget(sessionsCheck[9], 0, 2); // OS
+    detailsLayout->addWidget(sessionsCheck[10], 1, 0); // Process
+    detailsLayout->addWidget(sessionsCheck[11], 1, 1); // PID
+    detailsLayout->addWidget(sessionsCheck[12], 1, 2); // TID
     sessionsGroupLayout->addWidget(detailsGroup);
 
     auto* tagsGroup = new QGroupBox("Tags", sessionsGroup);
     auto* tagsLayout = new QHBoxLayout(tagsGroup);
     tagsLayout->setContentsMargins(8, 8, 8, 8);
-    tagsLayout->addWidget(sessionsCheck[12]); // Tags
+    tagsLayout->addWidget(sessionsCheck[13]); // Tags
     tagsLayout->addStretch();
     sessionsGroupLayout->addWidget(tagsGroup);
 
@@ -543,10 +569,10 @@ void DialogSettings::createUI()
     graphGroupLayout->addWidget(graphAutoHideNoChildsSwitch, 2, 0, 1, 2);
     graphGroup->setLayout(graphGroupLayout);
 
-    sessionsLayout->addWidget(sessionsGroup,  1, 0, 1, 1);
-    sessionsLayout->addWidget(healthGroup,    2, 0, 1, 1);
-    sessionsLayout->addWidget(graphGroup,     3, 0, 1, 1);
-    sessionsLayout->setRowStretch(4, 1);
+    sessionsLayout->addWidget(sessionsGroup,  2, 0, 1, 1);
+    sessionsLayout->addWidget(healthGroup,    3, 0, 1, 1);
+    sessionsLayout->addWidget(graphGroup,     4, 0, 1, 1);
+    sessionsLayout->setRowStretch(5, 1);
 
     sessionsWidget->setLayout(sessionsLayout);
 
@@ -624,17 +650,33 @@ void DialogSettings::createUI()
 
     targetsWidget = new QWidget(this);
     targetsLayout = new QGridLayout(targetsWidget);
+    targetsViewLabel = new QLabel("View mode:", targetsWidget);
+    targetsViewLabel->setStyleSheet("font-weight: 500;");
+    targetsViewCombo = new QComboBox(targetsWidget);
+    targetsViewCombo->addItem("Table (classic)");
+    targetsViewCombo->addItem("Feed (activity stream)");
+    targetsViewCombo->setToolTip("Choose how targets are displayed. Requires reconnect/reopen of the project.");
+    targetsViewCombo->setMinimumWidth(180);
+    connect(targetsViewCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
+        if (targetsCompactSwitch)
+            targetsCompactSwitch->setEnabled(index == 1);
+        buttonApply->setEnabled(true);
+    });
     targetsCompactSwitch = new oclero::qlementine::Switch(targetsWidget);
     targetsCompactSwitch->setText("Compact mode");
-    targetsCompactSwitch->setToolTip("Single-line feed rows for Targets");
+    targetsCompactSwitch->setToolTip("Single-line feed rows for Targets (Feed mode only).");
     auto* targetsPrefsRow = new QHBoxLayout();
     targetsPrefsRow->setContentsMargins(0, 0, 0, 0);
+    targetsPrefsRow->setSpacing(16);
+    targetsPrefsRow->addWidget(targetsViewLabel);
+    targetsPrefsRow->addWidget(targetsViewCombo);
+    targetsPrefsRow->addSpacing(16);
     targetsPrefsRow->addWidget(targetsCompactSwitch);
     targetsPrefsRow->addStretch();
     targetsLayout->addLayout(targetsPrefsRow, 0, 0, 1, 1);
 
-    targetsGroup = new QGroupBox("Visible fields", targetsWidget);
-    targetsGroup->setToolTip("Fields map to feed card blocks.");
+    targetsGroup = new QGroupBox("Visible fields / columns", targetsWidget);
+    targetsGroup->setToolTip("Controls table columns and feed card blocks.");
 
     QStringList targetsCheckboxLabels = {
         "Icon", "Target ID", "Created", "Computer", "Domain",
@@ -685,17 +727,33 @@ void DialogSettings::createUI()
 
     credsWidget = new QWidget(this);
     credsLayout = new QGridLayout(credsWidget);
+    credsViewLabel = new QLabel("View mode:", credsWidget);
+    credsViewLabel->setStyleSheet("font-weight: 500;");
+    credsViewCombo = new QComboBox(credsWidget);
+    credsViewCombo->addItem("Table (classic)");
+    credsViewCombo->addItem("Feed (activity stream)");
+    credsViewCombo->setToolTip("Choose how credentials are displayed. Requires reconnect/reopen of the project.");
+    credsViewCombo->setMinimumWidth(180);
+    connect(credsViewCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int index) {
+        if (credsCompactSwitch)
+            credsCompactSwitch->setEnabled(index == 1);
+        buttonApply->setEnabled(true);
+    });
     credsCompactSwitch = new oclero::qlementine::Switch(credsWidget);
     credsCompactSwitch->setText("Compact mode");
-    credsCompactSwitch->setToolTip("Single-line feed rows for Credentials.");
+    credsCompactSwitch->setToolTip("Single-line feed rows for Credentials (Feed mode only).");
     auto* credsPrefsRow = new QHBoxLayout();
     credsPrefsRow->setContentsMargins(0, 0, 0, 0);
+    credsPrefsRow->setSpacing(16);
+    credsPrefsRow->addWidget(credsViewLabel);
+    credsPrefsRow->addWidget(credsViewCombo);
+    credsPrefsRow->addSpacing(16);
     credsPrefsRow->addWidget(credsCompactSwitch);
     credsPrefsRow->addStretch();
     credsLayout->addLayout(credsPrefsRow, 0, 0, 1, 1);
 
-    credsGroup = new QGroupBox("Visible fields", credsWidget);
-    credsGroup->setToolTip("Fields map to feed card blocks.");
+    credsGroup = new QGroupBox("Visible fields / columns", credsWidget);
+    credsGroup->setToolTip("Controls table columns and feed card blocks.");
 
     QStringList credsCheckboxLabels = {
         "Cred ID", "Type", "Created", "Username", "Realm",
@@ -1164,6 +1222,7 @@ void DialogSettings::onApply() const
     settings->data.HealthCoaf = sessionsCoafSpin->value();
     settings->data.HealthOffset = sessionsOffsetSpin->value();
     settings->data.DeadLightnessShift = sessionsDeadShiftSpin->value();
+    settings->data.SessionsViewMode = sessionsViewCombo->currentIndex();
     settings->data.SessionsAutoHideInactive = sessionsAutoHideInactiveSwitch->isChecked();
     settings->data.SessionsCompactMode = sessionsCompactSwitch->isChecked();
 
@@ -1190,6 +1249,7 @@ void DialogSettings::onApply() const
     if (updateTable)
         settings->getMainAdaptix()->mainUI->UpdateTargetsColumns();
 
+    settings->data.TargetsViewMode = targetsViewCombo->currentIndex();
     settings->data.TargetsCompactMode = targetsCompactSwitch->isChecked();
 
     updateTable = false;
@@ -1202,6 +1262,7 @@ void DialogSettings::onApply() const
     if (updateTable)
         settings->getMainAdaptix()->mainUI->UpdateCredentialsColumns();
 
+    settings->data.CredentialsViewMode = credsViewCombo->currentIndex();
     settings->data.CredentialsCompactMode = credsCompactSwitch->isChecked();
 
     updateTable = false;
@@ -1322,9 +1383,11 @@ void DialogSettings::loadSettings()
     for (int i = 0; i < sessionsCheckCount; i++)
         sessionsCheck[i]->setChecked(settings->data.SessionsTableColumns[i]);
 
+    sessionsViewCombo->setCurrentIndex(settings->data.SessionsViewMode);
     sessionsHealthCheck->setChecked(settings->data.CheckHealth);
     sessionsAutoHideInactiveSwitch->setChecked(settings->data.SessionsAutoHideInactive);
     sessionsCompactSwitch->setChecked(settings->data.SessionsCompactMode);
+    sessionsCompactSwitch->setEnabled(settings->data.SessionsViewMode == 1);
     sessionsCoafSpin->setValue(settings->data.HealthCoaf);
     sessionsOffsetSpin->setValue(settings->data.HealthOffset);
     sessionsDeadShiftSpin->setValue(settings->data.DeadLightnessShift);
@@ -1336,11 +1399,15 @@ void DialogSettings::loadSettings()
 
     for (int i = 0; i < targetsCheckCount; i++)
         targetsCheck[i]->setChecked(settings->data.TargetsTableColumns[i]);
+    targetsViewCombo->setCurrentIndex(settings->data.TargetsViewMode);
     targetsCompactSwitch->setChecked(settings->data.TargetsCompactMode);
+    targetsCompactSwitch->setEnabled(settings->data.TargetsViewMode == 1);
 
     for (int i = 0; i < credsCheckCount; i++)
         credsCheck[i]->setChecked(settings->data.CredentialsTableColumns[i]);
+    credsViewCombo->setCurrentIndex(settings->data.CredentialsViewMode);
     credsCompactSwitch->setChecked(settings->data.CredentialsCompactMode);
+    credsCompactSwitch->setEnabled(settings->data.CredentialsViewMode == 1);
 
     for (int i = 0; i < filesCheckCount; i++)
         filesCheck[i]->setChecked(settings->data.FilesTableColumns[i]);
