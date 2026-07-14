@@ -55,9 +55,9 @@ MainUI::MainUI()
 
     qApp->installEventFilter(this);
 
-    auto shortcutDockLeft = new QShortcut(QKeySequence("Ctrl+Left"), this);
-    shortcutDockLeft->setContext(Qt::ApplicationShortcut);
-    connect(shortcutDockLeft, &QShortcut::activated, this, []() {
+    auto shortcutDockPrev = new QShortcut(QKeySequence("Ctrl+PgUp"), this);
+    shortcutDockPrev->setContext(Qt::ApplicationShortcut);
+    connect(shortcutDockPrev, &QShortcut::activated, this, []() {
         auto* registry = KDDockWidgets::DockRegistry::self();
         if (!registry) return;
         auto* dw = registry->focusedDockWidget();
@@ -72,9 +72,9 @@ MainUI::MainUI()
         }
     });
 
-    auto shortcutDockRight = new QShortcut(QKeySequence("Ctrl+Right"), this);
-    shortcutDockRight->setContext(Qt::ApplicationShortcut);
-    connect(shortcutDockRight, &QShortcut::activated, this, []() {
+    auto shortcutDockNext = new QShortcut(QKeySequence("Ctrl+PgDown"), this);
+    shortcutDockNext->setContext(Qt::ApplicationShortcut);
+    connect(shortcutDockNext, &QShortcut::activated, this, []() {
         auto* registry = KDDockWidgets::DockRegistry::self();
         if (!registry) return;
         auto* dw = registry->focusedDockWidget();

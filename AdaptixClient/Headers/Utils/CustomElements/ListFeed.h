@@ -367,6 +367,7 @@ protected:
 
     const FeedColors& feedColors() const;
 
+    // Paint helpers
     int paintIdBadge(QPainter* p, int x, int y, int lh, const QString& idStr, const QString& badgeStr, const QColor& colText, const QColor& colMuted) const;
     int paintTagBadges(QPainter* p, int x, int y, int lh, const QStringList& tags, const QColor& borderColor, const QColor& selectedColor, bool selected) const;
     int paintRightAligned(QPainter* p, int rightX, int y, int lh, const QString& text, const QFont& font, const QColor& color) const;

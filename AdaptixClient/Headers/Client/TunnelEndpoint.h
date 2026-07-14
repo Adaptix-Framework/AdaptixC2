@@ -8,9 +8,9 @@ class TunnelWorker;
 class SocksHandshakeWorker;
 
 class TunnelEndpoint : public QObject {
-    Q_OBJECT
+Q_OBJECT
 
-        qint64  tunnelId = 0;
+    qint64  tunnelId = 0;
     QString tunnelType;
     QUrl    wsUrl;
     quint16 lPort = 0;

@@ -206,7 +206,6 @@ func (ts *Teamserver) TsAgentProcessData(agentId int64, bodyData []byte) error {
 		err := ts.DBMS.DbAgentUpdate(agent.GetData())
 		if err != nil {
 			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:agent", "%s", err.Error())
-			return nil
 		}
 
 		// --- POST HOOK ---
@@ -328,12 +327,11 @@ func (ts *Teamserver) TsAgentGetHostedTasksCount(agentId int64, count int, maxDa
 		return nil, fmt.Errorf("agent %v not found", agentId)
 	}
 
-	agentData := agent.GetData()
 	if agent.HostedQueue.Len() == 0 {
 		return []byte(""), nil
 	}
 
-	tasks, _, err := ts.TsTaskGetAvailableTasks(agentData.Id, count, maxDataSize)
+	tasks, _, err := ts.TsTaskGetAvailableTasks(agentId, count, maxDataSize)
 	if err != nil {
 		return nil, err
 	}
@@ -416,6 +414,7 @@ func (ts *Teamserver) TsAgentUpdateDataPartial(agentId int64, updateData interfa
 	err := ts.DBMS.DbAgentUpdate(agent.GetData())
 	if err != nil {
 		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:agent", "%s", err.Error())
+		return nil
 	}
 
 	ts.TsSyncAllClients(syncPacket)

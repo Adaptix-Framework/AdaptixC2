@@ -811,11 +811,6 @@ func registerAxBridge(engine *ScriptEngine) {
 	})
 
 	axObj.Set("file_write", func(call goja.FunctionCall) goja.Value {
-		engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "file_write is disabled on server")
-		return rt.ToValue(false)
-	})
-
-	axObj.Set("file_write", func(call goja.FunctionCall) goja.Value {
 		if engine.manager == nil || len(call.Arguments) < 2 {
 			return rt.ToValue(false)
 		}

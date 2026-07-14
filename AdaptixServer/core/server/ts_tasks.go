@@ -301,11 +301,14 @@ func (ts *Teamserver) TsConsoleSearch(agentId int64, query string, limit, offset
 
 	items := make([]ConsoleSearchHitItem, 0, len(hits))
 	for _, h := range hits {
-		items = append(items, ConsoleSearchHitItem{
+		item := ConsoleSearchHitItem{
 			Id:      h.Id,
 			Snippet: h.Snippet,
-			Packet:  json.RawMessage(h.Packet),
-		})
+		}
+		if len(h.Packet) > 0 && json.Valid(h.Packet) {
+			item.Packet = json.RawMessage(h.Packet)
+		}
+		items = append(items, item)
 	}
 	return json.Marshal(ConsoleSearchPage{
 		Items:  items,

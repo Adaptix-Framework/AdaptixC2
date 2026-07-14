@@ -5,7 +5,6 @@
 
 class SpinTable : public QWidget {
 Q_OBJECT
-
 public:
     QGridLayout*        layout      = nullptr;
     QTableView*         table       = nullptr;

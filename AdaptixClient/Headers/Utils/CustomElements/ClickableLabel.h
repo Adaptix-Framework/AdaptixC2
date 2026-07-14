@@ -10,8 +10,8 @@ Q_OBJECT
 public:
     explicit ClickableLabel(const QString &label, QWidget *parent = nullptr) : QLabel(label, parent) {}
 
-Q_SIGNALS:
-    void clicked();
+    Q_SIGNALS:
+        void clicked();
 
 protected:
     void mousePressEvent(QMouseEvent *event) override {

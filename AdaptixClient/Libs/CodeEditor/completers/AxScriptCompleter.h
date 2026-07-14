@@ -6,7 +6,6 @@
 class AxScriptCompleter : public QCompleter
 {
 Q_OBJECT
-
 public:
     explicit AxScriptCompleter(QObject* parent = nullptr);
 };

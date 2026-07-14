@@ -100,4 +100,4 @@ public:
     }
 };
 
-#endif
+#endif //ADAPTIXCLIENT_FILTEREXPRESSION_H

@@ -7,7 +7,7 @@ class ConnectionStatusWidget : public QPushButton
 {
 Q_OBJECT
 
-    public:
+public:
     enum State {
         Connected    = 0,
         Disconnected = 1,

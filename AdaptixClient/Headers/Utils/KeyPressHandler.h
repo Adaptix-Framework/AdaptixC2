@@ -74,6 +74,7 @@ public:
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override {
+        // Intercept Tab on QCompleter popup (Tab events go to popup, not InputLineEdit)
         if (watched != inputLineEdit && event->type() == QEvent::KeyPress) {
             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
             if (keyEvent->key() == Qt::Key_Tab || keyEvent->key() == Qt::Key_Backtab) {
@@ -185,6 +186,7 @@ protected:
                         return true;
                     }
 
+                    // File path completion
                     if (completionIndex < 0) {
                         bool inQuotes = false;
                         int start = cursorPos;

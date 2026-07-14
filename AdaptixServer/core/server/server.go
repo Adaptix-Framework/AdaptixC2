@@ -249,6 +249,7 @@ func (ts *Teamserver) Start() {
 	go ts.TsAgentTickUpdate(ts.ctx)
 
 	<-stopped
+	ts.EventManager.Shutdown()
 	ts.LogManager.Stop()
 	ts.FrameManager.Stop()
 	ts.cancel()

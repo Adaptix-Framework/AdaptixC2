@@ -53,8 +53,8 @@ public:
     void    setFilterVisible(bool visible);
     void    setAutoVisible(bool visible);
 
-    Q_SIGNALS:
-        void prevClicked();
+Q_SIGNALS:
+    void prevClicked();
     void nextClicked();
     void pageSizeChanged(int size);
     void filterChanged();

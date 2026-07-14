@@ -13,7 +13,7 @@ class QWidget;
 
 class GraphControlPanel final : public QFrame
 {
-Q_OBJECT
+    Q_OBJECT
 
     SessionsGraph* graph = nullptr;
     bool expanded = false;

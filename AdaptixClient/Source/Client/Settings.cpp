@@ -58,24 +58,24 @@ void Settings::SetDefault()
     this->data.HealthCoaf = 2.0;
     this->data.HealthOffset = 40;
     this->data.DeadLightnessShift = 0.15;
-    this->data.SessionsViewMode = 1;
+    this->data.SessionsViewMode = 1; // feed only
     this->data.SessionsAutoHideInactive = false;
     this->data.SessionsCompactMode = false;
 
     for ( int i = 0; i < 11; i++)
         data.TasksTableColumns[i] = true;
-    this->data.TasksViewMode = 1;
+    this->data.TasksViewMode = 1; // feed only
     this->data.TasksInProcessOnly = false;
     this->data.TasksCompactMode = false;
 
     for (int i = 0; i < 10; i++)
         data.TargetsTableColumns[i] = true;
-    this->data.TargetsViewMode = 1;
+    this->data.TargetsViewMode = 1; // feed only
     this->data.TargetsCompactMode = false;
 
     for (int i = 0; i < 10; i++)
         data.CredentialsTableColumns[i] = true;
-    this->data.CredentialsViewMode = 1;
+    this->data.CredentialsViewMode = 1; // feed only
     this->data.CredentialsCompactMode = false;
 
     for (int i = 0; i < 11; i++)

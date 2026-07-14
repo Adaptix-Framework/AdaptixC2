@@ -8,7 +8,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2/v2"
+	adaptix "github.com/Adaptix-Framework/axc2/v2"
 )
 
 const (
@@ -81,12 +81,14 @@ func (em *EventManager) worker(id int) {
 			if !ok {
 				return
 			}
-			_ = em.executeHookWithTimeout(task.hook, task.event, DefaultHookTimeout)
+			if err := em.executeHookWithTimeout(task.hook, task.event, task.eventType, DefaultHookTimeout); err != nil {
+				em.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "Async hook %s for event %s failed: %v", task.hook.Name, task.eventType, err)
+			}
 		}
 	}
 }
 
-func (em *EventManager) executeHookWithTimeout(hook *Hook, event any, defaultTimeout time.Duration) error {
+func (em *EventManager) executeHookWithTimeout(hook *Hook, event any, eventType EventType, defaultTimeout time.Duration) error {
 	timeout := hook.Timeout
 	if timeout == 0 {
 		timeout = defaultTimeout
@@ -99,12 +101,16 @@ func (em *EventManager) executeHookWithTimeout(hook *Hook, event any, defaultTim
 	go func() {
 		defer func() {
 			if r := recover(); r != nil {
-				done <- fmt.Errorf("hook %s panicked: %v", hook.Name, r)
+				select {
+				case done <- fmt.Errorf("hook %s panicked: %v", hook.Name, r):
+				default:
+				}
 			}
 		}()
-		done <- hook.Handler(event)
+
+		err := hook.Handler(event)
 		select {
-		case done <- hook.Handler(event):
+		case done <- err:
 		case <-ctx.Done():
 		}
 	}()
@@ -113,7 +119,7 @@ func (em *EventManager) executeHookWithTimeout(hook *Hook, event any, defaultTim
 	case err := <-done:
 		return err
 	case <-ctx.Done():
-		em.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "Hook %s timed out after %v", hook.Name, timeout)
+		em.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "Hook %s timed out after %v (event=%s)", hook.Name, timeout, eventType)
 		return fmt.Errorf("hook %s timed out", hook.Name)
 	}
 }
@@ -221,9 +227,9 @@ func (em *EventManager) Emit(eventType EventType, phase HookPhase, event any) bo
 
 		var err error
 		if phase == HookPre {
-			err = em.executeHookWithTimeout(hook, event, DefaultPreHookTimeout)
+			err = em.executeHookWithTimeout(hook, event, eventType, DefaultPreHookTimeout)
 		} else {
-			err = em.executeHookWithTimeout(hook, event, DefaultHookTimeout)
+			err = em.executeHookWithTimeout(hook, event, eventType, DefaultHookTimeout)
 		}
 
 		if err != nil {
@@ -234,7 +240,7 @@ func (em *EventManager) Emit(eventType EventType, phase HookPhase, event any) bo
 					return false
 				}
 			}
-			em.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "Hook %s error: %v", hook.Name, err)
+			em.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "Hook %s error for event %s: %v", hook.Name, eventType, err)
 		}
 
 		if baseEvent != nil && baseEvent.Cancelled {

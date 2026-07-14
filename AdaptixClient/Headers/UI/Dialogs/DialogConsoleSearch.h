@@ -43,8 +43,8 @@ public:
 
     void setInitialQuery(const QString& query);
 
-    Q_SIGNALS:
-        void openInConsole(qint64 centerId, int contextLimit);
+Q_SIGNALS:
+    void openInConsole(qint64 centerId, int contextLimit);
 };
 
 #endif

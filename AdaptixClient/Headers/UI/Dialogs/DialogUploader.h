@@ -39,8 +39,8 @@ public:
     explicit DialogUploader(const QUrl &uploadUrl, const QString &otp, const QString &filePath, FilesFeedWidget *dw = nullptr, QWidget *parent = nullptr);
     ~DialogUploader() override;
 
-    Q_SIGNALS:
-        void uploadFinished(bool success);
+Q_SIGNALS:
+    void uploadFinished(bool success);
 };
 
 #endif

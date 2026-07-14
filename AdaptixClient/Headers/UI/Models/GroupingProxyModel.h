@@ -54,7 +54,7 @@ Q_OBJECT
     struct DisplayGroup {
         GroupNode    node;
         QVector<int> sourceRows;
-        int          parentGroupIdx = -1;
+        int          parentGroupIdx = -1;   // -1 = top-level; >=0 = index in displayGroups_
         QVector<int> subGroupIndices;
     };
 

@@ -891,8 +891,8 @@ void DialogSettings::createUI()
     addRow("Ctrl+Shift+P",       "Main UI",    "Switch to Tunnels tab");
     addRow("Ctrl+Shift+I",       "Main UI",    "Switch to Screenshots tab");
     addRow("Ctrl+Shift+R",       "Main UI",    "Switch to Settings");
-    addRow("Ctrl+Left",          "Main UI",    "Navigate to previous dock");
-    addRow("Ctrl+Right",         "Main UI",    "Navigate to next dock");
+    addRow("Ctrl+PgUp",          "Main UI",    "Navigate to previous dock");
+    addRow("Ctrl+PgDown",        "Main UI",    "Navigate to next dock");
     addRow("Ctrl+D",             "Main UI",    "Close current dock");
     addRow("Ctrl+W",             "Main UI",    "Float/Unfloat dock");
 

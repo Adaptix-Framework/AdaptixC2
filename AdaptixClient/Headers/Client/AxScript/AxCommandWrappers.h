@@ -32,7 +32,6 @@ public:
     Q_INVOKABLE void setPostHook(const QJSValue& handler);
     Q_INVOKABLE void setHandler(const QJSValue& handler);
 
-
 Q_SIGNALS:
     void scriptError(const QString &msg);
 };

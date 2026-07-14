@@ -105,17 +105,21 @@ public:
         QStyleOptionViewItem opt = option;
         initStyleOption(&opt, index);
 
+        // Background (same as PaddingDelegate)
         QVariant bgVar = index.data(Qt::BackgroundRole);
         if (bgVar.isValid())
             painter->fillRect(opt.rect, bgVar.value<QBrush>());
 
         opt.state &= ~QStyle::State_HasFocus;
 
+        // Draw everything except text using style
         const QWidget* widget = option.widget;
         QStyle* style = widget ? widget->style() : QApplication::style();
 
+        // Draw background/selection
         style->drawPrimitive(QStyle::PE_PanelItemViewItem, &opt, painter, widget);
 
+        // Draw text with WrapAnywhere (max 5 lines)
         painter->save();
         QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &opt, widget);
         textRect.adjust(m_padding, 0, -m_padding, 0);
@@ -125,6 +129,7 @@ public:
         int lineHeight = fm.height();
         int maxHeight = lineHeight * maxLines;
 
+        // Truncate text if it exceeds maxLines
         QString displayText = text;
         QTextOption layoutOpt(Qt::Alignment(opt.displayAlignment));
         layoutOpt.setWrapMode(QTextOption::WrapAnywhere);
@@ -210,6 +215,7 @@ public:
             layout.endLayout();
 
             if (lineCount > maxLines) {
+                // Wrap text manually to limit tooltip width
                 QFontMetrics tooltipFm(QToolTip::font());
                 QString wrappedText;
                 int maxWidth = 1000;
@@ -298,6 +304,7 @@ protected:
         QModelIndex tmp = index.parent();
         while (tmp.isValid()) { depth++; tmp = tmp.parent(); }
 
+        // Arrow
         {
             QStyleOptionViewItem arrowOpt;
             arrowOpt.initFrom(this);
@@ -312,6 +319,7 @@ protected:
             style()->drawPrimitive(QStyle::PE_IndicatorBranch, &arrowOpt, painter, this);
         }
 
+        // Tree lines
         if (m_guidesEnabled && depth > 0) {
             painter->save();
 

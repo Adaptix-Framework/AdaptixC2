@@ -39,7 +39,7 @@ struct ChatMessage {
 };
 
 class ChatMessageModel : public QAbstractListModel {
-Q_OBJECT
+    Q_OBJECT
 public:
     enum ChatRole {
         IdRole = Qt::UserRole + 1,
@@ -73,7 +73,7 @@ private:
 };
 
 class ChatMessageDelegate : public QStyledItemDelegate {
-Q_OBJECT
+    Q_OBJECT
 public:
     explicit ChatMessageDelegate(const QString& currentUser, QObject* parent = nullptr);
 
@@ -99,7 +99,7 @@ private:
 };
 
 class TodoWidget : public QWidget {
-Q_OBJECT
+    Q_OBJECT
 public:
     explicit TodoWidget(QWidget* parent = nullptr);
     void SetTodo(const QString& content, const QString& updatedBy, qint64 updatedAt);
@@ -128,7 +128,7 @@ private:
 
 class ChatWidget : public DockTab
 {
-Q_OBJECT
+    Q_OBJECT
 
     AdaptixWidget*         adaptixWidget = nullptr;
     ChatMessageModel*      messageModel = nullptr;
