@@ -497,6 +497,7 @@ func (sm *ScriptManager) resolveFileArgs(engine *ScriptEngine, parsed *ParsedCom
 			return fmt.Errorf("cannot read file for argument '%s': %w", fa.ArgName, err)
 		}
 		parsed.Args[fa.ArgName] = base64.StdEncoding.EncodeToString(data)
+		parsed.Args[fa.ArgName+"_path"] = fa.OriginalPath
 	}
 	return nil
 }
