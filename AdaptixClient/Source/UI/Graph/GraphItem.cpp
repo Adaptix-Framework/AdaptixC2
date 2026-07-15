@@ -4,23 +4,15 @@
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Graph/GraphScene.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <Utils/FontManager.h>
 
 namespace {
-    constexpr qreal kNodeSize   = 100.0;
-
-    constexpr qreal kNotePadX   = 6.0;
-    constexpr qreal kNoteHeight = 50.0;
-
-    constexpr qreal kBadgeW        = 42.0;
-    constexpr qreal kBadgeH        = 24.0;
-    constexpr qreal kBadgeOffsetX  = 38.0;
-    constexpr qreal kBadgeOffsetY  = -6.0;
-    constexpr int   kBadgeFontSize = 11;
-    const QColor    kBadgeColor    = QColor(0, 200, 0);
+    const QColor kBadgeColor = QColor(0, 200, 0);
 
     QRectF badgeRect(const QRectF& nodeRect)
     {
-        return QRectF(nodeRect.right() - kBadgeOffsetX, nodeRect.top() + kBadgeOffsetY, kBadgeW, kBadgeH);
+        const AppTypography& ty = FontManager::instance().typography();
+        return QRectF(nodeRect.right() - ty.graphBadgeOffX, nodeRect.top() + ty.graphBadgeOffY, ty.graphBadgeW, ty.graphBadgeH);
     }
 }
 
@@ -55,14 +47,19 @@ void GraphItemNote::setText(const QString &t)
 
 QRectF GraphItemNote::boundingRect() const
 {
-    const QFontMetrics fm{QFont{}};
+    const AppTypography& ty = FontManager::instance().typography();
+    const QFontMetrics fm(ty.body);
     const qreal w = std::max(fm.horizontalAdvance(this->header), fm.horizontalAdvance(this->text));
-    return QRectF(0, 0, w + kNotePadX * 2, kNoteHeight);
+    const qreal padX = 6.0 * (ty.baseSize / 10.0);
+    return QRectF(0, 0, w + padX * 2, ty.graphNoteH);
 }
 
 void GraphItemNote::paint( QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget )
 {
+    Q_UNUSED(option)
+    Q_UNUSED(widget)
     painter->setPen( COLOR_White );
+    painter->setFont(FontManager::instance().typography().body);
     if (!this->header.isEmpty())
         painter->drawText( this->boundingRect(), Qt::AlignCenter | Qt::AlignTop,    this->header);
     painter->drawText( this->boundingRect(), Qt::AlignCenter | Qt::AlignBottom, this->text);
@@ -76,7 +73,8 @@ GraphItem::GraphItem( SessionsGraph* graphView, Agent* agent )
 {
     this->sessionsGraph = graphView;
     this->agent         = agent;
-    this->rect          = QRectF( 0, 0, 100, 100 );
+    const qreal ns      = FontManager::instance().typography().graphNodeSize;
+    this->rect          = QRectF( 0, 0, ns, ns );
 
     this->setZValue( -1 );
     this->setCacheMode( QGraphicsItem::NoCache );
@@ -172,11 +170,12 @@ void GraphItem::paint( QPainter* painter, const QStyleOptionGraphicsItem* option
     if (HasTunnel()) {
         painter->save();
         const QRectF br = ::badgeRect(rect);
+        const qreal radius = qMin(br.width(), br.height()) * 0.25;
         painter->setBrush(kBadgeColor);
         painter->setPen(QPen(QColor(0, 0, 0), 2));
-        painter->drawRoundedRect(br, 10, 10);
+        painter->drawRoundedRect(br, radius, radius);
         painter->setPen(QColor(0, 0, 0));
-        painter->setFont(QFont("Arial", kBadgeFontSize, QFont::Bold));
+        painter->setFont(FontManager::instance().typography().primary);
         const QString label = (GetTunnelType() == TunnelMarkServer) ? "TunS" : "TunC";
         painter->drawText(br, Qt::AlignCenter, label);
         painter->restore();

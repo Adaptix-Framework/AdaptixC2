@@ -17,6 +17,7 @@
 #include <Client/Extender.h>
 #include <Client/Settings.h>
 #include <Client/AuthProfile.h>
+#include <Utils/FontManager.h>
 #include <MainAdaptix.h>
 
 #include <QDesktopServices>
@@ -564,27 +565,27 @@ void MainUI::updateTabButton(const int index, const QString& tabName, const bool
         tabBar->setTabButton(index, QTabBar::RightSide, nullptr);
     }
 
+    const AppTypography& ty = FontManager::instance().typography();
+    const int tabH = ty.tabBarHeight;
+    const qreal s = ty.baseSize / 10.0;
+
     auto* tabWidget = new QWidget();
     auto* layout = new QHBoxLayout(tabWidget);
     layout->setContentsMargins(showButton ? 12 : 16, 0, showButton ? 6 : 12, 0);
     layout->setSpacing(1);
     layout->setSizeConstraint(QLayout::SetFixedSize);
-    tabWidget->setFixedHeight(24);
-    tabWidget->setMinimumHeight(24);
-    tabWidget->setMaximumHeight(24);
+    tabWidget->setFixedHeight(tabH);
+    tabWidget->setMinimumHeight(tabH);
+    tabWidget->setMaximumHeight(tabH);
     tabWidget->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
 
     auto* label = new QLabel(realName);
     label->setAlignment(Qt::AlignCenter | Qt::AlignVCenter);
     label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    label->setFixedHeight(24);
-    label->setMinimumHeight(24);
-    label->setMaximumHeight(24);
-    QFont labelFont = label->font();
-    QFont appFont = QApplication::font();
-    labelFont.setFamily(appFont.family());
-    labelFont.setPointSize(appFont.pointSize());
-    label->setFont(labelFont);
+    label->setFixedHeight(tabH);
+    label->setMinimumHeight(tabH);
+    label->setMaximumHeight(tabH);
+    label->setFont(ty.regular);
     label->setProperty("transparent", true);
 
     layout->addWidget(label, 1, Qt::AlignCenter);
@@ -593,9 +594,9 @@ void MainUI::updateTabButton(const int index, const QString& tabName, const bool
         auto* folderButton = new QPushButton(tabWidget);
         folderButton->setIcon(QIcon(":/icons/folder"));
 
-        constexpr int iconSize = 14;
-        constexpr int buttonHeight = 16;
-        constexpr int buttonWidth = 24;
+        const int iconSize = qMax(12, qRound(14 * s));
+        const int buttonHeight = qMax(14, tabH - 8);
+        const int buttonWidth = qMax(20, qRound(24 * s));
 
         folderButton->setIconSize(QSize(iconSize, iconSize));
         folderButton->setFixedSize(buttonWidth, buttonHeight);

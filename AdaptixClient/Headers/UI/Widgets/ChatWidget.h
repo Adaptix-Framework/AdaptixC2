@@ -111,6 +111,7 @@ private:
     void setEditMode(bool on);
     void updatePreview();
     void insertMarkdown(const QString& before, const QString& after);
+    void applyFonts();
 
     QStackedWidget*  contentStack = nullptr;
     QTextBrowser*    renderedView = nullptr;

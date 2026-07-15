@@ -6,6 +6,7 @@
 #include <Client/Extender.h>
 #include <Utils/CustomElements/ListFeed.h>
 #include <Utils/NonBlockingDialogs.h>
+#include <Utils/FontManager.h>
 #include <MainAdaptix.h>
 
 #include <oclero/qlementine/widgets/Menu.hpp>
@@ -174,7 +175,7 @@ ScriptsWidget::ScriptsWidget(AdaptixWidget* w) : DockTab("Scripts", w->GetProfil
         seg->addItem("Local");
         seg->addItem("Server");
         seg->setCurrentIndex(idx);
-        seg->setFixedHeight(26);
+        seg->setFixedHeight(FontManager::instance().typography().segmentHeight);
         feed->addToolbarWidgetBefore(seg);
         return seg;
     };
@@ -221,8 +222,6 @@ void ScriptsWidget::setupLocalFeed()
     m_localFeed->finalizeSearchWidget();
     m_localFeed->enableCompactSwitch(true);
     m_localFeed->setBlockGap(12);
-    m_localFeed->setTagSize(11, 20);
-    m_localFeed->setIconSizes(22, 18);
     m_localFeed->rebuildModelChain();
 
     if (auto* search = m_localFeed->searchInput()) {
@@ -259,8 +258,6 @@ void ScriptsWidget::setupServerFeed()
     m_serverFeed->finalizeSearchWidget();
     m_serverFeed->enableCompactSwitch(true);
     m_serverFeed->setBlockGap(12);
-    m_serverFeed->setTagSize(11, 20);
-    m_serverFeed->setIconSizes(22, 18);
     m_serverFeed->rebuildModelChain();
 
     if (auto* search = m_serverFeed->searchInput()) {

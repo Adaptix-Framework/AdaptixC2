@@ -1,4 +1,5 @@
 #include <Utils/CustomElements/ConnectionStatusWidget.h>
+#include <Utils/FontManager.h>
 
 #include <oclero/qlementine/style/QlementineStyle.hpp>
 #include <oclero/qlementine/style/Theme.hpp>
@@ -21,6 +22,9 @@ ConnectionStatusWidget::ConnectionStatusWidget(QWidget* parent) : QPushButton(pa
     setCursor(Qt::PointingHandCursor);
     setAttribute(Qt::WA_StyledBackground, false);
     setFlat(true);
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
+        refreshAppearance();
+    });
     refreshAppearance();
 }
 
@@ -85,15 +89,18 @@ void ConnectionStatusWidget::recolorFromTheme(bool fullUpdate)
     m_fgColor  = fg;
     m_dotColor = dot;
 
+
     if (fullUpdate) {
         m_label = label;
+        const int h = FontManager::instance().typography().controlHeight;
         if (m_compact) {
-            setFixedHeight(28);
-            setFixedWidth(28);
+            setFixedHeight(h);
+            setFixedWidth(h);
         } else {
-            setFixedHeight(28);
-            QFont f = font();
+            setFixedHeight(h);
+            QFont f = FontManager::instance().appRegularFont();
             f.setWeight(QFont::DemiBold);
+            setFont(f);
             QFontMetrics fm(f);
             int textW = label.isEmpty() ? 0 : fm.horizontalAdvance(label);
             int dotW  = 8 + 7; // dotDiam + gap

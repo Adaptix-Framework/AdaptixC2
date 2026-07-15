@@ -157,7 +157,9 @@ void DialogAgent::createUI()
     label_Profiles = new QLabel(this);
     label_Profiles->setText("Profiles");
     label_Profiles->setObjectName("ProfilesHeader");
-    label_Profiles->setStyleSheet("QLabel#ProfilesHeader { color: palette(placeholderText); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }");
+    label_Profiles->setStyleSheet(QStringLiteral(
+        "QLabel#ProfilesHeader { color: palette(placeholderText); font-size: %1px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }"
+    ).arg(FontManager::instance().typography().captionFontPx));
 
     inputProfileName->setPlaceholderText("Profile name...");
 
@@ -245,12 +247,15 @@ void DialogAgent::createUI()
     buildButton->setFixedHeight(30);
     buildButton->setFixedWidth(120);
 
+    const int chromePx = FontManager::instance().typography().chromeFontPx;
+    const int ctrlH = FontManager::instance().typography().controlHeight;
+
     collapseButton = new QPushButton(QIcon(":/icons/arrow_right"), " Build Log", this);
     collapseButton->setFlat(true);
     collapseButton->setIconSize(QSize(14, 14));
-    collapseButton->setFixedHeight(28);
+    collapseButton->setFixedHeight(ctrlH);
     collapseButton->setCursor(Qt::PointingHandCursor);
-    collapseButton->setStyleSheet("font-size: 11px;");
+    collapseButton->setStyleSheet(QStringLiteral("font-size: %1px;").arg(chromePx));
     {
         QPalette p = collapseButton->palette();
         p.setColor(QPalette::ButtonText, p.color(QPalette::PlaceholderText));
@@ -259,11 +264,11 @@ void DialogAgent::createUI()
 
     fileLinkButton = new QPushButton(this);
     fileLinkButton->setFlat(true);
-    fileLinkButton->setFixedHeight(28);
+    fileLinkButton->setFixedHeight(ctrlH);
     fileLinkButton->setCursor(Qt::PointingHandCursor);
     fileLinkButton->setIcon(QIcon(":/icons/downloads"));
     fileLinkButton->setIconSize(QSize(14, 14));
-    fileLinkButton->setStyleSheet("font-size: 11px; font-weight: 500;");
+    fileLinkButton->setStyleSheet(QStringLiteral("font-size: %1px; font-weight: 500;").arg(chromePx));
     fileLinkButton->setVisible(false);
     fileLinkButton->setToolTip("Click to save file");
     {
@@ -297,7 +302,7 @@ void DialogAgent::createUI()
     buildLogOutput->setReadOnly(true);
     buildLogOutput->setMinimumHeight(140);
     buildLogOutput->setStyleSheet("background-color: #151515; color: #BEBEBE; border: 1px solid #2A2A2A; border-radius: 4px;");
-    buildLogOutput->setFont(FontManager::instance().getFont("Hack"));
+    buildLogOutput->setFont(FontManager::instance().appMonoFont());
 
     buildLogExpander = new oclero::qlementine::Expander(this);
     buildLogExpander->setContent(buildLogOutput);
@@ -1172,9 +1177,13 @@ void DialogAgent::rebuildListenerChips()
         QString name = item->text();
         int idx = i;
 
+        const AppTypography& ty = FontManager::instance().typography();
+        const int chipH = qMax(20, ty.controlInnerH + 2);
+        const int chipBtnSz = qMax(16, chipH - 4);
+
         auto *chip = new QWidget(listenerChipsContainer);
         chip->setObjectName("ListenerChip");
-        chip->setFixedHeight(24);
+        chip->setFixedHeight(chipH);
         chip->setStyleSheet(
             "QWidget#ListenerChip {"
             "  background: transparent;"
@@ -1184,19 +1193,21 @@ void DialogAgent::rebuildListenerChips()
         );
 
         auto *chipLabel = new QLabel(QString(" %1 ").arg(name), chip);
-        chipLabel->setStyleSheet("color: palette(highlight); font-size: 13px; font-weight: 500; background: transparent; border: none;");
+        chipLabel->setStyleSheet(QStringLiteral(
+            "color: palette(highlight); font-size: %1px; font-weight: 500; background: transparent; border: none;"
+        ).arg(ty.chipFontPx));
 
         auto *chipBtn = new QPushButton("×", chip);
         chipBtn->setObjectName("ChipRemoveBtn");
-        chipBtn->setFixedSize(20, 20);
+        chipBtn->setFixedSize(chipBtnSz, chipBtnSz);
         chipBtn->setCursor(Qt::PointingHandCursor);
-        chipBtn->setStyleSheet(
+        chipBtn->setStyleSheet(QStringLiteral(
             "QPushButton#ChipRemoveBtn {"
             "  background: transparent; border: none;"
-            "  color: palette(highlight); font-size: 12px; font-weight: bold;"
+            "  color: palette(highlight); font-size: %1px; font-weight: bold;"
             "}"
             "QPushButton#ChipRemoveBtn:hover { color: palette(light); }"
-        );
+        ).arg(qMax(10, ty.chromeFontPx)));
         connect(chipBtn, &QPushButton::clicked, this, [this, idx]() {
             auto *listItem = listenerListWidget->item(idx);
             if (listItem)
@@ -1224,9 +1235,12 @@ void DialogAgent::rebuildSingleListenerChip(const QString &name)
         delete item;
     }
 
+    const AppTypography& ty = FontManager::instance().typography();
+    const int chipH = qMax(20, ty.controlInnerH + 2);
+
     auto *chip = new QWidget(listenerChipsContainer);
     chip->setObjectName("ListenerChip");
-    chip->setFixedHeight(24);
+    chip->setFixedHeight(chipH);
     chip->setStyleSheet(
         "QWidget#ListenerChip {"
         "  background: transparent;"
@@ -1236,7 +1250,9 @@ void DialogAgent::rebuildSingleListenerChip(const QString &name)
     );
 
     auto *chipLabel = new QLabel(QString(" %1 ").arg(name), chip);
-    chipLabel->setStyleSheet("color: palette(highlight); font-size: 13px; font-weight: 500; background: transparent; border: none;");
+    chipLabel->setStyleSheet(QStringLiteral(
+        "color: palette(highlight); font-size: %1px; font-weight: 500; background: transparent; border: none;"
+    ).arg(ty.chipFontPx));
 
     auto *chipLayout = new QHBoxLayout(chip);
     chipLayout->setContentsMargins(6, 0, 6, 0);

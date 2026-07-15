@@ -1,5 +1,6 @@
 #include <UI/Dialogs/DialogTunnel.h>
 #include <Client/Requestor.h>
+#include <Utils/FontManager.h>
 
 DialogTunnel::DialogTunnel(qint64 agentId, const bool s4, const bool s5, const bool lpf, const bool rpf)
 {
@@ -28,12 +29,12 @@ void DialogTunnel::createUI()
     this->setProperty("Main", "base");
 
     typeSegment = new oclero::qlementine::SegmentedControl(this);
-    typeSegment->setFixedHeight(26);
+    typeSegment->setFixedHeight(FontManager::instance().typography().segmentHeight);
 
     endpointSegment = new oclero::qlementine::SegmentedControl(this);
     endpointSegment->addItem("Server");
     endpointSegment->addItem("Client");
-    endpointSegment->setFixedHeight(26);
+    endpointSegment->setFixedHeight(FontManager::instance().typography().segmentHeight);
 
     segLayout = new QHBoxLayout();
     segLayout->setSpacing(8);

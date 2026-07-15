@@ -76,6 +76,16 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
         applyTheme();
         applyHistoryBarStyle();
     });
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
+        const QFont mono = FontManager::instance().appMonoFont();
+        if (InputLineEdit)
+            InputLineEdit->setFont(mono);
+        if (OutputTextEdit)
+            OutputTextEdit->setFont(mono);
+        applyHistoryBarMetrics();
+        applyHistoryBarStyle();
+        positionConsoleOverlays();
+    });
     connect(OutputTextEdit, &TextEditConsole::ctx_bgToggled, this, [this](bool){ applyTheme(); });
     connect(loadEarlierButton, &QToolButton::clicked, this, &ConsoleWidget::loadMorePage);
     connect(loadAllButton, &QToolButton::clicked, this, &ConsoleWidget::loadAllPages);
@@ -192,22 +202,18 @@ void ConsoleWidget::createUI()
     pageSizeSpin->setSingleStep(10);
     pageSizeSpin->setValue(pageSize);
     pageSizeSpin->setFixedWidth(64);
-    pageSizeSpin->setFixedHeight(24);
     pageSizeSpin->setToolTip(tr("History page size"));
     pageSizeSpin->setButtonSymbols(QAbstractSpinBox::UpDownArrows);
 
-    auto makeHistBtn = [this](const QString& objectName, const QString& iconPath, const QString& text, const QString& tip, int iconPx = 14) {
+    auto makeHistBtn = [this](const QString& objectName, const QString& iconPath, const QString& text, const QString& tip) {
         auto* btn = new QToolButton(historyBar);
         btn->setObjectName(objectName);
-        if (!iconPath.isEmpty()) {
+        if (!iconPath.isEmpty())
             btn->setIcon(QIcon(iconPath));
-            btn->setIconSize(QSize(iconPx, iconPx));
-        }
         if (!text.isEmpty())
             btn->setText(text);
         btn->setToolTip(tip);
         btn->setAutoRaise(true);
-        btn->setFixedHeight(24);
         btn->setCursor(Qt::PointingHandCursor);
         if (!iconPath.isEmpty() && !text.isEmpty())
             btn->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
@@ -222,15 +228,13 @@ void ConsoleWidget::createUI()
         sep->setFrameShape(QFrame::VLine);
         sep->setFrameShadow(QFrame::Plain);
         sep->setFixedWidth(1);
-        sep->setFixedHeight(16);
         return sep;
     };
 
-    loadEarlierButton = makeHistBtn(QStringLiteral("HistBtnEarlier"), QStringLiteral(":/icons/arrow_drop_up"), tr("Earlier"), tr("Load older history"), 12);
+    loadEarlierButton = makeHistBtn(QStringLiteral("HistBtnEarlier"), QStringLiteral(":/icons/arrow_drop_up"), tr("Earlier"), tr("Load older history"));
     loadAllButton     = makeHistBtn(QStringLiteral("HistBtnAll"), QString(), tr("All"), tr("Load entire console history"));
     stopLoadButton    = makeHistBtn(QStringLiteral("HistBtnStop"), QString(), tr("Stop"), tr("Stop loading history"));
-    jumpLatestButton  = makeHistBtn(QStringLiteral("HistBtnJump"), QStringLiteral(":/icons/double_arrow_down"), QString(), tr("Jump to latest (scroll down)"), 14);
-    jumpLatestButton->setFixedWidth(28);
+    jumpLatestButton  = makeHistBtn(QStringLiteral("HistBtnJump"), QStringLiteral(":/icons/double_arrow_down"), QString(), tr("Jump to latest (scroll down)"));
     stopLoadButton->setVisible(false);
 
     auto* histLayout = new QHBoxLayout(historyBar);
@@ -249,10 +253,10 @@ void ConsoleWidget::createUI()
     histLayout->addWidget(pageSizeLabel, 0);
     histLayout->addWidget(pageSizeSpin, 0);
 
-    historyBar->setFixedHeight(28);
     historyBar->setAttribute(Qt::WA_TransparentForMouseEvents, false);
     historyBar->raise();
 
+    applyHistoryBarMetrics();
     applyHistoryBarStyle();
     consoleHost->installEventFilter(this);
     searchPanel->installEventFilter(this);
@@ -445,6 +449,44 @@ void ConsoleWidget::ConsoleOutputPrompt(const qint64 timestamp, const QString &t
     }
 }
 
+void ConsoleWidget::applyHistoryBarMetrics()
+{
+    if (!historyBar)
+        return;
+
+    const AppTypography& ty = FontManager::instance().typography();
+    const int barH   = ty.historyBarHeight;
+    const int btnH   = ty.controlInnerH;
+    const int sepH   = qMax(12, btnH - 6);
+    const qreal s    = ty.baseSize / 10.0;
+    const int iconSm = qMax(10, qRound(12 * s));
+    const int iconMd = qMax(12, qRound(14 * s));
+
+    historyBar->setFixedHeight(barH);
+    if (pageSizeSpin)
+        pageSizeSpin->setFixedHeight(btnH);
+    if (autoLoadSwitch)
+        autoLoadSwitch->setFixedSize(qMax(30, qRound(34 * s)), qMax(14, qRound(16 * s)));
+
+    auto applyBtn = [&](QToolButton* btn, int iconPx) {
+        if (!btn)
+            return;
+        btn->setFixedHeight(btnH);
+        if (!btn->icon().isNull())
+            btn->setIconSize(QSize(iconPx, iconPx));
+    };
+    applyBtn(loadEarlierButton, iconSm);
+    applyBtn(loadAllButton, iconMd);
+    applyBtn(stopLoadButton, iconMd);
+    applyBtn(jumpLatestButton, iconMd);
+    if (jumpLatestButton)
+        jumpLatestButton->setFixedWidth(qMax(24, btnH + 4));
+
+    const auto seps = historyBar->findChildren<QFrame*>(QStringLiteral("ConsoleHistorySep"));
+    for (QFrame* sep : seps)
+        sep->setFixedHeight(sepH);
+}
+
 
 void ConsoleWidget::applyHistoryBarStyle()
 {
@@ -452,6 +494,8 @@ void ConsoleWidget::applyHistoryBarStyle()
         return;
     auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
     const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
+    const int fontPx = FontManager::instance().typography().chromeFontPx;
+    const QString monoFamily = FontManager::instance().typography().family;
 
     historyBar->setStyleSheet(QStringLiteral(
         "QFrame#ConsoleHistoryBar {"
@@ -461,14 +505,14 @@ void ConsoleWidget::applyHistoryBarStyle()
         "}"
         "QLabel#ConsoleHistoryStatus {"
         "  color: %5;"
-        "  font-size: 11px;"
-        "  font-family: monospace;"
+        "  font-size: %8px;"
+        "  font-family: '%9';"
         "  padding: 0 4px 0 2px;"
         "  min-width: 52px;"
         "}"
         "QLabel#ConsoleHistoryMuted {"
         "  color: %6;"
-        "  font-size: 11px;"
+        "  font-size: %8px;"
         "  padding-right: 2px;"
         "}"
         "QFrame#ConsoleHistorySep {"
@@ -483,7 +527,7 @@ void ConsoleWidget::applyHistoryBarStyle()
         "  border-radius: 4px;"
         "  padding: 2px 6px;"
         "  color: %5;"
-        "  font-size: 11px;"
+        "  font-size: %8px;"
         "}"
         "QToolButton:hover { background-color: %7; }"
         "QToolButton:disabled { color: %6; }"
@@ -496,7 +540,9 @@ void ConsoleWidget::applyHistoryBarStyle()
      .arg(t.borderColor.name(),
           t.primaryColor.name(),
           t.secondaryColor.name(),
-          t.backgroundColorMain4.name()));
+          t.backgroundColorMain4.name())
+     .arg(fontPx)
+     .arg(monoFamily));
 }
 
 void ConsoleWidget::positionHistoryBar()

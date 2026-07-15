@@ -1,10 +1,10 @@
 #include <UI/Widgets/ScreenshotsFeedWidget.h>
-
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Utils/NonBlockingDialogs.h>
+#include <Utils/FontManager.h>
 
 #include <oclero/qlementine/widgets/Menu.hpp>
 #include <oclero/qlementine/widgets/SegmentedControl.hpp>
@@ -144,7 +144,16 @@ void ScreenshotGridDelegate::paint(QPainter* painter, const QStyleOptionViewItem
     painter->setPen(QPen(border, selected ? 2 : 1));
     painter->drawRect(r.adjusted(0, 0, -1, -1));
 
-    int imgH = r.height() - 44;
+    const AppTypography& ty = FontManager::instance().typography();
+    const int mainLineH = QFontMetrics(ty.primary).height() + 2;
+    const int bodyLineH = QFontMetrics(ty.body).height() + 2;
+    const int noteLineH = qMax(bodyLineH, QFontMetrics(ty.caption).height() + 6);
+    const int footerH = qMax(44, bodyLineH + noteLineH + 10);
+    const int gradH   = qMax(20, mainLineH + 8);
+
+    int imgH = r.height() - footerH;
+    if (imgH < 40)
+        imgH = qMax(24, r.height() / 2);
     QRect imgRect(r.adjusted(4, 4, -4, -(r.height() - imgH - 4)));
     painter->fillRect(imgRect, pal.color(QPalette::Dark));
 
@@ -184,21 +193,21 @@ void ScreenshotGridDelegate::paint(QPainter* painter, const QStyleOptionViewItem
         painter->drawPixmap(thumbRect, thumb);
     } else {
         painter->setPen(pal.color(QPalette::PlaceholderText));
-        QFont pf; pf.setPointSize(10);
-        painter->setFont(pf);
+        painter->setFont(FontManager::instance().typography().caption);
         painter->drawText(imgRect, Qt::AlignCenter, "No preview");
     }
 
-    QLinearGradient grad(imgRect.bottomLeft(), imgRect.bottomLeft() + QPoint(0, -24));
+    QLinearGradient grad(imgRect.bottomLeft(), imgRect.bottomLeft() + QPoint(0, -gradH));
     grad.setColorAt(0, QColor(pal.color(QPalette::Base).red(), pal.color(QPalette::Base).green(), pal.color(QPalette::Base).blue(), 200));
     grad.setColorAt(1, QColor(0, 0, 0, 0));
-    painter->fillRect(QRect(imgRect.left(), imgRect.bottom() - 24, imgRect.width(), 24), grad);
+    painter->fillRect(QRect(imgRect.left(), imgRect.bottom() - gradH, imgRect.width(), gradH), grad);
 
     if (!idText.isEmpty()) {
-        QFont idF; idF.setPointSize(11); idF.setBold(true);
+        QFont idF = ty.primary;
         QFontMetrics idFm(idF);
         int idW = idFm.horizontalAdvance(idText) + 10;
-        QRect idRect(imgRect.left() + 4, imgRect.top() + 4, idW, 20);
+        int idH = idFm.height() + 6;
+        QRect idRect(imgRect.left() + 4, imgRect.top() + 4, idW, idH);
         painter->fillRect(idRect, QColor(pal.color(QPalette::Base).red(), pal.color(QPalette::Base).green(), pal.color(QPalette::Base).blue(), 180));
         painter->setFont(idF);
         painter->setPen(pal.color(QPalette::Text));
@@ -206,31 +215,45 @@ void ScreenshotGridDelegate::paint(QPainter* painter, const QStyleOptionViewItem
     }
 
     painter->setPen(pal.color(QPalette::Text));
-    QFont f; f.setPointSize(10); f.setBold(true);
+    QFont f = ty.primary;
     painter->setFont(f);
-    painter->drawText(QRect(imgRect.left() + 6, imgRect.bottom() - 18, imgRect.width() - 12, 14), Qt::AlignLeft | Qt::AlignVCenter, mainText);
+    QFontMetrics mainFm(f);
+    QRect mainRect(imgRect.left() + 6, imgRect.bottom() - mainLineH - 2, imgRect.width() - 12, mainLineH);
+    painter->drawText(mainRect, Qt::AlignLeft | Qt::AlignVCenter, mainFm.elidedText(mainText, Qt::ElideRight, mainRect.width()));
 
-    QRect bottomRect(r.left() + 6, imgRect.bottom() + 4, r.width() - 12, 36);
-    QFont small; small.setPointSize(10);
+    QRect bottomRect(r.left() + 6, imgRect.bottom() + 4, r.width() - 12, footerH - 8);
+    QFont small = ty.body;
     QFontMetrics fm(small);
     painter->setPen(pal.color(QPalette::PlaceholderText));
     painter->setFont(small);
-    painter->drawText(bottomRect, Qt::AlignRight | Qt::AlignTop, date);
+    QRect dateRect(bottomRect.left(), bottomRect.top(), bottomRect.width(), bodyLineH);
+    painter->drawText(dateRect, Qt::AlignRight | Qt::AlignVCenter, fm.elidedText(date, Qt::ElideRight, dateRect.width()));
 
     if (!note.isEmpty()) {
-        int tw = fm.horizontalAdvance(note) + 8;
-        QRect noteRect(bottomRect.left(), bottomRect.top() + 16, qMin(tw, bottomRect.width()), 14);
+        QFontMetrics noteFm(ty.caption);
+        int tw = noteFm.horizontalAdvance(note) + 12;
+        QRect noteRect(bottomRect.left(), dateRect.bottom() + 2, qMin(tw, bottomRect.width()), noteLineH);
         painter->setBrush(QColor(pal.color(QPalette::Highlight).red(), pal.color(QPalette::Highlight).green(), pal.color(QPalette::Highlight).blue(), 40));
         painter->setPen(pal.color(QPalette::Highlight));
+        painter->setFont(ty.caption);
         painter->drawRoundedRect(noteRect, 3, 3);
-        painter->drawText(noteRect, Qt::AlignCenter, note);
+        painter->drawText(noteRect, Qt::AlignCenter, noteFm.elidedText(note, Qt::ElideRight, noteRect.width() - 6));
     }
     painter->restore();
 }
 
+static int screenshotsCardFooterHeight()
+{
+    const AppTypography& ty = FontManager::instance().typography();
+    const int bodyLineH = QFontMetrics(ty.body).height() + 2;
+    const int noteLineH = qMax(bodyLineH, QFontMetrics(ty.caption).height() + 6);
+    return qMax(56, bodyLineH + noteLineH + 16);
+}
+
 QSize ScreenshotGridDelegate::sizeHint(const QStyleOptionViewItem&, const QModelIndex&) const
 {
-    return QSize(m_thumbSize + 8, m_thumbSize + 56);
+    const int footerH = screenshotsCardFooterHeight();
+    return QSize(m_thumbSize + 8, m_thumbSize + footerH);
 }
 
 
@@ -248,8 +271,6 @@ ScreenshotsFeedWidget::ScreenshotsFeedWidget(AdaptixWidget* w) : ListFeedWidget(
     finalizeSearchWidget();
     enableCompactSwitch(true);
     setBlockGap(12);
-    setTagSize(11, 20);
-    setIconSizes(22, 18);
     rebuildModelChain();
 
     gridDelegate = new ScreenshotGridDelegate(this);
@@ -299,7 +320,7 @@ ScreenshotsFeedWidget::ScreenshotsFeedWidget(AdaptixWidget* w) : ListFeedWidget(
     segment->addItem("Feed");
     segment->addItem("Card");
     segment->setCurrentIndex(1);
-    segment->setFixedHeight(26);
+    segment->setFixedHeight(FontManager::instance().typography().segmentHeight);
     connect(segment, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [segment, this]() {
         int idx = segment->currentIndex();
         m_viewStack->setCurrentIndex(idx);
@@ -311,12 +332,23 @@ ScreenshotsFeedWidget::ScreenshotsFeedWidget(AdaptixWidget* w) : ListFeedWidget(
     debounceTimer->setSingleShot(true);
     debounceTimer->setInterval(200);
     connect(debounceTimer, &QTimer::timeout, this, [this]() { loadGridThumbnails(); });
-    connect(sizeSlider, &QSlider::valueChanged, this, [this, debounceTimer](int val) {
-        gridDelegate->setThumbSize(val);
-        gridView->setGridSize(QSize(val + 8, val + 56));
+    auto applyGridMetrics = [this]() {
+        if (!gridDelegate || !gridView)
+            return;
+        const int thumb = gridDelegate->thumbSize();
+        const int footerH = screenshotsCardFooterHeight();
+        gridView->setGridSize(QSize(thumb + 8, thumb + footerH));
         gridView->doItemsLayout();
+        gridView->viewport()->update();
+    };
+
+    connect(sizeSlider, &QSlider::valueChanged, this, [this, debounceTimer, applyGridMetrics](int val) {
+        gridDelegate->setThumbSize(val);
+        applyGridMetrics();
         debounceTimer->start();
     });
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, applyGridMetrics);
+    applyGridMetrics();
 
     auto* mainGrid = qobject_cast<QGridLayout*>(layout());
     if (mainGrid) {
@@ -425,8 +457,8 @@ ScreenshotsFeedWidget::ScreenshotsFeedWidget(AdaptixWidget* w) : ListFeedWidget(
             auto* btnSave = new QPushButton("Save", toolbar);
             btnZoomIn->setFixedSize(28, 24);
             btnZoomOut->setFixedSize(28, 24);
-            btnFit->setFixedHeight(24);
-            btnSave->setFixedHeight(24);
+            btnFit->setFixedHeight(FontManager::instance().typography().controlInnerH);
+            btnSave->setFixedHeight(FontManager::instance().typography().controlInnerH);
             auto* zoomLabel = new QLabel("100%", toolbar);
             zoomLabel->setFixedWidth(50);
             zoomLabel->setAlignment(Qt::AlignCenter);
@@ -437,7 +469,7 @@ ScreenshotsFeedWidget::ScreenshotsFeedWidget(AdaptixWidget* w) : ListFeedWidget(
             tbLayout->addStretch();
             tbLayout->addWidget(btnSave);
             auto* btnClose = new QPushButton("Close", toolbar);
-            btnClose->setFixedHeight(24);
+            btnClose->setFixedHeight(FontManager::instance().typography().controlInnerH);
             tbLayout->addWidget(btnClose);
             QObject::connect(btnClose, &QPushButton::clicked, viewer, &QWidget::close);
             layout->addWidget(toolbar);

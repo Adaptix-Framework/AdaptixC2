@@ -1,6 +1,7 @@
 #include <UI/Widgets/ChatWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <Utils/Convert.h>
+#include <Utils/FontManager.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
 #include <Client/Requestor.h>
@@ -27,6 +28,44 @@
 REGISTER_DOCK_WIDGET(ChatWidget, "Chat", true)
 
 static const QStringList EMOJI_LIST = {"👍", "👌", "👎", "😂", "❤️", "👀", "🎉", "✅", "❌", "💩"};
+
+static QFont chatFont(int delta = 0, QFont::Weight weight = QFont::Normal)
+{
+    const AppTypography& ty = FontManager::instance().typography();
+    QFont f = ty.regular;
+    f.setPointSize(qMax(6, ty.baseSize + delta));
+    f.setWeight(weight);
+    f.setStyleHint(QFont::SansSerif);
+    f.setFixedPitch(false);
+    return f;
+}
+
+struct ChatLayoutMetrics {
+    int avatarSize;
+    int replyH;
+    int nameH;
+    int reactionH;
+    int timeH;
+    int vPad;
+    int hPad;
+    int inputH;
+};
+
+static ChatLayoutMetrics chatLayout()
+{
+    const AppTypography& ty = FontManager::instance().typography();
+    ChatLayoutMetrics m;
+    m.avatarSize = ty.chatAvatarSize;
+    m.replyH     = ty.chatReplyH;
+    m.nameH      = ty.chatNameH;
+    m.reactionH  = ty.chatReactionH;
+    m.timeH      = ty.chatTimeH;
+    m.vPad       = qMax(4, qRound(6 * (ty.baseSize / 10.0)));
+    m.hPad       = qMax(6, qRound(8 * (ty.baseSize / 10.0)));
+    m.inputH     = ty.chatInputH;
+    return m;
+}
+
 
 static QList<ChatReaction> parseReactions(const QString& json) {
     QList<ChatReaction> result;
@@ -222,7 +261,7 @@ QTextDocument* ChatMessageDelegate::getDocument(const QModelIndex& index, int bu
 
     auto* doc = new QTextDocument();
     doc->setDocumentMargin(0);
-    doc->setDefaultFont(QFont("Segoe UI", 10));
+    doc->setDefaultFont(chatFont(0));
     if (deleted) {
         qint64 delDate = index.data(ChatMessageModel::DeletedDateRole).toLongLong();
         QString delTime;
@@ -325,10 +364,11 @@ void ChatMessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
     QList<ChatReaction> reactions = index.data(ChatMessageModel::ReactionsRole).value<QList<ChatReaction>>();
 
     QRect r = option.rect;
-    int avatarSize = 32;
+    const ChatLayoutMetrics lm = chatLayout();
+    int avatarSize = lm.avatarSize;
     int bubbleMaxWidth = qMin(r.width() * 70 / 100, 600);
-    int hPad = 8;
-    int vPad = 6;
+    int hPad = lm.hPad;
+    int vPad = lm.vPad;
 
     const auto& cc = chatColors();
     QColor bubbleColor = isMine ? cc.bubbleMine : cc.bubbleOther;
@@ -350,7 +390,8 @@ void ChatMessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
     QString replyToName = index.data(ChatMessageModel::ReplyToNameRole).toString();
     QString replyToText = index.data(ChatMessageModel::ReplyToTextRole).toString();
     bool replyToDeleted = index.data(ChatMessageModel::ReplyToDeletedRole).toBool();
-    if (replyToId > 0) replyH = 32;
+    if (replyToId > 0)
+        replyH = lm.replyH;
 
     QTextDocument* doc = getDocument(index, bubbleWidth);
     int textH = static_cast<int>(realDocHeight(doc));
@@ -363,15 +404,15 @@ void ChatMessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
     painter->setPen(Qt::NoPen);
     painter->drawRoundedRect(avatarRect, 8, 8);
     painter->setPen(Qt::white);
-    QFont avatarFont("Segoe UI", 14, QFont::Bold);
+    QFont avatarFont = chatFont(4, QFont::Bold);
     painter->setFont(avatarFont);
     painter->drawText(avatarRect, Qt::AlignCenter, username.left(1).toUpper());
 
-    int nameH = 16;
+    int nameH = lm.nameH;
     if (!isMine) {
         QRect nameRect(bubbleX, y, bubbleWidth, nameH);
         painter->setPen(cc.nameColor);
-        QFont nameFont("Segoe UI", 9, QFont::Bold);
+        QFont nameFont = chatFont(-1, QFont::Bold);
         painter->setFont(nameFont);
         painter->drawText(nameRect, Qt::AlignLeft | Qt::AlignVCenter, username);
     }
@@ -391,12 +432,12 @@ void ChatMessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
 
     int textOffset = vPad;
     if (replyToId > 0) {
-        QRect replyRect(bubbleRect.left() + 8, bubbleRect.top() + 4, bubbleRect.width() - 16, 28);
+        QRect replyRect(bubbleRect.left() + 8, bubbleRect.top() + 4, bubbleRect.width() - 16, lm.replyH - 4);
         painter->setPen(Qt::NoPen);
         painter->setBrush(replyToDeleted ? cc.replyDeletedBg : cc.replyBg);
         painter->drawRoundedRect(replyRect, 3, 3);
         painter->setPen(replyToDeleted ? cc.replyDeletedText : cc.replyText);
-        QFont replyFont("Segoe UI", 8);
+        QFont replyFont = chatFont(-2);
         painter->setFont(replyFont);
         QRect nameLine(replyRect.left() + 4, replyRect.top() + 1, replyRect.width() - 8, 13);
         painter->drawText(nameLine, Qt::AlignLeft | Qt::AlignVCenter, "↩ " + replyToName);
@@ -405,7 +446,7 @@ void ChatMessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
             QRect textLine(replyRect.left() + 4, replyRect.top() + 14, replyRect.width() - 8, 13);
             painter->drawText(textLine, Qt::AlignLeft | Qt::AlignVCenter | Qt::TextSingleLine, replyToText);
         }
-        textOffset += 32;
+        textOffset += lm.replyH;
     }
 
     painter->save();
@@ -415,12 +456,12 @@ void ChatMessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
 
     QRect timeRect;
     if (isMine) {
-        timeRect = QRect(bubbleX - 65, bubbleRect.bottom() + 1, 63, 14);
+        timeRect = QRect(bubbleX - 65, bubbleRect.bottom() + 1, 63, lm.timeH);
     } else {
-        timeRect = QRect(bubbleRect.right() + 4, bubbleRect.bottom() + 1, 63, 14);
+        timeRect = QRect(bubbleRect.right() + 4, bubbleRect.bottom() + 1, 63, lm.timeH);
     }
     painter->setPen(timeColor);
-    QFont timeFont("Segoe UI", 8);
+    QFont timeFont = chatFont(-2);
     painter->setFont(timeFont);
     QString timeStr = formatTime(date);
     if (edited) timeStr += " ✏";
@@ -429,12 +470,12 @@ void ChatMessageDelegate::paint(QPainter* painter, const QStyleOptionViewItem& o
     int reactionsY = bubbleRect.bottom() + 2;
     if (!reactions.isEmpty()) {
         int rx = bubbleX;
-        QFont reactFont("Segoe UI", 9);
+        QFont reactFont = chatFont(-1);
         painter->setFont(reactFont);
         for (const auto& react : reactions) {
             QString label = react.emoji + " " + QString::number(react.users.size());
             int w = painter->fontMetrics().horizontalAdvance(label) + 12;
-            QRect chipRect(rx, reactionsY, w, 22);
+            QRect chipRect(rx, reactionsY, w, lm.reactionH);
             bool iReacted = react.users.contains(currentUser);
             painter->setBrush(iReacted ? cc.reactionBgActive : cc.reactionBg);
             painter->setPen(cc.reactionBorder);
@@ -458,26 +499,27 @@ QSize ChatMessageDelegate::sizeHint(const QStyleOptionViewItem& option, const QM
     int bubbleMaxWidth = qMin(viewWidth * 70 / 100, 600);
     int bubbleWidth = bubbleMaxWidth - 24;
 
-    int nameH = isMine ? 0 : 18;
+    const ChatLayoutMetrics lm = chatLayout();
+    int nameH = isMine ? 0 : lm.nameH + 2;
     int replyH = 0;
     qint64 rtId = index.data(ChatMessageModel::ReplyToIdRole).toLongLong();
-    if (rtId > 0) replyH = 32;
+    if (rtId > 0) replyH = lm.replyH;
     int totalH;
     if (widthUnreliable) {
-        QFontMetrics fm(QFont("Segoe UI", 10));
+        QFontMetrics fm(chatFont(0));
         int lineH = fm.height();
         int charsPerLine = qMax(1, bubbleWidth / fm.averageCharWidth());
         QString msg = index.data(ChatMessageModel::MessageRole).toString();
         int lines = 0;
         for (const QString& line : msg.split('\n'))
             lines += qMax(1, (line.length() + charsPerLine - 1) / charsPerLine);
-        totalH = 4 + nameH + replyH + lines * lineH + 12 + 16 + 14;
+        totalH = 4 + nameH + replyH + lines * lineH + 12 + lm.timeH + 14;
     } else {
         std::unique_ptr<QTextDocument> doc(getDocument(index, bubbleWidth));
         qreal textH = doc->size().height();
-        totalH = 4 + nameH + replyH + static_cast<int>(textH) + 12 + 16 + 14;
+        totalH = 4 + nameH + replyH + static_cast<int>(textH) + 12 + lm.timeH + 14;
     }
-    if (!reactions.isEmpty()) totalH += 26;
+    if (!reactions.isEmpty()) totalH += lm.reactionH + 4;
     return QSize(viewWidth, totalH);
 }
 
@@ -485,14 +527,15 @@ bool ChatMessageDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, 
     if (event->type() == QEvent::MouseButtonPress) {
         auto* me = static_cast<QMouseEvent*>(event);
         if (me->button() == Qt::LeftButton) {
+            const ChatLayoutMetrics lm = chatLayout();
             qint64 replyToId = index.data(ChatMessageModel::ReplyToIdRole).toLongLong();
             if (replyToId > 0) {
                 bool isMine = index.data(ChatMessageModel::IsMineRole).toBool();
-                int nameH = isMine ? 0 : 18;
-                int avatarX = isMine ? option.rect.right() - 32 - 8 : option.rect.left() + 8;
-                int bubbleX = isMine ? avatarX - qMin(option.rect.width() * 70 / 100, 600) : avatarX + 40;
+                int nameH = isMine ? 0 : lm.nameH + 2;
+                int avatarX = isMine ? option.rect.right() - lm.avatarSize - lm.hPad : option.rect.left() + lm.hPad;
+                int bubbleX = isMine ? avatarX - qMin(option.rect.width() * 70 / 100, 600) : avatarX + lm.avatarSize + 8;
                 int replyTop = option.rect.top() + 4 + nameH + 4;
-                QRect replyClickRect(bubbleX, replyTop, qMin(option.rect.width() * 70 / 100, 600) - 24 + 16, 28);
+                QRect replyClickRect(bubbleX, replyTop, qMin(option.rect.width() * 70 / 100, 600) - 24 + 16, lm.replyH - 4);
                 if (replyClickRect.contains(me->pos())) {
                     Q_EMIT replyClicked(replyToId);
                     return true;
@@ -505,16 +548,16 @@ bool ChatMessageDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, 
                 int bubbleMaxWidth = qMin(option.rect.width() * 70 / 100, 600);
 
                 int rx = isMine
-                    ? option.rect.right() - 32 - bubbleMaxWidth - 8
-                    : option.rect.left() + 32 + 16;
+                    ? option.rect.right() - lm.avatarSize - bubbleMaxWidth - lm.hPad
+                    : option.rect.left() + lm.avatarSize + lm.hPad * 2;
 
-                int reactionsY = option.rect.bottom() - 24;
-                QFont reactFont("Segoe UI", 9);
+                int reactionsY = option.rect.bottom() - lm.reactionH - 2;
+                QFont reactFont = chatFont(-1);
                 QFontMetrics fm(reactFont);
                 for (const auto& react : reactions) {
                     QString label = react.emoji + " " + QString::number(react.users.size());
                     int w = fm.horizontalAdvance(label) + 12;
-                    QRect chipRect(rx, reactionsY, w, 22);
+                    QRect chipRect(rx, reactionsY, w, lm.reactionH);
                     if (chipRect.contains(me->pos())) {
                         qint64 id = index.data(ChatMessageModel::IdRole).toLongLong();
                         Q_EMIT reactionClicked(id, react.emoji);
@@ -529,22 +572,23 @@ bool ChatMessageDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, 
 }
 
 static QRect reactionChipRect(const QStyleOptionViewItem& option, const QModelIndex& index, int reactionIndex) {
+    const ChatLayoutMetrics lm = chatLayout();
     bool isMine = index.data(ChatMessageModel::IsMineRole).toBool();
     int bubbleMaxWidth = qMin(option.rect.width() * 70 / 100, 600);
 
     int rx = isMine
-        ? option.rect.right() - 32 - bubbleMaxWidth - 8
-        : option.rect.left() + 32 + 16;
+        ? option.rect.right() - lm.avatarSize - bubbleMaxWidth - lm.hPad
+        : option.rect.left() + lm.avatarSize + lm.hPad * 2;
 
-    int reactionsY = option.rect.bottom() - 24;
+    int reactionsY = option.rect.bottom() - lm.reactionH - 2;
     QList<ChatReaction> reactions = index.data(ChatMessageModel::ReactionsRole).value<QList<ChatReaction>>();
-    QFont reactFont("Segoe UI", 9);
+    QFont reactFont = chatFont(-1);
     QFontMetrics fm(reactFont);
     for (int i = 0; i < reactions.size(); ++i) {
         const auto& react = reactions[i];
         QString label = react.emoji + " " + QString::number(react.users.size());
         int w = fm.horizontalAdvance(label) + 12;
-        QRect chipRect(rx, reactionsY, w, 22);
+        QRect chipRect(rx, reactionsY, w, lm.reactionH);
         if (i == reactionIndex) return chipRect;
         rx += w + 4;
     }
@@ -556,29 +600,30 @@ bool ChatMessageDelegate::helpEvent(QHelpEvent* event, QAbstractItemView* view, 
         QList<ChatReaction> reactions = index.data(ChatMessageModel::ReactionsRole).value<QList<ChatReaction>>();
         if (reactions.isEmpty()) return false;
 
+        const ChatLayoutMetrics lm = chatLayout();
         bool isMine = index.data(ChatMessageModel::IsMineRole).toBool();
         int bubbleMaxWidth = qMin(option.rect.width() * 70 / 100, 600);
         int bubbleWidth = bubbleMaxWidth - 24;
-        int nameH = isMine ? 0 : 18;
+        int nameH = isMine ? 0 : lm.nameH + 2;
         int replyH = 0;
         qint64 rtId = index.data(ChatMessageModel::ReplyToIdRole).toLongLong();
-        if (rtId > 0) replyH = 32;
-        int vPad = 6;
+        if (rtId > 0) replyH = lm.replyH;
+        int vPad = lm.vPad;
         int bubbleX = isMine
-            ? option.rect.right() - 32 - bubbleMaxWidth
-            : option.rect.left() + 32 + 8;
+            ? option.rect.right() - lm.avatarSize - bubbleMaxWidth
+            : option.rect.left() + lm.avatarSize + lm.hPad;
         int textH = 30;
         QRect bubbleRect(bubbleX, option.rect.top() + 4 + nameH, bubbleWidth + 16, textH + 2 * vPad + replyH);
         int reactionsY = bubbleRect.bottom() + 2;
 
         int rx = bubbleX;
-        QFont reactFont("Segoe UI", 9);
+        QFont reactFont = chatFont(-1);
         QFontMetrics fm(reactFont);
         QPoint pos = event->pos();
         for (const auto& react : reactions) {
             QString label = react.emoji + " " + QString::number(react.users.size());
             int w = fm.horizontalAdvance(label) + 12;
-            QRect chipRect(rx, reactionsY, w, 22);
+            QRect chipRect(rx, reactionsY, w, lm.reactionH);
             if (chipRect.contains(pos)) {
                 QToolTip::showText(event->globalPos(), react.users.join("\n"));
                 return true;
@@ -622,7 +667,7 @@ TodoWidget::TodoWidget(QWidget* parent) : QWidget(parent), updating(false) {
         auto* btn = new QToolButton(this);
         btn->setText(text);
         btn->setToolTip(tooltip);
-        btn->setFixedHeight(22);
+        btn->setFixedHeight(FontManager::instance().typography().controlInnerH);
         btn->setMinimumWidth(28);
         btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         connect(btn, &QToolButton::clicked, this, fn);
@@ -696,6 +741,50 @@ TodoWidget::TodoWidget(QWidget* parent) : QWidget(parent), updating(false) {
         if (!updating) debounceTimer->start();
     });
     connect(debounceTimer, &QTimer::timeout, this, &TodoWidget::updatePreview);
+
+    applyFonts();
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, &TodoWidget::applyFonts);
+}
+
+void TodoWidget::applyFonts()
+{
+    const AppTypography& ty = FontManager::instance().typography();
+    const QFont body = ty.regular;
+    const QFont mono = ty.mono;
+
+    if (renderedView) {
+        renderedView->setFont(body);
+        renderedView->document()->setDefaultFont(body);
+    }
+    if (editor)
+        editor->setFont(mono);
+    if (livePreview) {
+        livePreview->setFont(body);
+        livePreview->document()->setDefaultFont(body);
+    }
+    if (statusLabel)
+        statusLabel->setFont(ty.caption);
+
+    const int btnH = ty.controlInnerH;
+    if (toolbarRow) {
+        for (auto* btn : toolbarRow->findChildren<QToolButton*>())
+            btn->setFixedHeight(btnH);
+    }
+    if (editMode) {
+        updatePreview();
+    } else if (renderedView && editor) {
+        QString text = editor->toPlainText();
+        if (text.isEmpty())
+            text = renderedView->toPlainText();
+        if (!text.isEmpty()) {
+            QString fixed = text;
+            fixed.replace(QRegularExpression("(?<!\\n)\\n(?!\\n)"), "  \n");
+            QTextDocument doc;
+            doc.setDefaultFont(body);
+            doc.setMarkdown(fixed);
+            renderedView->setHtml(doc.toHtml());
+        }
+    }
 }
 
 void TodoWidget::setEditMode(bool on) {
@@ -717,6 +806,7 @@ void TodoWidget::updatePreview() {
     QString text = editor->toPlainText();
     text.replace(QRegularExpression("(?<!\\n)\\n(?!\\n)"), "  \n");
     QTextDocument doc;
+    doc.setDefaultFont(FontManager::instance().typography().regular);
     doc.setMarkdown(text);
     livePreview->setHtml(doc.toHtml());
 }
@@ -737,6 +827,7 @@ void TodoWidget::SetTodo(const QString& content, const QString& updatedBy, qint6
     QString fixed = content;
     fixed.replace(QRegularExpression("(?<!\\n)\\n(?!\\n)"), "  \n");
     QTextDocument doc;
+    doc.setDefaultFont(FontManager::instance().typography().regular);
     doc.setMarkdown(fixed);
     renderedView->setHtml(doc.toHtml());
 
@@ -808,6 +899,19 @@ ChatWidget::ChatWidget(AdaptixWidget* w) : DockTab("Chat", w->GetProfile()->GetP
 
     connect(adaptixWidget, &AdaptixWidget::SyncedSignal, this, [this]() {
         FinishPresync();
+    });
+
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
+        if (messageDelegate)
+            messageDelegate->clearCache();
+        if (messageView) {
+            messageView->doItemsLayout();
+            messageView->viewport()->update();
+        }
+        if (chatInput) {
+            chatInput->setFont(FontManager::instance().appRegularFont());
+            chatInput->setFixedHeight(chatLayout().inputH);
+        }
     });
 
     this->dockWidget->setWidget(this);
@@ -986,7 +1090,8 @@ void ChatWidget::createUI() {
     });
 
     chatInput = new QPlainTextEdit(this);
-    chatInput->setFixedHeight(68);
+    chatInput->setFixedHeight(chatLayout().inputH);
+    chatInput->setFont(FontManager::instance().appRegularFont());
     chatInput->setPlaceholderText("Type a message... (Enter to send, Markdown supported)");
 
     mdPreview = new QTextBrowser(this);

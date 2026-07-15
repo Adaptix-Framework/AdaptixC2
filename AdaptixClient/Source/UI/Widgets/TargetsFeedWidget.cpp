@@ -148,8 +148,6 @@ TargetsFeedWidget::TargetsFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), m_ad
     if (GlobalClient && GlobalClient->settings)
         setCompactMode(GlobalClient->settings->data.TargetsCompactMode);
     setBlockGap(12);
-    setTagSize(11, 20);
-    setIconSizes(22, 18);
 
     enablePagination(true);
 

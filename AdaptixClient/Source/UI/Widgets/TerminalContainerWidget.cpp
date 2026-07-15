@@ -37,6 +37,7 @@ TerminalTab::TerminalTab(Agent* a, AdaptixWidget* w, TerminalMode mode, QWidget*
     SetSettings();
     SetKeys();
 
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, &TerminalTab::SetFont);
     connect(termWidget,      &QWidget::customContextMenuRequested, this, &TerminalTab::handleTerminalMenu);
     connect(programComboBox, &QComboBox::currentTextChanged,       this, &TerminalTab::onProgramChanged);
     connect(keytabComboBox,  &QComboBox::currentTextChanged,       this, &TerminalTab::onKeytabChanged);

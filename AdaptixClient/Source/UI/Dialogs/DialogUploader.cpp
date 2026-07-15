@@ -1,6 +1,7 @@
 #include <UI/Dialogs/DialogUploader.h>
 #include <UI/Widgets/FilesFeedWidget.h>
 #include <Workers/UploaderWorker.h>
+#include <Utils/FontManager.h>
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -22,14 +23,16 @@ void DialogUploader::setupUI(const QString &name)
     this->setFixedWidth(420);
     this->setProperty("Main", "base");
 
+    const AppTypography& ty = FontManager::instance().typography();
+
     auto* headerLayout = new QHBoxLayout();
     headerLayout->setSpacing(8);
     auto* badge = new QLabel("\u2191 UL", this);
-    badge->setStyleSheet("font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(210,153,34,0.15);color:#d29922;");
+    badge->setStyleSheet(QStringLiteral("font-size:%1px;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(210,153,34,0.15);color:#d29922;").arg(ty.captionFontPx));
     headerLabel = new QLabel(displayName, this);
-    headerLabel->setStyleSheet("font-size:13px;font-weight:600;");
+    headerLabel->setStyleSheet(QStringLiteral("font-size:%1px;font-weight:600;").arg(ty.titleFontPx));
     sizeLabel = new QLabel(this);
-    sizeLabel->setStyleSheet("font-size:11px;color:#8b949e;");
+    sizeLabel->setStyleSheet(QStringLiteral("font-size:%1px;color:#8b949e;").arg(ty.chromeFontPx));
     sizeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     headerLayout->addWidget(badge);
     headerLayout->addWidget(headerLabel, 1);
@@ -41,7 +44,7 @@ void DialogUploader::setupUI(const QString &name)
     progressBar->setTextVisible(false);
 
     statsLabel = new QLabel(this);
-    statsLabel->setStyleSheet("font-size:11px;color:#8b949e;");
+    statsLabel->setStyleSheet(QStringLiteral("font-size:%1px;color:#8b949e;").arg(ty.chromeFontPx));
 
     hideButton = new QPushButton("Hide", this);
     cancelButton = new QPushButton("Cancel", this);
@@ -104,7 +107,7 @@ void DialogUploader::connectSignals()
                 progressBar->setValue(100);
                 progressBar->setVisible(false);
                 statsLabel->setText(QString("%1 / %2  |  Complete").arg(formatSize(currentTotal), formatSize(currentTotal)));
-                statsLabel->setStyleSheet("font-size:11px;color:#3fb950;");
+                statsLabel->setStyleSheet(QStringLiteral("font-size:%1px;color:#3fb950;").arg(FontManager::instance().typography().chromeFontPx));
             }
             Q_EMIT uploadFinished(true);
             if (hidden) this->close();
@@ -125,7 +128,7 @@ void DialogUploader::connectSignals()
         Q_EMIT uploadFinished(false);
         if (hidden) { this->close(); return; }
         statsLabel->setText(QString("Error: %1").arg(msg));
-        statsLabel->setStyleSheet("font-size:11px;color:#f85149;");
+        statsLabel->setStyleSheet(QStringLiteral("font-size:%1px;color:#f85149;").arg(FontManager::instance().typography().chromeFontPx));
         hideButton->setVisible(false);
         cancelButton->setText("Close");
         disconnect(cancelButton, nullptr, nullptr, nullptr);

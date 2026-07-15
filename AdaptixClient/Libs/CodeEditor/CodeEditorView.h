@@ -19,6 +19,7 @@ class CodeEditorView : public QWidget
 Q_OBJECT
     void buildLayout();
     void buildToolBar();
+    void applyTypography();
 
     QToolBar* m_toolBar;
     QSplitter* m_mainSplitter;

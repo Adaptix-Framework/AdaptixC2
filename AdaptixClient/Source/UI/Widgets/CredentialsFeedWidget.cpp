@@ -118,8 +118,6 @@ CredentialsFeedWidget::CredentialsFeedWidget(AdaptixWidget* w) : ListFeedWidget(
     if (GlobalClient && GlobalClient->settings)
         setCompactMode(GlobalClient->settings->data.CredentialsCompactMode);
     setBlockGap(12);
-    setTagSize(11, 20);
-    setIconSizes(22, 18);
 
     dockWidget = new KDDockWidgets::QtWidgets::DockWidget( "CredsFeed:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
     dockWidget->setTitle("Credentials");

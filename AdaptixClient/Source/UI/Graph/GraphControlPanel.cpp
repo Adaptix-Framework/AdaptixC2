@@ -1,5 +1,6 @@
 #include <UI/Graph/GraphControlPanel.h>
 #include <UI/Graph/SessionsGraph.h>
+#include <Utils/FontManager.h>
 #include <Client/Settings.h>
 #include <MainAdaptix.h>
 
@@ -85,7 +86,7 @@ void GraphControlPanel::buildExpanded()
     layoutSegment = new oclero::qlementine::SegmentedControl(contentWidget);
     layoutSegment->addItem(tr("Left \u2192 Right"));
     layoutSegment->addItem(tr("Top \u2192 Bottom"));
-    layoutSegment->setFixedHeight(26);
+    layoutSegment->setFixedHeight(FontManager::instance().typography().segmentHeight);
     connect(layoutSegment, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this]() {
         if (graph) {
             const int idx = layoutSegment->currentIndex();

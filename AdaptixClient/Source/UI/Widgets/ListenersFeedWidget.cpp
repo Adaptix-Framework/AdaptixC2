@@ -129,8 +129,6 @@ ListenersFeedWidget::ListenersFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), 
 
     enableCompactSwitch(true);
     setBlockGap(12);
-    setTagSize(11, 20);
-    setIconSizes(22, 18);
 
     auto* addBtn = new QPushButton("+ Add Listener", this);
     connect(addBtn, &QPushButton::clicked, this, &ListenersFeedWidget::onCreateListener);

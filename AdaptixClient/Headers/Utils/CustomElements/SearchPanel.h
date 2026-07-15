@@ -28,6 +28,7 @@ Q_OBJECT
     void findAndHighlightAll(const QString& pattern);
     void highlightCurrent();
     void applyChromeStyle();
+    void applyMetrics();
 
 public:
     explicit SearchPanel(QPlainTextEdit* target, QWidget* parent = nullptr);

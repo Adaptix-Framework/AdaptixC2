@@ -5,6 +5,7 @@
 #include <Client/Settings.h>
 #include <Client/ConsoleTheme.h>
 #include <Utils/TitleBarStyle.h>
+#include <Utils/FontManager.h>
 #include <QShowEvent>
 #include <QFileDialog>
 #include <QFile>
@@ -321,7 +322,7 @@ void DialogSettings::createUI()
     consoleBgPreviewLabel = new QLabel(consoleBgPreviewFrame);
     consoleBgPreviewLabel->setAlignment(Qt::AlignCenter);
     consoleBgPreviewLabel->setMinimumSize(200, 80);
-    consoleBgPreviewLabel->setStyleSheet("color: palette(placeholderText); font-size: 11px;");
+    consoleBgPreviewLabel->setStyleSheet(QStringLiteral("color: palette(placeholderText); font-size: %1px;").arg(FontManager::instance().typography().chromeFontPx));
     consoleBgPreviewLabel->setText("No background image");
     consoleBgPreviewLabel->setScaledContents(true);
     previewLayout->addWidget(consoleBgPreviewLabel);
@@ -993,17 +994,16 @@ void DialogSettings::createUI()
         item->setFlags(Qt::NoItemFlags);
         item->setSizeHint(QSize(0, 28));
         auto* label = new QLabel(title, listSettings);
-        label->setObjectName("SidebarSectionLabel");
-        label->setStyleSheet(
+        label->setStyleSheet(QStringLiteral(
             "QLabel#SidebarSectionLabel {"
             "  color: palette(highlight);"
-            "  font-size: 10px;"
+            "  font-size: %1px;"
             "  font-weight: 700;"
             "  letter-spacing: 1px;"
             "  padding: 6px 8px 2px 8px;"
             "  border-bottom: 1px solid palette(mid);"
             "}"
-        );
+        ).arg(FontManager::instance().typography().captionFontPx));
         listSettings->setItemWidget(item, label);
     };
 
@@ -1036,8 +1036,8 @@ void DialogSettings::createUI()
     }
 
     labelHeader = new QLabel(this);
-    QFont headerFont = labelHeader->font();
-    headerFont.setPointSize(14);
+    QFont headerFont = FontManager::instance().typography().primary;
+    headerFont.setPointSize(FontManager::instance().typography().baseSize + 4);
     headerFont.setBold(true);
     labelHeader->setFont(headerFont);
     labelHeader->setContentsMargins(0, 0, 0, 10);

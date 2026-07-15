@@ -1,4 +1,5 @@
 #include <Utils/CustomElements/SearchPanel.h>
+#include <Utils/FontManager.h>
 #include <QKeyEvent>
 #include <QToolButton>
 #include <QRegularExpression>
@@ -11,22 +12,17 @@ SearchPanel::SearchPanel(QPlainTextEdit* target, QWidget* parent) : QWidget(pare
     chrome = new QFrame(this);
     chrome->setObjectName(QStringLiteral("ConsoleSearchChrome"));
 
-    constexpr int kBarInnerH = 22;
-    constexpr int kBarH      = 28;
-
     searchLineEdit = new oclero::qlementine::LineEdit(chrome);
     searchLineEdit->setIcon(QIcon(":/icons/search"));
     searchLineEdit->setPlaceholderText(QStringLiteral("Find in view"));
     searchLineEdit->setMinimumWidth(160);
     searchLineEdit->setMaximumWidth(280);
-    searchLineEdit->setFixedHeight(kBarInnerH);
     searchLineEdit->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     searchLineEdit->installEventFilter(this);
 
     searchLabel = new QLabel(QStringLiteral("0/0"), chrome);
     searchLabel->setObjectName(QStringLiteral("ConsoleSearchCount"));
     searchLabel->setMinimumWidth(40);
-    searchLabel->setFixedHeight(kBarInnerH);
     searchLabel->setAlignment(Qt::AlignCenter);
     searchLabel->setToolTip(QStringLiteral("Match count in loaded view"));
 
@@ -34,24 +30,20 @@ SearchPanel::SearchPanel(QPlainTextEdit* target, QWidget* parent) : QWidget(pare
     prevButton->setText(QStringLiteral("◀"));
     prevButton->setToolTip(QStringLiteral("Previous match (Shift+Enter)"));
     prevButton->setAutoRaise(true);
-    prevButton->setFixedSize(kBarInnerH, kBarInnerH);
     prevButton->setCursor(Qt::PointingHandCursor);
 
     nextButton = new QToolButton(chrome);
     nextButton->setText(QStringLiteral("▶"));
     nextButton->setToolTip(QStringLiteral("Next match (Enter)"));
     nextButton->setAutoRaise(true);
-    nextButton->setFixedSize(kBarInnerH, kBarInnerH);
     nextButton->setCursor(Qt::PointingHandCursor);
 
     historyButton = new QToolButton(chrome);
     historyButton->setIcon(QIcon(":/icons/search"));
-    historyButton->setIconSize(QSize(12, 12));
     historyButton->setText(QStringLiteral("History"));
     historyButton->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     historyButton->setToolTip(QStringLiteral("Search full console history on the server"));
     historyButton->setAutoRaise(true);
-    historyButton->setFixedHeight(kBarInnerH);
     historyButton->setCursor(Qt::PointingHandCursor);
     historyButton->setVisible(false);
 
@@ -59,7 +51,6 @@ SearchPanel::SearchPanel(QPlainTextEdit* target, QWidget* parent) : QWidget(pare
     hideButton->setText(QStringLiteral("✕"));
     hideButton->setToolTip(QStringLiteral("Close (Esc)"));
     hideButton->setAutoRaise(true);
-    hideButton->setFixedSize(kBarInnerH, kBarInnerH);
     hideButton->setCursor(Qt::PointingHandCursor);
 
     chromeLayout = new QHBoxLayout(chrome);
@@ -72,13 +63,10 @@ SearchPanel::SearchPanel(QPlainTextEdit* target, QWidget* parent) : QWidget(pare
     chromeLayout->addWidget(historyButton, 0);
     chromeLayout->addWidget(hideButton, 0);
 
-    chrome->setFixedHeight(kBarH);
-
     layout = new QHBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(0);
     layout->addWidget(chrome, 0, Qt::AlignLeft | Qt::AlignVCenter);
-    setFixedHeight(kBarH);
 
     connect(searchLineEdit, &QLineEdit::returnPressed, this, &SearchPanel::searchNext);
     connect(searchLineEdit, &QLineEdit::textChanged, this, [this](const QString& text) {
@@ -97,14 +85,43 @@ SearchPanel::SearchPanel(QPlainTextEdit* target, QWidget* parent) : QWidget(pare
     connect(hideButton,    &QToolButton::clicked, this, &SearchPanel::toggle);
     connect(historyButton, &QToolButton::clicked, this, [this]() { Q_EMIT historySearchRequested(); });
 
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
+        applyMetrics();
+        applyChromeStyle();
+    });
+
+    applyMetrics();
     applyChromeStyle();
     setVisible(false);
+}
+
+void SearchPanel::applyMetrics()
+{
+    const AppTypography& ty = FontManager::instance().typography();
+    const int innerH = ty.controlInnerH;
+    const int barH   = ty.historyBarHeight;
+    const int iconPx = qMax(10, qRound(12 * (ty.baseSize / 10.0)));
+
+    searchLineEdit->setFixedHeight(innerH);
+    searchLabel->setFixedHeight(innerH);
+    prevButton->setFixedSize(innerH, innerH);
+    nextButton->setFixedSize(innerH, innerH);
+    hideButton->setFixedSize(innerH, innerH);
+    historyButton->setFixedHeight(innerH);
+    historyButton->setIconSize(QSize(iconPx, iconPx));
+
+    chrome->setFixedHeight(barH);
+    setFixedHeight(barH);
 }
 
 void SearchPanel::applyChromeStyle()
 {
     auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
     const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
+    const AppTypography& ty = FontManager::instance().typography();
+    const int fontPx = ty.chromeFontPx;
+    const int innerH = ty.controlInnerH;
+    const int minH   = qMax(16, innerH - 4);
 
     chrome->setStyleSheet(QStringLiteral(
         "QFrame#ConsoleSearchChrome {"
@@ -114,7 +131,7 @@ void SearchPanel::applyChromeStyle()
         "}"
         "QLabel#ConsoleSearchCount {"
         "  color: %3;"
-        "  font-size: 11px;"
+        "  font-size: %6px;"
         "  padding: 0 2px;"
         "}"
         "QToolButton {"
@@ -122,15 +139,14 @@ void SearchPanel::applyChromeStyle()
         "  border-radius: 4px;"
         "  padding: 0 3px;"
         "  color: %4;"
-        "  font-size: 11px;"
+        "  font-size: %6px;"
         "}"
         "QToolButton:hover {"
         "  background-color: %5;"
         "}"
-        // Keep qlementine LineEdit from growing past the bar height
         "oclero--qlementine--LineEdit, QLineEdit {"
-        "  min-height: 18px;"
-        "  max-height: 22px;"
+        "  min-height: %7px;"
+        "  max-height: %8px;"
         "  padding-top: 0px;"
         "  padding-bottom: 0px;"
         "}"
@@ -138,7 +154,10 @@ void SearchPanel::applyChromeStyle()
           t.borderColor.name(),
           t.secondaryColor.name(),
           t.primaryColor.name(),
-          t.backgroundColorMain4.name()));
+          t.backgroundColorMain4.name())
+     .arg(fontPx)
+     .arg(minH)
+     .arg(innerH));
 }
 
 void SearchPanel::setTarget(QPlainTextEdit* newTarget)
@@ -200,6 +219,7 @@ void SearchPanel::toggle()
         searchLineEdit->blockSignals(false);
         clearSelections();
     } else {
+        applyMetrics();
         applyChromeStyle();
         setVisible(true);
         searchLineEdit->setFocus();

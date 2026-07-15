@@ -9,6 +9,7 @@
 #include <AxScriptHighlighter.h>
 #include <AxScriptCompleter.h>
 #include <CXXHighlighter.h>
+#include <Utils/FontManager.h>
 
 #include <oclero/qlementine/widgets/Switch.hpp>
 
@@ -98,11 +99,13 @@ void CodeEditorView::buildLayout()
     root->addWidget(m_mainSplitter);
 
     m_toolBar->setMovable(false);
-    m_toolBar->setIconSize(QSize(18, 18));
+    applyTypography();
 
     m_logPanel->setReadOnly(true);
     m_logPanel->setPlaceholderText("Build and run output will appear here...");
-    m_logPanel->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
+        applyTypography();
+    });
 
     auto* findAction = new QAction("Find", this);
     findAction->setShortcut(QKeySequence::Find);
@@ -113,6 +116,28 @@ void CodeEditorView::buildLayout()
     replaceAction->setShortcut(QKeySequence::Replace);
     connect(replaceAction, &QAction::triggered, this, &CodeEditorView::showReplace);
     addAction(replaceAction);
+}
+
+void CodeEditorView::applyTypography()
+{
+    const AppTypography& ty = FontManager::instance().typography();
+    const qreal s = ty.baseSize / 10.0;
+    const int icon = qMax(14, qRound(18 * s));
+    if (m_toolBar) {
+        m_toolBar->setIconSize(QSize(icon, icon));
+        m_toolBar->setFixedHeight(qMax(ty.controlHeight + 4, icon + 12));
+    }
+    if (m_logPanel)
+        m_logPanel->setFont(ty.mono);
+
+    if (m_tabWidget) {
+        for (int i = 0; i < m_tabWidget->count(); ++i) {
+            if (auto* ed = m_tabWidget->editorAt(i)) {
+                ed->setFont(ty.mono);
+                ed->document()->setDefaultFont(ty.mono);
+            }
+        }
+    }
 }
 
 void CodeEditorView::buildToolBar()

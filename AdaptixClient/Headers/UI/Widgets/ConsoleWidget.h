@@ -88,6 +88,7 @@ class ConsoleWidget : public DockTab
     void createUI();
     void applyTheme();
     void applyHistoryBarStyle();
+    void applyHistoryBarMetrics();
     void positionHistoryBar();
     void positionSearchPanel();
     void positionConsoleOverlays();

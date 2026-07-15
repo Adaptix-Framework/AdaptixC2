@@ -303,7 +303,7 @@ void IconBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, cons
 
 int IdBadgeBlock::measureWidth(const QVariant& data, const QFont& monoFont, const QFont& smallFont, const QFont& tinyFont) const {
     auto map = data.toMap();
-    QFont idF = monoFont; idF.setPointSize(10);
+    QFont idF = monoFont;
     QFontMetrics fmId(idF);
     int idW = fmId.horizontalAdvance(map["id"].toString()) + 4;
     QString badgeStr = map["badge"].toString();
@@ -321,9 +321,9 @@ int IdBadgeBlock::measureWidth(const QVariant& data, const QFont& monoFont, cons
 void IdBadgeBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, const QFont& monoFont, const QFont& smallFont, const QFont& tinyFont, const QColor& colText, const QColor& colMuted, bool, bool, const FeedPaintContext& ctx) const {
     auto map = data.toMap();
     bool compact = ctx.compact;
-    int lh1 = compact ? 15 : 18;
-    int lh2 = compact ? 0 : 16;
-    int gap = compact ? 0 : 3;
+    int lh1 = compact ? ctx.lineH1Compact : ctx.lineH1;
+    int lh2 = compact ? 0 : ctx.lineH2;
+    int gap = compact ? 0 : ctx.lineGap;
     int y1 = rect.top();
     int y2 = y1 + lh1 + gap;
 
@@ -339,7 +339,7 @@ void IdBadgeBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, c
         badgeX = rect.right() - badgeW - 4;
     }
 
-    QFont idF = monoFont; idF.setPointSize(10);
+    QFont idF = monoFont;
     QFontMetrics fmId(idF);
     int maxTextW = badgeX - rect.left() - 6;
     if (maxTextW < 20) maxTextW = 20;
@@ -369,7 +369,7 @@ void IdBadgeBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, c
 int IdBadgeBlock::measureCompactDivision(int division, const QVariant& data, const QFont& monoFont, const QFont& smallFont, const QFont& tinyFont) const {
     auto map = data.toMap();
     if (division == 0) {
-        QFont idF = monoFont; idF.setPointSize(10);
+        QFont idF = monoFont;
         QFontMetrics fmId(idF);
         int idW = fmId.horizontalAdvance(map["id"].toString()) + 6;
         QString badgeStr = map["badge"].toString();
@@ -459,16 +459,18 @@ void MainBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, cons
     QString second = map["second"].toString();
 
     bool compact = ctx.compact;
-    int lh1 = compact ? 15 : 18;
-    int lh2 = compact ? 0 : 16;
-    int gap = compact ? 0 : 3;
+    int lh1 = compact ? ctx.lineH1Compact : ctx.lineH1;
+    int lh2 = compact ? 0 : ctx.lineH2;
+    int gap = compact ? 0 : ctx.lineGap;
     int y1 = rect.top();
     int y2 = y1 + lh1 + gap;
     int maxW = rect.width() - 4;
 
-    QFont bold = smallFont;
-    bold.setPointSize(smallFont.pointSize() + 1);
-    bold.setBold(true);
+    QFont bold = ctx.primaryFont.pointSize() > 0 ? ctx.primaryFont : smallFont;
+    if (ctx.primaryFont.pointSize() <= 0) {
+        bold.setPointSize(smallFont.pointSize() + 1);
+        bold.setBold(true);
+    }
     QFontMetrics fmBold(bold);
     QFontMetrics fmSmall(smallFont);
     int x = rect.left();
@@ -564,7 +566,7 @@ void MainBlock::paintCompactDivision(QPainter* p, const QRect& subRect, int divi
 
 int TextBlock::measureWidth(const QVariant& data, const QFont& monoFont, const QFont& smallFont, const QFont&) const {
     auto map = data.toMap();
-    QFont idF = monoFont; idF.setPointSize(10);
+    QFont idF = monoFont;
     QFontMetrics fmId(idF);
     QFontMetrics fmSmall(smallFont);
     QString mainText = map["main"].toString();
@@ -580,12 +582,12 @@ void TextBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, cons
     QString second = map["second"].toString();
 
     bool compact = ctx.compact;
-    QFont idF = monoFont; idF.setPointSize(10);
+    QFont idF = monoFont;
     QFontMetrics fmId(idF);
     QFontMetrics fmSmall(smallFont);
-    int lh1 = compact ? 15 : 18;
-    int lh2 = compact ? 0 : 16;
-    int gap = compact ? 0 : 2;
+    int lh1 = compact ? ctx.lineH1Compact : ctx.lineH1;
+    int lh2 = compact ? 0 : ctx.lineH2;
+    int gap = compact ? 0 : qMax(2, ctx.lineGap - 1);
     int y1 = rect.top();
     int y2 = y1 + lh1 + gap;
     int maxW = rect.width() - 2;
@@ -606,7 +608,7 @@ void TextBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, cons
 int TextBlock::measureCompactDivision(int division, const QVariant& data, const QFont& monoFont, const QFont& smallFont, const QFont&) const {
     auto map = data.toMap();
     if (division == 0) {
-        QFont idF = monoFont; idF.setPointSize(10);
+        QFont idF = monoFont;
         QFontMetrics fmId(idF);
         return map["main"].toString().isEmpty() ? 0 : fmId.horizontalAdvance(map["main"].toString()) + 6;
     } else {
@@ -620,7 +622,7 @@ void TextBlock::paintCompactDivision(QPainter* p, const QRect& subRect, int divi
     if (division == 0) {
         QString mainText = map["main"].toString();
         if (!mainText.isEmpty()) {
-            QFont idF = monoFont; idF.setPointSize(10);
+            QFont idF = monoFont;
             QFontMetrics fmId(idF);
             p->setFont(idF);
             p->setPen(colText);
@@ -657,14 +659,14 @@ void ProgressBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, 
     double pct = map["percent"].toDouble();
 
     bool compact = ctx.compact;
-    int lh1 = compact ? 15 : 18;
-    int lh2 = compact ? 0 : 16;
-    int gap = compact ? 0 : 3;
+    int lh1 = compact ? ctx.lineH1Compact : ctx.lineH1;
+    int lh2 = compact ? 0 : ctx.lineH2;
+    int gap = compact ? 0 : ctx.lineGap;
     int y1 = rect.top();
     int y2 = y1 + lh1 + gap;
     int maxW = rect.width() - 4;
 
-    int barH = 16;
+    int barH = qMax(10, qMin(lh1 - 2, qRound(lh1 * 0.85)));
     int barY = y1 + (lh1 - barH) / 2;
     QRect barRect(rect.left(), barY, maxW, barH);
 
@@ -680,8 +682,9 @@ void ProgressBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, 
     }
 
     if (!progressText.isEmpty()) {
-        QFont pf = smallFont;
-        pf.setPointSize(8);
+        QFont pf = ctx.microFont.pointSize() > 0 ? ctx.microFont : smallFont;
+        if (ctx.microFont.pointSize() <= 0)
+            pf.setPointSize(qMax(6, smallFont.pointSize() - 2));
         QFontMetrics fmP(pf);
         p->setFont(pf);
         p->setPen(QColor(255, 255, 255, 220));
@@ -697,13 +700,11 @@ void ProgressBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, 
 }
 
 
-int TagsBlock::measureWidth(const QVariant& data, const QFont&, const QFont&, const QFont& tinyFont) const {
+int TagsBlock::measureWidth(const QVariant& data, const QFont&, const QFont& smallFont, const QFont&) const {
     QStringList tags = data.toStringList();
     if (tags.isEmpty())
         return 0;
-    QFont tagFont = tinyFont;
-    tagFont.setPointSize(11);
-    QFontMetrics fm(tagFont);
+    QFontMetrics fm(smallFont);
     int w = 0;
     for (const QString& t : tags) {
         QString trimmed = t.trimmed();
@@ -712,12 +713,14 @@ int TagsBlock::measureWidth(const QVariant& data, const QFont&, const QFont&, co
     return w > 0 ? w + 4 : 0;
 }
 
-void TagsBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, const QFont&, const QFont&, const QFont& tinyFont, const QColor& colText, const QColor& colMuted, bool selected, bool dead, const FeedPaintContext& ctx) const {
+void TagsBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, const QFont&, const QFont& smallFont, const QFont& tinyFont, const QColor& colText, const QColor& colMuted, bool selected, bool dead, const FeedPaintContext& ctx) const {
     QStringList tags = data.toStringList();
     if (tags.isEmpty())
         return;
-    QFont tagFont = tinyFont;
-    tagFont.setPointSize(ctx.tagFontSize);
+    QFont tagFont = ctx.tagFont.pointSize() > 0 ? ctx.tagFont : smallFont;
+    if (ctx.tagFont.pointSize() <= 0 && ctx.tagFontSize > 0)
+        tagFont.setPointSize(ctx.tagFontSize);
+    Q_UNUSED(tinyFont);
     p->setFont(tagFont);
     QFontMetrics fm(tagFont);
     int x = rect.left() + 4;
@@ -779,17 +782,19 @@ void StatusBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, co
     QString second = map["second"].toString();
 
     bool compact = ctx.compact;
-    int lh1 = compact ? 15 : 18;
-    int lh2 = compact ? 0 : 16;
-    int gap = compact ? 0 : 3;
+    int lh1 = compact ? ctx.lineH1Compact : ctx.lineH1;
+    int lh2 = compact ? 0 : ctx.lineH2;
+    int gap = compact ? 0 : ctx.lineGap;
     int y1 = rect.top();
     int y2 = y1 + lh1 + gap;
     int maxW = rect.width() - 4;
 
     QFont bold = smallFont; bold.setBold(true);
-    QFont mainFont = smallFont;
-    mainFont.setPointSize(smallFont.pointSize() + 1);
-    mainFont.setBold(true);
+    QFont mainFont = ctx.primaryFont.pointSize() > 0 ? ctx.primaryFont : smallFont;
+    if (ctx.primaryFont.pointSize() <= 0) {
+        mainFont.setPointSize(smallFont.pointSize() + 1);
+        mainFont.setBold(true);
+    }
     QFontMetrics fmMain(mainFont);
     QFontMetrics fmBold(bold);
     QFontMetrics fmSmall(smallFont);
@@ -819,18 +824,20 @@ void StatusBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, co
             p->drawText(rect.right() - w, y1, w, lh1, Qt::AlignRight | Qt::AlignVCenter, status);
     }
     if (!progress.isEmpty()) {
-        int barH = 16;
+        int barH = qMax(10, qMin(lh1 - 2, qRound(lh1 * 0.85)));
         int barY = y1 + (lh1 - barH) / 2;
         QColor fillColor = FeedColors::fromTheme().rowSelectedBg;
         fillColor.setAlpha(200);
         double pctVal = progress.left(progress.length() - 1).toDouble();
+        QFont pf = ctx.microFont.pointSize() > 0 ? ctx.microFont : smallFont;
+        if (ctx.microFont.pointSize() <= 0)
+            pf.setPointSize(qMax(6, smallFont.pointSize() - 2));
 
         if (mainText.isEmpty()) {
             QRect barRect(rect.left(), barY, maxW, barH);
             p->fillRect(barRect, QColor(255, 255, 255, 12));
             int fillW = (int)(maxW * qBound(0.0, pctVal / 100.0, 1.0));
             if (fillW > 0) p->fillRect(QRect(rect.left(), barY, fillW, barH), fillColor);
-            QFont pf = smallFont; pf.setPointSize(8);
             p->setFont(pf);
             p->setPen(QColor(255, 255, 255, 220));
             p->drawText(barRect, Qt::AlignCenter, progress);
@@ -840,7 +847,6 @@ void StatusBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, co
             p->fillRect(barRect, QColor(255, 255, 255, 12));
             int fillW = (int)(barW * qBound(0.0, pctVal / 100.0, 1.0));
             if (fillW > 0) p->fillRect(QRect(rect.right() - barW, barY, fillW, barH), fillColor);
-            QFont pf = smallFont; pf.setPointSize(8);
             p->setFont(pf);
             p->setPen(QColor(255, 255, 255, 220));
             p->drawText(barRect, Qt::AlignCenter, progress);
@@ -1034,9 +1040,9 @@ void AttachmentBlock::paintCompactDivision(QPainter* p, const QRect& subRect, in
 void AttachmentBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, const QFont&, const QFont& smallFont, const QFont& tinyFont, const QColor& colText, const QColor& colMuted, bool, bool, const FeedPaintContext& ctx) const {
     auto map = data.toMap();
     bool compact = ctx.compact;
-    int lh1 = compact ? 15 : 16;
-    int lh2 = compact ? 0 : 14;
-    int gap = compact ? 0 : 2;
+    int lh1 = compact ? ctx.lineH1Compact : qMax(14, ctx.lineH1 - 2);
+    int lh2 = compact ? 0 : qMax(12, ctx.lineH2 - 2);
+    int gap = compact ? 0 : qMax(2, ctx.lineGap - 1);
     int y1 = rect.top();
     int y2 = y1 + lh1 + gap;
     int y3 = y2 + lh2 + (compact ? 2 : 4);
@@ -1082,14 +1088,13 @@ void AttachmentBlock::paint(QPainter* p, const QRect& rect, const QVariant& data
 
 int AttachmentBlock::hitTest(const QPoint& localPos, const QRect& blockRect, const QVariant& data) const {
     auto map = data.toMap();
-    int lh1 = 15, lh2 = 0, gap = 0;
-    int y3 = blockRect.top() + lh1 + gap + lh2 + 2;
+    const auto& ty = FontManager::instance().typography();
+    int lh1 = ty.lineH1Compact;
+    int y3 = blockRect.top() + lh1 + 2;
     if (localPos.y() < y3 || localPos.y() > y3 + BTN_H)
         return -1;
 
-    QFont tiny;
-    tiny.setPointSize(9);
-    QFontMetrics fmBtn(tiny);
+    QFontMetrics fmBtn(ty.caption);
     auto actions = map["actions"].toList();
     int x = blockRect.left();
     for (int i = 0; i < actions.size(); ++i) {
@@ -1105,11 +1110,15 @@ int AttachmentBlock::hitTest(const QPoint& localPos, const QRect& blockRect, con
 }
 
 
-void GroupHeaderBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, const QFont&, const QFont&, const QFont&, const QColor& colText, const QColor&, bool, bool, const FeedPaintContext&) const {
+void GroupHeaderBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, const QFont&, const QFont& smallFont, const QFont&, const QColor& colText, const QColor&, bool, bool, const FeedPaintContext& ctx) const {
     auto map = data.toMap();
     bool expanded = map["expanded"].toBool();
     QString arrow = expanded ? "\u25BC" : "\u25B6";
-    QFont gf; gf.setPointSize(11); gf.setBold(true);
+    QFont gf = ctx.primaryFont.pointSize() > 0 ? ctx.primaryFont : smallFont;
+    if (ctx.primaryFont.pointSize() <= 0) {
+        gf.setPointSize(smallFont.pointSize() + 1);
+        gf.setBold(true);
+    }
     p->setFont(gf);
     p->setPen(colText);
     p->drawText(rect.left() + 10, rect.top(), rect.width() - 20, rect.height(), Qt::AlignVCenter | Qt::AlignLeft, QString("%1 %2").arg(arrow, map["label"].toString()));
@@ -1119,7 +1128,12 @@ void GroupHeaderBlock::paint(QPainter* p, const QRect& rect, const QVariant& dat
 
 ListFeedDelegate::ListFeedDelegate(QObject* parent) : QStyledItemDelegate(parent) {}
 
-ListFeedDelegate::~ListFeedDelegate() { qDeleteAll(m_blocks); }
+ListFeedDelegate::~ListFeedDelegate() {
+    qDeleteAll(m_blocks);
+    delete m_fmMono;
+    delete m_fmSmall;
+    delete m_fmTiny;
+}
 
 void ListFeedDelegate::addBlock(FeedBlock* block)
 {
@@ -1148,25 +1162,43 @@ const FeedColors& ListFeedDelegate::feedColors() const {
 QFont ListFeedDelegate::monoFont() const { if (!m_fontsInited) initFonts(); return m_monoFont; }
 QFont ListFeedDelegate::smallFont() const { if (!m_fontsInited) initFonts(); return m_smallFont; }
 QFont ListFeedDelegate::tinyFont() const { if (!m_fontsInited) initFonts(); return m_tinyFont; }
+QFont ListFeedDelegate::primaryFont() const { if (!m_fontsInited) initFonts(); return m_primaryFont; }
+QFont ListFeedDelegate::microFont() const { if (!m_fontsInited) initFonts(); return m_microFont; }
+QFont ListFeedDelegate::tagFont() const { if (!m_fontsInited) initFonts(); return m_tagFont; }
 QFontMetrics ListFeedDelegate::fmMono() const { if (!m_fontsInited) initFonts(); return *m_fmMono; }
 QFontMetrics ListFeedDelegate::fmSmall() const { if (!m_fontsInited) initFonts(); return *m_fmSmall; }
 QFontMetrics ListFeedDelegate::fmTiny() const { if (!m_fontsInited) initFonts(); return *m_fmTiny; }
 
 void ListFeedDelegate::initFonts() const {
-    m_monoFont = FontManager::instance().getFont("Hack");
-    m_monoFont.setPointSize(10);
-    m_smallFont = QFont();
-    m_smallFont.setPointSize(10);
-    m_tinyFont = QFont();
-    m_tinyFont.setPointSize(9);
-    m_fmMono = new QFontMetrics(m_monoFont);
+    const AppTypography& ty = FontManager::instance().typography();
+    m_monoFont    = ty.mono;
+    m_smallFont   = ty.body;
+    m_tinyFont    = ty.caption;
+    m_primaryFont = ty.primary;
+    m_microFont   = ty.micro;
+    m_tagFont     = ty.tag;
+    m_lineH1        = ty.lineH1;
+    m_lineH2        = ty.lineH2;
+    m_lineH1Compact = ty.lineH1Compact;
+    m_lineGap       = ty.lineGap;
+
+    delete m_fmMono;
+    delete m_fmSmall;
+    delete m_fmTiny;
+    m_fmMono  = new QFontMetrics(m_monoFont);
     m_fmSmall = new QFontMetrics(m_smallFont);
-    m_fmTiny = new QFontMetrics(m_tinyFont);
+    m_fmTiny  = new QFontMetrics(m_tinyFont);
     m_fontsInited = true;
 }
 
+void ListFeedDelegate::rebuildFonts() {
+    m_fontsInited = false;
+    initFonts();
+    m_widthsDirty = true;
+}
+
 int ListFeedDelegate::paintIdBadge(QPainter* p, int x, int y, int lh, const QString& idStr, const QString& badgeStr, const QColor& colText, const QColor& colMuted) const {
-    QFont idF = monoFont(); idF.setPointSize(10);
+    QFont idF = monoFont();
     p->setFont(idF);
     p->setPen(colText);
     QFontMetrics fmId(idF);
@@ -1186,8 +1218,9 @@ int ListFeedDelegate::paintIdBadge(QPainter* p, int x, int y, int lh, const QStr
 
 int ListFeedDelegate::paintTagBadges(QPainter* p, int x, int y, int lh, const QStringList& tags, const QColor& borderColor, const QColor& selectedColor, bool selected) const {
     if (tags.isEmpty()) return 0;
-    QFont tf = tinyFont();
-    tf.setPointSize(m_tagFontSize);
+    QFont tf = tagFont();
+    if (m_tagFontSize > 0)
+        tf.setPointSize(m_tagFontSize);
     p->setFont(tf);
     QFontMetrics fm(tf);
     int startX = x;
@@ -1241,7 +1274,7 @@ void ListFeedDelegate::updateMaxWidths(const FeedListModel* model) const {
     m_cachedSubBlockW.resize(m_blocks.size());
     for (auto& v : m_cachedSubBlockW) v.clear();
 
-    QFont idFont = monoFont(); idFont.setPointSize(10);
+    QFont idFont = monoFont();
     QFontMetrics fmId(idFont);
 
     int maxIdTextW = 0;
@@ -1508,12 +1541,16 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
     const bool compact = m_compact;
     int ml = (compact ? 6 : 10) + treeIndent;
     int mr = compact ? 6 : 12;
-    int rowH = compact ? m_compactRowHeight : m_normalRowHeight;
-    int lh1 = compact ? (rowH - 10) : 18;
-    int lh2 = compact ? 0 : 16;
-    int vgap = compact ? 0 : 3;
-    int y1 = r.top() + (compact ? 6 : 7);
+    if (!m_fontsInited)
+        initFonts();
+    int lh1 = compact ? m_lineH1Compact : m_lineH1;
+    int lh2 = compact ? 0 : m_lineH2;
+    int vgap = compact ? 0 : m_lineGap;
     int contentHeight = lh1 + lh2 + vgap;
+    int topPad = compact ? 4 : 5;
+    int y1 = r.top() + qMax(topPad, (r.height() - contentHeight) / 2);
+    if (y1 + contentHeight > r.bottom())
+        y1 = r.top() + topPad;
     int blockGap = m_blockGap;
 
     int iconSlotW = 0;
@@ -1682,6 +1719,13 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
     ctx.iconSize = compact ? m_compactIconSize : m_normalIconSize;
     ctx.tagFontSize = m_tagFontSize;
     ctx.tagBadgeHeight = m_tagBadgeHeight;
+    ctx.lineH1 = m_lineH1;
+    ctx.lineH2 = m_lineH2;
+    ctx.lineH1Compact = m_lineH1Compact;
+    ctx.lineGap = m_lineGap;
+    ctx.primaryFont = primaryFont();
+    ctx.microFont = microFont();
+    ctx.tagFont = tagFont();
 
     for (int i = 0; i < m_blocks.size(); ++i) {
         if (i >= row.size())
@@ -1835,7 +1879,7 @@ ListFeedWidget::ListFeedWidget(QWidget* parent) : QWidget(parent)
     m_treeView->setAutoFillBackground(false);
 
     m_toolbarWidget = new QWidget(this);
-    m_toolbarWidget->setFixedHeight(36);
+    m_toolbarWidget->setFixedHeight(FontManager::instance().typography().toolbarHeight);
     m_toolbarWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     m_toolbarLayout = new QHBoxLayout(m_toolbarWidget);
     m_toolbarLayout->setContentsMargins(0, 0, 0, 0);
@@ -1848,6 +1892,9 @@ ListFeedWidget::ListFeedWidget(QWidget* parent) : QWidget(parent)
     m_mainLayout->addWidget(m_treeView, 1, 0, 1, 1);
 
     setLayout(m_mainLayout);
+
+    applyTypography();
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, &ListFeedWidget::applyTypography);
 }
 
 ListFeedWidget::~ListFeedWidget() = default;
@@ -1892,11 +1939,61 @@ void ListFeedWidget::setDelegate(ListFeedDelegate* delegate)
     m_treeView->setItemDelegate(delegate);
     if (delegate) {
         delegate->setCompactMode(m_compactMode);
+        delegate->rebuildFonts();
         delegate->setRowHeights(m_storedNormalRowH, m_storedCompactRowH);
         delegate->setIconSizes(m_storedNormalIcon, m_storedCompactIcon);
         delegate->setBlockGaps(m_storedNormalGap, m_storedCompactGap);
         delegate->setBlockGap(m_storedNormalGap);
         delegate->setTagSize(m_storedTagFont, m_storedTagBadgeH);
+    }
+}
+
+void ListFeedWidget::applyTypography()
+{
+    const AppTypography& ty = FontManager::instance().typography();
+
+    if (!m_manualRowHeights) {
+        m_storedNormalRowH = ty.rowHeightNormal;
+        m_storedCompactRowH = ty.rowHeightCompact;
+    }
+    if (!m_manualIconSizes) {
+        m_storedNormalIcon = ty.iconNormal;
+        m_storedCompactIcon = ty.iconCompact;
+    }
+    if (!m_manualTagSize) {
+        m_storedTagFont = ty.tagFontSize;
+        m_storedTagBadgeH = ty.tagBadgeHeight;
+    }
+    if (!m_manualBlockGaps) {
+        m_storedNormalGap = ty.blockGap;
+        m_storedCompactGap = ty.blockGap;
+    }
+
+    if (m_toolbarWidget)
+        m_toolbarWidget->setFixedHeight(ty.toolbarHeight);
+
+    const int ctrlH = ty.controlHeight;
+    if (m_searchInput)
+        m_searchInput->setFixedHeight(ctrlH);
+    if (m_groupCombo)
+        m_groupCombo->setFixedHeight(ctrlH);
+    if (m_filterCombo)
+        m_filterCombo->setFixedHeight(ctrlH);
+    if (m_sortingCombo)
+        m_sortingCombo->setFixedHeight(ctrlH);
+
+    if (auto* del = qobject_cast<ListFeedDelegate*>(m_treeView->itemDelegate())) {
+        del->rebuildFonts();
+        del->setRowHeights(m_storedNormalRowH, m_storedCompactRowH);
+        del->setIconSizes(m_storedNormalIcon, m_storedCompactIcon);
+        del->setBlockGaps(m_storedNormalGap, m_storedCompactGap);
+        del->setBlockGap(m_storedNormalGap);
+        del->setTagSize(m_storedTagFont, m_storedTagBadgeH);
+    }
+
+    if (m_treeView) {
+        m_treeView->doItemsLayout();
+        m_treeView->viewport()->update();
     }
 }
 
@@ -2021,7 +2118,7 @@ void ListFeedWidget::enableSearch(bool enable)
         m_searchInput->setClearButtonEnabled(true);
         m_searchInput->setMinimumWidth(180);
         m_searchInput->setMaximumWidth(320);
-        m_searchInput->setFixedHeight(28);
+        m_searchInput->setFixedHeight(FontManager::instance().typography().controlHeight);
 
         m_autoAction = new QAction(m_searchInput);
         m_autoAction->setCheckable(true);
@@ -2068,7 +2165,7 @@ void ListFeedWidget::enableGroupCombo(bool enable)
         m_groupCombo->setContentsMargins(4, 0, 4, 0);
         m_groupCombo->setMinimumWidth(120);
         m_groupCombo->setMaximumWidth(180);
-        m_groupCombo->setFixedHeight(28);
+        m_groupCombo->setFixedHeight(FontManager::instance().typography().controlHeight);
 
         connect(m_groupCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ListFeedWidget::onGroupModeChanged);
 
@@ -2129,7 +2226,7 @@ void ListFeedWidget::enableFilterCombo(bool enable, const QString& placeholder)
         m_filterCombo->addItem(placeholder);
         m_filterCombo->setMinimumWidth(160);
         m_filterCombo->setMaximumWidth(180);
-        m_filterCombo->setFixedHeight(28);
+        m_filterCombo->setFixedHeight(FontManager::instance().typography().controlHeight);
         layout->addWidget(m_filterCombo);
 
         connect(m_filterCombo, &QComboBox::currentTextChanged, this, &ListFeedWidget::onFilterChanged);
@@ -2203,7 +2300,7 @@ void ListFeedWidget::enableSortingCombo(bool enable, const QStringList& items)
         }
         m_sortingCombo->setMinimumWidth(160);
         m_sortingCombo->setMaximumWidth(180);
-        m_sortingCombo->setFixedHeight(28);
+        m_sortingCombo->setFixedHeight(FontManager::instance().typography().controlHeight);
         m_sortingCombo->blockSignals(false);
 
         m_sortOrderAction = new QAction(m_sortingCombo);
@@ -2329,6 +2426,7 @@ bool ListFeedWidget::isCompactMode() const
 
 void ListFeedWidget::setRowHeights(int normal, int compact)
 {
+    m_manualRowHeights = true;
     m_storedNormalRowH = qMax(20, normal);
     m_storedCompactRowH = qMax(20, compact);
     if (auto* del = qobject_cast<ListFeedDelegate*>(m_treeView->itemDelegate())) {
@@ -2340,6 +2438,7 @@ void ListFeedWidget::setRowHeights(int normal, int compact)
 
 void ListFeedWidget::setIconSizes(int normal, int compact)
 {
+    m_manualIconSizes = true;
     m_storedNormalIcon = qMax(8, normal);
     m_storedCompactIcon = qMax(8, compact);
     if (auto* del = qobject_cast<ListFeedDelegate*>(m_treeView->itemDelegate())) {
@@ -2349,6 +2448,7 @@ void ListFeedWidget::setIconSizes(int normal, int compact)
 
 void ListFeedWidget::setBlockGaps(int normal, int compact)
 {
+    m_manualBlockGaps = true;
     m_storedNormalGap = qMax(0, normal);
     m_storedCompactGap = qMax(0, compact);
     if (auto* del = qobject_cast<ListFeedDelegate*>(m_treeView->itemDelegate())) {
@@ -2361,6 +2461,7 @@ void ListFeedWidget::setBlockGaps(int normal, int compact)
 
 void ListFeedWidget::setBlockGap(int gap)
 {
+    m_manualBlockGaps = true;
     m_storedNormalGap = qMax(0, gap);
     m_storedCompactGap = qMax(0, gap);
     if (auto* del = qobject_cast<ListFeedDelegate*>(m_treeView->itemDelegate())) {
@@ -2370,6 +2471,7 @@ void ListFeedWidget::setBlockGap(int gap)
 
 void ListFeedWidget::setTagSize(int fontPointSize, int badgeHeight)
 {
+    m_manualTagSize = true;
     m_storedTagFont = qMax(6, fontPointSize);
     m_storedTagBadgeH = qMax(8, badgeHeight);
     if (auto* del = qobject_cast<ListFeedDelegate*>(m_treeView->itemDelegate())) {

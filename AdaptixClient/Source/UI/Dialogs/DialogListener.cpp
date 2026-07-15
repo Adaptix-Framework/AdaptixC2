@@ -1,5 +1,6 @@
 #include <UI/Dialogs/DialogListener.h>
 #include <Utils/NonBlockingDialogs.h>
+#include <Utils/FontManager.h>
 #include <Client/Requestor.h>
 #include <Client/Storage.h>
 #include <Client/AxScript/AxElementWrappers.h>
@@ -90,7 +91,9 @@ void DialogListener::createUI()
 
     label_Profiles = new QLabel("Profiles", this);
     label_Profiles->setObjectName("ProfilesHeader");
-    label_Profiles->setStyleSheet("QLabel#ProfilesHeader { color: palette(placeholderText); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }");
+    label_Profiles->setStyleSheet(QStringLiteral(
+        "QLabel#ProfilesHeader { color: palette(placeholderText); font-size: %1px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }"
+    ).arg(FontManager::instance().typography().captionFontPx));
 
     inputProfileName = new QLineEdit(this);
     inputProfileName->setToolTip("Profile name");

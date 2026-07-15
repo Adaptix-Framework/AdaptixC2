@@ -12,6 +12,12 @@ TaskOutputWidget::TaskOutputWidget()
     inputMessage->installEventFilter(this);
 
     connect(&ConsoleThemeManager::instance(), &ConsoleThemeManager::themeChanged, this, &TaskOutputWidget::applyTheme);
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
+        if (inputMessage)
+            inputMessage->setFont(FontManager::instance().appMonoFont());
+        if (outputTextEdit)
+            outputTextEdit->setFont(FontManager::instance().appMonoFont());
+    });
     applyTheme();
 }
 
@@ -26,6 +32,7 @@ void TaskOutputWidget::createUI()
     outputTextEdit = new QTextEdit(this);
     outputTextEdit->setReadOnly(true);
     outputTextEdit->setWordWrapMode(QTextOption::WrapAnywhere);
+    outputTextEdit->setFont( FontManager::instance().getFont("Hack") );
 
     mainGridLayout = new QGridLayout(this );
     mainGridLayout->setVerticalSpacing(4 );

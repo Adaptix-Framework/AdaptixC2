@@ -6,6 +6,7 @@
 #include <CodeFolding.h>
 #include <ErrorIndicator.h>
 #include <Minimap.h>
+#include <Utils/FontManager.h>
 
 #include <QTextBlock>
 #include <QPaintEvent>
@@ -60,6 +61,13 @@ CodeEditor::CodeEditor(QWidget* parent) :
 
     m_codeFolding->setVisible(false);
     m_minimap->setVisible(false);
+
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
+        initFont();
+        updateLineNumberAreaWidth(0);
+        updateExtraSelection();
+        viewport()->update();
+    });
 }
 
 bool CodeEditor::event(QEvent* e)
@@ -108,10 +116,11 @@ void CodeEditor::initDocumentLayoutHandlers()
 
 void CodeEditor::initFont()
 {
-    auto fnt = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    QFont fnt = FontManager::instance().appMonoFont();
     fnt.setFixedPitch(true);
-    fnt.setPointSize(10);
+    fnt.setStyleHint(QFont::Monospace);
     setFont(fnt);
+    document()->setDefaultFont(fnt);
 }
 
 void CodeEditor::performConnections()

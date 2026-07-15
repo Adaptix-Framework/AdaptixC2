@@ -7,6 +7,7 @@
 #include <Utils/CustomElements/ListFeed.h>
 #include <Utils/NonBlockingDialogs.h>
 #include <UI/Dialogs/DialogDownloader.h>
+#include <Utils/FontManager.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <MainAdaptix.h>
 
@@ -227,8 +228,6 @@ static ListFeedWidget* createFeedWidget(AdaptixWidget* w, FeedListModel* model, 
     if (GlobalClient && GlobalClient->settings)
         feed->setCompactMode(GlobalClient->settings->data.FilesCompactMode);
     feed->setBlockGap(12);
-    feed->setTagSize(11, 20);
-    feed->setIconSizes(22, 18);
     feed->rebuildModelChain();
 
     return feed;
@@ -247,8 +246,6 @@ static ListFeedWidget* createSyncFeedWidget(AdaptixWidget* w, FeedListModel* mod
     if (GlobalClient && GlobalClient->settings)
         feed->setCompactMode(GlobalClient->settings->data.FilesCompactMode);
     feed->setBlockGap(12);
-    feed->setTagSize(11, 20);
-    feed->setIconSizes(22, 18);
     feed->rebuildModelChain();
 
     auto* pbar = feed->paginationBar();
@@ -289,7 +286,7 @@ FilesFeedWidget::FilesFeedWidget(AdaptixWidget* w) : QWidget(w), m_adaptixWidget
         seg->addItem("Uploads");
         seg->addItem("Sync");
         seg->setCurrentIndex(idx);
-        seg->setFixedHeight(26);
+        seg->setFixedHeight(FontManager::instance().typography().segmentHeight);
         feed->addToolbarWidgetBefore(seg);
         return seg;
     };

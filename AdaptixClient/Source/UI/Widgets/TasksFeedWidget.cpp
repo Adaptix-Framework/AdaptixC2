@@ -171,8 +171,6 @@ TasksFeedWidget::TasksFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), m_adapti
     if (GlobalClient && GlobalClient->settings)
         setCompactMode(GlobalClient->settings->data.TasksCompactMode);
     setBlockGap(12);
-    setTagSize(11, 20);
-    setIconSizes(22, 18);
 
     enablePagination(true);
 

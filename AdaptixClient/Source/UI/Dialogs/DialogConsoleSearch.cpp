@@ -108,7 +108,9 @@ void DialogConsoleSearch::createUI()
     searchButton->setCursor(Qt::PointingHandCursor);
 
     statusLabel = new QLabel(tr("Enter a query to search server history"), this);
-    statusLabel->setStyleSheet(QStringLiteral("color: %1; font-size: 11px;").arg(t.secondaryColor.name()));
+    statusLabel->setStyleSheet(QStringLiteral("color: %1; font-size: %2px;")
+        .arg(t.secondaryColor.name())
+        .arg(FontManager::instance().typography().chromeFontPx));
 
     resultsList = new QListWidget(this);
     resultsList->setAlternatingRowColors(true);

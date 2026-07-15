@@ -261,25 +261,30 @@ void MainAdaptix::ApplyApplicationFont() const
 
     int appFontSize = settings->data.FontSize;
 
+    FontManager::instance().rebuildTypography(appFontFamily, appFontSize);
+
+    const AppTypography& ty = FontManager::instance().typography();
+
     auto theme = qlementineStyle->theme();
 
-    theme.fontRegular.setFamily(appFontFamily);
-    theme.fontRegular.setPointSize(appFontSize);
-
-    theme.fontBold.setFamily(appFontFamily);
-    theme.fontBold.setPointSize(appFontSize);
+    theme.fontRegular = ty.regular;
+    theme.fontBold    = ty.bold;
 
     theme.fontH1.setFamily(appFontFamily);
     theme.fontH2.setFamily(appFontFamily);
     theme.fontH3.setFamily(appFontFamily);
     theme.fontH4.setFamily(appFontFamily);
     theme.fontH5.setFamily(appFontFamily);
+    theme.fontH1.setPointSize(appFontSize + 8);
+    theme.fontH2.setPointSize(appFontSize + 6);
+    theme.fontH3.setPointSize(appFontSize + 4);
+    theme.fontH4.setPointSize(appFontSize + 2);
+    theme.fontH5.setPointSize(appFontSize + 1);
 
-    theme.fontCaption.setFamily(appFontFamily);
+    theme.fontCaption = ty.caption;
 
-    theme.fontMonospace.setFamily(appFontFamily);
-    theme.fontMonospace.setPointSize(appFontSize);
+    theme.fontMonospace = ty.mono;
 
     qlementineStyle->setTheme(theme);
-    QApplication::setFont(theme.fontRegular);
+    QApplication::setFont(ty.regular);
 }

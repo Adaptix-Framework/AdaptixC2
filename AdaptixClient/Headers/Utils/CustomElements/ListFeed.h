@@ -36,8 +36,15 @@ struct FeedPaintContext {
     int maxIdTextWidth = 0;
     bool compact = false;
     int iconSize = 22;
-    int tagFontSize = 11;
+    int tagFontSize = 10;
     int tagBadgeHeight = 20;
+    int lineH1 = 18;
+    int lineH2 = 16;
+    int lineH1Compact = 15;
+    int lineGap = 3;
+    QFont primaryFont; // N+1 Bold
+    QFont microFont;   // N-2
+    QFont tagFont;     // N
 };
 
 
@@ -304,6 +311,9 @@ Q_OBJECT
     mutable QFont m_monoFont;
     mutable QFont m_smallFont;
     mutable QFont m_tinyFont;
+    mutable QFont m_primaryFont;
+    mutable QFont m_microFont;
+    mutable QFont m_tagFont;
     mutable QFontMetrics* m_fmMono  = nullptr;
     mutable QFontMetrics* m_fmSmall = nullptr;
     mutable QFontMetrics* m_fmTiny  = nullptr;
@@ -357,10 +367,15 @@ public:
     void setBlockGap(int gap);
     void setTagSize(int fontPointSize, int badgeHeight);
 
+    void rebuildFonts();
+
 protected:
     QFont monoFont() const;
     QFont smallFont() const;
     QFont tinyFont() const;
+    QFont primaryFont() const;
+    QFont microFont() const;
+    QFont tagFont() const;
     QFontMetrics fmMono() const;
     QFontMetrics fmSmall() const;
     QFontMetrics fmTiny() const;
@@ -393,8 +408,12 @@ protected:
     int m_blockGap = 12;
     int m_normalBlockGap = 12;
     int m_compactBlockGap = 12;
-    int m_tagFontSize = 11;
+    int m_tagFontSize = 10;
     int m_tagBadgeHeight = 20;
+    mutable int m_lineH1 = 18;
+    mutable int m_lineH2 = 16;
+    mutable int m_lineH1Compact = 15;
+    mutable int m_lineGap = 3;
 };
 
 
@@ -451,6 +470,8 @@ public:
     void setBlockGap(int gap);
     void setTagSize(int fontPointSize, int badgeHeight);
 
+    void applyTypography();
+
     oclero::qlementine::LineEdit* searchInput() const { return m_searchInput; }
     QAction* autoAction() const { return m_autoAction; }
     QComboBox* groupCombo() const { return m_groupCombo; }
@@ -499,8 +520,12 @@ protected:
     int m_storedCompactIcon = 18;
     int m_storedNormalGap = 12;
     int m_storedCompactGap = 12;
-    int m_storedTagFont = 11;
+    int m_storedTagFont = 10;
     int m_storedTagBadgeH = 20;
+    bool m_manualRowHeights = false;
+    bool m_manualIconSizes = false;
+    bool m_manualTagSize = false;
+    bool m_manualBlockGaps = false;
 
     void setupConnections();
 public:

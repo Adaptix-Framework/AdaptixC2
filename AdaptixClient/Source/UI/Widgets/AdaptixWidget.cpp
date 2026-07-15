@@ -36,6 +36,8 @@
 #include <Client/TunnelEndpoint.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxCommandWrappers.h>
+#include <Utils/FontManager.h>
+
 #include <kddockwidgets/core/DockRegistry.h>
 #include <kddockwidgets/core/DockWidget.h>
 
@@ -392,15 +394,40 @@ void AdaptixWidget::createUI()
     this->setLayout(mainGridLayout);
 
     applyThemeColorsToToolbar();
+
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
+        if (!mainGridLayout || !toolbarWidget)
+            return;
+        const int pos = (GlobalClient && GlobalClient->settings) ? GlobalClient->settings->data.ToolbarPosition : 0;
+        placeToolbarInGrid(mainGridLayout, pos);
+        const AppTypography& ty = FontManager::instance().typography();
+        const qreal s = ty.baseSize / 10.0;
+        const int icon = qMax(18, qRound(24 * s));
+        const int bw = qMax(28, qRound(37 * s));
+        const int bh = ty.controlHeight;
+        for (auto* btn : toolbarWidget->findChildren<QPushButton*>()) {
+            if (btn == settingsButton)
+                continue;
+            if (!btn->icon().isNull() && btn->text().isEmpty()) {
+                btn->setIconSize(QSize(icon, icon));
+                btn->setFixedSize(bw, bh);
+            }
+        }
+    });
 }
 
 
 void AdaptixWidget::createButtons()
 {
     auto mkIconBtn = [this](const QString& iconPath, const QString& tooltip) {
+        const AppTypography& ty = FontManager::instance().typography();
+        const qreal s = ty.baseSize / 10.0;
+        const int icon = qMax(18, qRound(24 * s));
+        const int bw = qMax(28, qRound(37 * s));
+        const int bh = ty.controlHeight;
         auto* btn = new QPushButton(QIcon(iconPath), "", this);
-        btn->setIconSize(QSize(24, 24));
-        btn->setFixedSize(37, 28);
+        btn->setIconSize(QSize(icon, icon));
+        btn->setFixedSize(bw, bh);
         btn->setToolTip(tooltip);
         btn->setFocusPolicy(Qt::NoFocus);
         return btn;
@@ -600,27 +627,31 @@ void AdaptixWidget::placeToolbarInGrid(QGridLayout* grid, int position)
     if (!grid || !toolbarWidget)
         return;
 
+    const AppTypography& ty = FontManager::instance().typography();
+    const int barH = ty.mainToolbarH;
+    const int sideW = ty.sideToolbarW;
+
     switch (position) {
-    case 1:
-        toolbarWidget->setFixedHeight(40);
-        grid->addWidget(toolbarWidget, 2, 1, 1, 1);
-        break;
-    case 2:
-        toolbarWidget->setFixedWidth(72);
-        toolbarWidget->layout()->setContentsMargins(6, 8, 14, 8);
-        grid->addWidget(toolbarWidget, 1, 0, 1, 1);
-        break;
-    case 3:
-        toolbarWidget->setFixedWidth(72);
-        toolbarWidget->layout()->setContentsMargins(14, 8, 6, 8);
-        grid->addWidget(toolbarWidget, 1, 2, 1, 1);
-        break;
-    case 0:
-    default:
-        toolbarWidget->setFixedHeight(40);
-        toolbarWidget->layout()->setContentsMargins(6, 4, 6, 4);
-        grid->addWidget(toolbarWidget, 0, 1, 1, 1);
-        break;
+        case 1:
+            toolbarWidget->setFixedHeight(barH);
+            grid->addWidget(toolbarWidget, 2, 1, 1, 1);
+            break;
+        case 2:
+            toolbarWidget->setFixedWidth(sideW);
+            toolbarWidget->layout()->setContentsMargins(6, 8, 14, 8);
+            grid->addWidget(toolbarWidget, 1, 0, 1, 1);
+            break;
+        case 3:
+            toolbarWidget->setFixedWidth(sideW);
+            toolbarWidget->layout()->setContentsMargins(14, 8, 6, 8);
+            grid->addWidget(toolbarWidget, 1, 2, 1, 1);
+            break;
+        case 0:
+        default:
+            toolbarWidget->setFixedHeight(barH);
+            toolbarWidget->layout()->setContentsMargins(6, 4, 6, 4);
+            grid->addWidget(toolbarWidget, 0, 1, 1, 1);
+            break;
     }
 }
 

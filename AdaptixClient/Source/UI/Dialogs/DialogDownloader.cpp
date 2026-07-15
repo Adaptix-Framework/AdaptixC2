@@ -1,6 +1,7 @@
 #include <Workers/DownloaderWorker.h>
 #include <UI/Dialogs/DialogDownloader.h>
 #include <UI/Widgets/FilesFeedWidget.h>
+#include <Utils/FontManager.h>
 
 #include <QFileInfo>
 #include <QVBoxLayout>
@@ -26,14 +27,17 @@ DialogDownloader::DialogDownloader(const QString &url, const QString &otp, const
     QFileInfo fi(savedPath);
     QString displayName = fi.fileName();
 
+    const AppTypography& ty = FontManager::instance().typography();
+    const QString monoFamily = ty.family;
+
     auto* headerLayout = new QHBoxLayout();
     headerLayout->setSpacing(8);
     auto* badge = new QLabel("\u2193 DL", this);
-    badge->setStyleSheet("font-size:10px;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(88,166,255,0.15);color:#58a6ff;");
+    badge->setStyleSheet(QStringLiteral("font-size:%1px;font-weight:600;padding:1px 6px;border-radius:3px;background:rgba(88,166,255,0.15);color:#58a6ff;").arg(ty.captionFontPx));
     headerLabel = new QLabel(displayName, this);
-    headerLabel->setStyleSheet("font-size:13px;font-weight:600;");
+    headerLabel->setStyleSheet(QStringLiteral("font-size:%1px;font-weight:600;").arg(ty.titleFontPx));
     sizeLabel = new QLabel(this);
-    sizeLabel->setStyleSheet("font-size:11px;color:#8b949e;");
+    sizeLabel->setStyleSheet(QStringLiteral("font-size:%1px;color:#8b949e;").arg(ty.chromeFontPx));
     sizeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     headerLayout->addWidget(badge);
     headerLayout->addWidget(headerLabel, 1);
@@ -45,20 +49,20 @@ DialogDownloader::DialogDownloader(const QString &url, const QString &otp, const
     progressBar->setTextVisible(false);
 
     statsLabel = new QLabel(this);
-    statsLabel->setStyleSheet("font-size:11px;color:#8b949e;");
+    statsLabel->setStyleSheet(QStringLiteral("font-size:%1px;color:#8b949e;").arg(ty.chromeFontPx));
 
     auto* pathLayout = new QHBoxLayout();
     pathLayout->setSpacing(8);
     pathEdit = new QLineEdit(savedPath, this);
     pathEdit->setReadOnly(true);
-    pathEdit->setStyleSheet("font-size:11px;font-family:'Cascadia Code','Fira Code',monospace;");
+    pathEdit->setStyleSheet(QStringLiteral("font-size:%1px;font-family:'%2';").arg(ty.chromeFontPx).arg(monoFamily));
     copyButton = new QPushButton("Copy", this);
-    copyButton->setStyleSheet("font-size:11px;padding:3px 8px;");
+    copyButton->setStyleSheet(QStringLiteral("font-size:%1px;padding:3px 8px;").arg(ty.chromeFontPx));
     pathLayout->addWidget(pathEdit, 1);
     pathLayout->addWidget(copyButton);
 
     pathLabel = new QLabel("Saved to:", this);
-    pathLabel->setStyleSheet("font-size:11px;color:#8b949e;");
+    pathLabel->setStyleSheet(QStringLiteral("font-size:%1px;color:#8b949e;").arg(ty.chromeFontPx));
     pathLabel->setVisible(false);
     pathEdit->setVisible(false);
     copyButton->setVisible(false);
@@ -160,7 +164,7 @@ DialogDownloader::DialogDownloader(const QString &url, const QString &otp, const
         }
 
         statsLabel->setText(QString("Error: %1").arg(msg));
-        statsLabel->setStyleSheet("font-size:11px;color:#f85149;");
+        statsLabel->setStyleSheet(QStringLiteral("font-size:%1px;color:#f85149;").arg(FontManager::instance().typography().chromeFontPx));
         hideButton->setVisible(false);
         cancelButton->setText("Close");
         disconnect(cancelButton, nullptr, nullptr, nullptr);

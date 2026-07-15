@@ -131,8 +131,6 @@ TunnelsFeedWidget::TunnelsFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), m_ad
 
     enableCompactSwitch(true);
     setBlockGap(12);
-    setTagSize(11, 20);
-    setIconSizes(22, 18);
 
     dockWidget = new KDDockWidgets::QtWidgets::DockWidget( "TunnelsFeed:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
     dockWidget->setTitle("Tunnels");
