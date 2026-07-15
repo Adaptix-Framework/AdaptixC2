@@ -59,7 +59,7 @@ Q_OBJECT
 
 public:
     explicit ScriptsFilterProxy(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {}
-    void setSearchText(const QString& text) { m_searchText = text; beginFilterChange(); endFilterChange(); }
+    void setSearchText(const QString& text) { m_searchText = text; invalidateFilter(); }
 
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
