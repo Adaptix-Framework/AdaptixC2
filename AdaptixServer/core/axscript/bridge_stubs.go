@@ -88,6 +88,7 @@ func registerFormStubs(engine *ScriptEngine) {
 	// Selectors
 	formObj.Set("create_file_chooser", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_selector_file", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
+	formObj.Set("create_selector_folder", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_selector_credentials", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_selector_agents", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_selector_listeners", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })

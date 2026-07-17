@@ -911,6 +911,31 @@ private Q_SLOTS:
     void onSelectFile();
 };
 
+/// SELECTOR FOLDER
+
+class AxSelectorFolder : public QObject, public AbstractAxElement, public AbstractAxVisualElement {
+Q_OBJECT
+    QLineEdit* lineEdit;
+    QString    content;
+
+public:
+    explicit AxSelectorFolder(QLineEdit* edit, QObject* parent = nullptr);
+
+    QVariant jsonMarshal() const override;
+    void jsonUnmarshal(const QVariant& value) override;
+
+    QLineEdit* widget() const override;
+    Q_INVOKABLE void setEnabled(const bool enable) const override { widget()->setEnabled(enable); }
+    Q_INVOKABLE void setVisible(const bool enable) const override { widget()->setVisible(enable); }
+    Q_INVOKABLE bool getEnabled() const override { return widget()->isEnabled(); }
+    Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
+
+    Q_INVOKABLE void setPlaceholder(const QString& text) const;
+
+private Q_SLOTS:
+    void onSelectFolder();
+};
+
 
 
 /// SELECTOR CREDENTIALS

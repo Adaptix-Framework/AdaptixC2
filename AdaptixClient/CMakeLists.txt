@@ -26,6 +26,7 @@ endif()
 find_package(Qt6
         REQUIRED COMPONENTS
         Core
+        CorePrivate
         Gui
         Widgets
         Network
@@ -266,9 +267,16 @@ target_compile_definitions(
 #        QT_NO_SIGNALS_SLOTS_KEYWORDS
 )
 
+if(MSVC)
+        target_compile_options(AdaptixClient PRIVATE /wd4996)
+else()
+        target_compile_options(AdaptixClient PRIVATE -Wno-deprecated-declarations)
+endif()
+
 target_link_libraries( AdaptixClient
         PRIVATE
         Qt6::Core
+        Qt6::CorePrivate
         Qt6::Gui
         Qt6::Widgets
         Qt6::Network
