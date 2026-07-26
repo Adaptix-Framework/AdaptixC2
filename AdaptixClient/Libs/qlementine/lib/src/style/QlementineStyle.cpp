@@ -1543,18 +1543,22 @@ void QlementineStyle::drawControl(ControlElement ce, const QStyleOption* opt, QP
             availableX += taken;
           }
 
-          // Icon.
+          // Icon (menu actions ~1.2× theme iconSize).
+          const auto menuIconSize = QSize{
+            qRound(_impl->theme.iconSize.width() * 1.2),
+            qRound(_impl->theme.iconSize.height() * 1.2),
+          };
           const auto iconSpace =
             !QCoreApplication::testAttribute(Qt::AA_DontShowIconsInMenus) && optMenuItem->maxIconWidth > 0
-              ? optMenuItem->maxIconWidth + spacing
+              ? std::max(optMenuItem->maxIconWidth, menuIconSize.width()) + spacing
               : 0;
-          const auto pixmap = getPixmap(optMenuItem->icon, _impl->theme.iconSize, mouse, checkState, w);
+          const auto pixmap = getPixmap(optMenuItem->icon, menuIconSize, mouse, checkState, w);
           if (!pixmap.isNull()) {
             const auto& colorizedPixmap = getColorizedPixmap(pixmap, autoIconColor(w), fgColor, fgColor);
             const auto targetPxRatio = colorizedPixmap.devicePixelRatio();
             const auto pixmapW = targetPxRatio != 0 ? (int) ((qreal) colorizedPixmap.width() / targetPxRatio) : 0;
             const auto pixmapH = targetPxRatio != 0 ? (int) ((qreal) colorizedPixmap.height() / targetPxRatio) : 0;
-            const auto pixmapX = availableX;
+            const auto pixmapX = availableX + (std::max(menuIconSize.width(), pixmapW) - pixmapW) / 2;
             const auto pixmapY = fgRect.y() + (fgRect.height() - pixmapH) / 2;
             const auto pixmapRect = QRect{ pixmapX, pixmapY, pixmapW, pixmapH };
             p->drawPixmap(pixmapRect, colorizedPixmap);
@@ -3990,7 +3994,11 @@ QSize QlementineStyle::sizeFromContents(
                    || optMenuItem->menuItemType == QStyleOptionMenuItem::SubMenu) {
           const auto hPadding = _impl->theme.spacing;
           const auto vPadding = _impl->theme.spacing / 2;
-          const auto iconSize = _impl->theme.iconSize;
+          const auto baseIconSize = _impl->theme.iconSize;
+          const auto menuIconSize = QSize{
+            qRound(baseIconSize.width() * 1.2),
+            qRound(baseIconSize.height() * 1.2),
+          };
           const auto spacing = _impl->theme.spacing;
           const auto& fm = optMenuItem->fontMetrics;
           const auto [label, shortcut] = getMenuLabelAndShortcut(optMenuItem->text);
@@ -3998,7 +4006,7 @@ QSize QlementineStyle::sizeFromContents(
 
           // Submenu arrow.
           const auto hasArrow = optMenuItem->menuItemType == QStyleOptionMenuItem::SubMenu;
-          const auto arrowW = hasArrow ? spacing + iconSize.width() : spacing;
+          const auto arrowW = hasArrow ? spacing + baseIconSize.width() : spacing;
 
           // Shortcut. NB: Some difficulties to understand what's going on. Qt changes the width so here's a hack.
           const auto hasShortcut = shortcut.length() > 0;
@@ -4006,19 +4014,20 @@ QSize QlementineStyle::sizeFromContents(
           const auto shortcutTextWidth = hasShortcut ? fm.boundingRect(shortcut).width() : 0;
           const auto shortcutW = std::max(reservedShortcutW, shortcutTextWidth);
 
-          // Icon.
+          // Icon (1.2×).
           const auto iconW =
             !QCoreApplication::testAttribute(Qt::AA_DontShowIconsInMenus) && optMenuItem->maxIconWidth > 0
-              ? optMenuItem->maxIconWidth + spacing
+              ? std::max(optMenuItem->maxIconWidth, menuIconSize.width()) + spacing
               : 0;
 
           // Check or Radio.
           const auto hasCheck =
             optMenuItem->menuHasCheckableItems || optMenuItem->checkType != QStyleOptionMenuItem::NotCheckable;
-          const auto checkW = hasCheck ? iconSize.width() + spacing : 0;
+          const auto checkW = hasCheck ? baseIconSize.width() + spacing : 0;
 
           const auto w = std::max(0, hPadding + checkW + iconW + labelW + shortcutW + arrowW + hPadding);
-          const auto h = std::max(_impl->theme.controlHeightMedium, iconSize.height() + vPadding);
+          // +2px row height for a slightly roomier menu; height also fits scaled icons.
+          const auto h = std::max(_impl->theme.controlHeightMedium, menuIconSize.height() + vPadding) + 2;
           return { w, h };
         }
         return QSize{};

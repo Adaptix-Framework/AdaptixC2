@@ -12,7 +12,10 @@ import (
 
 type PluginListener struct{}
 
-const logSrc = "listener:gopher_tcp"
+const (
+	logSrc = "listener"
+	logCtg = "Gopher_TCP"
+)
 
 var (
 	ModuleDir       string

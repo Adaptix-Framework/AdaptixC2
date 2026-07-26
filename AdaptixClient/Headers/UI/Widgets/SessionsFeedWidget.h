@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_SESSIONSFEEDWIDGET_H
 
 #include <Utils/CustomElements/ListFeed.h>
+#include <Utils/CustomElements/GroupManagerPopup.h>
 #include <UI/Widgets/AbstractDock.h>
 #include <UI/Widgets/SessionWidgetIface.h>
 #include <UI/Models/GroupingProxyModel.h>
@@ -21,9 +22,14 @@ Q_OBJECT
     FeedListModel* feedBlockModel = nullptr;
     AgentsFilterProxyModel* filterModel = nullptr;
 
+    QPushButton*       btnGroupManager = nullptr;
+    GroupManagerPopup* groupPopup      = nullptr;
+
     QHash<qint64, int> agentIdToRow;
 
     void rebuildAgentIndex();
+    void setupCustomGroupsUi();
+    void wireGroupingProxy(GroupingProxyModel* model);
 
 public:
     explicit SessionsFeedWidget(AdaptixWidget* w);
@@ -48,7 +54,6 @@ public:
     void OnGroupMembersChanged(int64_t groupId, const QVector<qint64>& add, const QVector<qint64>& remove) override;
     void OnGroupReparented(int64_t groupId, int64_t newParentId) override;
 
-
     void onFilterChanged() override;
 
 public Q_SLOTS:
@@ -61,6 +66,7 @@ private:
 protected:
     void onGroupModeChanged(int index) override;
     void onSortingChanged(int index) override;
+    void rebuildModelChain() override;
 
 public Q_SLOTS:
     void actionConsoleOpen();

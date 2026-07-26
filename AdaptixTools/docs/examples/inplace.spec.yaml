@@ -1,0 +1,24 @@
+# In-place plugin — no dist/ directory.
+#
+# Use globs to list files (relative to the plugin source root) that should
+# land in <ext_dir>/<name>/. Typical for service plugins that write the .so
+# next to config.yaml.
+
+extenders:
+  - name: my_service
+    version: 0.2.0
+    type: service
+    description: "In-place service plugin"
+    min_server_version: "v2.0"
+
+    build:
+      - make
+
+    release:
+      # Optional override for profile entry path inside the release root:
+      # config: config.yaml
+      globs:
+        - config.yaml
+        - ax_config.axs
+        - my_service.so
+        - service_manifest.yaml

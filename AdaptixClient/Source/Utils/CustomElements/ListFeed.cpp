@@ -87,8 +87,8 @@ FeedColors FeedColors::fromTheme()
         fc.rowAltBg    = theme.backgroundColorMain2;
         fc.rowHoverBg  = theme.neutralColorHovered;
         fc.rowDeadBg   = ensureDeadBgContrast(theme.backgroundColorMain1, dark);
-        fc.groupBg     = dark ? theme.backgroundColorMain1.lighter(108)
-                              : theme.backgroundColorMain1.darker(104);
+        fc.groupBg     = dark ? theme.backgroundColorMain1.lighter(122)
+                              : theme.backgroundColorMain1.darker(112);
         fc.separatorLine = theme.borderColor;
         fc.tagBorder   = theme.borderColor;
     } else {
@@ -105,7 +105,7 @@ FeedColors FeedColors::fromTheme()
         fc.rowAltBg    = dark ? fc.rowBg.lighter(105) : fc.rowBg.darker(103);
         fc.rowHoverBg  = dark ? fc.rowBg.lighter(115) : fc.rowBg.darker(106);
         fc.rowDeadBg   = ensureDeadBgContrast(fc.rowBg, dark);
-        fc.groupBg     = dark ? QColor("#161b22") : QColor("#f0f0f0");
+        fc.groupBg     = dark ? QColor("#1c2330") : QColor("#e8ecf0");
         fc.separatorLine = dark ? QColor("#30363d") : QColor("#d0d7de");
         fc.tagBorder   = dark ? QColor("#3fb950") : QColor("#1a7f37");
     }
@@ -121,18 +121,96 @@ FeedColors FeedColors::fromTheme()
         fc.textDead = QColor::fromHslF(h, s, l, a);
     }
     fc.tagText       = baseText;
+    fc.dark          = dark;
 
     QColor selBase = style ? style->theme().primaryColor : pal.color(QPalette::Highlight);
-    fc.rowSelectedBg = selBase;
+    fc.accent = selBase.isValid() ? selBase : (dark ? QColor("#3fb950") : QColor("#1a7f37"));
+    fc.rowSelectedBg = fc.accent;
 
-    QColor selFg = style ? style->theme().primaryColorForeground : pal.color(QPalette::HighlightedText);
-    fc.selectedText = selFg;
-    fc.selectedMuted = selFg;
-    fc.selectedMuted.setAlpha(180);
+    fc.selectedText = fc.textPrimary;
+    fc.selectedMuted = fc.textSecondary;
 
     return fc;
 }
 
+static QColor feedLerp(const QColor& a, const QColor& b, qreal t)
+{
+    if (!a.isValid())
+        return b;
+    if (!b.isValid())
+        return a;
+    t = qBound(0.0, t, 1.0);
+    return QColor::fromRgb(
+        int(a.red()   * (1.0 - t) + b.red()   * t),
+        int(a.green() * (1.0 - t) + b.green() * t),
+        int(a.blue()  * (1.0 - t) + b.blue()  * t),
+        255);
+}
+
+QColor FeedColors::selectedWash(const QColor& base, qreal t) const
+{
+    QColor hi = accent.isValid() ? accent : rowSelectedBg;
+    if (!hi.isValid())
+        return base;
+    if (!base.isValid())
+        return hi;
+
+    QColor elevated = rowAltBg.isValid() ? rowAltBg : base;
+    if (dark) {
+        elevated = elevated.lighter(112);
+        QColor fromBase = base.lighter(120);
+        if (fromBase.lightness() > elevated.lightness())
+            elevated = fromBase;
+    } else {
+        elevated = elevated.darker(103);
+    }
+    elevated = feedLerp(elevated, hi, dark ? 0.06 : 0.04);
+
+    if (t < 0.0)
+        t = dark ? 0.28 : 0.18;
+    return feedLerp(elevated, hi, t);
+}
+
+void paintFeedTableCellBackground(QPainter* p, const QRect& rect, bool selected, bool hovered, bool oddRow, bool firstColumn, const QColor& customBg)
+{
+    if (!p || !rect.isValid())
+        return;
+
+    const FeedColors fc = FeedColors::fromTheme();
+    QColor surface;
+    if (customBg.isValid())
+        surface = customBg;
+    else
+        surface = oddRow ? (fc.rowAltBg.isValid() ? fc.rowAltBg : fc.rowBg) : fc.rowBg;
+    if (!surface.isValid())
+        surface = QColor(40, 40, 40);
+
+    if (selected) {
+        surface = fc.selectedWash(surface);
+    } else if (hovered) {
+        QColor hi = fc.accent.isValid() ? fc.accent : fc.rowSelectedBg;
+        QColor hov = fc.dark ? surface.lighter(110) : surface.darker(102);
+        surface = feedLerp(hov, hi, fc.dark ? 0.08 : 0.05);
+    }
+
+    p->fillRect(rect, surface);
+
+    if (!selected || !firstColumn)
+        return;
+
+    QColor acc = fc.accent.isValid() ? fc.accent : fc.rowSelectedBg;
+    if (!acc.isValid())
+        return;
+    acc.setAlpha(fc.dark ? 175 : 160);
+    const int insetY = qMax(3, rect.height() / 7);
+    const QRectF stripR(rect.left() + 2.0, rect.top() + insetY, 2.5, qMax(4.0, qreal(rect.height() - 2 * insetY)));
+    p->save();
+    p->setRenderHint(QPainter::Antialiasing, true);
+    p->setPen(Qt::NoPen);
+    p->setBrush(acc);
+    p->drawRoundedRect(stripR, 1.2, 1.2);
+    p->restore();
+}
 
 
 
@@ -298,7 +376,8 @@ void IconBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, cons
     int left = rect.left() + leftPad;
 
     QRect iconRect(left, top, target, target);
-    icon.paint(p, iconRect, Qt::AlignCenter, selected ? QIcon::Selected : QIcon::Normal);
+    Q_UNUSED(selected);
+    icon.paint(p, iconRect, Qt::AlignCenter, QIcon::Normal);
 }
 
 int IdBadgeBlock::measureWidth(const QVariant& data, const QFont& monoFont, const QFont& smallFont, const QFont& tinyFont) const {
@@ -431,11 +510,18 @@ void IdBadgeBlock::paintCompactDivision(QPainter* p, const QRect& subRect, int d
     }
 }
 
+QFont MainBlock::mainTextFont(const QFont& smallFont, const QFont& /*primaryFont*/) const
+{
+    QFont f = smallFont;
+    const qreal base = (smallFont.pointSizeF() > 0.0 ? smallFont.pointSizeF() : qreal(smallFont.pointSize())) + 1.0;
+    f.setPointSizeF(qMax(6.0, base + m_mainTextPointOffset));
+    f.setBold(true);
+    return f;
+}
+
 int MainBlock::measureWidth(const QVariant& data, const QFont&, const QFont& smallFont, const QFont&) const {
     auto map = data.toMap();
-    QFont bold = smallFont;
-    bold.setPointSize(smallFont.pointSize() + 1);
-    bold.setBold(true);
+    QFont bold = mainTextFont(smallFont);
     QFontMetrics fmBold(bold);
     QFontMetrics fmSmall(smallFont);
 
@@ -466,10 +552,15 @@ void MainBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, cons
     int y2 = y1 + lh1 + gap;
     int maxW = rect.width() - 4;
 
-    QFont bold = ctx.primaryFont.pointSize() > 0 ? ctx.primaryFont : smallFont;
-    if (ctx.primaryFont.pointSize() <= 0) {
-        bold.setPointSize(smallFont.pointSize() + 1);
-        bold.setBold(true);
+    QFont bold;
+    if (!compact && ctx.primaryFont.pointSizeF() > 0.0) {
+        bold = ctx.primaryFont;
+        if (!qFuzzyIsNull(m_mainTextPointOffset)) {
+            const qreal ps = bold.pointSizeF() > 0.0 ? bold.pointSizeF() : qreal(bold.pointSize());
+            bold.setPointSizeF(qMax(6.0, ps + m_mainTextPointOffset));
+        }
+    } else {
+        bold = mainTextFont(smallFont);
     }
     QFontMetrics fmBold(bold);
     QFontMetrics fmSmall(smallFont);
@@ -507,7 +598,7 @@ void MainBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, cons
 
 int MainBlock::measureCompactDivision(int division, const QVariant& data, const QFont&, const QFont& smallFont, const QFont&) const {
     auto map = data.toMap();
-    QFont bold = smallFont; bold.setPointSize(smallFont.pointSize() + 1); bold.setBold(true);
+    QFont bold = mainTextFont(smallFont);
     QFontMetrics fmBold(bold);
     QFontMetrics fmSmall(smallFont);
 
@@ -527,8 +618,9 @@ int MainBlock::measureCompactDivision(int division, const QVariant& data, const 
 }
 
 void MainBlock::paintCompactDivision(QPainter* p, const QRect& subRect, int division, const QVariant& data, const QFont&, const QFont& smallFont, const QFont&, const QColor& colText, const QColor& colMuted, bool, bool, const FeedPaintContext& ctx) const {
+    Q_UNUSED(ctx);
     auto map = data.toMap();
-    QFont bold = smallFont; bold.setPointSize(smallFont.pointSize() + 1); bold.setBold(true);
+    QFont bold = mainTextFont(smallFont);
     QFontMetrics fmBold(bold);
     QFontMetrics fmSmall(smallFont);
 
@@ -539,6 +631,7 @@ void MainBlock::paintCompactDivision(QPainter* p, const QRect& subRect, int divi
             p->setPen(colText);
             int w = fmBold.horizontalAdvance(mainText) + 4;
             int mw = subRect.width() - 4;
+            if (mw < 4) mw = 4;
             p->drawText(subRect.left(), subRect.top(), qMin(w, mw), subRect.height(), Qt::AlignLeft | Qt::AlignVCenter, fmBold.elidedText(mainText, Qt::ElideRight, mw));
         }
     } else if (division == 1) {
@@ -559,6 +652,7 @@ void MainBlock::paintCompactDivision(QPainter* p, const QRect& subRect, int divi
             p->setFont(smallFont);
             p->setPen(colMuted);
             int mw = subRect.width() - 4;
+            if (mw < 4) mw = 4;
             p->drawText(subRect.left(), subRect.top(), mw, subRect.height(), Qt::AlignLeft | Qt::AlignVCenter, fmSmall.elidedText(second, Qt::ElideRight, mw));
         }
     }
@@ -673,8 +767,10 @@ void ProgressBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, 
     QColor trackColor(255, 255, 255, 12);
     p->fillRect(barRect, trackColor);
 
-    QColor fillColor = selected ? QColor(255, 255, 255, 120) : FeedColors::fromTheme().rowSelectedBg;
-    fillColor.setAlpha(200);
+    QColor fillColor = FeedColors::fromTheme().accent;
+    if (!fillColor.isValid())
+        fillColor = FeedColors::fromTheme().rowSelectedBg;
+    fillColor.setAlpha(selected ? 160 : 200);
     int fillW = (int)(maxW * qBound(0.0, pct / 100.0, 1.0));
     if (fillW > 0) {
         QRect fillRect(barRect.left(), barRect.top(), fillW, barH);
@@ -738,10 +834,14 @@ void TagsBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, cons
             continue;
         int tw = fm.horizontalAdvance(trimmed) + 10;
         QRect tagRect(x, y, tw, badgeH);
-        QColor tagCol = selected ? colText : FeedColors::fromTheme().rowSelectedBg;
+        const FeedColors fc = FeedColors::fromTheme();
+        QColor tagCol = fc.accent.isValid() ? fc.accent : fc.rowSelectedBg;
+        if (selected)
+            tagCol = colText;
         p->setPen(tagCol);
         p->setBrush(Qt::NoBrush);
         p->drawRoundedRect(tagRect, 3, 3);
+        p->setPen(selected ? colText : colMuted);
         p->drawText(tagRect, Qt::AlignCenter, trimmed);
         x += tw + 5;
     }
@@ -800,7 +900,7 @@ void StatusBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, co
     QFontMetrics fmSmall(smallFont);
 
     QColor statusCol = colText;
-    if (!selected) {
+    {
         const auto fc = FeedColors::fromTheme();
         if (statusType == "success") statusCol = fc.success;
         else if (statusType == "error") statusCol = fc.error;
@@ -808,6 +908,7 @@ void StatusBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, co
         else if (statusType == "hosted") statusCol = fc.hosted;
         else if (statusType == "canceled") statusCol = fc.canceled;
     }
+    Q_UNUSED(selected);
 
     if (!mainText.isEmpty()) {
         p->setFont(mainFont);
@@ -826,7 +927,9 @@ void StatusBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, co
     if (!progress.isEmpty()) {
         int barH = qMax(10, qMin(lh1 - 2, qRound(lh1 * 0.85)));
         int barY = y1 + (lh1 - barH) / 2;
-        QColor fillColor = FeedColors::fromTheme().rowSelectedBg;
+        QColor fillColor = FeedColors::fromTheme().accent;
+        if (!fillColor.isValid())
+            fillColor = FeedColors::fromTheme().rowSelectedBg;
         fillColor.setAlpha(200);
         double pctVal = progress.left(progress.length() - 1).toDouble();
         QFont pf = ctx.microFont.pointSize() > 0 ? ctx.microFont : smallFont;
@@ -897,7 +1000,7 @@ void StatusBlock::paintCompactDivision(QPainter* p, const QRect& subRect, int di
     QFontMetrics fmSmall(smallFont);
 
     QColor statusCol = colText;
-    if (!selected) {
+    {
         const auto fc = FeedColors::fromTheme();
         QString statusType = map["statusType"].toString();
         if (statusType == "success") statusCol = fc.success;
@@ -906,6 +1009,7 @@ void StatusBlock::paintCompactDivision(QPainter* p, const QRect& subRect, int di
         else if (statusType == "hosted") statusCol = fc.hosted;
         else if (statusType == "canceled") statusCol = fc.canceled;
     }
+    Q_UNUSED(selected);
 
     if (division == 0) {
         QString mainText = map["main"].toString();
@@ -1113,15 +1217,25 @@ int AttachmentBlock::hitTest(const QPoint& localPos, const QRect& blockRect, con
 void GroupHeaderBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, const QFont&, const QFont& smallFont, const QFont&, const QColor& colText, const QColor&, bool, bool, const FeedPaintContext& ctx) const {
     auto map = data.toMap();
     bool expanded = map["expanded"].toBool();
-    QString arrow = expanded ? "\u25BC" : "\u25B6";
+    QString arrow = expanded ? QStringLiteral("\u25BC") : QStringLiteral("\u25B6");
     QFont gf = ctx.primaryFont.pointSize() > 0 ? ctx.primaryFont : smallFont;
     if (ctx.primaryFont.pointSize() <= 0) {
-        gf.setPointSize(smallFont.pointSize() + 1);
-        gf.setBold(true);
+        gf.setPointSize(qMax(smallFont.pointSize() + 2, 11));
+    } else {
+        gf.setPointSize(gf.pointSize() + 1);
     }
+    gf.setBold(true);
+    gf.setStyleHint(QFont::SansSerif);
+
+    const int padL = 10;
+    const int padR = 12;
+    const QString label = QStringLiteral("%1  %2").arg(arrow, map["label"].toString());
+    QFontMetrics fm(gf);
+    const QString elided = fm.elidedText(label, Qt::ElideRight, qMax(0, rect.width() - padL - padR));
+
     p->setFont(gf);
     p->setPen(colText);
-    p->drawText(rect.left() + 10, rect.top(), rect.width() - 20, rect.height(), Qt::AlignVCenter | Qt::AlignLeft, QString("%1 %2").arg(arrow, map["label"].toString()));
+    p->drawText(rect.adjusted(padL, 0, -padR, 0), Qt::AlignVCenter | Qt::AlignLeft | Qt::TextSingleLine, elided);
 }
 
 
@@ -1449,17 +1563,44 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
                 break;
             }
         if (groupIdx >= 0) {
-            QColor groupBg = feedColors().groupBg;
+            const FeedColors& fc = feedColors();
             QRect fullRow = r; fullRow.setLeft(0);
+            QColor groupBg = fc.groupBg;
+            if (selected)
+                groupBg = fc.selectedWash(groupBg);
             painter->fillRect(fullRow, groupBg);
-            painter->setPen(QPen(pal.color(QPalette::Mid), 0.3));
-            painter->drawLine(0, r.bottom(), r.right(), r.bottom());
+            if (selected) {
+                QColor acc = fc.accent.isValid() ? fc.accent : fc.rowSelectedBg;
+                QColor edge = acc;
+                edge.setAlpha(fc.dark ? 150 : 140);
+                painter->setPen(QPen(edge, 1.0));
+                painter->setBrush(Qt::NoBrush);
+                painter->drawRoundedRect(QRectF(fullRow).adjusted(0.5, 0.5, -0.5, -0.5), 4.0, 4.0);
+                QColor strip = acc;
+                strip.setAlpha(fc.dark ? 175 : 160);
+                const int insetY = qMax(3, fullRow.height() / 7);
+                painter->setPen(Qt::NoPen);
+                painter->setBrush(strip);
+                painter->drawRoundedRect( QRectF(fullRow.left() + 2.0, fullRow.top() + insetY, 2.5, qMax(4.0, qreal(fullRow.height() - 2 * insetY))), 1.2, 1.2);
+            } else {
+                QColor sep = fc.separatorLine;
+                sep.setAlpha(fc.dark ? 60 : 70);
+                painter->setPen(QPen(sep, 0.5));
+                painter->drawLine(0, r.bottom(), r.right(), r.bottom());
+            }
+
             bool expanded = option.state & QStyle::State_Open;
             QVariant groupData = index.data(Qt::DisplayRole);
             QVariantMap map;
             map["label"] = groupData.toString();
             map["expanded"] = expanded;
-            m_blocks[groupIdx]->paint(painter, r, map, monoFont(), smallFont(), tinyFont(), feedColors().textPrimary, feedColors().textSecondary, selected, false, {});
+
+            FeedPaintContext ctx;
+            ctx.primaryFont = primaryFont();
+            ctx.compact = true; // group headers are always single-line
+            const QColor colText = fc.textPrimary;
+            const QColor colMuted = fc.textSecondary;
+            m_blocks[groupIdx]->paint(painter, r, map, monoFont(), smallFont(), tinyFont(), colText, colMuted, selected, false, ctx);
         }
         painter->restore();
         return;
@@ -1492,36 +1633,73 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
     const FeedColors& fc = feedColors();
     bool dead = row.isDead;
     bool oddRow = sourceRow % 2 == 1;
+    bool hovered = (option.state & QStyle::State_MouseOver) && !selected;
     QColor baseBg = fc.rowBg;
     QColor altBg = fc.rowAltBg;
 
     QRect fullRow = r; fullRow.setLeft(0);
-    if (selected)
-        painter->fillRect(fullRow, fc.rowSelectedBg);
-    else if (dead) {
+
+    QColor surface;
+    if (dead) {
         if (row.backgroundColor.isValid()) {
             float h, s, l, a;
             row.backgroundColor.getHslF(&h, &s, &l, &a);
             if (h < 0.0f)
                 h = 0.0f;
             l = dark ? qMin(l + static_cast<float>(GlobalClient->settings->data.DeadLightnessShift), 1.0f) : qMax(l - static_cast<float>(GlobalClient->settings->data.DeadLightnessShift), 0.0f);
-            painter->fillRect(fullRow, QColor::fromHslF(h, qBound(0.0f, s, 1.0f), qBound(0.0f, l, 1.0f), a));
+            surface = QColor::fromHslF(h, qBound(0.0f, s, 1.0f), qBound(0.0f, l, 1.0f), a);
         } else {
-            painter->fillRect(fullRow, fc.rowDeadBg);
+            surface = fc.rowDeadBg;
         }
-    } else if (row.backgroundColor.isValid())
-        painter->fillRect(fullRow, row.backgroundColor);
-    else
-        painter->fillRect(fullRow, oddRow ? altBg : baseBg);
+    } else if (row.backgroundColor.isValid()) {
+        surface = row.backgroundColor;
+    } else {
+        surface = oddRow ? altBg : baseBg;
+    }
 
-    painter->setPen(QPen(fc.separatorLine, 0.25));
-    painter->drawLine(0, r.bottom(), r.right(), r.bottom());
+    if (selected)
+        surface = fc.selectedWash(surface);
+    else if (hovered) {
+        QColor hi = fc.accent.isValid() ? fc.accent : fc.rowSelectedBg;
+        QColor hov = dark ? surface.lighter(110) : surface.darker(102);
+        surface = feedLerp(hov, hi, dark ? 0.08 : 0.05);
+    }
+
+    painter->fillRect(fullRow, surface);
+
+    if (selected) {
+        QColor acc = fc.accent.isValid() ? fc.accent : fc.rowSelectedBg;
+
+        {
+            QColor edge = acc;
+            edge.setAlpha(dark ? 150 : 140);
+            painter->setRenderHint(QPainter::Antialiasing, true);
+            painter->setPen(QPen(edge, 1.0));
+            painter->setBrush(Qt::NoBrush);
+            const QRectF edgeR = QRectF(fullRow).adjusted(0.5, 0.5, -0.5, -0.5);
+            painter->drawRoundedRect(edgeR, 4.0, 4.0);
+        }
+
+        {
+            QColor strip = acc;
+            strip.setAlpha(dark ? 175 : 160);
+            const int insetY = qMax(3, fullRow.height() / 7);
+            const QRectF stripR(fullRow.left() + 2.0, fullRow.top() + insetY, 2.5, qMax(4.0, qreal(fullRow.height() - 2 * insetY)));
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(strip);
+            painter->drawRoundedRect(stripR, 1.2, 1.2);
+        }
+    }
+
+    if (!selected) {
+        QColor sep = fc.separatorLine;
+        sep.setAlpha(dark ? 45 : 55);
+        painter->setPen(QPen(sep, 0.25));
+        painter->drawLine(0, r.bottom(), r.right(), r.bottom());
+    }
 
     QColor colText, colMuted;
-    if (selected) {
-        colText = fc.selectedText;
-        colMuted = fc.selectedMuted;
-    } else if (dead) {
+    if (dead) {
         colText = dark ? fc.textDead.lighter(120) : fc.textDead.darker(120);
         colMuted = fc.textDead;
     } else {
@@ -1532,14 +1710,8 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
     if (m_widthsDirty)
         updateMaxWidths(fmodel);
 
-    int treeIndent = 0;
-    if (option.widget) {
-        auto* tv = qobject_cast<const QTreeView*>(option.widget);
-        if (tv) treeIndent = tv->indentation() * (index.parent().isValid() ? 1 : 0);
-    }
-
     const bool compact = m_compact;
-    int ml = (compact ? 6 : 10) + treeIndent;
+    int ml = r.left() + (compact ? 6 : 10);
     int mr = compact ? 6 : 12;
     if (!m_fontsInited)
         initFonts();
@@ -1741,41 +1913,64 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
         if (divisions <= 1) {
             m_blocks[i]->paint(painter, blockRects[i], row.blockData[i], monoFont(), smallFont(), tinyFont(), colText, colMuted, selected, dead, ctx);
         } else {
-            QVector<int> subWs(divisions);
+            const int baseLeft = blockRects[i].left();
+            const int avail = blockRects[i].width();
+            const int lastDiv = divisions - 1;
+            const bool isMain = (m_blocks[i]->name() == QLatin1String("main"));
+
+            QVector<int> subWs(divisions, 0);
             for (int d = 0; d < divisions; ++d) {
-                if (m_cachedSubBlockW.size() > i && !m_cachedSubBlockW[i].isEmpty() && d < m_cachedSubBlockW[i].size()) {
+                if (m_cachedSubBlockW.size() > i && !m_cachedSubBlockW[i].isEmpty() && d < m_cachedSubBlockW[i].size())
                     subWs[d] = m_cachedSubBlockW[i][d];
-                } else {
-                    subWs[d] = blockRects[i].width() / qMax(1, divisions);
-                }
+                else if (subWs[d] == 0)
+                    subWs[d] = m_blocks[i]->measureCompactDivision(d, row.blockData[i], monoFont(), smallFont(), tinyFont());
             }
 
-            bool isMain = (m_blocks[i]->name() == "main");
-            int baseLeft = blockRects[i].left();
-            int avail = blockRects[i].width();
+            int sumLead = 0;
+            int nLead = 0;
+            for (int d = 0; d < lastDiv; ++d) {
+                if (subWs[d] > 0) {
+                    sumLead += subWs[d];
+                    ++nLead;
+                }
+            }
+            const int leadGaps = nLead * blockGap;
+            if (sumLead + leadGaps > avail && sumLead > 0) {
+                const double scale = double(qMax(0, avail - leadGaps)) / double(sumLead);
+                for (int d = 0; d < lastDiv; ++d)
+                    subWs[d] = qRound(subWs[d] * scale);
+            }
+
             int colPos = baseLeft;
             for (int d = 0; d < divisions; ++d) {
-                int colW = (d < subWs.size() ? subWs[d] : 0);
-                int thisW;
-                if (d < divisions - 1) {
+                const int remaining = baseLeft + avail - colPos;
+                if (remaining <= 0)
+                    break;
+
+                const int colW = (d < subWs.size() ? subWs[d] : 0);
+
+                if (d < lastDiv) {
+                    if (colW <= 0)
+                        continue;
+
+                    int thisW = colW;
                     if (isMain) {
                         thisW = m_blocks[i]->measureCompactDivision(d, row.blockData[i], monoFont(), smallFont(), tinyFont());
-                        if (thisW > colW) thisW = colW;
-                    } else {
-                        thisW = colW;
+                        if (thisW > colW)
+                            thisW = colW;
                     }
-                } else {
-                    thisW = baseLeft + avail - colPos;
-                }
-                thisW = qMax(0, thisW);
-                if (colPos + thisW > baseLeft + avail) thisW = baseLeft + avail - colPos;
+                    thisW = qMin(thisW, remaining);
+                    if (thisW < 0) thisW = 0;
 
-                QRect subRect(colPos, blockRects[i].top(), thisW, blockRects[i].height());
-                m_blocks[i]->paintCompactDivision(painter, subRect, d, row.blockData[i], monoFont(), smallFont(), tinyFont(), colText, colMuted, selected, dead, ctx);
+                    QRect subRect(colPos, blockRects[i].top(), thisW, blockRects[i].height());
+                    m_blocks[i]->paintCompactDivision(painter, subRect, d, row.blockData[i], monoFont(), smallFont(), tinyFont(), colText, colMuted, selected, dead, ctx);
 
-                if (d < divisions - 1) {
-                    colPos += colW + blockGap;
+                    const int adv = qMin(colW, remaining);
+                    colPos += adv + blockGap;
                 } else {
+                    const int thisW = remaining;
+                    QRect subRect(colPos, blockRects[i].top(), thisW, blockRects[i].height());
+                    m_blocks[i]->paintCompactDivision(painter, subRect, d, row.blockData[i], monoFont(), smallFont(), tinyFont(), colText, colMuted, selected, dead, ctx);
                     colPos += thisW;
                 }
             }
@@ -1789,7 +1984,17 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
 
 QSize ListFeedDelegate::sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const {
     Q_UNUSED(option);
-    Q_UNUSED(index);
+    auto* gproxy = qobject_cast<const GroupingProxyModel*>(index.model());
+    if (gproxy && gproxy->isGroupIndex(index)) {
+        if (!m_fontsInited)
+            initFonts();
+        QFont gf = m_primaryFont;
+        gf.setPointSize(gf.pointSize() > 0 ? gf.pointSize() + 1 : m_smallFont.pointSize() + 2);
+        gf.setBold(true);
+        const int textH = QFontMetrics(gf).height();
+        const int h = qMax(28, textH + 12);
+        return QSize(200, h);
+    }
     return QSize(200, m_compact ? m_compactRowHeight : m_normalRowHeight);
 }
 
@@ -1812,13 +2017,7 @@ bool ListFeedDelegate::editorEvent(QEvent* event, QAbstractItemModel* model, con
         return false;
     const FeedRow& row = fmodel->rowAt(srcRow);
 
-    int treeIndent = 0;
-    {
-        auto* tree = qobject_cast<const QTreeView*>(option.widget);
-        if (tree) treeIndent = tree->indentation() * (index.parent().isValid() ? 1 : 0);
-    }
-
-    int ml = 10 + treeIndent;
+    int ml = option.rect.left() + (m_compact ? 6 : 10);
     int blockGap = m_blockGap;
     int iconSlotW = 0;
     int iconThisW = 0;
@@ -2013,6 +2212,7 @@ void ListFeedWidget::enableGrouping(bool enable, AdaptixWidget* aw)
     m_groupingAdaptixWidget = aw;
     m_treeView->setRootIsDecorated(enable);
     m_treeView->setExpandsOnDoubleClick(enable);
+    m_treeView->setUniformRowHeights(!enable);
     rebuildModelChain();
 }
 
@@ -2020,6 +2220,15 @@ void ListFeedWidget::setGroupingField(int field)
 {
     m_groupingField = field;
     if (m_groupingEnabled)
+        rebuildModelChain();
+}
+
+void ListFeedWidget::setGroupingScope(const QString& scope)
+{
+    if (scope.isEmpty() || scope == m_groupingScope)
+        return;
+    m_groupingScope = scope;
+    if (m_proxyModel)
         rebuildModelChain();
 }
 
@@ -2033,10 +2242,29 @@ void ListFeedWidget::rebuildModelChain()
     if (m_filterModel && m_filterModel->sourceModel() != m_feedModel)
         m_filterModel->setSourceModel(m_feedModel);
 
-    auto* groupingModel = new GroupingProxyModel(m_groupingAdaptixWidget, "listfeed", this);
+    QVector<GroupNode> savedGroups;
+    ViewMode savedMode = VM_Flat;
+    AutoGroupField savedField = AG_None;
+    bool hadProxy = false;
+    if (auto* old = groupingProxy()) {
+        hadProxy = true;
+        savedGroups = old->allCustomGroups();
+        savedMode = old->viewMode();
+        savedField = old->autoGroupField();
+        old->deleteLater();
+    }
+
+    auto* groupingModel = new GroupingProxyModel(m_groupingAdaptixWidget, m_groupingScope, this);
     groupingModel->setSourceModel(inputModel);
 
-    if (m_groupingEnabled) {
+    for (const GroupNode& g : savedGroups)
+        groupingModel->addCustomGroup(g.groupId, g.parentGroupId, g.name, g.memberIds);
+
+    if (hadProxy) {
+        groupingModel->setViewMode(savedMode);
+        if (savedMode == VM_AutoGroup)
+            groupingModel->setAutoGroupField(savedField);
+    } else if (m_groupingEnabled) {
         groupingModel->setViewMode(VM_AutoGroup);
         groupingModel->setAutoGroupField(static_cast<AutoGroupField>(m_groupingField));
     } else {
@@ -2045,10 +2273,12 @@ void ListFeedWidget::rebuildModelChain()
 
     m_proxyModel = groupingModel;
     m_treeView->setModel(groupingModel);
-    m_treeView->setRootIsDecorated(m_groupingEnabled);
-    m_treeView->setExpandsOnDoubleClick(m_groupingEnabled);
-    if (m_groupingEnabled)
-    m_treeView->expandAll();
+    const bool treeMode = groupingModel->viewMode() != VM_Flat;
+    m_treeView->setUniformRowHeights(!treeMode);
+    m_treeView->setRootIsDecorated(treeMode);
+    m_treeView->setExpandsOnDoubleClick(treeMode);
+    if (treeMode)
+        m_treeView->expandAll();
 }
 
 
@@ -2338,6 +2568,7 @@ void ListFeedWidget::onGroupModeChanged(int index)
     if (index == 0) {
         groupingProxy()->setViewMode(VM_Flat);
         m_treeView->setRootIsDecorated(false);
+        m_treeView->setUniformRowHeights(true);
     } else {
         AutoGroupField field = AG_None;
         switch (index) {
@@ -2352,6 +2583,7 @@ void ListFeedWidget::onGroupModeChanged(int index)
         groupingProxy()->setAutoGroupField(field);
         m_treeView->setRootIsDecorated(true);
         m_treeView->setExpandsOnDoubleClick(true);
+        m_treeView->setUniformRowHeights(false);
     }
     m_treeView->expandAll();
 }

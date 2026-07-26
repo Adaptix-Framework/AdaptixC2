@@ -55,14 +55,14 @@ func (dbms *DBMS) DbListenerDelete(listenerName string) error {
 	return nil
 }
 
-func (dbms *DBMS) DbListenerUpdate(listenerName string, listenerConfig string, customData []byte) error {
+func (dbms *DBMS) DbListenerUpdate(listenerName string, listenerConfig string, customData []byte, tags string) error {
 	ok := dbms.DatabaseExists()
 	if !ok {
 		return errors.New("database does not exist")
 	}
 
-	updateQuery := `UPDATE Listeners SET ListenerConfig = ?, CustomData = ? WHERE ListenerName = ?;`
-	result, err := dbms.database.Exec(updateQuery, listenerConfig, customData, listenerName)
+	updateQuery := `UPDATE Listeners SET ListenerConfig = ?, CustomData = ?, Tags = ? WHERE ListenerName = ?;`
+	result, err := dbms.database.Exec(updateQuery, listenerConfig, customData, tags, listenerName)
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func (dbms *DBMS) DbListenerAll() []ListenerRow {
 		selectQuery := `SELECT ListenerName, ListenerRegName, ListenerConfig, ListenerStatus, CreateTime, Watermark, CustomData, COALESCE(Tags, '') FROM Listeners;`
 		query, err := dbms.database.Query(selectQuery)
 		if err != nil {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query listeners: %s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query listeners: %s", err.Error())
 			return listeners
 		}
 		defer func(query *sql.Rows) {

@@ -267,6 +267,46 @@ func (tc *TsConnector) TcTunnelStop(ctx *gin.Context) {
 	respondOKMessage(ctx, "Tunnel stopped")
 }
 
+func (tc *TsConnector) TcTunnelPause(ctx *gin.Context) {
+	var tunnelAction TunnelStopAction
+	err := ctx.ShouldBindJSON(&tunnelAction)
+	if err != nil {
+		respondError(ctx, http.StatusOK, "invalid JSON data")
+		return
+	}
+	clientName, ok := mustUsername(ctx)
+	if !ok {
+		return
+	}
+	if err = tc.teamserver.TsTunnelDeactivate(tunnelAction.TunnelId, clientName); err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+	respondOKMessage(ctx, "Tunnel paused")
+}
+
+func (tc *TsConnector) TcTunnelResume(ctx *gin.Context) {
+	var tunnelAction TunnelStopAction
+	err := ctx.ShouldBindJSON(&tunnelAction)
+	if err != nil {
+		respondError(ctx, http.StatusOK, "invalid JSON data")
+		return
+	}
+	clientName, ok := mustUsername(ctx)
+	if !ok {
+		return
+	}
+	if err = tc.teamserver.TsTunnelClientCanControl(tunnelAction.TunnelId, clientName); err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+	if _, err = tc.teamserver.TsTunnelStart(tunnelAction.TunnelId); err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+	respondOKMessage(ctx, "Tunnel resumed")
+}
+
 type TunnelSetItemAction struct {
 	TunnelId int64  `json:"p_tunnel_id"`
 	Info     string `json:"p_info"`
@@ -280,7 +320,12 @@ func (tc *TsConnector) TcTunnelSetIno(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsTunnelClientSetInfo(tunnelAction.TunnelId, tunnelAction.Info)
+	clientName, ok := mustUsername(ctx)
+	if !ok {
+		return
+	}
+
+	err = tc.teamserver.TsTunnelClientSetInfo(tunnelAction.TunnelId, tunnelAction.Info, clientName)
 	if err != nil {
 		respondError(ctx, http.StatusOK, err.Error())
 		return

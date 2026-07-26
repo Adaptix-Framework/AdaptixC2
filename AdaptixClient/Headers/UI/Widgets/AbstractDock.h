@@ -19,6 +19,8 @@
 #include <QTimer>
 #include <QScrollBar>
 #include <QSet>
+#include <QPointer>
+#include <QList>
 #include <MainAdaptix.h>
 #include <Client/Settings.h>
 #include <typeinfo>
@@ -66,8 +68,8 @@ protected:
 
     QSet<int> m_newTableRows;
     int m_newTextPosition = -1;
-    QSet<QAbstractItemView*> m_trackedViews;
-    QSet<QAbstractScrollArea*> m_trackedTextEdits;
+    QList<QPointer<QAbstractItemView>> m_trackedViews;
+    QList<QPointer<QAbstractScrollArea>> m_trackedTextEdits;
 
     QString getClassName() const {
         if (!m_cachedClassName.isEmpty())
@@ -229,9 +231,13 @@ private Q_SLOTS:
     }
 
     void checkNewContentVisibility() {
+        if (!dockWidget)
+            return;
         auto* coreDw = dockWidget->dockWidget();
         if (!coreDw || !coreDw->isCurrentTab())
             return;
+
+        pruneTrackedWidgets();
 
         if (!hasNewContent()) {
             clearHighlight();
@@ -241,15 +247,21 @@ private Q_SLOTS:
         bool hasVisibleViews = false;
 
         if (!m_newTableRows.isEmpty()) {
-            for (auto* view : m_trackedViews) {
-                if (!view->isVisible()) continue;
+            for (const auto& viewPtr : m_trackedViews) {
+                QAbstractItemView* view = viewPtr.data();
+                if (!view || !view->isVisible())
+                    continue;
                 hasVisibleViews = true;
+
+                auto* model = view->model();
+                if (!model)
+                    continue;
 
                 QSet<int> stillHidden;
                 for (int row : m_newTableRows) {
-                    QModelIndex idx = view->model()->index(row, 0);
+                    QModelIndex idx = model->index(row, 0);
                     QRect rect = view->visualRect(idx);
-                    if (!view->viewport()->rect().intersects(rect)) {
+                    if (view->viewport() && !view->viewport()->rect().intersects(rect)) {
                         stillHidden.insert(row);
                     }
                 }
@@ -263,8 +275,10 @@ private Q_SLOTS:
 
         if (m_newTextPosition >= 0) {
             bool hasVisibleEdits = false;
-            for (auto* scrollArea : m_trackedTextEdits) {
-                if (!scrollArea->isVisible()) continue;
+            for (const auto& editPtr : m_trackedTextEdits) {
+                QAbstractScrollArea* scrollArea = editPtr.data();
+                if (!scrollArea || !scrollArea->isVisible())
+                    continue;
                 hasVisibleEdits = true;
 
                 QScrollBar* vbar = scrollArea->verticalScrollBar();
@@ -285,10 +299,38 @@ private Q_SLOTS:
     }
 
 private:
+    void pruneTrackedWidgets() {
+        for (int i = m_trackedViews.size() - 1; i >= 0; --i) {
+            if (m_trackedViews[i].isNull())
+                m_trackedViews.removeAt(i);
+        }
+        for (int i = m_trackedTextEdits.size() - 1; i >= 0; --i) {
+            if (m_trackedTextEdits[i].isNull())
+                m_trackedTextEdits.removeAt(i);
+        }
+    }
+
+    bool isViewTracked(QAbstractItemView* view) const {
+        for (const auto& p : m_trackedViews) {
+            if (p.data() == view)
+                return true;
+        }
+        return false;
+    }
+
+    bool isTextEditTracked(QAbstractScrollArea* edit) const {
+        for (const auto& p : m_trackedTextEdits) {
+            if (p.data() == edit)
+                return true;
+        }
+        return false;
+    }
+
     template<typename T>
     void connectItemView(T* view) {
-        if (!view) return;
-        m_trackedViews.insert(view);
+        if (!view || isViewTracked(view))
+            return;
+        m_trackedViews.append(view);
         auto* model = view->model();
         if (model && model->metaObject()) {
             connect(model, &QAbstractItemModel::rowsInserted,
@@ -303,8 +345,9 @@ private:
 
     template<typename T, typename Signal>
     void connectTextEdit(T* edit, Signal signal) {
-        if (!edit || !edit->metaObject()) return;
-        m_trackedTextEdits.insert(edit);
+        if (!edit || !edit->metaObject() || isTextEditTracked(edit))
+            return;
+        m_trackedTextEdits.append(edit);
         connect(edit, signal, this, &DockTab::onTextChanged, Qt::UniqueConnection);
         auto* vbar = edit->verticalScrollBar();
         if (vbar && vbar->metaObject()) {

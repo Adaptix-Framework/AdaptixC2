@@ -315,7 +315,8 @@ void Stack::showContextMenu(QPoint pos)
         bool isRenameable = uniqueName.startsWith("Console [") ||
                             uniqueName.startsWith("Terminal [") ||
                             uniqueName.startsWith("Files [") ||
-                            uniqueName.startsWith("Processes [");
+                            uniqueName.startsWith("Processes [") ||
+                            uniqueName.startsWith("IDE [");
         if (!isRenameable)
             return;
 

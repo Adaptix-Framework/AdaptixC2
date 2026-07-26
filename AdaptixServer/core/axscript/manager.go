@@ -14,7 +14,7 @@ import (
 )
 
 type TeamserverBridge interface {
-	TsLogAdd(status adaptix.LogStatus, level int, source string, format string, args ...any)
+	TsLogAdd(status adaptix.LogStatus, level int, source, category string, format string, args ...any)
 
 	TsAgentCommand(agentName string, agentId int64, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error
 	TsAgentConsoleOutput(agentId int64, client string, messageType int, message string, clearText string, store bool)
@@ -151,7 +151,7 @@ func (sm *ScriptManager) LoadAxScript(scriptPath string) error {
 	})
 	sm.mu.Unlock()
 
-	sm.teamserver.TsLogAdd(adaptix.LogStatusSuccess, 0, "server:axscript_manager", "Loaded axscript '%s'", scriptPath)
+	sm.teamserver.TsLogAdd(adaptix.LogStatusSuccess, 0, "axscript_manager", "script", "Loaded '%s'", scriptPath)
 	return nil
 }
 
@@ -217,7 +217,7 @@ func (sm *ScriptManager) LoadAxScriptChild(parentEngine *ScriptEngine, scriptPat
 	})
 	sm.mu.Unlock()
 
-	sm.teamserver.TsLogAdd(adaptix.LogStatusSuccess, 0, "server:axscript_manager", "Loaded axscript '%s'", abs)
+	sm.teamserver.TsLogAdd(adaptix.LogStatusSuccess, 0, "axscript_manager", "script", "Loaded '%s'", abs)
 	return nil
 }
 
@@ -254,25 +254,25 @@ func (sm *ScriptManager) executeRegisterCommands(engine *ScriptEngine, agentName
 	fn := rt.Get("RegisterCommands")
 	if fn == nil || goja.IsUndefined(fn) {
 		engine.mu.Unlock()
-		sm.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "No RegisterCommands function found in script for '%s'", agentName)
+		sm.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "log", "No RegisterCommands function found in script for '%s'", agentName)
 		return
 	}
 
 	registerFn, ok := goja.AssertFunction(fn)
 	if !ok {
 		engine.mu.Unlock()
-		sm.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "RegisterCommands is not a function in script for '%s'", agentName)
+		sm.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "axscript_manager", "log", "RegisterCommands is not a function in script for '%s'", agentName)
 		return
 	}
 
 	result, err := registerFn(goja.Undefined(), rt.ToValue(listenerType))
 	engine.mu.Unlock()
 	if err != nil {
-		sm.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "Error calling RegisterCommands for '%s': %v", agentName, err)
+		sm.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "axscript_manager", "log", "Error calling RegisterCommands for '%s': %v", agentName, err)
 		return
 	}
 	if result == nil || goja.IsUndefined(result) || goja.IsNull(result) {
-		sm.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "RegisterCommands returned nil for '%s'", agentName)
+		sm.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "log", "RegisterCommands returned nil for '%s'", agentName)
 		return
 	}
 
@@ -316,7 +316,7 @@ func (sm *ScriptManager) extractCommandsFromResult(engine *ScriptEngine, agentNa
 	}
 
 	if groupBuilder == nil {
-		sm.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "Property '%s' for agent '%s' is not a CommandGroup", propName, agentName)
+		sm.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "log", "Property '%s' for agent '%s' is not a CommandGroup", propName, agentName)
 		return
 	}
 
@@ -375,7 +375,6 @@ func (sm *ScriptManager) UnloadUserScript(name string) error {
 	return nil
 }
 
-// /---
 func (sm *ScriptManager) ListScripts() []ScriptInfo {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()

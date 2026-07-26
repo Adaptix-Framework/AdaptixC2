@@ -65,7 +65,7 @@ func (ts *Teamserver) TsUploadAdd(agentId int64, fileId int64, localPath string,
 	ts.uploads.Put(uploadData.FileId, uploadData)
 	if err := ts.DBMS.DbUploadInsert(uploadData); err != nil {
 		ts.uploads.Delete(uploadData.FileId)
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:transfer_manager", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "transfer_manager", "%s", err.Error())
 		return err
 	}
 
@@ -152,7 +152,7 @@ func (ts *Teamserver) TsUploadAddContent(agentId int64, fileId int64, remotePath
 	if err != nil {
 		ts.uploads.Delete(uploadData.FileId)
 		_ = os.Remove(savePath)
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:transfer_manager", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "transfer_manager", "%s", err.Error())
 		return err
 	}
 
@@ -283,7 +283,7 @@ func (ts *Teamserver) closeUploadForce(fileId int64, reason int) error {
 	}
 
 	if err := ts.DBMS.DbUploadUpdateState(uploadData.FileId, uploadData.State, uploadData.Progress); err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:transfer_manager", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "transfer_manager", "%s", err.Error())
 	}
 
 	packet := CreateSpTransferUpdate(uploadData, TRANSFER_UPLOAD)

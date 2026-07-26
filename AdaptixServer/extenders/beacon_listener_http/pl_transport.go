@@ -184,11 +184,11 @@ func (t *TransportHTTP) Start(ts adaptix.Teamserver) error {
 	t.Server = &http.Server{
 		Addr:     fmt.Sprintf("%s:%d", t.Config.HostBind, t.Config.PortBind),
 		Handler:  router,
-		ErrorLog: log.New(Ts.TsLogWriter(adaptix.LogStatusWarn, logSrc), "", 0),
+		ErrorLog: log.New(Ts.TsLogWriter(adaptix.LogStatusWarn, logSrc, logCtg), "", 0),
 	}
 
 	if t.Config.Ssl {
-		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, "Started listener '%s': https://%s:%d", t.Name, t.Config.HostBind, t.Config.PortBind)
+		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, logCtg, "Started listener '%s': https://%s:%d", t.Name, t.Config.HostBind, t.Config.PortBind)
 
 		listenerPath := ListenerDataDir + "/" + t.Name
 		_, err = os.Stat(listenerPath)
@@ -206,7 +206,7 @@ func (t *TransportHTTP) Start(ts adaptix.Teamserver) error {
 			err = t.generateSelfSignedCert(t.Config.SslCertPath, t.Config.SslKeyPath)
 			if err != nil {
 				t.Active = false
-				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "Error generating self-signed certificate: %v", err)
+				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, logCtg, "Error generating self-signed certificate: %v", err)
 				return err
 			}
 		} else {
@@ -247,19 +247,19 @@ func (t *TransportHTTP) Start(ts adaptix.Teamserver) error {
 		go func() {
 			err = t.Server.ListenAndServeTLS("", "")
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "Error starting HTTPS server: %v", err)
+				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, logCtg, "Error starting HTTPS server: %v", err)
 				t.Active = false
 				return
 			}
 		}()
 
 	} else {
-		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, "Started listener '%s': http://%s:%d", t.Name, t.Config.HostBind, t.Config.PortBind)
+		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, logCtg, "Started listener '%s': http://%s:%d", t.Name, t.Config.HostBind, t.Config.PortBind)
 
 		go func() {
 			err = t.Server.ListenAndServe()
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "Error starting HTTP server: %v", err)
+				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, logCtg, "Error starting HTTP server: %v", err)
 				t.Active = false
 				return
 			}

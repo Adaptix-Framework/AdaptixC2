@@ -149,6 +149,7 @@ namespace {
         data.DateTimestamp = static_cast<qint64>(json["p_date"].toDouble());
         data.BytesSent = static_cast<qint64>(json["p_bytes_sent"].toDouble());
         data.BytesRecv = static_cast<qint64>(json["p_bytes_recv"].toDouble());
+        data.Active = json.contains(QStringLiteral("p_active")) ? json["p_active"].toBool() : true;
         return data;
     }
 
@@ -578,6 +579,12 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
                checkField("content", isStr) &&
                checkField("groups", isArr);
 
+    case TYPE_AXSCRIPT_LIST:
+        return checkField("items", isArr);
+
+    case TYPE_EVENT_HANDLERS:
+        return checkField("items", isArr);
+
     default:
         qWarning() << "[SyncPacket] Unknown packet type:" << spType;
         return false;
@@ -1004,6 +1011,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         TransferData td = parseTransferCreate(jsonObj);
         DownloadsDock->AddTransferItem(td);
         replayDeferredTransferPackets(td.FileId);
+        UpdateDownloadsBadge();
         break;
     }
 
@@ -1023,6 +1031,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             break;
         }
         DownloadsDock->EditTransferItem(transferType, fileId, parseI64(jsonObj, "t_progress"), static_cast<int>(jsonObj["t_state"].toDouble()));
+        UpdateDownloadsBadge();
         break;
     }
 
@@ -1032,6 +1041,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             ids.append(parseI64(val));
         }
         DownloadsDock->RemoveTransferItem(static_cast<int>(jsonObj["t_type"].toDouble()), ids);
+        UpdateDownloadsBadge();
         break;
     }
 
@@ -1039,6 +1049,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         TransferData td = parseTransferActual(jsonObj);
         DownloadsDock->AddTransferItem(td);
         replayDeferredTransferPackets(td.FileId);
+        UpdateDownloadsBadge();
         break;
     }
 
@@ -1221,6 +1232,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         TunnelData tunnelData = parseTunnelData(jsonObj);
         TunnelsDock->AddTunnelItem(tunnelData);
 
+        if (!tunnelData.Active && ClientTunnels.contains(tunnelData.TunnelId)) {
+            auto* endpoint = ClientTunnels.value(tunnelData.TunnelId, nullptr);
+            if (endpoint)
+                endpoint->Stop();
+        }
+
         if (!GraphTunnelMarks.contains(tunnelData.TunnelId)) {
             const TunnelMarkType mark = tunnelData.Client.isEmpty() ? TunnelMarkServer : TunnelMarkClient;
             GraphTunnelMarks.insert(tunnelData.TunnelId, { tunnelData.AgentId, static_cast<int>(mark) });
@@ -1234,9 +1251,13 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         break;
     }
 
-    case TYPE_TUNNEL_EDIT:
-        TunnelsDock->EditTunnelItem(parseI64(jsonObj, "p_tunnel_id"), jsonObj["p_info"].toString());
+    case TYPE_TUNNEL_EDIT: {
+        const qint64 tid = parseI64(jsonObj, "p_tunnel_id");
+        TunnelsDock->EditTunnelItem(tid, jsonObj["p_info"].toString());
+        if (jsonObj.contains(QStringLiteral("p_active")))
+            TunnelsDock->SetTunnelActive(tid, jsonObj["p_active"].toBool());
         break;
+    }
 
     case TYPE_TUNNEL_DELETE: {
         qint64 tunnelId = parseI64(jsonObj, "p_tunnel_id");
@@ -1345,7 +1366,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QJsonArray membersArr = jsonObj["g_members"].toArray();
         QVector<qint64> members;
         for (const QJsonValue &v : membersArr)
-            members.append(static_cast<qint64>(v.toDouble()));
+            members.append(parseI64(v));
         if (scope == "agents" && SessionsTableDock)
             SessionsTableDock->OnGroupCreated(groupId, parentGroupId, groupName, members);
         break;
@@ -1372,9 +1393,9 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         QJsonArray remArr  = jsonObj["g_remove"].toArray();
         QVector<qint64> add, remove;
         for (const QJsonValue &v : addArr)
-            add.append(static_cast<qint64>(v.toDouble()));
+            add.append(parseI64(v));
         for (const QJsonValue &v : remArr)
-            remove.append(static_cast<qint64>(v.toDouble()));
+            remove.append(parseI64(v));
         if (SessionsTableDock)
             SessionsTableDock->OnGroupMembersChanged(groupId, add, remove);
         break;
@@ -1392,8 +1413,22 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         this->ProcessAxScriptPacket(jsonObj["name"].toString(), jsonObj["content"].toString(), jsonObj["groups"].toArray());
         break;
 
+    case TYPE_AXSCRIPT_LIST:
+        Q_EMIT serverScriptsChanged();
+        break;
+
+    case TYPE_EVENT_HANDLERS:
+        Q_EMIT eventHandlersChanged();
+        break;
+
     case SP_TYPE_EVENT:
         LogsDock->AddLogs( jsonObj["event_type"].toDouble(), jsonObj["date"].toDouble(), jsonObj["message"].toString() );
+        if (LogsDock) {
+            auto* coreDw = LogsDock->dock() ? LogsDock->dock()->dockWidget() : nullptr;
+            const bool viewingLogs = coreDw && coreDw->isOpen() && coreDw->isCurrentTab();
+            if (!viewingLogs)
+                LogsUnreadIncrement();
+        }
         break;
 
     case TYPE_LOG_BATCH:

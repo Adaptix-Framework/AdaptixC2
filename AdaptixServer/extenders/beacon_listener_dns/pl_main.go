@@ -9,7 +9,10 @@ import (
 	"github.com/Adaptix-Framework/axc2/v2"
 )
 
-const logSrc = "listener:beacon_dns"
+const (
+	logSrc = "listener"
+	logCtg = "beacon_dns"
+)
 
 type PluginListener struct{}
 

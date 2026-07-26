@@ -1,41 +1,37 @@
 #ifndef ADAPTIXCLIENT_LISTENERSFEEDWIDGET_H
 #define ADAPTIXCLIENT_LISTENERSFEEDWIDGET_H
 
-#include <Utils/CustomElements/ListFeed.h>
 #include <UI/Widgets/AbstractDock.h>
-
+#include <Utils/CustomElements/ControlCard.h>
 #include <main.h>
+
+#include <QWidget>
+#include <QLineEdit>
+#include <QComboBox>
+#include <QPushButton>
+#include <QVariant>
 
 class AdaptixWidget;
 
-class ListenersFilterProxy : public QSortFilterProxyModel
-{
-Q_OBJECT
-    QString m_searchText;
-    QString m_protocol;
-
-public:
-    explicit ListenersFilterProxy(QObject* parent = nullptr);
-
-    void setSearchText(const QString& text);
-    void setProtocol(const QString& protocol);
-
-protected:
-    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
-};
-
-
-
-
-
-class ListenersFeedWidget : public ListFeedWidget
+class ListenersFeedWidget : public QWidget
 {
 Q_OBJECT
     AdaptixWidget* m_adaptixWidget = nullptr;
     KDDockWidgets::QtWidgets::DockWidget* dockWidget = nullptr;
 
-    FeedListModel*        feedBlockModel = nullptr;
-    ListenersFilterProxy* filterProxy    = nullptr;
+    ControlCardList* m_cardList       = nullptr;
+    QLineEdit*       m_search         = nullptr;
+    QComboBox*       m_protocolFilter = nullptr;
+    QPushButton*     m_addBtn         = nullptr;
+
+    QList<ListenerData> m_items;
+    QString m_selectedName;
+
+    void rebuildVisible();
+    ControlCardData toCard(const ListenerData& l) const;
+    bool matchesFilter(const ListenerData& l) const;
+    ListenerData* findByName(const QString& name);
+    const ListenerData* findByName(const QString& name) const;
 
 public:
     explicit ListenersFeedWidget(AdaptixWidget* w);
@@ -57,13 +53,7 @@ public:
     };
     ListenerInfo currentListenerInfo() const;
 
-protected:
-    void onSortingChanged(int index) override;
-    void onFilterChanged() override;
-    void onGroupModeChanged(int index) override;
-
 public Q_SLOTS:
-    void handleFeedMenu(const QPoint& pos);
     void onCreateListener();
     void onEditListener();
     void onRemoveListener();
@@ -72,6 +62,16 @@ public Q_SLOTS:
     void onSetTag();
     void onGenerateAgent();
     void onCreateConnector();
+
+private Q_SLOTS:
+    void onSearchChanged(const QString& text);
+    void onProtocolFilterChanged(int);
+    void onCardPrimary(const QVariant& id);
+    void onCardDelete(const QVariant& id);
+    void onCardGenerate(const QVariant& id);
+    void onCardDoubleClick(const QVariant& id);
+    void onCardSelected(const QVariant& id);
+    void onCardContextMenu(const QVariant& id, const QPoint& globalPos);
 };
 
 #endif

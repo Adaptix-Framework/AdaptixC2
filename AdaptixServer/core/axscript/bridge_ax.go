@@ -265,35 +265,44 @@ func registerAxBridge(engine *ScriptEngine) {
 	})
 
 	axObj.Set("console_message", func(call goja.FunctionCall) goja.Value {
-		if engine.manager == nil || len(call.Arguments) < 3 {
+		if engine.manager == nil || len(call.Arguments) < 2 {
 			return goja.Undefined()
 		}
 		agentId := exportInt64(call.Argument(0))
-		msgType := int(call.Argument(1).ToInteger())
-		switch msgType {
-		case 1, 2, 3, 4, 5, 6, 7, 10:
-		default:
-			panic(rt.NewTypeError("ax.console_message: invalid msgType %d (allowed: 1..7, 10)", msgType))
+		message := call.Argument(1).String()
+		typeStr := ""
+		if len(call.Arguments) > 2 {
+			typeStr = call.Argument(2).String()
 		}
-		message := call.Argument(2).String()
 		clearText := ""
 		if len(call.Arguments) > 3 {
 			clearText = call.Argument(3).String()
 		}
+
+		msgType := 10 // CONSOLE_OUT
+		switch strings.ToLower(typeStr) {
+		case "info":
+			msgType = 2 // CONSOLE_OUT_LOCAL_INFO
+		case "success":
+			msgType = 4 // CONSOLE_OUT_LOCAL_SUCCESS
+		case "error":
+			msgType = 3 // CONSOLE_OUT_LOCAL_ERROR
+		}
+
 		engine.manager.ConsoleMessage(agentId, engine.CurrentClient(), msgType, message, clearText)
 		return goja.Undefined()
 	})
 
 	axObj.Set("log", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) > 0 {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusInfo, 0, "server:axscript_manager", "[%s] %s", engine.name, call.Argument(0).String())
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusInfo, 0, "axscript_manager", "log", "[%s] %s", engine.name, call.Argument(0).String())
 		}
 		return goja.Undefined()
 	})
 
 	axObj.Set("log_error", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) > 0 {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "[%s] %s", engine.name, call.Argument(0).String())
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "axscript_manager", "log_error", "[%s] %s", engine.name, call.Argument(0).String())
 		}
 		return goja.Undefined()
 	})
@@ -365,7 +374,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		}
 
 		if groupBuilder == nil {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "register_commands_group: invalid group object")
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "register_commands_group", "invalid group object")
 			return goja.Undefined()
 		}
 
@@ -410,15 +419,16 @@ func registerAxBridge(engine *ScriptEngine) {
 		}
 
 		var sourceType SourceType
+		var scriptName string
 		if strings.HasPrefix(engine.name, "user:") {
 			sourceType = SourceUser
+			scriptName = strings.TrimPrefix(engine.name, "user:")
 		} else {
 			sourceType = SourceProfile
-		}
-
-		scriptName := engine.GetMetadataName()
-		if scriptName == "" {
-			scriptName = filepath.Base(engine.scriptPath)
+			scriptName = engine.GetMetadataName()
+			if scriptName == "" {
+				scriptName = filepath.Base(engine.scriptPath)
+			}
 		}
 
 		for _, agentName := range agentNames {
@@ -450,7 +460,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		path := call.Argument(0).String()
 		err := engine.manager.LoadAxScriptChild(engine, path)
 		if err != nil {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "script_load error: %v", err)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "axscript_manager", "script", "load error: %v", err)
 			panic(rt.NewGoError(err))
 		}
 		return goja.Undefined()
@@ -463,7 +473,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		path := call.Argument(0).String()
 		absPath, err := engine.manager.ImportAxScript(engine, path)
 		if err != nil {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "script_import error: %v", err)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "axscript_manager", "script", "import error: %v", err)
 			panic(rt.NewGoError(err))
 		}
 		engine.AddImportedFile(absPath)
@@ -477,7 +487,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		name := call.Argument(0).String()
 		err := engine.manager.UnloadAxScript(name)
 		if err != nil {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "server:axscript_manager", "script_unload error: %v", err)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "script", "unload error: %v", err)
 		}
 		return goja.Undefined()
 	})
@@ -647,7 +657,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		}
 		err := engine.manager.teamserver.AxCredentialsAdd([]map[string]interface{}{cred})
 		if err != nil {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript", "credentials_add: %v", err)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "log", "credentials_add: %v", err)
 			return rt.ToValue(false)
 		}
 		return rt.ToValue(true)
@@ -673,7 +683,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		}
 		err := engine.manager.teamserver.AxCredentialsAdd(creds)
 		if err != nil {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript", "credentials_add_list: %v", err)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "log", "credentials_add_list: %v", err)
 			return rt.ToValue(false)
 		}
 		return rt.ToValue(true)
@@ -710,7 +720,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		}
 		err := engine.manager.teamserver.AxTargetsAdd([]map[string]interface{}{target})
 		if err != nil {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript", "targets_add: %v", err)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "log", "targets_add: %v", err)
 			return rt.ToValue(false)
 		}
 		return rt.ToValue(true)
@@ -736,7 +746,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		}
 		err := engine.manager.teamserver.AxTargetsAdd(targets)
 		if err != nil {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript", "targets_add_list: %v", err)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "log", "targets_add_list: %v", err)
 			return rt.ToValue(false)
 		}
 		return rt.ToValue(true)
@@ -825,8 +835,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		case string:
 			data = []byte(x)
 		default:
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript",
-				"file_write: expected ArrayBuffer/Uint8Array/string, got %T", x)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "file", "file_write expected ArrayBuffer/Uint8Array/string, got %T", x)
 			return rt.ToValue(false)
 		}
 
@@ -836,8 +845,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		}
 
 		if err := engine.manager.WriteFileSandboxed(engine, path, data, appendMode); err != nil {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript",
-				"file_write %q: %v", path, err)
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "file", "file_write %q: %v", path, err)
 			return rt.ToValue(false)
 		}
 		return rt.ToValue(true)
@@ -968,7 +976,7 @@ func registerAxBridge(engine *ScriptEngine) {
 
 	axObj.Set("show_message", func(call goja.FunctionCall) goja.Value {
 		if len(call.Arguments) >= 2 {
-			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusInfo, 0, "server:axscript_manager", "[%s] Message: %s - %s", engine.name, call.Argument(0).String(), call.Argument(1).String())
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusInfo, 0, "axscript_manager", "log", "[%s] Message: %s - %s", engine.name, call.Argument(0).String(), call.Argument(1).String())
 		}
 		return goja.Undefined()
 	})

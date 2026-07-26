@@ -109,6 +109,7 @@ type Teamserver struct {
 	FrameManager  *FrameManager
 	EventManager  *eventing.EventManager
 	ScriptManager *axscript.ScriptManager
+	EventHandlers *EventHandlerRegistry
 	LogManager    *LogManager
 
 	listener_configs axsafe.Map[string, extender.ListenerInfo] // listenerFullName
@@ -825,6 +826,7 @@ type SyncPackerTunnelCreate struct {
 	Date      int64  `json:"p_date"`
 	BytesSent int64  `json:"p_bytes_sent"`
 	BytesRecv int64  `json:"p_bytes_recv"`
+	Active    bool   `json:"p_active"`
 }
 
 type SyncPackerTunnelEdit struct {
@@ -832,6 +834,7 @@ type SyncPackerTunnelEdit struct {
 
 	TunnelId int64  `json:"p_tunnel_id"`
 	Info     string `json:"p_info"`
+	Active   bool   `json:"p_active"`
 }
 
 type SyncPackerTunnelDelete struct {
@@ -847,6 +850,16 @@ type SyncPackerAxScriptData struct {
 	Name    string           `json:"name"`
 	Content string           `json:"content"`
 	Groups  []AxCommandBatch `json:"groups"`
+}
+
+type SyncPackerAxScriptList struct {
+	SpType int                      `json:"type"`
+	Items  []map[string]interface{} `json:"items"`
+}
+
+type SyncPackerEventHandlers struct {
+	SpType int                      `json:"type"`
+	Items  []map[string]interface{} `json:"items"`
 }
 
 type AxCommandBatch struct {

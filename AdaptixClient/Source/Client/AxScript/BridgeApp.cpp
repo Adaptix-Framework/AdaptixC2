@@ -9,8 +9,11 @@
 #include <Client/AxScript/AxCommandWrappers.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxScriptUtils.h>
+#include <Client/AxScript/AxElementWrappers.h>
+#include <Client/CodeEditorProfileManager.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
+#include <UI/Widgets/CodeEditorWidget.h>
 #include <UI/Widgets/CredentialWidgetIface.h>
 #include <UI/Widgets/TargetWidgetIface.h>
 
@@ -409,11 +412,12 @@ void BridgeApp::console_message(const QString &id, const QString &message, const
         return;
 
     int msgType = CONSOLE_OUT;
-    if (type == "info")
+    const QString t = type.toLower();
+    if (t == QLatin1String("info"))
         msgType = CONSOLE_OUT_LOCAL_INFO;
-    else if (type == "success")
+    else if (t == QLatin1String("success"))
         msgType = CONSOLE_OUT_LOCAL_SUCCESS;
-    else if (type == "error")
+    else if (t == QLatin1String("error"))
         msgType = CONSOLE_OUT_LOCAL_ERROR;
 
     agent->Console->ConsoleOutputMessage(QDateTime::currentSecsSinceEpoch(), "", msgType, message, text, false);
@@ -617,12 +621,24 @@ QString BridgeApp::file_extension(const QString &path) const
     return fi.suffix();
 }
 
-bool BridgeApp::file_exists(const QString &path) const { return QFile::exists(path); }
+bool BridgeApp::file_exists(const QString &path) const
+{
+    QString p = path;
+    if (scriptEngine) {
+        QString err;
+        if (!scriptEngine->resolveFsPath(p, false, &err))
+            return false;
+    }
+    return QFile::exists(p);
+}
 
 QByteArray BridgeApp::file_read(QString path) const
 {
-    if (path.startsWith("~/"))
-        path = QDir::home().filePath(path.mid(2));
+    if (!scriptEngine)
+        return {};
+    QString err;
+    if (!scriptEngine->resolveFsPath(path, false, &err))
+        return {};
 
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly))
@@ -634,14 +650,27 @@ QByteArray BridgeApp::file_read(QString path) const
 
 qint64 BridgeApp::file_size(const QString &path) const
 {
-    QFileInfo fi(path);
+    QString p = path;
+    if (scriptEngine) {
+        QString err;
+        if (!scriptEngine->resolveFsPath(p, false, &err))
+            return -1;
+    }
+    QFileInfo fi(p);
     return fi.size();
 }
 
 bool BridgeApp::file_write(QString path, const QByteArray &data, bool append) const
 {
-    if (path.startsWith("~/"))
-        path = QDir::home().filePath(path.mid(2));
+    if (!scriptEngine)
+        return false;
+    QString err;
+    if (!scriptEngine->resolveFsPath(path, true, &err))
+        return false;
+
+    QFileInfo fi(path);
+    if (!fi.dir().exists())
+        fi.dir().mkpath(QStringLiteral("."));
 
     QFile file(path);
     QIODevice::OpenMode mode = append ? (QIODevice::WriteOnly | QIODevice::Append)
@@ -753,8 +782,11 @@ QByteArray BridgeApp::decode_data(const QString &algorithm, const QByteArray &da
 QVariant BridgeApp::encode_file(const QString &algorithm, const QString &path, const QString &key) const
 {
     QString filePath = path;
-    if (filePath.startsWith("~/"))
-        filePath = QDir::home().filePath(filePath.mid(2));
+    if (scriptEngine) {
+        QString err;
+        if (!scriptEngine->resolveFsPath(filePath, false, &err))
+            return QVariant(QString(""));
+    }
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly))
@@ -769,8 +801,11 @@ QVariant BridgeApp::encode_file(const QString &algorithm, const QString &path, c
 QByteArray BridgeApp::decode_file(const QString &algorithm, const QString &path, const QString &key) const
 {
     QString filePath = path;
-    if (filePath.startsWith("~/"))
-        filePath = QDir::home().filePath(filePath.mid(2));
+    if (scriptEngine) {
+        QString err;
+        if (!scriptEngine->resolveFsPath(filePath, false, &err))
+            return QByteArray();
+    }
 
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly))
@@ -991,9 +1026,19 @@ bool BridgeApp::isadmin(const QString &id) const
     return mapAgents[id.toLongLong()]->data.Elevated;
 }
 
-void BridgeApp::log(const QString &text) { Q_EMIT consoleMessage(text); }
+void BridgeApp::log(const QString &text)
+{
+    Q_EMIT consoleMessage(text);
+    if (scriptEngine && !scriptEngine->isServerMode())
+        CodeEditorWidget::postLog(text, QColor(0xd4d4d4));
+}
 
-void BridgeApp::log_error(const QString &text) { Q_EMIT consoleError(text); }
+void BridgeApp::log_error(const QString &text)
+{
+    Q_EMIT consoleError(text);
+    if (scriptEngine && !scriptEngine->isServerMode())
+        CodeEditorWidget::postLog(text, QColor(0xf44747));
+}
 
 void BridgeApp::open_agent_console(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadConsoleUI(id.toLongLong()); }
 
@@ -1006,6 +1051,142 @@ void BridgeApp::open_browser_process(const QString &id) { scriptEngine->manager(
 void BridgeApp::open_remote_terminal(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadTerminalUI(id.toLongLong()); }
 
 void BridgeApp::open_remote_shell(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadShellUI(id.toLongLong()); }
+
+static CodeEditorOpenOptions parseCodeEditorOpts(const QJSValue& v)
+{
+    CodeEditorOpenOptions opts;
+    if (!v.isObject())
+        return opts;
+    QVariantMap map = v.toVariant().toMap();
+    if (map.isEmpty()) {
+        QJSValue profiles = v.property(QStringLiteral("profiles"));
+        if (!profiles.isUndefined() && !profiles.isNull()) {
+            opts.restrictProfiles = true;
+            if (profiles.isArray()) {
+                const int n = profiles.property(QStringLiteral("length")).toInt();
+                for (int i = 0; i < n; ++i)
+                    opts.profiles.append(profiles.property(i).toString());
+            } else if (profiles.isString()) {
+                opts.profiles.append(profiles.toString());
+            }
+        }
+        if (v.hasProperty(QStringLiteral("profile")))
+            opts.profile = v.property(QStringLiteral("profile")).toString();
+        return opts;
+    }
+    return CodeEditorOpenOptions::fromVariantMap(map);
+}
+
+void BridgeApp::open_code_editor(const QJSValue& arg1, const QJSValue& arg2)
+{
+    auto* ax = scriptEngine->manager()->GetAdaptix();
+    if (!ax)
+        return;
+
+    if (arg1.isUndefined() || arg1.isNull()) {
+        ax->LoadCodeEditorUI();
+        return;
+    }
+
+    if (arg1.isObject() && !arg1.isString() && !arg1.isNumber()) {
+        ax->LoadCodeEditorUI(parseCodeEditorOpts(arg1));
+        return;
+    }
+
+    const QString id = arg1.toString().trimmed();
+    CodeEditorOpenOptions opts;
+    if (arg2.isObject())
+        opts = parseCodeEditorOpts(arg2);
+
+    if (id.isEmpty())
+        ax->LoadCodeEditorUI(opts);
+    else
+        ax->LoadAgentCodeEditorUI(id.toLongLong(), opts);
+}
+
+QString BridgeApp::editor_profile_upsert(const QJSValue& spec)
+{
+    if (!spec.isObject())
+        return QStringLiteral("error: expected object");
+
+    auto* mgr = CodeEditorProfileManager::instance();
+    if (!mgr)
+        return QStringLiteral("error: no profile manager");
+
+    BuildProfile p;
+    p.id = spec.property(QStringLiteral("id")).toString().trimmed();
+    if (p.id.isEmpty())
+        return QStringLiteral("error: id is required");
+
+    p.name = spec.hasProperty(QStringLiteral("name")) ? spec.property(QStringLiteral("name")).toString() : p.id;
+    p.origin = BuildProfileOrigin::Managed;
+    p.persist = true;
+    if (spec.hasProperty(QStringLiteral("persist")))
+        p.persist = spec.property(QStringLiteral("persist")).toBool();
+
+    if (spec.hasProperty(QStringLiteral("language")))
+        p.language = spec.property(QStringLiteral("language")).toString();
+    if (p.language.isEmpty())
+        p.language = QStringLiteral("plain");
+
+    if (spec.hasProperty(QStringLiteral("panel_script")))
+        p.panelScript = spec.property(QStringLiteral("panel_script")).toString();
+    else if (spec.hasProperty(QStringLiteral("panelScript")))
+        p.panelScript = spec.property(QStringLiteral("panelScript")).toString();
+
+    if (spec.hasProperty(QStringLiteral("toolbar")) && spec.property(QStringLiteral("toolbar")).isObject()) {
+        QJSValue tb = spec.property(QStringLiteral("toolbar"));
+        QJsonObject o;
+        const QStringList keys = {
+            QStringLiteral("newFile"), QStringLiteral("openFile"), QStringLiteral("openFolder"),
+            QStringLiteral("save"), QStringLiteral("explorer"), QStringLiteral("buildLog"),
+            QStringLiteral("minimap"), QStringLiteral("wordWrap"), QStringLiteral("panel")
+        };
+        for (const QString& k : keys) {
+            if (tb.hasProperty(k)) {
+                QJSValue v = tb.property(k);
+                if (v.isBool())
+                    o.insert(k, v.toBool());
+                else if (v.isString())
+                    o.insert(k, v.toString());
+            }
+        }
+        p.toolbar = BuildProfileToolbar::fromJson(o, BuildProfileToolbar::defaults());
+    } else {
+        p.toolbar = BuildProfileToolbar::defaults();
+    }
+
+    QJSValue actions = spec.property(QStringLiteral("actions"));
+    if (actions.isArray()) {
+        const int n = actions.property(QStringLiteral("length")).toInt();
+        for (int i = 0; i < n; ++i) {
+            QJSValue a = actions.property(i);
+            if (!a.isObject())
+                continue;
+            BuildProfileAction act;
+            act.id     = a.property(QStringLiteral("id")).toString();
+            act.label  = a.property(QStringLiteral("label")).toString();
+            act.icon   = a.property(QStringLiteral("icon")).toString();
+            act.script = a.property(QStringLiteral("script")).toString();
+            if (act.id.isEmpty() && !act.label.isEmpty())
+                act.id = act.label.toLower();
+            if (!act.id.isEmpty() || !act.script.isEmpty())
+                p.customActions.append(act);
+        }
+    }
+
+    if (p.panelScript.trimmed().isEmpty())
+        p.panelScript = BuildProfile::defaultCustomPanelScript();
+    if (p.customActions.isEmpty())
+        p.customActions = BuildProfile::defaultBofActions();
+
+    const bool force = spec.hasProperty(QStringLiteral("force")) && spec.property(QStringLiteral("force")).toBool();
+
+    const QString result = mgr->upsertProfile(p, force);
+    if (result.startsWith(QLatin1String("error")))
+        log_error(QStringLiteral("editor_profile_upsert: %1").arg(result));
+    return result;
+}
 
 bool BridgeApp::prompt_confirm(const QString &title, const QString &text)
 {
@@ -1097,15 +1278,21 @@ void BridgeApp::script_import(const QString &path)
         return; //scriptEngine->engine()->throwError(QStringLiteral("script_import is not available for server scripts"));
     }
 
-    QFile file(path);
+    QString p = path;
+    QString err;
+    if (!scriptEngine->resolveFsPath(p, false, &err)) {
+        return scriptEngine->engine()->throwError(err.isEmpty() ? QStringLiteral("script_import denied") : err);
+    }
+
+    QFile file(p);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        return scriptEngine->engine()->throwError("Could not open script: " + path);
+        return scriptEngine->engine()->throwError("Could not open script: " + p);
     }
     QTextStream in(&file);
     QString code = in.readAll();
     file.close();
 
-    scriptEngine->engine()->evaluate(code, path);
+    scriptEngine->engine()->evaluate(code, p);
 }
 
 void BridgeApp::script_load(const QString &path)
@@ -1124,7 +1311,109 @@ void BridgeApp::script_unload(const QString &path)
     scriptEngine->manager()->GlobalScriptUnload(path);
 }
 
-QString BridgeApp::script_dir() { return GetParentPathUnix(scriptEngine->context.name) + "/"; }
+bool BridgeApp::event_handler_register(const QJSValue& meta)
+{
+    if (scriptEngine && scriptEngine->isServerMode()) {
+        log_error(QStringLiteral("event_handler_register is not available in server scripts"));
+        return false;
+    }
+    auto* adaptix = scriptEngine ? scriptEngine->manager()->GetAdaptix() : nullptr;
+    if (!adaptix || !adaptix->GetProfile()) {
+        log_error(QStringLiteral("event_handler_register: no active connection"));
+        return false;
+    }
+    if (!meta.isObject()) {
+        log_error(QStringLiteral("event_handler_register: meta must be an object"));
+        return false;
+    }
+
+    QJsonObject body;
+    const auto putStr = [&](const char* key) {
+        const QJSValue v = meta.property(QString::fromUtf8(key));
+        if (!v.isUndefined() && !v.isNull())
+            body.insert(QString::fromUtf8(key), v.toString());
+    };
+    putStr("id");
+    putStr("name");
+    putStr("group");
+    putStr("description");
+    putStr("event");
+    putStr("script");
+
+    if (meta.hasProperty(QStringLiteral("enabled"))) {
+        const QJSValue en = meta.property(QStringLiteral("enabled"));
+        if (en.isBool())
+            body.insert(QStringLiteral("enabled"), en.toBool());
+    }
+
+    if (meta.hasProperty(QStringLiteral("filters"))) {
+        const QJSValue f = meta.property(QStringLiteral("filters"));
+        if (f.isObject() && scriptEngine && scriptEngine->engine()) {
+            QJSEngine* eng = scriptEngine->engine();
+            const QJSValue json = eng->globalObject().property(QStringLiteral("JSON"));
+            const QJSValue s = json.property(QStringLiteral("stringify")).callWithInstance(json, QJSValueList{f});
+            if (s.isString()) {
+                const QJsonDocument doc = QJsonDocument::fromJson(s.toString().toUtf8());
+                if (doc.isObject())
+                    body.insert(QStringLiteral("filters"), doc.object());
+            }
+        }
+    }
+
+    if (body.value(QStringLiteral("name")).toString().trimmed().isEmpty()) {
+        log_error(QStringLiteral("event_handler_register: name is required"));
+        return false;
+    }
+    if (body.value(QStringLiteral("event")).toString().trimmed().isEmpty()) {
+        log_error(QStringLiteral("event_handler_register: event is required"));
+        return false;
+    }
+    if (body.value(QStringLiteral("script")).toString().trimmed().isEmpty()) {
+        log_error(QStringLiteral("event_handler_register: script is required"));
+        return false;
+    }
+
+    const QString name = body.value(QStringLiteral("name")).toString();
+    QPointer<BridgeApp> self(this);
+    AdaptixWidget* axw = adaptix;
+    HttpReqEventHandlerRegisterAsync(body, *adaptix->GetProfile(), [self, name, axw](bool success, const QString& message, const QJsonObject& resp) {
+            if (!self)
+                return;
+            if (!success) {
+                self->log_error(QStringLiteral("event_handler_register failed (%1): %2").arg(name, message));
+                return;
+            }
+            QString id;
+            QJsonObject data = resp;
+            if (resp.contains(QStringLiteral("data")) && resp.value(QStringLiteral("data")).isObject())
+                data = resp.value(QStringLiteral("data")).toObject();
+            id = data.value(QStringLiteral("id")).toString();
+            if (!id.isEmpty())
+                self->log(QStringLiteral("event_handler_register OK: %1 (id=%2)").arg(name, id));
+            else
+                self->log(QStringLiteral("event_handler_register OK: %1").arg(name));
+            if (!id.isEmpty() && self->scriptEngine) {
+                Q_UNUSED(id);
+            }
+            if (axw)
+                Q_EMIT axw->eventHandlersChanged();
+        });
+    return true;
+}
+
+QString BridgeApp::script_dir()
+{
+    if (!scriptEngine)
+        return {};
+    QString name = scriptEngine->context.name;
+    QFileInfo fi(name);
+    if (!fi.exists() && !QDir::isAbsolutePath(name))
+        return QDir::currentPath() + QLatin1Char('/');
+    QString dir = fi.absolutePath();
+    if (!dir.endsWith(QLatin1Char('/')) && !dir.endsWith(QLatin1Char('\\')))
+        dir += QDir::separator();
+    return dir;
+}
 
 QString BridgeApp::get_project() const
 {
@@ -1345,3 +1634,5 @@ QJSValue BridgeApp::validate_command(const QString &id, const QString &command) 
 
     return scriptEngine->engine()->toScriptValue(result);
 }
+
+

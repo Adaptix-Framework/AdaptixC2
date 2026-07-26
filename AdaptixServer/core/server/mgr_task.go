@@ -143,7 +143,7 @@ func (tm *TaskManager) executeServerHandler(taskData *adaptix.TaskData) {
 func (tm *TaskManager) Create(agentId int64, cmdline string, client string, taskData adaptix.TaskData) {
 	agent, ok := tm.ts.Agents.Get(agentId)
 	if !ok {
-		tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:task_manager", "TsTaskCreate: agent %v not found", agentId)
+		tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "task_manager", "TsTaskCreate: agent %v not found", agentId)
 		return
 	}
 
@@ -167,7 +167,7 @@ func (tm *TaskManager) Create(agentId int64, cmdline string, client string, task
 
 	handler, ok := tm.handlers[taskData.Type]
 	if !ok {
-		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "Unknown task type: %d", taskData.Type)
+		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "task_manager", "Unknown task type: %d", taskData.Type)
 		return
 	}
 
@@ -185,7 +185,7 @@ func (tm *TaskManager) Create(agentId int64, cmdline string, client string, task
 
 			err := deliveryFn(agentId, taskData)
 			if err != nil {
-				tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "delivery callback error for agent %d: %v", agentId, err)
+				tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "task_manager", "delivery callback error for agent %d: %v", agentId, err)
 			}
 		}()
 	}
@@ -204,7 +204,7 @@ func (tm *TaskManager) Create(agentId int64, cmdline string, client string, task
 func (tm *TaskManager) Update(agentId int64, updateData adaptix.TaskData) {
 	agent, ok := tm.ts.Agents.Get(agentId)
 	if !ok {
-		tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:task_manager", "TsTaskUpdate: agent %v not found", agentId)
+		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "task_manager", "TsTaskUpdate: agent %v not found (task %v ignored)", agentId, updateData.TaskId)
 		return
 	}
 
@@ -217,7 +217,7 @@ func (tm *TaskManager) Update(agentId int64, updateData adaptix.TaskData) {
 
 	handler, ok := tm.handlers[task.Type]
 	if !ok {
-		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "Unknown task type: %d", task.Type)
+		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "task_manager", "Unknown task type: %d", task.Type)
 		return
 	}
 
@@ -403,9 +403,9 @@ func (tm *TaskManager) DispatchPreEncode(agent *adaptix.Agent, tasks []adaptix.T
 			if t.Completed {
 				switch t.Type {
 				case adaptix.TASK_TYPE_JOB:
-					tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "OnDispatch set Completed=true on a JOB task %d — ignored at finalize", t.TaskId)
+					tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "task_manager", "OnDispatch set Completed=true on a JOB task %d — ignored at finalize", t.TaskId)
 				case adaptix.TASK_TYPE_BROWSER:
-					tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "OnDispatch set Completed=true on a BROWSER task %d — ignored at finalize", t.TaskId)
+					tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "task_manager", "OnDispatch set Completed=true on a BROWSER task %d — ignored at finalize", t.TaskId)
 				}
 			}
 		}
@@ -440,7 +440,7 @@ const onDispatchSlowThreshold = 100 * time.Millisecond
 func (tm *TaskManager) safeRunDispatch(t *adaptix.TaskData) {
 	defer func() {
 		if r := recover(); r != nil {
-			tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:task_manager", "OnDispatch panic for task %d: %v", t.TaskId, r)
+			tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "task_manager", "OnDispatch panic for task %d: %v", t.TaskId, r)
 			t.Completed = true
 		}
 	}()
@@ -456,13 +456,13 @@ func (tm *TaskManager) safeRunDispatch(t *adaptix.TaskData) {
 	start := time.Now()
 	t.OnDispatch(tm.ts, t)
 	if elapsed := time.Since(start); elapsed > onDispatchSlowThreshold {
-		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "slow OnDispatch task=%d agent=%d took=%v",
+		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "task_manager", "slow OnDispatch task=%d agent=%d took=%v",
 			t.TaskId, t.AgentId, elapsed)
 	}
 
 	if auditDispatch {
 		if diff := taskDispatchDiff(&before, t); diff != "" {
-			tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager",
+			tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "task_manager",
 				"OnDispatch mutated task %d: %s", t.TaskId, diff)
 		}
 	}
@@ -533,13 +533,13 @@ const onCompleteSlowThreshold = 100 * time.Millisecond
 func (tm *TaskManager) safeRunComplete(t *adaptix.TaskData) {
 	defer func() {
 		if r := recover(); r != nil {
-			tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:task_manager", "OnComplete panic for task %d: %v", t.TaskId, r)
+			tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "task_manager", "OnComplete panic for task %d: %v", t.TaskId, r)
 		}
 	}()
 
 	start := time.Now()
 	t.OnComplete(tm.ts, t)
 	if elapsed := time.Since(start); elapsed > onCompleteSlowThreshold {
-		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:task_manager", "slow OnComplete task=%d agent=%d took=%v", t.TaskId, t.AgentId, elapsed)
+		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "task_manager", "slow OnComplete task=%d agent=%d took=%v", t.TaskId, t.AgentId, elapsed)
 	}
 }

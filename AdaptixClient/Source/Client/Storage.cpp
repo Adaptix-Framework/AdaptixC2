@@ -705,6 +705,60 @@ void Storage::UpdateSettingsTabBlink(const SettingsData &settingsData)
         LogError("SettingsTablBlink not updated in database: %s\n", query.lastError().text().toStdString().c_str());
 }
 
+static QJsonObject policyToJson(const AxScriptPolicy& p)
+{
+    QJsonObject o;
+    o["fileRead"]  = p.fileRead;
+    o["fileWrite"] = p.fileWrite;
+    o["process"]   = p.process;
+    o["sandboxFs"] = p.sandboxFs;
+    return o;
+}
+
+static void policyFromJson(const QJsonObject& o, AxScriptPolicy* p)
+{
+    if (!p) return;
+    if (o.contains("fileRead"))  p->fileRead  = o.value("fileRead").toBool(p->fileRead);
+    if (o.contains("fileWrite")) p->fileWrite = o.value("fileWrite").toBool(p->fileWrite);
+    if (o.contains("process"))   p->process   = o.value("process").toBool(p->process);
+    if (o.contains("sandboxFs")) p->sandboxFs = o.value("sandboxFs").toBool(p->sandboxFs);
+}
+
+void Storage::SelectSettingsScript(SettingsData* settingsData)
+{
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsScript' LIMIT 1;");
+    if (query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject   json = doc.object();
+
+        policyFromJson(json.value("server").toObject(), &settingsData->ScriptServer);
+        policyFromJson(json.value("local").toObject(), &settingsData->ScriptLocal);
+        policyFromJson(json.value("editor").toObject(), &settingsData->ScriptEditor);
+        policyFromJson(json.value("editorAction").toObject(), &settingsData->ScriptEditorAction);
+        if (json.contains("sandboxDir"))
+            settingsData->ScriptSandboxDir = json.value("sandboxDir").toString();
+    }
+}
+
+void Storage::UpdateSettingsScript(const SettingsData &settingsData)
+{
+    QJsonObject json;
+    json["server"]       = policyToJson(settingsData.ScriptServer);
+    json["local"]        = policyToJson(settingsData.ScriptLocal);
+    json["editor"]       = policyToJson(settingsData.ScriptEditor);
+    json["editorAction"] = policyToJson(settingsData.ScriptEditorAction);
+    json["sandboxDir"]   = settingsData.ScriptSandboxDir;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsScript', :Data);");
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("SettingsScript not updated in database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
 
 
 /// LISTENER PROFILES

@@ -4,11 +4,83 @@
 #include <Client/AxScript/BridgeForm.h>
 #include <Client/AxScript/BridgeEvent.h>
 #include <Client/AxScript/BridgeMenu.h>
+#include <Client/AxScript/BridgeProcess.h>
 #include <Client/AxScript/AxElementWrappers.h>
+#include <Client/Settings.h>
 #include <MainAdaptix.h>
 #include <main.h>
 
-AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &name, QObject *parent) : QObject(parent), scriptManager(script_manager)
+#include <QDir>
+#include <QFileInfo>
+
+namespace {
+
+const SettingsData* liveSettings()
+{
+    if (GlobalClient && GlobalClient->settings)
+        return &GlobalClient->settings->data;
+    return nullptr;
+}
+
+QString expandTildePath(QString path)
+{
+    path = path.trimmed();
+    if (path.isEmpty())
+        return path;
+
+    if (path == QLatin1Char('~'))
+        return QDir::homePath();
+
+    if (path.startsWith(QLatin1String("~/")) || path.startsWith(QLatin1String("~\\")))
+        return QDir::home().filePath(path.mid(2));
+
+    return path;
+}
+
+QString normalizePathKey(QString path)
+{
+    path = expandTildePath(std::move(path));
+    path = QDir::cleanPath(path);
+    path.replace(QLatin1Char('\\'), QLatin1Char('/'));
+
+#ifdef Q_OS_WIN
+    path = path.toLower();
+    while (path.size() > 3 && path.endsWith(QLatin1Char('/')))
+        path.chop(1);
+#else
+    while (path.size() > 1 && path.endsWith(QLatin1Char('/')))
+        path.chop(1);
+#endif
+    return path;
+}
+
+bool pathIsUnderRoot(const QString& candidate, const QString& root)
+{
+    const QString c = normalizePathKey(candidate);
+    const QString r = normalizePathKey(root);
+    if (c.isEmpty() || r.isEmpty())
+        return false;
+    if (c == r)
+        return true;
+    return c.startsWith(r + QLatin1Char('/'));
+}
+
+QString absoluteOrCanonical(const QString& path)
+{
+    const QFileInfo fi(path);
+    if (fi.exists()) {
+        const QString canon = fi.canonicalFilePath();
+        if (!canon.isEmpty())
+            return canon;
+    }
+    if (QDir::isAbsolutePath(path))
+        return QDir::cleanPath(path);
+    return QDir::cleanPath(fi.absoluteFilePath());
+}
+
+} // namespace
+
+AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &name, QObject *parent, const AxScriptTrust trust) : QObject(parent), scriptManager(script_manager), trustLevel(trust)
 {
     jsEngine = std::make_unique<QJSEngine>();
     jsEngine->installExtensions(QJSEngine::ConsoleExtension);
@@ -23,6 +95,11 @@ AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &n
     jsEngine->globalObject().setProperty("event", jsEngine->newQObject(bridgeEvent.get()));
     jsEngine->globalObject().setProperty("menu",  jsEngine->newQObject(bridgeMenu.get()));
 
+    if (allowProcess()) {
+        bridgeProcess = std::make_unique<BridgeProcess>(this, this);
+        jsEngine->globalObject().setProperty("process", jsEngine->newQObject(bridgeProcess.get()));
+    }
+
     if (script_manager) {
         connect(bridgeApp.get(),   &BridgeApp::consoleError,   script_manager, &AxScriptManager::consolePrintError);
         connect(bridgeApp.get(),   &BridgeApp::consoleMessage, script_manager, &AxScriptManager::consolePrintMessage);
@@ -32,6 +109,14 @@ AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &n
     connect(bridgeEvent.get(), &BridgeEvent::scriptError, this, &AxScriptEngine::engineError);
 
     context.name = name;
+
+    if (sandboxFs()) {
+        QDir().mkpath(sandboxRoot());
+    }
+}
+
+AxScriptEngine::AxScriptEngine(AxScriptManager* script_manager, const QString &name, QObject *parent, const bool serverMode) : AxScriptEngine(script_manager, name, parent, serverMode ? AxScriptTrust::Server : AxScriptTrust::Local)
+{
 }
 
 AxScriptEngine::~AxScriptEngine()
@@ -56,6 +141,7 @@ AxScriptEngine::~AxScriptEngine()
     bridgeForm.reset();
     bridgeEvent.reset();
     bridgeMenu.reset();
+    bridgeProcess.reset();
     jsEngine.reset();
 }
 
@@ -69,15 +155,124 @@ BridgeEvent* AxScriptEngine::event() const { return bridgeEvent.get(); }
 
 BridgeMenu* AxScriptEngine::menu() const { return bridgeMenu.get(); }
 
+BridgeProcess* AxScriptEngine::process() const { return bridgeProcess.get(); }
+
 AxScriptManager* AxScriptEngine::manager() const { return this->scriptManager; }
 
-void AxScriptEngine::setServerMode(bool enabled) { serverMode = enabled; }
+void AxScriptEngine::setTrust(AxScriptTrust t) { trustLevel = t; }
 
-bool AxScriptEngine::isServerMode() const { return serverMode; }
+void AxScriptEngine::setServerMode(bool enabled) { trustLevel = enabled ? AxScriptTrust::Server : AxScriptTrust::Local; }
 
 void AxScriptEngine::setEnabled(bool enabled) { scriptEnabled = enabled; }
 
 bool AxScriptEngine::isEnabled() const { return scriptEnabled; }
+
+AxScriptPolicy AxScriptEngine::policy() const
+{
+    AxScriptPolicy p;
+    p.fileRead = true;
+    p.fileWrite = (trustLevel != AxScriptTrust::Server);
+    p.process = (trustLevel == AxScriptTrust::CodeEditorAction);
+    p.sandboxFs = true;
+
+    const SettingsData* s = liveSettings();
+    if (!s)
+        return p;
+
+    switch (trustLevel) {
+    case AxScriptTrust::Server:           return s->ScriptServer;
+    case AxScriptTrust::Local:            return s->ScriptLocal;
+    case AxScriptTrust::CodeEditor:       return s->ScriptEditor;
+    case AxScriptTrust::CodeEditorAction: return s->ScriptEditorAction;
+    }
+    return p;
+}
+
+bool AxScriptEngine::allowFileRead() const  { return policy().fileRead; }
+bool AxScriptEngine::allowFileWrite() const { return policy().fileWrite; }
+bool AxScriptEngine::sandboxFs() const      { return policy().sandboxFs; }
+
+bool AxScriptEngine::allowProcess() const
+{
+    if (trustLevel != AxScriptTrust::CodeEditorAction)
+        return false;
+    return policy().process;
+}
+
+QString AxScriptEngine::sandboxRoot() const
+{
+    const SettingsData* s = liveSettings();
+    QString root;
+    if (s && !s->ScriptSandboxDir.trimmed().isEmpty())
+        root = s->ScriptSandboxDir.trimmed();
+    else
+        root = QDir(QDir::homePath()).filePath(QStringLiteral(".adaptix/script_sandbox"));
+
+    root = expandTildePath(root);
+    return QDir::cleanPath(root);
+}
+
+bool AxScriptEngine::resolveFsPath(QString& path, const bool forWrite, QString* errorOut) const
+{
+    auto fail = [&](const QString& msg) {
+        if (errorOut) *errorOut = msg;
+        return false;
+    };
+
+    if (forWrite) {
+        if (!allowFileWrite())
+            return fail(QStringLiteral("file_write is not allowed for this script context"));
+    } else {
+        if (!allowFileRead())
+            return fail(QStringLiteral("file_read is not allowed for this script context"));
+    }
+
+    path = expandTildePath(path);
+    if (path.isEmpty())
+        return fail(QStringLiteral("empty path"));
+
+    if (!sandboxFs()) {
+        if (QDir::isRelativePath(path))
+            path = QDir::cleanPath(QFileInfo(path).absoluteFilePath());
+        else
+            path = QDir::cleanPath(path);
+        return true;
+    }
+
+    const QString root = sandboxRoot();
+    QDir().mkpath(root);
+    const QString rootAbs = absoluteOrCanonical(root);
+
+    if (QDir::isRelativePath(path)) {
+        path = QDir(rootAbs).filePath(path);
+        path = QDir::cleanPath(path);
+    } else {
+        path = QDir::cleanPath(path);
+    }
+
+    QStringList allowedRoots;
+    allowedRoots << rootAbs;
+
+    if (trustLevel == AxScriptTrust::Local && !context.name.isEmpty()) {
+        const QFileInfo scriptFi(expandTildePath(context.name));
+        if (scriptFi.isAbsolute() || QFile::exists(scriptFi.filePath())) {
+            const QString scriptDir = scriptFi.absolutePath();
+            if (!scriptDir.isEmpty())
+                allowedRoots << absoluteOrCanonical(scriptDir);
+        }
+    }
+
+    const QString checkPath = absoluteOrCanonical(path);
+
+    for (const QString& r : allowedRoots) {
+        if (pathIsUnderRoot(checkPath, r) || pathIsUnderRoot(path, r)) {
+            path = QDir::cleanPath(path);
+            return true;
+        }
+    }
+
+    return fail(QStringLiteral("path is outside the script sandbox: %1").arg(path));
+}
 
 void AxScriptEngine::registerObject(QObject *obj) { context.objects.append(obj); }
 

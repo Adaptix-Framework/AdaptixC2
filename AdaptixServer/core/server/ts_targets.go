@@ -81,8 +81,10 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 			target.Alive = v
 		}
 
-		existing, _ := ts.DBMS.DbTargetFindByMatch(target.Address, target.Computer, target.Domain)
-		if existing != nil {
+		if existing, err := ts.DBMS.DbTargetFindByMatch(target.Address, target.Computer, target.Domain); err == nil && existing != nil {
+			continue
+		}
+		if target.Address == "" && target.Computer == "" {
 			continue
 		}
 
@@ -123,7 +125,7 @@ func (ts *Teamserver) TsTargetsAdd(targets []map[string]interface{}) error {
 
 		err := ts.DBMS.DbTargetsAdd(newTargets)
 		if err != nil {
-			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:targets", "%s", err.Error())
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "targets", "%s", err.Error())
 			return nil
 		}
 		packet := CreateSpTargetsAdd(newTargets)
@@ -151,8 +153,8 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (int64, 
 	}
 	target.Agents = append(target.Agents, agentData.Id)
 
-	existing, _ := ts.DBMS.DbTargetFindByMatch(target.Address, target.Computer, target.Domain)
-	if existing != nil {
+	existing, err := ts.DBMS.DbTargetFindByMatch(target.Address, target.Computer, target.Domain)
+	if err == nil && existing != nil {
 		alreadyExists := false
 		for _, id := range existing.Agents {
 			if id == agentData.Id {
@@ -163,6 +165,23 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (int64, 
 		if !alreadyExists {
 			existing.Agents = append(existing.Agents, agentData.Id)
 		}
+		if target.Address != "" {
+			existing.Address = target.Address
+		}
+		if target.Computer != "" {
+			existing.Computer = target.Computer
+		}
+		if target.Domain != "" {
+			existing.Domain = target.Domain
+		}
+		if target.Os != 0 {
+			existing.Os = target.Os
+		}
+		if target.OsDesk != "" {
+			existing.OsDesk = target.OsDesk
+		}
+		existing.Alive = true
+		existing.Date = time.Now().Unix()
 		_ = ts.DBMS.DbTargetUpdate(existing)
 
 		packet := CreateSpTargetUpdate(*existing)
@@ -184,9 +203,9 @@ func (ts *Teamserver) TsTargetsCreateAlive(agentData adaptix.AgentData) (int64, 
 	var newTargets []*adaptix.TargetData
 	newTargets = append(newTargets, target)
 
-	err := ts.DBMS.DbTargetsAdd(newTargets)
+	err = ts.DBMS.DbTargetsAdd(newTargets)
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:targets", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "targets", "%s", err.Error())
 		return 0, err
 	}
 
@@ -225,6 +244,10 @@ func (ts *Teamserver) TsTargetsEdit(targetId int64, computer string, domain stri
 
 	if target.Computer == modified.Computer && target.Domain == modified.Domain && target.Address == modified.Address && target.Os == modified.Os && target.OsDesk == modified.OsDesk && target.Tag == modified.Tag && target.Info == modified.Info && target.Alive == modified.Alive {
 		return nil
+	}
+
+	if dup, derr := ts.DBMS.DbTargetFindByMatch(modified.Address, modified.Computer, modified.Domain); derr == nil && dup != nil && dup.TargetId != targetId {
+		return fmt.Errorf("target already exists for this host (id %d)", dup.TargetId)
 	}
 
 	target.Computer = modified.Computer

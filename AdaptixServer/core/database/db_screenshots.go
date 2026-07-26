@@ -112,7 +112,7 @@ func (dbms *DBMS) DbScreenshotAll() []adaptix.ScreenData {
 				screens = append(screens, screenData)
 			}
 		} else {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query screenshots: %s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query screenshots: %s", err.Error())
 		}
 	}
 	return screens
@@ -128,7 +128,7 @@ func (dbms *DBMS) DbScreenshotsLimited(limit int) []adaptix.ScreenData {
 	selectQuery := `SELECT ScreenId, AgentId, User, Computer, LocalPath, Note, Date FROM Screenshots ORDER BY Date DESC LIMIT ?;`
 	rows, err := dbms.database.Query(selectQuery, limit)
 	if err != nil {
-		dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query screenshots: %s", err.Error())
+		dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query screenshots: %s", err.Error())
 		return screens
 	}
 	defer func() { _ = rows.Close() }()

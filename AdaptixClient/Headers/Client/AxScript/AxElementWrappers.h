@@ -29,6 +29,9 @@ namespace oclero::qlementine { class Switch; class SegmentedControl; }
 
 class AxScriptEngine;
 class AdaptixWidget;
+class AuthProfile;
+class PageNavBar;
+class PagedTableHelper;
 
 inline const QMap<QString, QString> FIELD_MAP_CREDS = {
     {"username", "Username"},
@@ -181,6 +184,8 @@ public:
     void setContext(QVariantList context) override;
 
     void triggerWithContext(const QVariantList& arg) const;
+
+    Q_INVOKABLE void setIcon(const QString& resourcePath);
 };
 
 
@@ -206,6 +211,7 @@ public:
     void setContext(QVariantList context) override;
 
     Q_INVOKABLE void addItem(AbstractAxMenuItem* item);
+    Q_INVOKABLE void setIcon(const QString& resourcePath);
 };
 
 
@@ -222,6 +228,9 @@ public:
     QBoxLayout* layout() const override;
 
     Q_INVOKABLE void addWidget(QObject* widgetWrapper) const;
+    Q_INVOKABLE void addStretch(int stretch = 1) const;
+    Q_INVOKABLE void setContentsMargins(int left, int top, int right, int bottom) const;
+    Q_INVOKABLE void setSpacing(int spacing) const;
 };
 
 
@@ -972,39 +981,16 @@ public:
         return QVariant();
     }
 
+    QString fieldKey(int column) const {
+        if (column >= 0 && column < m_fieldKeys.size())
+            return m_fieldKeys[column];
+        return {};
+    }
+
     CredentialData getCredential(int row) const {
         if (row >= 0 && row < m_data.size())
             return m_data[row];
         return CredentialData();
-    }
-};
-
-class AxCredsFilterProxyModel : public QSortFilterProxyModel {
-Q_OBJECT
-    QString m_filterText;
-
-public:
-    explicit AxCredsFilterProxyModel(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {}
-
-    void setFilterText(const QString& text) {
-        m_filterText = text;
-QT_WARNING_PUSH
-QT_WARNING_DISABLE_DEPRECATED
-        invalidateFilter();
-QT_WARNING_POP
-    }
-
-protected:
-    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override {
-        if (m_filterText.isEmpty())
-            return true;
-
-        for (int col = 0; col < sourceModel()->columnCount(); ++col) {
-            QModelIndex idx = sourceModel()->index(sourceRow, col, sourceParent);
-            if (idx.data().toString().contains(m_filterText, Qt::CaseInsensitive))
-                return true;
-        }
-        return false;
     }
 };
 
@@ -1017,25 +1003,29 @@ Q_OBJECT
     QSpacerItem*  spacer_1     = nullptr;
     QSpacerItem*  spacer_2     = nullptr;
 
-    QWidget*        searchWidget   = nullptr;
-    QHBoxLayout*    searchLayout   = nullptr;
-    QLineEdit*      searchLineEdit = nullptr;
-    ClickableLabel* hideButton     = nullptr;
+    PageNavBar*       pageNavBar = nullptr;
+    PagedTableHelper* pageHelper = nullptr;
+    AxCredsTableModel* tableModel = nullptr;
 
-    AxCredsTableModel*       tableModel = nullptr;
-    AxCredsFilterProxyModel* proxyModel = nullptr;
+    int     m_offset    = 0;
+    QString m_sortCol   = QStringLiteral("Date");
+    QString m_sortOrder = QStringLiteral("desc");
 
     QVector<CredentialData> selectedData;
 
+    void loadCurrentPage();
+
 public:
-    explicit AxDialogCreds(const QJSValue &headers, const QVector<CredentialData> &vecCreds, QWidget* parent = nullptr);
+    explicit AxDialogCreds(const QJSValue &headers, AuthProfile* profile, QWidget* parent = nullptr);
+    ~AxDialogCreds() override;
 
     QVector<CredentialData> data();
+    void prepare();
 
 public Q_SLOTS:
     void onClicked();
-    void handleSearch();
-    void clearSearch();
+    void onPageReady(const QJsonObject& response);
+    void onPageError(const QString& message);
 };
 
 class AxSelectorCreds : public QObject {
@@ -1044,7 +1034,7 @@ Q_OBJECT
     AxScriptEngine* scriptEngine;
 
 public:
-    explicit AxSelectorCreds(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    explicit AxSelectorCreds(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent = nullptr);
     ~AxSelectorCreds() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
 
     Q_INVOKABLE void     setSize(int w, int h) const;
@@ -1202,7 +1192,7 @@ Q_OBJECT
     AxScriptEngine* scriptEngine;
 
 public:
-    explicit AxSelectorAgents(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    explicit AxSelectorAgents(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent = nullptr);
     ~AxSelectorAgents() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
 
     Q_INVOKABLE void     setSize(int w, int h) const;
@@ -1342,7 +1332,7 @@ Q_OBJECT
     AxScriptEngine*    scriptEngine;
 
 public:
-    explicit AxSelectorListeners(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    explicit AxSelectorListeners(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent = nullptr);
     ~AxSelectorListeners() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
 
     Q_INVOKABLE void     setSize(int w, int h) const;
@@ -1417,39 +1407,16 @@ public:
         return QVariant();
     }
 
+    QString fieldKey(int column) const {
+        if (column >= 0 && column < m_fieldKeys.size())
+            return m_fieldKeys[column];
+        return {};
+    }
+
     TargetData getTarget(int row) const {
         if (row >= 0 && row < m_data.size())
             return m_data[row];
         return TargetData();
-    }
-};
-
-class AxTargetsFilterProxyModel : public QSortFilterProxyModel {
-Q_OBJECT
-    QString m_filterText;
-
-public:
-    explicit AxTargetsFilterProxyModel(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {}
-
-    void setFilterText(const QString& text) {
-        m_filterText = text;
-QT_WARNING_PUSH
-QT_WARNING_DISABLE_DEPRECATED
-        invalidateFilter();
-QT_WARNING_POP
-    }
-
-protected:
-    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override {
-        if (m_filterText.isEmpty())
-            return true;
-
-        for (int col = 0; col < sourceModel()->columnCount(); ++col) {
-            QModelIndex idx = sourceModel()->index(sourceRow, col, sourceParent);
-            if (idx.data().toString().contains(m_filterText, Qt::CaseInsensitive))
-                return true;
-        }
-        return false;
     }
 };
 
@@ -1462,25 +1429,29 @@ Q_OBJECT
     QSpacerItem*  spacer_1     = nullptr;
     QSpacerItem*  spacer_2     = nullptr;
 
-    QWidget*        searchWidget   = nullptr;
-    QHBoxLayout*    searchLayout   = nullptr;
-    QLineEdit*      searchLineEdit = nullptr;
-    ClickableLabel* hideButton     = nullptr;
+    PageNavBar*        pageNavBar = nullptr;
+    PagedTableHelper*  pageHelper = nullptr;
+    AxTargetsTableModel* tableModel = nullptr;
 
-    AxTargetsTableModel*       tableModel = nullptr;
-    AxTargetsFilterProxyModel* proxyModel = nullptr;
+    int     m_offset    = 0;
+    QString m_sortCol   = QStringLiteral("Date");
+    QString m_sortOrder = QStringLiteral("desc");
 
     QVector<TargetData> selectedData;
 
+    void loadCurrentPage();
+
 public:
-    explicit AxDialogTargets(const QJSValue &headers, const QVector<TargetData> &vecTargets, QWidget* parent = nullptr);
+    explicit AxDialogTargets(const QJSValue &headers, AuthProfile* profile, QWidget* parent = nullptr);
+    ~AxDialogTargets() override;
 
     QVector<TargetData> data();
+    void prepare();
 
 public Q_SLOTS:
     void onClicked();
-    void handleSearch();
-    void clearSearch();
+    void onPageReady(const QJsonObject& response);
+    void onPageError(const QString& message);
 };
 
 class AxSelectorTargets : public QObject {
@@ -1489,7 +1460,7 @@ Q_OBJECT
     AxScriptEngine*  scriptEngine;
 
 public:
-    explicit AxSelectorTargets(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    explicit AxSelectorTargets(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent = nullptr);
     ~AxSelectorTargets() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
 
     Q_INVOKABLE void     setSize(int w, int h) const;
@@ -1567,39 +1538,16 @@ public:
         return QVariant();
     }
 
+    QString fieldKey(int column) const {
+        if (column >= 0 && column < m_fieldKeys.size())
+            return m_fieldKeys[column];
+        return {};
+    }
+
     TransferData getDownload(int row) const {
         if (row >= 0 && row < m_data.size())
             return m_data[row];
         return TransferData();
-    }
-};
-
-class AxDownloadsFilterProxyModel : public QSortFilterProxyModel {
-Q_OBJECT
-    QString m_filterText;
-
-public:
-    explicit AxDownloadsFilterProxyModel(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {}
-
-    void setFilterText(const QString& text) {
-        m_filterText = text;
-QT_WARNING_PUSH
-QT_WARNING_DISABLE_DEPRECATED
-        invalidateFilter();
-QT_WARNING_POP
-    }
-
-protected:
-    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override {
-        if (m_filterText.isEmpty())
-            return true;
-
-        for (int col = 0; col < sourceModel()->columnCount(); ++col) {
-            QModelIndex idx = sourceModel()->index(sourceRow, col, sourceParent);
-            if (idx.data().toString().contains(m_filterText, Qt::CaseInsensitive))
-                return true;
-        }
-        return false;
     }
 };
 
@@ -1612,25 +1560,29 @@ Q_OBJECT
     QSpacerItem*  spacer_1     = nullptr;
     QSpacerItem*  spacer_2     = nullptr;
 
-    QWidget*        searchWidget   = nullptr;
-    QHBoxLayout*    searchLayout   = nullptr;
-    QLineEdit*      searchLineEdit = nullptr;
-    ClickableLabel* hideButton     = nullptr;
+    PageNavBar*          pageNavBar = nullptr;
+    PagedTableHelper*    pageHelper = nullptr;
+    AxDownloadsTableModel* tableModel = nullptr;
 
-    AxDownloadsTableModel*       tableModel = nullptr;
-    AxDownloadsFilterProxyModel* proxyModel = nullptr;
+    int     m_offset    = 0;
+    QString m_sortCol   = QStringLiteral("Date");
+    QString m_sortOrder = QStringLiteral("desc");
 
     QVector<TransferData> selectedData;
 
+    void loadCurrentPage();
+
 public:
-    explicit AxDialogDownloads(const QJSValue &headers, const QVector<TransferData> &vecDownloads, QWidget* parent = nullptr);
+    explicit AxDialogDownloads(const QJSValue &headers, AuthProfile* profile, QWidget* parent = nullptr);
+    ~AxDialogDownloads() override;
 
     QVector<TransferData> data();
+    void prepare();
 
 public Q_SLOTS:
     void onClicked();
-    void handleSearch();
-    void clearSearch();
+    void onPageReady(const QJsonObject& response);
+    void onPageError(const QString& message);
 };
 
 class AxSelectorDownloads : public QObject {
@@ -1639,7 +1591,7 @@ Q_OBJECT
     AxScriptEngine*    scriptEngine;
 
 public:
-    explicit AxSelectorDownloads(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent = nullptr);
+    explicit AxSelectorDownloads(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent = nullptr);
     ~AxSelectorDownloads() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
 
     Q_INVOKABLE void     setSize(int w, int h) const;

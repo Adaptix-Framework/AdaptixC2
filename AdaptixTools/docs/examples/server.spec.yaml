@@ -1,0 +1,35 @@
+# Project adaptix.spec — place at the repository root as adaptix.spec.
+#
+# Paths are relative to this file (project root), except plugin_dir
+# which is relative to server_dir.
+
+server_version: "v2.0"
+
+server_dir: AdaptixServer
+client_dir: AdaptixClient
+plugin_dir: extenders
+
+dist_dir: dist
+ext_dir: dist/extenders
+axscript_dir: dist/axscripts
+profile: dist/profile.yaml
+
+# packages:
+#   - source: ./AdaptixServer/extenders/beacon_agent
+#   - source: github.com/org/plugin@v1
+#     plugin_dir: extenders_service
+
+# systemd (default: system unit as root):
+#   name: adaptixserver   # unit basename; default adaptixserver
+#   user: root            # empty/root = run as root (recommended)
+#   group: root           # empty/root = omit Group=
+#   debug: false          # true → adaptixserver -debug
+#   user_mode: false      # true → systemd --user unit
+
+# deps:
+#   common:
+#     apt: [git, make, build-essential]
+#   server:
+#     apt: [libssl-dev, mingw-w64]
+#   client:
+#     apt: [cmake, qt6-base-dev]

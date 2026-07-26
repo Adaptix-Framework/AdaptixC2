@@ -185,7 +185,7 @@ func (t *TransportTCP) Start(ts adaptix.Teamserver) error {
 	address := fmt.Sprintf("%s:%d", t.Config.HostBind, t.Config.PortBind)
 
 	if t.Config.Ssl {
-		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, "Started mTLS listener '%s': %s", t.Name, address)
+		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, logCtg, "Started mTLS listener '%s': %s", t.Name, address)
 		cert, err := tls.X509KeyPair(t.Config.ServerCert, t.Config.ServerKey)
 		if err != nil {
 			return err
@@ -205,7 +205,7 @@ func (t *TransportTCP) Start(ts adaptix.Teamserver) error {
 		}
 
 	} else {
-		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, "Started TCP listener '%s': %s", t.Name, address)
+		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, logCtg, "Started TCP listener '%s': %s", t.Name, address)
 		t.Listener, err = net.Listen("tcp", address)
 		if err != nil {
 			return err

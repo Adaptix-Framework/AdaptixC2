@@ -133,7 +133,7 @@ func (cs *CommandStore) GetCommandsForAgent(agentName string, listener string, o
 
 // /---
 func (cs *CommandStore) GetAllCommandsOrdered() []CommandBatch {
-	var result []CommandBatch
+	result := make([]CommandBatch, 0)
 
 	for agent, listenerMap := range cs.AgentRegistry.GetAllCommands() {
 		for listener, osMap := range listenerMap {

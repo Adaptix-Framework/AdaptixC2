@@ -9,7 +9,6 @@ import (
 	"github.com/dop251/goja"
 )
 
-// /---
 func jsBytes(v goja.Value) ([]byte, bool) {
 	if v == nil || goja.IsUndefined(v) || goja.IsNull(v) {
 		return nil, false

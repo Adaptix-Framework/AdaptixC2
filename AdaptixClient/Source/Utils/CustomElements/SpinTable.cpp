@@ -1,4 +1,5 @@
 #include <Utils/CustomElements/SpinTable.h>
+#include <Utils/CustomElements/Delegates.h>
 
 SpinTable::SpinTable(int rows, int columns, QWidget* parent) : QWidget(parent)
 {
@@ -10,6 +11,7 @@ SpinTable::SpinTable(int rows, int columns, QWidget* parent) : QWidget(parent)
 
     table = new QTableView(this);
     table->setModel(tableModel);
+    table->setItemDelegate(new PaddingDelegate(table));
     table->setAutoFillBackground( false );
     table->setShowGrid( false );
     table->setSortingEnabled( true );

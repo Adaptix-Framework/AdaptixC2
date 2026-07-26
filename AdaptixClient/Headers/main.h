@@ -164,6 +164,8 @@
 #define TYPE_TARGETS_SET_TAG 0x8a
 
 #define TYPE_AXSCRIPT_COMMANDS 0x91
+#define TYPE_AXSCRIPT_LIST     0x92
+#define TYPE_EVENT_HANDLERS    0x93
 
 #define TYPE_GROUP_CREATE   0xa1
 #define TYPE_GROUP_RENAME   0xa2
@@ -212,6 +214,14 @@
 class AxContainerWrapper;
 
 //////////
+
+typedef struct AxScriptPolicy {
+    bool fileRead  = true;
+    bool fileWrite = false;
+    bool process   = false;
+    bool sandboxFs = true;
+} AxScriptPolicy;
+
 
 typedef struct SettingsData {
     QString MainTheme;
@@ -264,6 +274,12 @@ typedef struct SettingsData {
 
     bool TabBlinkEnabled;
     QMap<QString, bool> BlinkWidgets;  // className -> enabled
+
+    AxScriptPolicy ScriptServer;
+    AxScriptPolicy ScriptLocal;
+    AxScriptPolicy ScriptEditor;
+    AxScriptPolicy ScriptEditorAction;
+    QString        ScriptSandboxDir;
 } SettingsData;
 
 typedef struct AxUI
@@ -438,6 +454,7 @@ typedef struct TunnelData
     qint64  DateTimestamp = 0;
     qint64  BytesSent = 0;
     qint64  BytesRecv = 0;
+    bool    Active = true;
 } TunnelData;
 
 typedef struct TaskData

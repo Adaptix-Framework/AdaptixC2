@@ -22,6 +22,7 @@ type ListenerConfig struct {
 	ListenerName string `json:"name"`
 	ConfigType   string `json:"type"`
 	Config       string `json:"config"`
+	Tags         string `json:"tags"`
 }
 
 func (tc *TsConnector) TcListenerStart(ctx *gin.Context) {
@@ -37,7 +38,7 @@ func (tc *TsConnector) TcListenerStart(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsListenerStart(listener.ListenerName, listener.ConfigType, listener.Config, 0, "", nil)
+	err = tc.teamserver.TsListenerStart(listener.ListenerName, listener.ConfigType, listener.Config, 0, "", nil, listener.Tags)
 	if err != nil {
 		respondError(ctx, http.StatusOK, err.Error())
 		return
@@ -71,7 +72,7 @@ func (tc *TsConnector) TcListenerEdit(ctx *gin.Context) {
 		return
 	}
 
-	err = tc.teamserver.TsListenerEdit(listener.ListenerName, listener.ConfigType, listener.Config)
+	err = tc.teamserver.TsListenerEdit(listener.ListenerName, listener.ConfigType, listener.Config, listener.Tags)
 	if err != nil {
 		respondError(ctx, http.StatusOK, err.Error())
 		return

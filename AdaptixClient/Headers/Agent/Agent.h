@@ -8,6 +8,7 @@ class ConsoleWidget;
 class BrowserFilesWidget;
 class BrowserProcessWidget;
 class TerminalContainerWidget;
+class CodeEditorWidget;
 class AdaptixWidget;
 class AgentTableWidgetItem;
 class GraphItem;
@@ -42,15 +43,18 @@ private:
     BrowserProcessWidget*    processBrowser = nullptr;
     TerminalContainerWidget* terminal       = nullptr;
     TerminalContainerWidget* shell          = nullptr;
+    CodeEditorWidget*        codeEditor     = nullptr;
 
 public:
     BrowserFilesWidget*      GetFileBrowser();
     BrowserProcessWidget*    GetProcessBrowser();
     TerminalContainerWidget* GetTerminal();
     TerminalContainerWidget* GetShell();
+    CodeEditorWidget*        GetCodeEditor();
 
     bool HasFileBrowser() const    { return fileBrowser != nullptr; }
     bool HasProcessBrowser() const { return processBrowser != nullptr; }
+    bool HasCodeEditor() const     { return codeEditor != nullptr; }
 
     bool active = true;
     bool show   = true;

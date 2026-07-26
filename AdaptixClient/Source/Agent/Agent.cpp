@@ -4,6 +4,7 @@
 #include <UI/Widgets/TerminalContainerWidget.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
+#include <UI/Widgets/CodeEditorWidget.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <Client/Requestor.h>
@@ -86,18 +87,21 @@ Agent::~Agent()
     if (Console) Console->clearAgent();
     if (fileBrowser) fileBrowser->clearAgent();
     if (processBrowser) processBrowser->clearAgent();
+    if (codeEditor) codeEditor->clearAgent();
 
     destroyDock(Console);
     destroyDock(fileBrowser);
     destroyDock(processBrowser);
     destroyDock(terminal);
     destroyDock(shell);
+    destroyDock(codeEditor);
 
     delete Console;
     delete fileBrowser;
     delete processBrowser;
     delete terminal;
     delete shell;
+    delete codeEditor;
 }
 
 void Agent::Update(const QJsonObject &jsonObjAgentData)
@@ -404,4 +408,14 @@ TerminalContainerWidget* Agent::GetShell()
     if (!shell)
         shell = new TerminalContainerWidget(this, adaptixWidget, TerminalModeShell);
     return shell;
+}
+
+CodeEditorWidget* Agent::GetCodeEditor()
+{
+    if (!codeEditor) {
+        codeEditor = new CodeEditorWidget(adaptixWidget, this);
+        if (adaptixWidget && adaptixWidget->ScriptManager)
+            codeEditor->connectConsoleSignals(adaptixWidget->ScriptManager);
+    }
+    return codeEditor;
 }

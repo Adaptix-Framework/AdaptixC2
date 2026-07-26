@@ -59,6 +59,9 @@ public:
     static void SelectSettingsTabBlink(SettingsData* settingsData);
     static void UpdateSettingsTabBlink(const SettingsData &settingsData);
 
+    static void SelectSettingsScript(SettingsData* settingsData);
+    static void UpdateSettingsScript(const SettingsData &settingsData);
+
     static QVector<QPair<QString, QString>> ListListenerProfiles(const QString &project);
     static void AddListenerProfile(const QString &project, const QString &name, const QString &data);
     static void RemoveListenerProfile(const QString &project, const QString &name);

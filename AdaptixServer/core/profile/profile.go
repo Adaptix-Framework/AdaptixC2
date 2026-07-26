@@ -10,14 +10,14 @@ import (
 )
 
 type Teamserver interface {
-	TsLogAdd(status adaptix.LogStatus, level int, source string, format string, args ...any)
+	TsLogAdd(status adaptix.LogStatus, level int, source, category string, format string, args ...any)
 }
 
 func (p *AdaptixProfile) logErr(format string, args ...any) {
 	if p.ts == nil {
 		return
 	}
-	p.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:profile", format, args...)
+	p.ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "profile", format, args...)
 }
 
 func tlsVersionRank(v string) (int, bool) {

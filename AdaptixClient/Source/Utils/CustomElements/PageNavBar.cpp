@@ -136,14 +136,16 @@ PageNavBar::~PageNavBar()
 
 void PageNavBar::onSpinChanged(int size)
 {
-    if (GlobalClient && GlobalClient->settings) {
-        GlobalClient->settings->data.PageSize = size;
-        GlobalClient->settings->SaveToDB();
-    }
+    if (!m_isolated) {
+        if (GlobalClient && GlobalClient->settings) {
+            GlobalClient->settings->data.PageSize = size;
+            GlobalClient->settings->SaveToDB();
+        }
 
-    for (PageNavBar* bar : s_instances) {
-        if (bar != this)
-            bar->applySize(size);
+        for (PageNavBar* bar : s_instances) {
+            if (bar != this)
+                bar->applySize(size);
+        }
     }
 
     Q_EMIT pageSizeChanged(size);
@@ -187,6 +189,38 @@ void PageNavBar::setPrevEnabled(bool enabled) { prevBtn->setEnabled(enabled); }
 void PageNavBar::setNextEnabled(bool enabled) { nextBtn->setEnabled(enabled); }
 
 int PageNavBar::pageSize() const { return pageSizeSpin->value(); }
+
+void PageNavBar::setPageSize(int size, bool syncGlobal)
+{
+    const int v = qBound(5, size, 10000);
+    {
+        QSignalBlocker blocker(pageSizeSpin);
+        pageSizeSpin->setValue(v);
+    }
+    m_lastAppliedSize = pageSizeSpin->value();
+
+    if (syncGlobal && !m_isolated) {
+        if (GlobalClient && GlobalClient->settings) {
+            GlobalClient->settings->data.PageSize = m_lastAppliedSize;
+            GlobalClient->settings->SaveToDB();
+        }
+        for (PageNavBar* bar : s_instances) {
+            if (bar != this)
+                bar->applySize(m_lastAppliedSize);
+        }
+    }
+
+    Q_EMIT pageSizeChanged(m_lastAppliedSize);
+}
+
+void PageNavBar::setIsolated(bool isolated)
+{
+    m_isolated = isolated;
+    if (isolated)
+        s_instances.removeAll(this);
+    else if (!s_instances.contains(this))
+        s_instances.append(this);
+}
 
 void PageNavBar::setLoading(bool loading)
 {

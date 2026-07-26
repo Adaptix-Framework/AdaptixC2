@@ -291,21 +291,21 @@ FilesFeedWidget::FilesFeedWidget(AdaptixWidget* w) : QWidget(w), m_adaptixWidget
         return seg;
     };
 
-    auto* segDl = makeSegment(dlFeed, 0);
-    auto* segUl = makeSegment(ulFeed, 1);
-    auto* segSync = makeSegment(syncFeed, 2);
+    m_segDl   = makeSegment(dlFeed, 0);
+    m_segUl   = makeSegment(ulFeed, 1);
+    m_segSync = makeSegment(syncFeed, 2);
 
-    auto onSegmentChanged = [this, segDl, segUl, segSync](int idx) {
+    auto onSegmentChanged = [this](int idx) {
         m_currentSegment = idx;
         m_stack->setCurrentIndex(idx);
-        segDl->blockSignals(true); segDl->setCurrentIndex(idx); segDl->blockSignals(false);
-        segUl->blockSignals(true); segUl->setCurrentIndex(idx); segUl->blockSignals(false);
-        segSync->blockSignals(true); segSync->setCurrentIndex(idx); segSync->blockSignals(false);
+        if (m_segDl)   { m_segDl->blockSignals(true);   m_segDl->setCurrentIndex(idx);   m_segDl->blockSignals(false); }
+        if (m_segUl)   { m_segUl->blockSignals(true);   m_segUl->setCurrentIndex(idx);   m_segUl->blockSignals(false); }
+        if (m_segSync) { m_segSync->blockSignals(true); m_segSync->setCurrentIndex(idx); m_segSync->blockSignals(false); }
         loadCurrentPage();
     };
-    connect(segDl, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [onSegmentChanged, segDl]() { onSegmentChanged(segDl->currentIndex()); });
-    connect(segUl, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [onSegmentChanged, segUl]() { onSegmentChanged(segUl->currentIndex()); });
-    connect(segSync, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [onSegmentChanged, segSync]() { onSegmentChanged(segSync->currentIndex()); });
+    connect(m_segDl, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this, onSegmentChanged]() { onSegmentChanged(m_segDl->currentIndex()); });
+    connect(m_segUl, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this, onSegmentChanged]() { onSegmentChanged(m_segUl->currentIndex()); });
+    connect(m_segSync, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this, onSegmentChanged]() { onSegmentChanged(m_segSync->currentIndex()); });
 
     m_dockWidget = new KDDockWidgets::QtWidgets::DockWidget( "FilesFeed:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
     m_dockWidget->setTitle("Files");
@@ -414,6 +414,21 @@ FilesFeedWidget::FilesFeedWidget(AdaptixWidget* w) : QWidget(w), m_adaptixWidget
 FilesFeedWidget::~FilesFeedWidget() = default;
 
 KDDockWidgets::QtWidgets::DockWidget* FilesFeedWidget::dock() { return m_dockWidget; }
+
+void FilesFeedWidget::setSegment(int index)
+{
+    if (index < 0 || index > 2)
+        return;
+    if (m_currentSegment == index && m_stack && m_stack->currentIndex() == index)
+        return;
+    m_currentSegment = index;
+    if (m_stack)
+        m_stack->setCurrentIndex(index);
+    if (m_segDl)   { m_segDl->blockSignals(true);   m_segDl->setCurrentIndex(index);   m_segDl->blockSignals(false); }
+    if (m_segUl)   { m_segUl->blockSignals(true);   m_segUl->setCurrentIndex(index);   m_segUl->blockSignals(false); }
+    if (m_segSync) { m_segSync->blockSignals(true); m_segSync->setCurrentIndex(index); m_segSync->blockSignals(false); }
+    loadCurrentPage();
+}
 
 ListFeedWidget* FilesFeedWidget::activeFeed() const
 {
@@ -572,8 +587,14 @@ void FilesFeedWidget::RemoveTransferItem(int transferType, const QList<qint64>& 
 {
     FeedListModel* model = (transferType == TRANSFER_DOWNLOAD) ? dlModel : ulModel;
     auto& cache = (transferType == TRANSFER_DOWNLOAD) ? m_dlCache : m_ulCache;
+    const bool isDownload = (transferType == TRANSFER_DOWNLOAD);
     for (qint64 fileId : filesId) {
         cache.remove(fileId);
+        {
+            QWriteLocker locker(isDownload ? &m_adaptixWidget->DownloadsLock : &m_adaptixWidget->UploadsLock);
+            auto& srcMap = isDownload ? m_adaptixWidget->Downloads : m_adaptixWidget->Uploads;
+            srcMap.remove(fileId);
+        }
         for (int i = 0; i < model->size(); ++i) {
             if (model->rowAt(i).entityId == fileId) {
                 model->removeRow(i);
@@ -845,11 +866,11 @@ void FilesFeedWidget::handleSyncMenu(const QPoint& pos)
         QString localPath = syncModel->rowAt(row).blockData[FFB_Main].toMap()["second"].toString();
 
         if (!localPath.isEmpty()) {
-            ctxMenu.addAction("Copy file path", this, [localPath]() {
+            ctxMenu.addAction(QIcon(":/icons/notes"), "Copy file path", this, [localPath]() {
                 QGuiApplication::clipboard()->setText(localPath);
                 MessageSuccess("Path: " + localPath);
             });
-            ctxMenu.addAction("Open directory", this, [localPath]() {
+            ctxMenu.addAction(QIcon(":/icons/open_folder"), "Open directory", this, [localPath]() {
                 QFileInfo fi(localPath);
                 QString dir = fi.absolutePath();
                 if (QDir(dir).exists()) {
@@ -862,7 +883,7 @@ void FilesFeedWidget::handleSyncMenu(const QPoint& pos)
         }
     }
 
-    ctxMenu.addAction(sourceRows.size() > 1 ? QString("Delete %1 entries").arg(sourceRows.size()) : "Delete entry", this, [this, sourceRows]() {
+    ctxMenu.addAction(QIcon(":/icons/delete"), sourceRows.size() > 1 ? QString("Delete %1 entries").arg(sourceRows.size()) : "Delete entry", this, [this, sourceRows]() {
         QList<int> sorted = sourceRows;
         std::sort(sorted.begin(), sorted.end(), [](int a, int b) { return a > b; });
         for (int r : sorted) {
@@ -1048,8 +1069,8 @@ void FilesFeedWidget::handleDownloadsMenu(const QPoint& pos)
             ctxMenu.addSeparator();
     }
 
-    ctxMenu.addAction("Set tag", this, &FilesFeedWidget::actionSetTag);
-    ctxMenu.addAction(selectedIds.size() > 1 ? QString("Delete %1 files").arg(selectedIds.size()) : "Delete file", this, &FilesFeedWidget::actionDelete);
+    ctxMenu.addAction(QIcon(":/icons/tag"), "Set tag", this, &FilesFeedWidget::actionSetTag);
+    ctxMenu.addAction(QIcon(":/icons/delete"), selectedIds.size() > 1 ? QString("Delete %1 files").arg(selectedIds.size()) : "Delete file", this, &FilesFeedWidget::actionDelete);
     ctxMenu.exec(dlFeed->treeView()->viewport()->mapToGlobal(pos));
 }
 
@@ -1068,7 +1089,7 @@ void FilesFeedWidget::handleUploadsMenu(const QPoint& pos)
         return;
 
     oclero::qlementine::Menu ctxMenu;
-    ctxMenu.addAction(ids.size() > 1 ? QString("Delete %1 files").arg(ids.size()) : "Delete file", this, &FilesFeedWidget::actionDeleteUploads);
+    ctxMenu.addAction(QIcon(":/icons/delete"), ids.size() > 1 ? QString("Delete %1 files").arg(ids.size()) : "Delete file", this, &FilesFeedWidget::actionDeleteUploads);
     ctxMenu.exec(ulFeed->treeView()->viewport()->mapToGlobal(pos));
 }
 

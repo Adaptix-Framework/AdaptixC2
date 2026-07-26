@@ -3,6 +3,7 @@
 #include <Client/AuthProfile.h>
 #include <Client/Requestor.h>
 #include <Agent/Agent.h>
+#include <Utils/Logs.h>
 
 #include <oclero/qlementine/utils/ImageUtils.hpp>
 
@@ -345,14 +346,15 @@ void GroupManagerPopup::doMoveAgent(qint64 agentId, qint64 fromGroupId, qint64 t
     if (!profile)
         return;
 
-    if (fromGroupId != UNGROUPED_ID) {
-        QList<qint64> rem = {agentId};
-        HttpReqGroupMembersAsync(fromGroupId, {}, rem, *profile, [](bool, const QString&, const QJsonObject&) {});
-    }
-    if (toGroupId != UNGROUPED_ID) {
-        QList<qint64> add = {agentId};
-        HttpReqGroupMembersAsync(toGroupId, add, {}, *profile, [](bool, const QString&, const QJsonObject&) {});
-    }
+    const int64_t from = (fromGroupId == UNGROUPED_ID || fromGroupId < 0) ? 0 : static_cast<int64_t>(fromGroupId);
+    const int64_t to   = (toGroupId == UNGROUPED_ID || toGroupId < 0) ? 0 : static_cast<int64_t>(toGroupId);
+    if (from == to && to == 0)
+        return;
+
+    HttpReqGroupMoveMemberAsync(agentId, from, to, *profile, [](bool ok, const QString& message, const QJsonObject&) {
+        if (!ok)
+            MessageError(message.isEmpty() ? QStringLiteral("Failed to move agent between groups") : message);
+    });
 }
 
 void GroupManagerPopup::doReparentGroup(qint64 groupId, qint64 fromParentId, qint64 toGroupId)
@@ -361,7 +363,11 @@ void GroupManagerPopup::doReparentGroup(qint64 groupId, qint64 fromParentId, qin
     AuthProfile* profile = aw->GetProfile();
     if (!profile)
         return;
-    HttpReqGroupReparentAsync(groupId, toGroupId, *profile, [](bool, const QString&, const QJsonObject&) {});
+    const int64_t parent = (toGroupId == UNGROUPED_ID || toGroupId < 0) ? 0 : static_cast<int64_t>(toGroupId);
+    HttpReqGroupReparentAsync(groupId, parent, *profile, [](bool ok, const QString& message, const QJsonObject&) {
+        if (!ok)
+            MessageError(message.isEmpty() ? QStringLiteral("Failed to reparent group") : message);
+    });
 }
 
 void GroupManagerPopup::onNewGroup()
@@ -376,7 +382,10 @@ void GroupManagerPopup::onNewGroup()
     if (!ok || name.trimmed().isEmpty())
         return;
 
-    HttpReqGroupCreateAsync(0, name.trimmed(), scope, *profile, [](bool, const QString&, const QJsonObject&) {});
+    HttpReqGroupCreateAsync(0, name.trimmed(), scope, *profile, [](bool ok, const QString& message, const QJsonObject&) {
+        if (!ok)
+            MessageError(message.isEmpty() ? QStringLiteral("Failed to create group") : message);
+    });
 }
 
 void GroupManagerPopup::onNewSubgroup()
@@ -395,7 +404,10 @@ void GroupManagerPopup::onNewSubgroup()
     if (!ok || name.trimmed().isEmpty())
         return;
 
-    HttpReqGroupCreateAsync(parentGroupId, name.trimmed(), scope, *profile, [](bool, const QString&, const QJsonObject&) {});
+    HttpReqGroupCreateAsync(parentGroupId, name.trimmed(), scope, *profile, [](bool ok, const QString& message, const QJsonObject&) {
+        if (!ok)
+            MessageError(message.isEmpty() ? QStringLiteral("Failed to create subgroup") : message);
+    });
 }
 
 void GroupManagerPopup::onRenameGroup()
@@ -422,7 +434,10 @@ void GroupManagerPopup::onRenameGroup()
     if (!ok || name.trimmed().isEmpty())
         return;
 
-    HttpReqGroupRenameAsync(groupId, name.trimmed(), *profile, [](bool, const QString&, const QJsonObject&) {});
+    HttpReqGroupRenameAsync(groupId, name.trimmed(), *profile, [](bool ok, const QString& message, const QJsonObject&) {
+        if (!ok)
+            MessageError(message.isEmpty() ? QStringLiteral("Failed to rename group") : message);
+    });
 }
 
 void GroupManagerPopup::onDeleteGroup()
@@ -444,13 +459,16 @@ void GroupManagerPopup::onDeleteGroup()
     }
 
     auto btn = QMessageBox::question(aw, "Delete Group",
-        QString("Delete group \"%1\"?\nAgents will be moved to Ungrouped.").arg(groupName),
+        QString("Delete group \"%1\"?\nAgents become ungrouped; subgroups move one level up.").arg(groupName),
         QMessageBox::Yes | QMessageBox::No);
     showPopup();
     if (btn != QMessageBox::Yes)
         return;
 
-    HttpReqGroupDeleteAsync(groupId, *profile, [](bool, const QString&, const QJsonObject&) {});
+    HttpReqGroupDeleteAsync(groupId, *profile, [](bool ok, const QString& message, const QJsonObject&) {
+        if (!ok)
+            MessageError(message.isEmpty() ? QStringLiteral("Failed to delete group") : message);
+    });
 }
 
 void GroupManagerPopup::onContextMenu(const QPoint& pos)

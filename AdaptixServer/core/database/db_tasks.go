@@ -93,7 +93,7 @@ func (dbms *DBMS) DbTasksAll(agentId int64) []adaptix.TaskData {
 		selectQuery := `SELECT TaskId, AgentId, TaskType, Client, User, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed FROM Tasks WHERE AgentId = ? ORDER BY StartDate;`
 		query, err := dbms.database.Query(selectQuery, agentId)
 		if err != nil {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query tasks: %s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query tasks: %s", err.Error())
 			return tasks
 		}
 		defer func(query *sql.Rows) {
@@ -120,7 +120,7 @@ func (dbms *DBMS) DbTasksLimited(agentId int64, limit int) []adaptix.TaskData {
 		selectQuery := `SELECT TaskId, AgentId, TaskType, Client, User, Computer, StartDate, FinishDate, CommandLine, MessageType, Message, ClearText, Completed FROM Tasks WHERE AgentId = ? ORDER BY StartDate DESC LIMIT ?;`
 		query, err := dbms.database.Query(selectQuery, agentId, limit)
 		if err != nil {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query tasks: %s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query tasks: %s", err.Error())
 			return tasks
 		}
 		defer func(query *sql.Rows) {

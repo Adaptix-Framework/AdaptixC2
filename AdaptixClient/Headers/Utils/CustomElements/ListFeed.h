@@ -18,6 +18,7 @@
 #include <QCheckBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QPainter>
 #include <QReadWriteLock>
 
 struct FeedColors {
@@ -28,9 +29,15 @@ struct FeedColors {
     QColor groupBg;
     QColor tagBorder, tagText;
     QColor separatorLine;
+    QColor accent;
+    bool dark = true;
 
     static FeedColors fromTheme();
+
+    QColor selectedWash(const QColor& base, qreal t = -1.0) const;
 };
+
+void paintFeedTableCellBackground(QPainter* p, const QRect& rect, bool selected, bool hovered, bool oddRow, bool firstColumn, const QColor& customBg = QColor());
 
 struct FeedPaintContext {
     int maxIdTextWidth = 0;
@@ -134,8 +141,14 @@ public:
 
 
 class MainBlock : public FeedBlock {
+    qreal m_mainTextPointOffset = 0.0;
+    QFont mainTextFont(const QFont& smallFont, const QFont& primaryFont = {}) const;
 public:
     QString name() const override { return "main"; }
+
+    void setMainTextPointOffset(qreal offset) { m_mainTextPointOffset = offset; }
+    qreal mainTextPointOffset() const { return m_mainTextPointOffset; }
+
     int measureWidth(const QVariant& data, const QFont&, const QFont& smallFont, const QFont&) const override;
     void paint(QPainter* p, const QRect& rect, const QVariant& data, const QFont&, const QFont& smallFont, const QFont&, const QColor& colText, const QColor& colMuted, bool, bool, const FeedPaintContext& = {}) const override;
 
@@ -443,6 +456,8 @@ public:
 
     void enableGrouping(bool enable, AdaptixWidget* aw = nullptr);
     void setGroupingField(int field);
+    void setGroupingScope(const QString& scope);
+    QString groupingScope() const { return m_groupingScope; }
     bool isGroupingEnabled() const { return m_groupingEnabled; }
 
     void enableSearch(bool enable);
@@ -495,6 +510,7 @@ protected:
 
     bool m_groupingEnabled = false;
     int m_groupingField = 0;
+    QString m_groupingScope = QStringLiteral("listfeed");
     AdaptixWidget* m_groupingAdaptixWidget = nullptr;
 
     oclero::qlementine::LineEdit* m_searchInput = nullptr;
@@ -529,7 +545,7 @@ protected:
 
     void setupConnections();
 public:
-    void rebuildModelChain();
+    virtual void rebuildModelChain();
     void rebuildSearchWidget();
 };
 

@@ -295,8 +295,8 @@ QMimeData* GroupingProxyModel::mimeData(const QModelIndexList &indexes) const
             }
 
             QJsonObject obj;
-            obj["agentId"]     = agentId;
-            obj["fromGroupId"] = fromGroupId;
+            obj["agentId"]     = QJsonValue::fromVariant(QVariant::fromValue(agentId));
+            obj["fromGroupId"] = QJsonValue::fromVariant(QVariant::fromValue(fromGroupId));
             agentArr.append(obj);
         }
     }
@@ -314,41 +314,57 @@ QMimeData* GroupingProxyModel::mimeData(const QModelIndexList &indexes) const
     return nullptr;
 }
 
+static QModelIndex resolveGroupDropTarget(const GroupingProxyModel* model, const QModelIndex& parent)
+{
+    if (!parent.isValid())
+        return {};
+    if (model->isGroupIndex(parent))
+        return parent;
+    const QModelIndex p = model->parent(parent);
+    if (p.isValid() && model->isGroupIndex(p))
+        return p;
+    return {};
+}
+
 bool GroupingProxyModel::canDropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent) const
 {
+    Q_UNUSED(row)
+    Q_UNUSED(column)
+    Q_UNUSED(parent)
     if (action != Qt::MoveAction || view_mode != VM_CustomGroups)
         return false;
-    if (!parent.isValid() || !isGroupIndex(parent))
+    if (!data)
         return false;
     return data->hasFormat(kAgentMimeType) || data->hasFormat(kGroupMimeType);
 }
 
 bool GroupingProxyModel::dropMimeData(const QMimeData* data, Qt::DropAction action, int row, int column, const QModelIndex& parent)
 {
-    if (!canDropMimeData(data, action, -1, -1, parent))
+    if (!canDropMimeData(data, action, row, column, parent))
         return false;
 
+    const QModelIndex targetGroup = resolveGroupDropTarget(this, parent);
+    const qint64 toGroupId = targetGroup.isValid() ? groupIdFromIndex(targetGroup) : -1;
+
     if (data->hasFormat(kGroupMimeType)) {
-        qint64 toParentId = groupIdFromIndex(parent);
+        const int64_t toParentId = (toGroupId > 0) ? static_cast<int64_t>(toGroupId) : 0;
         QJsonArray arr = QJsonDocument::fromJson(data->data(kGroupMimeType)).array();
         for (const QJsonValue& v : arr) {
             QJsonObject obj = v.toObject();
-            int64_t groupId    = static_cast<int64_t>(obj["groupId"].toVariant().toLongLong());
-            int64_t fromParent = static_cast<int64_t>(obj["fromParentId"].toVariant().toLongLong());
+            int64_t groupId = static_cast<int64_t>(obj.value(QStringLiteral("groupId")).toVariant().toLongLong());
             if (groupId != 0 && groupId != toParentId && !wouldCreateCycle(groupId, toParentId))
                 Q_EMIT groupReparented(groupId, toParentId);
         }
         return true;
     }
 
-    qint64 toGroupId = groupIdFromIndex(parent);
     QJsonArray arr = QJsonDocument::fromJson(data->data(kAgentMimeType)).array();
 
     QList<QPair<qint64, qint64>> moves;
     for (const QJsonValue& v : arr) {
         QJsonObject obj = v.toObject();
-        qint64 agentId     = static_cast<qint64>(obj["agentId"].toDouble());
-        qint64 fromGroupId = static_cast<qint64>(obj["fromGroupId"].toDouble());
+        qint64 agentId     = obj.value(QStringLiteral("agentId")).toVariant().toLongLong();
+        qint64 fromGroupId = obj.value(QStringLiteral("fromGroupId")).toVariant().toLongLong();
         if (agentId != 0 && fromGroupId != toGroupId)
             moves.append({agentId, fromGroupId});
     }
@@ -539,8 +555,23 @@ QVector<GroupNode> GroupingProxyModel::allCustomGroups() const
 
 void GroupingProxyModel::addCustomGroup(int64_t groupId, int64_t parentId, const QString& name, const QVector<qint64>& members)
 {
+    if (groupId == 0)
+        return;
     if (parentId != 0 && wouldCreateCycle(groupId, parentId))
         return;
+
+    for (auto& existing : custom_groups) {
+        if (existing.groupId == groupId) {
+            existing.parentGroupId = parentId;
+            existing.name = name;
+            existing.isAuto = false;
+            existing.memberIds = members;
+            if (view_mode == VM_CustomGroups)
+                preserveExpandedRebuild();
+            Q_EMIT groupStructureChanged();
+            return;
+        }
+    }
 
     GroupNode node;
     node.groupId = groupId;
@@ -591,6 +622,19 @@ void GroupingProxyModel::renameCustomGroup(int64_t groupId, const QString& name)
 
 void GroupingProxyModel::deleteCustomGroup(int64_t groupId)
 {
+    int64_t reparentTo = 0;
+    for (const auto& g : custom_groups) {
+        if (g.groupId == groupId) {
+            reparentTo = g.parentGroupId;
+            break;
+        }
+    }
+
+    for (auto& g : custom_groups) {
+        if (g.parentGroupId == groupId)
+            g.parentGroupId = reparentTo;
+    }
+
     for (int i = 0; i < custom_groups.size(); ++i) {
         if (custom_groups[i].groupId == groupId) {
             custom_groups.removeAt(i);
@@ -758,45 +802,6 @@ void GroupingProxyModel::rebuildCustomGroups()
                 display_groups[i].parentGroupIdx = it.value();
                 display_groups[it.value()].subGroupIndices.append(i);
             }
-        }
-    }
-
-    {
-        QVector<int> toRemove;
-        for (int i = 0; i < display_groups.size(); ++i) {
-            const DisplayGroup& dg = display_groups[i];
-            if (dg.parentGroupIdx == -1 && dg.sourceRows.isEmpty() && dg.subGroupIndices.isEmpty())
-                toRemove.append(i);
-        }
-
-        if (!toRemove.isEmpty()) {
-            QSet<int> removeSet(toRemove.begin(), toRemove.end());
-
-            QVector<int> remap(display_groups.size(), -1);
-            int newIdx = 0;
-            for (int i = 0; i < display_groups.size(); ++i) {
-                if (!removeSet.contains(i))
-                    remap[i] = newIdx++;
-            }
-
-            QVector<DisplayGroup> newGroups;
-            newGroups.reserve(newIdx);
-            for (int i = 0; i < display_groups.size(); ++i) {
-                if (removeSet.contains(i))
-                    continue;
-                DisplayGroup dg = display_groups[i];
-                if (dg.parentGroupIdx >= 0)
-                    dg.parentGroupIdx = remap[dg.parentGroupIdx];
-                QVector<int> newSubs;
-                for (int s : dg.subGroupIndices) {
-                    int mapped = remap[s];
-                    if (mapped >= 0)
-                        newSubs.append(mapped);
-                }
-                dg.subGroupIndices = newSubs;
-                newGroups.append(dg);
-            }
-            display_groups = newGroups;
         }
     }
 

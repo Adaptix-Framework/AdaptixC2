@@ -139,7 +139,9 @@ static FeedRow taskToFeedRow(const TaskData& t) {
 static ListFeedDelegate* createTasksDelegate(QObject* parent) {
     auto* d = new ListFeedDelegate(parent);
     d->addBlock(new IdBadgeBlock());
-    d->addBlock(new MainBlock());
+    auto* main = new MainBlock();
+    main->setMainTextPointOffset(-1);
+    d->addBlock(main);
     d->addBlock(new StatusBlock());
     return d;
 }

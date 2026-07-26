@@ -2,10 +2,12 @@
 #define ADAPTIXCLIENT_DELEGATES_H
 
 #include <main.h>
+#include <Utils/CustomElements/ListFeed.h>
 #include <QProxyStyle>
 #include <QTextLayout>
 #include <QToolTip>
 #include <QTreeView>
+#include <QTableView>
 
 class ListDelegate : public QStyledItemDelegate {
 public:
@@ -58,19 +60,19 @@ public:
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
         QStyleOptionViewItem opt = option;
         initStyleOption(&opt, index);
-
-        QVariant bgVar = index.data(Qt::BackgroundRole);
-        if (bgVar.isValid()) {
-            painter->fillRect(opt.rect, bgVar.value<QBrush>());
-            opt.backgroundBrush = Qt::NoBrush;
-            opt.state &= ~QStyle::State_MouseOver;
-        }
-
         opt.state &= ~QStyle::State_HasFocus;
+
+        const bool selected = opt.state & QStyle::State_Selected;
+
+        QColor customBg;
+        const QVariant bgVar = index.data(Qt::BackgroundRole);
+        if (bgVar.isValid())
+            customBg = bgVar.value<QBrush>().color();
+
+        paintFeedTableCellBackground(painter, opt.rect, selected, /*hovered=*/false, index.row() % 2 == 1, index.column() == 0, customBg);
 
         const QWidget* widget = option.widget;
         QStyle* style = widget ? widget->style() : QApplication::style();
-        style->drawPrimitive(QStyle::PE_PanelItemViewItem, &opt, painter, widget);
 
         if (!opt.icon.isNull()) {
             QRect iconRect = style->subElementRect(QStyle::SE_ItemViewItemDecoration, &opt, widget);
@@ -79,18 +81,15 @@ public:
 
         if (!opt.text.isEmpty()) {
             QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &opt, widget);
-            textRect.adjust(m_padding, 0, -m_padding, 0);
+            const int leftPad = m_padding + (index.column() == 0 ? 4 : 0);
+            textRect.adjust(leftPad, 0, -m_padding, 0);
             painter->save();
 
-            if (opt.state & QStyle::State_Selected)
-                painter->setPen(opt.palette.highlightedText().color());
-            else {
-                QVariant fgVar = index.data(Qt::ForegroundRole);
-                if (fgVar.isValid())
-                    painter->setPen(fgVar.value<QColor>());
-                else
-                    painter->setPen(opt.palette.text().color());
-            }
+            QVariant fgVar = index.data(Qt::ForegroundRole);
+            if (fgVar.isValid())
+                painter->setPen(fgVar.value<QColor>());
+            else
+                painter->setPen(opt.palette.color(QPalette::Text));
 
             painter->setFont(opt.font);
             QString elidedText = opt.fontMetrics.elidedText(opt.text, Qt::ElideRight, textRect.width());
@@ -112,30 +111,28 @@ public:
     void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
         QStyleOptionViewItem opt = option;
         initStyleOption(&opt, index);
-
-        // Background (same as PaddingDelegate)
-        QVariant bgVar = index.data(Qt::BackgroundRole);
-        if (bgVar.isValid())
-            painter->fillRect(opt.rect, bgVar.value<QBrush>());
-
         opt.state &= ~QStyle::State_HasFocus;
 
-        // Draw everything except text using style
+        const bool selected = opt.state & QStyle::State_Selected;
+        QColor customBg;
+        const QVariant bgVar = index.data(Qt::BackgroundRole);
+        if (bgVar.isValid())
+            customBg = bgVar.value<QBrush>().color();
+        paintFeedTableCellBackground(painter, opt.rect, selected, /*hovered=*/false, index.row() % 2 == 1, index.column() == 0, customBg);
+
         const QWidget* widget = option.widget;
         QStyle* style = widget ? widget->style() : QApplication::style();
 
-        // Draw background/selection
-        style->drawPrimitive(QStyle::PE_PanelItemViewItem, &opt, painter, widget);
-
-        // Draw text with WrapAnywhere (max 5 lines)
         painter->save();
         QRect textRect = style->subElementRect(QStyle::SE_ItemViewItemText, &opt, widget);
-        textRect.adjust(m_padding, 0, -m_padding, 0);
+        const int leftPad = m_padding + (index.column() == 0 ? 4 : 0);
+        textRect.adjust(leftPad, 0, -m_padding, 0);
 
         QString text = opt.text;
         QFontMetrics fm(opt.font);
         int lineHeight = fm.height();
         int maxHeight = lineHeight * maxLines;
+        Q_UNUSED(maxHeight);
 
         // Truncate text if it exceeds maxLines
         QString displayText = text;
@@ -164,15 +161,11 @@ public:
         textOption.setWrapMode(QTextOption::WrapAnywhere);
         textOption.setAlignment(Qt::Alignment(opt.displayAlignment));
 
-        if (opt.state & QStyle::State_Selected)
-            painter->setPen(opt.palette.highlightedText().color());
-        else {
-            QVariant fgVar = index.data(Qt::ForegroundRole);
-            if (fgVar.isValid())
-                painter->setPen(fgVar.value<QColor>());
-            else
-                painter->setPen(opt.palette.text().color());
-        }
+        QVariant fgVar = index.data(Qt::ForegroundRole);
+        if (fgVar.isValid())
+            painter->setPen(fgVar.value<QColor>());
+        else
+            painter->setPen(opt.palette.color(QPalette::Text));
 
         painter->setFont(opt.font);
         painter->drawText(textRect, displayText, textOption);
@@ -257,7 +250,8 @@ public:
 
 class TreeIndentStyle : public QProxyStyle {
 public:
-    explicit TreeIndentStyle(int indent, QStyle* base = nullptr) : QProxyStyle(base), m_indent(indent) {}
+    explicit TreeIndentStyle(int indent, QStyle* base = nullptr)
+        : QProxyStyle(base), m_indent(indent) {}
 
     int pixelMetric(PixelMetric m, const QStyleOption* opt, const QWidget* w) const override {
         if (m == PM_TreeViewIndentation)
@@ -327,6 +321,7 @@ protected:
             style()->drawPrimitive(QStyle::PE_IndicatorBranch, &arrowOpt, painter, this);
         }
 
+        // Tree lines
         if (m_guidesEnabled && depth > 0) {
             painter->save();
 

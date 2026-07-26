@@ -503,7 +503,7 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 
 	var buildArgsConfig []string
 	buildArgsConfig = append(buildArgsConfig, "-c", cmdConfig)
-	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, "sh", buildArgsConfig...)
+	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, nil, "sh", buildArgsConfig...)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
 		return nil, "", err
@@ -594,7 +594,7 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 	}
 	buildArgs = append(buildArgs, "-o", buildPath)
 
-	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, Compiler, buildArgs...)
+	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir, nil, Compiler, buildArgs...)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
 		return nil, "", err
@@ -1908,10 +1908,10 @@ func ProcessData(agentData adaptix.AgentData, decryptedData []byte) error {
 			_ = Ts.TsPivotCreate(fmt.Sprintf("%08x", task.TaskId), agentData.Id, childAgentId, "", false)
 
 			if linkType == 1 {
-				task.Message = fmt.Sprintf("----- New SMB pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
+				task.Message = fmt.Sprintf("----- New SMB pivot agent: [%d]===[%d] -----", agentData.Id, childAgentId)
 				Ts.TsAgentConsoleOutput(childAgentId, "", adaptix.MESSAGE_SUCCESS, task.Message, "\n", true)
 			} else if linkType == 2 {
-				task.Message = fmt.Sprintf("----- New TCP pivot agent: [%s]===[%s] -----", agentData.Id, childAgentId)
+				task.Message = fmt.Sprintf("----- New TCP pivot agent: [%d]===[%d] -----", agentData.Id, childAgentId)
 				Ts.TsAgentConsoleOutput(childAgentId, "", adaptix.MESSAGE_SUCCESS, task.Message, "\n", true)
 			}
 
@@ -2375,13 +2375,13 @@ func ProcessData(agentData adaptix.AgentData, decryptedData []byte) error {
 			_, parentAgentId, childAgentId := Ts.TsGetPivotInfoById(pivotId)
 
 			if pivotType == 1 {
-				messageParent = fmt.Sprintf("SMB agent disconnected %s", childAgentId)
-				messageChild = fmt.Sprintf(" ----- SMB agent disconnected from [%s] ----- ", parentAgentId)
+				messageParent = fmt.Sprintf("SMB agent disconnected %d", childAgentId)
+				messageChild = fmt.Sprintf(" ----- SMB agent disconnected from [%d] ----- ", parentAgentId)
 			} else if pivotType == 2 {
-				messageParent = fmt.Sprintf("TCP agent %s connection reset", childAgentId)
+				messageParent = fmt.Sprintf("TCP agent %d connection reset", childAgentId)
 				messageChild = fmt.Sprintf(" ----- TCP agent connection reset ----- ")
 			} else if pivotType == 10 {
-				messageParent = fmt.Sprintf("Pivot agent %s connection reset", childAgentId)
+				messageParent = fmt.Sprintf("Pivot agent %d connection reset", childAgentId)
 				messageChild = fmt.Sprintf(" ----- Pivot agent connection reset ----- ")
 			}
 

@@ -5,9 +5,18 @@
 #include <QJSEngine>
 #include <QStringList>
 #include <QSet>
+#include <QIcon>
 
 class AxScriptUtils {
 public:
+    static QIcon resolveMenuIcon(const QString& resourcePath)
+    {
+        const QString s = resourcePath.trimmed();
+        if (s.isEmpty() || !s.startsWith(QLatin1String(":/")))
+            return {};
+        return QIcon(s);
+    }
+
     static QStringList jsArrayToStringList(const QJSValue& array)
     {
         QStringList result;

@@ -67,13 +67,21 @@ extenders: prepare
 
 server: prepare
 	@ echo "[*] Building adaptixserver..."
-	@ cd AdaptixServer && GOEXPERIMENT=jsonv2,greenteagc go build -buildvcs=false -ldflags="-s -w" -o adaptixserver > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixServer:"; cat build_error.log >&2; exit 1; }     # for static build use CGO_ENABLED=0
+	@ cd AdaptixServer && go build -buildvcs=false -ldflags="-s -w" -o adaptixserver > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixServer:"; cat build_error.log >&2; exit 1; }     # for static build use CGO_ENABLED=0
 	@ mv AdaptixServer/adaptixserver ./$(DIST_DIR)/
 	@ cp AdaptixServer/ssl_gen.sh AdaptixServer/profile.yaml AdaptixServer/404page.html ./$(DIST_DIR)/
 	@ echo "[+] done"
 
 server-ext: clean server extenders
 
+
+### AXTOOLS ###
+
+tools: prepare
+	@ echo "[*] Building axtool"
+	@ cd AdaptixTools && $(MAKE) --no-print-directory
+	@ mv AdaptixTools/dist/axtool ./$(DIST_DIR)/axtool
+	@ echo "[+] done -> $(DIST_DIR)/axtool"
 
 
 ### CLIENT ###

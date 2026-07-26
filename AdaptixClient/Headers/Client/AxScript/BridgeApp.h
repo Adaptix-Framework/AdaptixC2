@@ -82,6 +82,8 @@ public Q_SLOTS:
     void     open_browser_process(const QString &id);
     void     open_remote_terminal(const QString &id);
     void     open_remote_shell(const QString &id);
+    void     open_code_editor(const QJSValue& arg1 = QJSValue(), const QJSValue& arg2 = QJSValue());
+    QString  editor_profile_upsert(const QJSValue& spec);
     bool     prompt_confirm(const QString &title, const QString &text);
     QString  prompt_open_file(const QString &caption = "Select file", const QString &filter = QString());
     QString  prompt_open_dir(const QString &caption = "Select directory");
@@ -93,6 +95,7 @@ public Q_SLOTS:
     void     script_load(const QString &path);
     void     script_unload(const QString &path);
     QString  script_dir();
+    bool     event_handler_register(const QJSValue& meta);
     QJSValue screenshots();
     void     service_command(const QString &service, const QString &command, const QJSValue &args = QJSValue());
     void     show_message(const QString &title, const QString &text);

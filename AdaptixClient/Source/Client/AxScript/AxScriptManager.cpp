@@ -274,8 +274,7 @@ void AxScriptManager::ServerScriptAdd(const ServerScriptData &data)
     scriptData.enabled = true;
 
     if (!data.code.isEmpty()) {
-        AxScriptEngine* scriptEngine = new AxScriptEngine(this, "__server__:" + data.name, this);
-        scriptEngine->setServerMode(true);
+        AxScriptEngine* scriptEngine = new AxScriptEngine(this, "__server__:" + data.name, this, AxScriptTrust::Server);
         scriptEngine->execute(data.code);
         server_scripts[data.name] = scriptEngine;
 
@@ -311,8 +310,7 @@ void AxScriptManager::ServerScriptSetEnabled(const QString &name, bool enabled)
 
         const QString &code = server_scripts_data[name].code;
         if (!code.isEmpty()) {
-            AxScriptEngine* scriptEngine = new AxScriptEngine(this, "__server__:" + name, this);
-            scriptEngine->setServerMode(true);
+            AxScriptEngine* scriptEngine = new AxScriptEngine(this, "__server__:" + name, this, AxScriptTrust::Server);
             scriptEngine->execute(code);
             server_scripts[name] = scriptEngine;
         }

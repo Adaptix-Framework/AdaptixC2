@@ -63,7 +63,7 @@ func (dbms *DBMS) DbPivotAll() []*adaptix.PivotData {
 		selectQuery := `SELECT PivotId, PivotName, ParentAgentId, ChildAgentId FROM Pivots;`
 		query, err := dbms.database.Query(selectQuery)
 		if err != nil {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query pivots: %s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query pivots: %s", err.Error())
 			return pivots
 		}
 		defer func(query *sql.Rows) {

@@ -5,6 +5,10 @@
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QSlider>
+#include <QGroupBox>
+#include <QPlainTextEdit>
+#include <QTabWidget>
+#include <QStackedWidget>
 #include <oclero/qlementine/widgets/Switch.hpp>
 
 class Settings;
@@ -142,11 +146,90 @@ Q_OBJECT
     QGridLayout* shortcutsLayout      = nullptr;
     QTableWidget* shortcutsTable      = nullptr;
 
+    QWidget*     scriptSecWidget = nullptr;
+    QVBoxLayout* scriptSecLayout = nullptr;
+    oclero::qlementine::Switch* scriptServerRead = nullptr;
+    oclero::qlementine::Switch* scriptServerWrite = nullptr;
+    oclero::qlementine::Switch* scriptServerProcess = nullptr;
+    oclero::qlementine::Switch* scriptServerSandbox = nullptr;
+    oclero::qlementine::Switch* scriptLocalRead = nullptr;
+    oclero::qlementine::Switch* scriptLocalWrite = nullptr;
+    oclero::qlementine::Switch* scriptLocalProcess = nullptr;
+    oclero::qlementine::Switch* scriptLocalSandbox = nullptr;
+    oclero::qlementine::Switch* scriptEditorRead = nullptr;
+    oclero::qlementine::Switch* scriptEditorWrite = nullptr;
+    oclero::qlementine::Switch* scriptEditorProcess = nullptr;
+    oclero::qlementine::Switch* scriptEditorSandbox = nullptr;
+    oclero::qlementine::Switch* scriptActionRead = nullptr;
+    oclero::qlementine::Switch* scriptActionWrite = nullptr;
+    oclero::qlementine::Switch* scriptActionProcess = nullptr;
+    oclero::qlementine::Switch* scriptActionSandbox = nullptr;
+    QLineEdit*   scriptSandboxDirEdit = nullptr;
+
+    QPushButton*  codeEditorResetDefaultsBtn = nullptr;
+    QWidget*      codeEditorWidget       = nullptr;
+    QHBoxLayout*  codeEditorLayout       = nullptr;
+    QListWidget*  codeEditorProfileList  = nullptr;
+    QPushButton*  codeEditorAddBtn       = nullptr;
+    QPushButton*  codeEditorRemoveBtn    = nullptr;
+    QPushButton*  codeEditorForkBtn      = nullptr;
+    QPushButton*  codeEditorExportBtn    = nullptr;
+    QPushButton*  codeEditorImportBtn    = nullptr;
+    QString       codeEditorEditingId;
+    QTabWidget*   codeEditorTabs         = nullptr;
+    QLineEdit*    codeEditorNameEdit     = nullptr;
+    QComboBox*    codeEditorLanguageCombo = nullptr;
+    QLineEdit*    codeEditorBuildEdit    = nullptr;
+    QLineEdit*    codeEditorRunEdit      = nullptr;
+    QLineEdit*    codeEditorDefinesEdit  = nullptr;
+    oclero::qlementine::Switch* codeEditorMainEngineSwitch = nullptr;
+
+    QWidget*      codeEditorBuildFields  = nullptr;
+    QCheckBox* codeEditorTbNewFile = nullptr;
+    QCheckBox* codeEditorTbOpenFile = nullptr;
+    QCheckBox* codeEditorTbOpenFolder = nullptr;
+    QCheckBox* codeEditorTbSave = nullptr;
+    QCheckBox* codeEditorTbExplorer = nullptr;
+    QCheckBox* codeEditorTbBuildLog = nullptr;
+    QCheckBox* codeEditorTbMinimap = nullptr;
+    QCheckBox* codeEditorTbWordWrap = nullptr;
+
+    oclero::qlementine::Switch* codeEditorPanelEnabledSwitch = nullptr;
+    QPlainTextEdit*  codeEditorPanelScriptEdit  = nullptr;
+    QPushButton*     codeEditorPanelScriptTplBtn = nullptr;
+    QLabel*          codeEditorPanelScriptHint  = nullptr;
+    int              codeEditorActionEditRow    = -1;
+    QTableWidget*    codeEditorActionsTable     = nullptr;
+    QPlainTextEdit*  codeEditorActionScriptEdit = nullptr;
+    QLabel*          codeEditorActionBodyLabel  = nullptr;
+    QLineEdit*       codeEditorActionLabelEdit  = nullptr;
+    QPushButton*     codeEditorActionIconBtn    = nullptr;
+    QString          codeEditorActionIconPath;
+    QPushButton*     codeEditorActionAddBtn     = nullptr;
+    QPushButton*     codeEditorActionRemoveBtn  = nullptr;
+    QStackedWidget*  codeEditorCustomStack      = nullptr;
+    QWidget*         codeEditorCustomEditorPage = nullptr;
+    QLabel*          codeEditorCustomEmptyLabel = nullptr;
+    QWidget*         codeEditorActionScriptHost = nullptr;
+    bool          codeEditorLoading      = false;
+    bool          codeEditorActionScriptLoading = false;
+
     void createUI();
     void loadSettings();
     void refreshAppThemeCombo();
     void refreshConsoleThemeCombo();
     void updateThemeSwatches();
+    void refreshCodeEditorProfilesList();
+    void loadCodeEditorProfileToForm(const QString& name);
+    void saveCodeEditorProfileFromForm();
+    void updateCodeEditorPanelScriptVisibility();
+    void setCodeEditorFormEditable(bool editable);
+    void syncCodeEditorActionScriptToTable(int row = -1);
+    void loadCodeEditorActionScriptFromRow(int row);
+    void updateCodeEditorActionTypeUi();
+    void pickCodeEditorActionIcon();
+    void exportCodeEditorProfile();
+    void importCodeEditorProfile();
 
     static QString userAppThemeDir();
     static bool importAppTheme(const QString& filePath);

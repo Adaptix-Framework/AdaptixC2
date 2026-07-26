@@ -48,6 +48,10 @@ Q_OBJECT
 
     int m_currentSegment = 0;
 
+    oclero::qlementine::SegmentedControl* m_segDl   = nullptr;
+    oclero::qlementine::SegmentedControl* m_segUl   = nullptr;
+    oclero::qlementine::SegmentedControl* m_segSync = nullptr;
+
     QStackedWidget* m_stack = nullptr;
 
     QHash<qint64, TransferData> m_dlCache;
@@ -63,6 +67,9 @@ public:
     ~FilesFeedWidget() override;
 
     KDDockWidgets::QtWidgets::DockWidget* dock();
+
+    void setSegment(int index);
+    int currentSegment() const { return m_currentSegment; }
 
     void SetUpdatesEnabled(bool enabled);
     void Clear();

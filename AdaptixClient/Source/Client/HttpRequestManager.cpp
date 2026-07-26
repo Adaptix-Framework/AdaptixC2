@@ -247,6 +247,10 @@ void HttpRequestManager::processResponse(QNetworkReply* reply)
                 else if (msgVal.isDouble())
                     message = QString::number(static_cast<qint64>(parseI64(msgVal)));
             }
+        } else if (parseError.error == QJsonParseError::NoError && jsonDoc.isArray()) {
+            success = true;
+            jsonResponse.insert(QStringLiteral("items"), jsonDoc.array());
+            jsonResponse.insert(QStringLiteral("ok"), true);
         } else {
             message = "Invalid JSON response";
             if (httpStatus > 0)

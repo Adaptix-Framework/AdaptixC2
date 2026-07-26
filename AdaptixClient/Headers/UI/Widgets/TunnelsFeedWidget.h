@@ -1,36 +1,34 @@
 #ifndef ADAPTIXCLIENT_TUNNELSFEEDWIDGET_H
 #define ADAPTIXCLIENT_TUNNELSFEEDWIDGET_H
 
-#include <Utils/CustomElements/ListFeed.h>
 #include <UI/Widgets/AbstractDock.h>
-
+#include <Utils/CustomElements/ControlCard.h>
 #include <main.h>
-#include <QSortFilterProxyModel>
+
+#include <QWidget>
+#include <QVariant>
+#include <QLineEdit>
 
 class AdaptixWidget;
 
-class TunnelsFilterProxy : public QSortFilterProxyModel
-{
-Q_OBJECT
-    QString m_searchText;
-
-public:
-    explicit TunnelsFilterProxy(QObject* parent = nullptr);
-
-    void setSearchText(const QString& text);
-
-protected:
-    bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
-};
-
-class TunnelsFeedWidget : public ListFeedWidget
+class TunnelsFeedWidget : public QWidget
 {
 Q_OBJECT
     AdaptixWidget* m_adaptixWidget = nullptr;
     KDDockWidgets::QtWidgets::DockWidget* dockWidget = nullptr;
 
-    FeedListModel*      feedBlockModel = nullptr;
-    TunnelsFilterProxy* filterProxy    = nullptr;
+    ControlCardList* m_cardList = nullptr;
+    QLineEdit*       m_search   = nullptr;
+
+    QList<TunnelData> m_items;
+    qint64 m_selectedId = 0;
+
+    void rebuildVisible();
+    ControlCardData toCard(const TunnelData& t) const;
+    bool matchesFilter(const TunnelData& t) const;
+    TunnelData* findById(qint64 id);
+    const TunnelData* findById(qint64 id) const;
+    QList<qint64> controllableSelectedIds() const;
 
 public:
     explicit TunnelsFeedWidget(AdaptixWidget* w);
@@ -42,14 +40,22 @@ public:
     void Clear();
     void AddTunnelItem(const TunnelData& newTunnel);
     void EditTunnelItem(qint64 tunnelId, const QString& info);
+    void SetTunnelActive(qint64 tunnelId, bool active);
     void RemoveTunnelItem(qint64 tunnelId);
 
-    void onFilterChanged() override;
-
 public Q_SLOTS:
-    void handleFeedMenu(const QPoint& pos);
     void actionSetInfo();
+    void actionPauseTunnel();
+    void actionResumeTunnel();
     void actionStopTunnel();
+
+private Q_SLOTS:
+    void onSearchChanged(const QString& text);
+    void onCardPrimary(const QVariant& id);
+    void onCardDelete(const QVariant& id);
+    void onCardDoubleClick(const QVariant& id);
+    void onCardSelected(const QVariant& id);
+    void onCardContextMenu(const QVariant& id, const QPoint& globalPos);
 };
 
 #endif

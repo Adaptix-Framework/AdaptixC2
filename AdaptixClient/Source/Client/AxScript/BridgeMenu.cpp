@@ -33,9 +33,11 @@ void BridgeMenu::clear()
     menuItems.clear();
 }
 
-AxActionWrapper* BridgeMenu::create_action(const QString& text, const QJSValue& handler)
+AxActionWrapper* BridgeMenu::create_action(const QString& text, const QJSValue& handler, const QString& icon)
 {
     auto* action = new AxActionWrapper(text, handler, scriptEngine->engine(), this);
+    if (!icon.isEmpty())
+        action->setIcon(icon);
     menuItems.append(action);
     return action;
 }
@@ -47,9 +49,11 @@ AxSeparatorWrapper* BridgeMenu::create_separator()
     return sep;
 }
 
-AxMenuWrapper* BridgeMenu::create_menu(const QString& title)
+AxMenuWrapper* BridgeMenu::create_menu(const QString& title, const QString& icon)
 {
     auto* menu = new AxMenuWrapper(title, this);
+    if (!icon.isEmpty())
+        menu->setIcon(icon);
     menuItems.append(menu);
     return menu;
 }

@@ -59,6 +59,7 @@ public Q_SLOTS:
     void handleFeedMenu(const QPoint& pos);
     void onItemDoubleClicked(const QModelIndex& index);
     void onCreateCreds();
+    void onImportCreds();
     void onEditCreds();
     void onRemoveCreds();
     void onSetTag();

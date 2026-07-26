@@ -1,0 +1,32 @@
+# Multi-plugin repository — one axtool.spec listing several plugins.
+#
+# Each plugin lives in its own source: subdirectory.
+#
+# Install only one:
+#   axtool adaptix.spec ext install github.com/org/repo@v1 --name my_agent
+#   # or in packages.yaml: { source: ..., name: my_agent }
+
+extenders:
+  - name: my_agent
+    version: 1.0.0
+    type: agent
+    source: ./my_agent
+    min_server_version: "v2.0"
+    build: [make]
+    release: { dir: dist/ }
+
+  - name: my_listener_http
+    version: 1.0.0
+    type: listener
+    source: ./my_listener_http
+    min_server_version: "v2.0"
+    build: [make]
+    release: { dir: dist/ }
+
+  - name: my_listener_tcp
+    version: 1.0.0
+    type: listener
+    source: ./my_listener_tcp
+    min_server_version: "v2.0"
+    build: [make]
+    release: { dir: dist/ }

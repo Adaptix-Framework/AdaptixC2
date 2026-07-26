@@ -14,6 +14,7 @@ import (
 	"io"
 	mrand "math/rand/v2"
 	"os"
+	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
@@ -24,7 +25,8 @@ import (
 	"github.com/vmihailenco/msgpack/v5"
 )
 
-type PluginAgent struct{}
+type PluginAgent struct {
+}
 
 var (
 	Ts             adaptix.Teamserver
@@ -355,21 +357,42 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 		return nil, "", err
 	}
 
-	cmdBuild := fmt.Sprintf("GOWORK=off CGO_ENABLED=0 GOOS=%s GOARCH=%s go build -trimpath %s -ldflags=\"%s\" -o %s", GoOs, GoArch, Tags, LdFlags, buildPath)
+	home, _ := os.UserHomeDir()
+	if home == "" {
+		home = os.TempDir()
+	}
+	goRootCache := filepath.Join(home, ".cache", "adaptix-gopher-build")
+	goTmp := filepath.Join(goRootCache, "tmp")
+	goCache := filepath.Join(goRootCache, "gocache")
+	_ = os.MkdirAll(goTmp, 0o755)
+	_ = os.MkdirAll(goCache, 0o755)
+
+	buildEnvOverrides := map[string]string{
+		"TMPDIR":      goTmp,
+		"GOTMPDIR":    goTmp,
+		"GOCACHE":     goCache,
+		"GOWORK":      "off",
+		"CGO_ENABLED": "0",
+		"GOOS":        GoOs,
+		"GOARCH":      GoArch,
+	}
+
+	cmdBuild := fmt.Sprintf("go build -trimpath %s -ldflags=%q -o %s", Tags, LdFlags, buildPath)
 	if generateConfig.Os == "windows" && generateConfig.Win7support {
 		_, err := os.Stat("/usr/lib/go-win7/go")
 		if os.IsNotExist(err) {
 			return nil, "", errors.New("go-win7 not installed")
 		}
-		cmdBuild = fmt.Sprintf("GOWORK=off CGO_ENABLED=0 GOOS=%s GOARCH=%s GOROOT=/usr/lib/go-win7/ /usr/lib/go-win7/go build -trimpath %s -ldflags=\"%s\" -o %s", GoOs, GoArch, Tags, LdFlags, buildPath)
+		buildEnvOverrides["GOROOT"] = "/usr/lib/go-win7/"
+		cmdBuild = fmt.Sprintf("/usr/lib/go-win7/go build -trimpath %s -ldflags=%q -o %s", Tags, LdFlags, buildPath)
 		_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Using go-win7 for Windows 7 support")
-
 	}
+	buildEnv := goAgentBuildEnv(buildEnvOverrides)
 	_ = Ts.TsAgentBuildLog(profile.BuilderId, adaptix.BUILD_LOG_INFO, "Starting build process...")
 
 	var buildArgs []string
 	buildArgs = append(buildArgs, "-c", cmdBuild)
-	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir+"/"+SrcPath, "sh", buildArgs...)
+	err = Ts.TsAgentBuildExecute(profile.BuilderId, currentDir+"/"+SrcPath, buildEnv, "sh", buildArgs...)
 	if err != nil {
 		_ = os.RemoveAll(tempDir)
 		return nil, "", err

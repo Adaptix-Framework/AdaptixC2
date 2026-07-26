@@ -2,6 +2,7 @@ package server
 
 import (
 	"AdaptixServer/core/eventing"
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
@@ -191,10 +192,11 @@ func (ts *Teamserver) TsAgentBuildClose(builderId string) {
 	}
 }
 
-func (ts *Teamserver) TsAgentBuildExecute(builderId string, workingDir string, program string, args ...string) error {
+func (ts *Teamserver) TsAgentBuildExecute(builderId string, workingDir string, env []string, program string, args ...string) error {
 	if builderId == "" {
 		runner := exec.Command(program, args...)
 		runner.Dir = workingDir
+		runner.Env = env
 		var stderr strings.Builder
 		runner.Stderr = &stderr
 
@@ -224,6 +226,7 @@ func (ts *Teamserver) TsAgentBuildExecute(builderId string, workingDir string, p
 
 	runner := exec.CommandContext(ctx, program, args...)
 	runner.Dir = workingDir
+	runner.Env = env
 
 	var (
 		stdoutPipe io.ReadCloser
@@ -245,34 +248,21 @@ func (ts *Teamserver) TsAgentBuildExecute(builderId string, workingDir string, p
 	var wg sync.WaitGroup
 	wg.Add(2)
 
-	go func() {
+	pipeLog := func(r io.Reader, capture *strings.Builder) {
 		defer wg.Done()
-		buf := make([]byte, 1024)
-		for {
-			n, err := stdoutPipe.Read(buf)
-			if n > 0 {
-				_ = ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_NONE, string(buf[:n]))
+		sc := bufio.NewScanner(r)
+		sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+		for sc.Scan() {
+			line := sc.Text() + "\n"
+			if capture != nil {
+				capture.WriteString(line)
 			}
-			if err != nil {
-				break
-			}
+			_ = ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_NONE, line)
 		}
-	}()
+	}
 
-	go func() {
-		defer wg.Done()
-		buf := make([]byte, 1024)
-		for {
-			n, err := stderrPipe.Read(buf)
-			if n > 0 {
-				stderrBuf.Write(buf[:n])
-				_ = ts.TsAgentBuildLog(builderId, adaptix.BUILD_LOG_NONE, string(buf[:n]))
-			}
-			if err != nil {
-				break
-			}
-		}
-	}()
+	go pipeLog(stdoutPipe, nil)
+	go pipeLog(stderrPipe, &stderrBuf)
 
 	wg.Wait()
 	err = runner.Wait()

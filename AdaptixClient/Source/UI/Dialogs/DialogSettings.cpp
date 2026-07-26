@@ -1,18 +1,53 @@
 #include <UI/MainUI.h>
 #include <UI/Dialogs/DialogSettings.h>
 #include <UI/Widgets/DockWidgetRegister.h>
+#include <UI/Widgets/CodeEditorWidget.h>
 #include <MainAdaptix.h>
 #include <Client/Settings.h>
 #include <Client/ConsoleTheme.h>
+#include <Client/CodeEditorProfileManager.h>
 #include <Utils/TitleBarStyle.h>
 #include <Utils/FontManager.h>
+
+#include <oclero/qlementine.hpp>
+
+#include <QInputDialog>
+#include <QSignalBlocker>
+#include <QMessageBox>
+#include <QFormLayout>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QGroupBox>
+#include <QLabel>
+#include <QLineEdit>
+#include <QListWidget>
+#include <QPushButton>
+#include <QScrollArea>
+#include <QCheckBox>
+#include <QFrame>
 #include <QShowEvent>
 #include <QFileDialog>
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
+#include <QPlainTextEdit>
+#include <QHeaderView>
+#include <QFontDatabase>
+#include <QRegularExpression>
+#include <QAbstractItemView>
+#include <QTabWidget>
+#include <QTabBar>
+#include <QStackedWidget>
+#include <QSizePolicy>
+#include <QGridLayout>
+#include <QColor>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QListView>
+#include <QIcon>
 #include <algorithm>
-#include <oclero/qlementine.hpp>
 
 DialogSettings::DialogSettings(Settings* s)
 {
@@ -92,7 +127,7 @@ DialogSettings::DialogSettings(Settings* s)
 void DialogSettings::createUI()
 {
     this->setWindowTitle("Adaptix Settings");
-    this->resize(700, 400);
+    this->resize(820, 520);
     this->setProperty("Main", "base");
 
     appearanceWidget = new QWidget(this);
@@ -315,13 +350,13 @@ void DialogSettings::createUI()
     consoleBgPreviewFrame = new QFrame(consoleThemeGroup);
     consoleBgPreviewFrame->setObjectName("BgPreviewFrame");
     consoleBgPreviewFrame->setStyleSheet("QFrame#BgPreviewFrame { background: palette(base); border: 1px solid palette(mid); border-radius: 6px; }");
-    consoleBgPreviewFrame->setMinimumHeight(100);
-    consoleBgPreviewFrame->setMaximumHeight(140);
+    consoleBgPreviewFrame->setMinimumHeight(180);
+    consoleBgPreviewFrame->setMaximumHeight(240);
     auto* previewLayout = new QVBoxLayout(consoleBgPreviewFrame);
     previewLayout->setContentsMargins(4, 4, 4, 4);
     consoleBgPreviewLabel = new QLabel(consoleBgPreviewFrame);
     consoleBgPreviewLabel->setAlignment(Qt::AlignCenter);
-    consoleBgPreviewLabel->setMinimumSize(200, 80);
+    consoleBgPreviewLabel->setMinimumSize(200, 160);
     consoleBgPreviewLabel->setStyleSheet(QStringLiteral("color: palette(placeholderText); font-size: %1px;").arg(FontManager::instance().typography().chromeFontPx));
     consoleBgPreviewLabel->setText("No background image");
     consoleBgPreviewLabel->setScaledContents(true);
@@ -401,6 +436,714 @@ void DialogSettings::createUI()
     consolePageLayout->addWidget(terminalSizeSpin,     2, 1, 1, 2);
     consolePageLayout->setRowStretch(3, 1);
     consolePageWidget->setLayout(consolePageLayout);
+
+    codeEditorWidget = new QWidget(this);
+    codeEditorLayout = new QHBoxLayout(codeEditorWidget);
+    codeEditorLayout->setContentsMargins(0, 0, 0, 0);
+    codeEditorLayout->setSpacing(12);
+
+    const QColor textColor = codeEditorWidget->palette().color(QPalette::WindowText);
+    QColor mutedColor = textColor;
+    mutedColor.setAlphaF(codeEditorWidget->palette().color(QPalette::Base).lightnessF() < 0.5 ? 0.58 : 0.55);
+    const QString mutedCss = QStringLiteral("color: %1; font-size: 11px;").arg(mutedColor.name(QColor::HexArgb));
+    const QString sectionTitleCss = QStringLiteral("font-weight: 600; font-size: 12px; color: palette(window-text);");
+    const QString cardCss = QStringLiteral(
+        "QFrame#CeCard {"
+        "  background: palette(base);"
+        "  border: 1px solid palette(mid);"
+        "  border-radius: 10px;"
+        "}");
+    const QString innerCss = QStringLiteral(
+        "QFrame#CeInner {"
+        "  background: palette(alternate-base);"
+        "  border: 1px solid transparent;"
+        "  border-radius: 8px;"
+        "}");
+
+    auto makeCard = [&](QWidget* parent) {
+        auto* f = new QFrame(parent);
+        f->setObjectName(QStringLiteral("CeCard"));
+        f->setStyleSheet(cardCss);
+        return f;
+    };
+    auto makeInner = [&](QWidget* parent) {
+        auto* f = new QFrame(parent);
+        f->setObjectName(QStringLiteral("CeInner"));
+        f->setStyleSheet(innerCss);
+        return f;
+    };
+
+    auto* leftCard = makeCard(codeEditorWidget);
+    leftCard->setMinimumWidth(188);
+    leftCard->setMaximumWidth(220);
+    auto* leftLay = new QVBoxLayout(leftCard);
+    leftLay->setContentsMargins(10, 10, 10, 10);
+    leftLay->setSpacing(8);
+
+    auto* listLabel = new QLabel(QStringLiteral("Profiles"), leftCard);
+    listLabel->setStyleSheet(sectionTitleCss);
+    leftLay->addWidget(listLabel);
+
+    codeEditorProfileList = new QListWidget(leftCard);
+    codeEditorProfileList->setFrameShape(QFrame::NoFrame);
+    codeEditorProfileList->setSpacing(1);
+    codeEditorProfileList->setUniformItemSizes(true);
+    codeEditorProfileList->setStyleSheet(QStringLiteral(
+        "QListWidget { background: transparent; outline: none; border: none; }"
+        "QListWidget::item {"
+        "  padding: 6px 10px;"
+        "  border-radius: 6px;"
+        "  margin: 0;"
+        "  color: palette(window-text);"
+        "}"
+        "QListWidget::item:selected {"
+        "  background: palette(highlight);"
+        "  color: palette(highlighted-text);"
+        "}"
+        "QListWidget::item:hover:!selected {"
+        "  background: palette(alternate-base);"
+        "}"));
+    leftLay->addWidget(codeEditorProfileList, 1);
+
+    auto* listBtns = new QHBoxLayout();
+    listBtns->setContentsMargins(0, 0, 0, 0);
+    listBtns->setSpacing(4);
+
+    auto makeIconBtn = [&](const QString& iconPath, const QString& tip) {
+        auto* b = new QPushButton(leftCard);
+        b->setIcon(QIcon(iconPath));
+        b->setIconSize(QSize(18, 18));
+        b->setFixedSize(QSize(28, 28));
+        b->setToolTip(tip);
+        b->setFocusPolicy(Qt::NoFocus);
+        return b;
+    };
+
+    codeEditorAddBtn = makeIconBtn(QStringLiteral(":/icons/plus"), QStringLiteral("Add profile"));
+    codeEditorRemoveBtn = makeIconBtn(QStringLiteral(":/icons/delete"), QStringLiteral("Remove profile"));
+    codeEditorForkBtn = makeIconBtn(QStringLiteral(":/icons/extension"), QStringLiteral("Fork profile to a user copy"));
+    codeEditorImportBtn = makeIconBtn(QStringLiteral(":/icons/file_open"), QStringLiteral("Import profile from JSON"));
+    codeEditorExportBtn = makeIconBtn(QStringLiteral(":/icons/save_as"), QStringLiteral("Export profile to JSON"));
+
+    auto* sep = new QFrame(leftCard);
+    sep->setFrameShape(QFrame::VLine);
+    sep->setFrameShadow(QFrame::Sunken);
+    sep->setFixedHeight(22);
+
+    listBtns->addWidget(codeEditorAddBtn, 1);
+    listBtns->addWidget(codeEditorForkBtn, 1);
+    listBtns->addWidget(codeEditorRemoveBtn, 1);
+    listBtns->addWidget(sep, 0);
+    listBtns->addWidget(codeEditorImportBtn, 1);
+    listBtns->addWidget(codeEditorExportBtn, 1);
+    leftLay->addLayout(listBtns);
+    codeEditorLayout->addWidget(leftCard, 0);
+
+    auto* rightCard = makeCard(codeEditorWidget);
+    auto* rightLay = new QVBoxLayout(rightCard);
+    rightLay->setContentsMargins(14, 12, 14, 12);
+    rightLay->setSpacing(10);
+
+    codeEditorNameEdit = new QLineEdit(rightCard);
+    codeEditorNameEdit->setPlaceholderText(QStringLiteral("Profile name"));
+    codeEditorNameEdit->setFixedHeight(32);
+    QFont nameFont = codeEditorNameEdit->font();
+    nameFont.setPointSizeF(nameFont.pointSizeF() > 0 ? nameFont.pointSizeF() + 0.5 : 11.5);
+    nameFont.setWeight(QFont::DemiBold);
+    codeEditorNameEdit->setFont(nameFont);
+    rightLay->addWidget(codeEditorNameEdit);
+
+    codeEditorTabs = new QTabWidget(rightCard);
+    codeEditorTabs->setDocumentMode(true);
+    codeEditorTabs->tabBar()->setExpanding(false);
+    codeEditorTabs->setStyleSheet(QStringLiteral(
+        "QTabWidget::pane {"
+        "  border: none;"
+        "  top: 4px;"
+        "  background: transparent;"
+        "}"
+        "QTabBar::tab {"
+        "  background: transparent;"
+        "  color: palette(window-text);"
+        "  padding: 6px 14px 8px 14px;"
+        "  margin-right: 2px;"
+        "  border: none;"
+        "  border-bottom: 2px solid transparent;"
+        "  font-weight: 500;"
+        "}"
+        "QTabBar::tab:selected {"
+        "  background: transparent;"
+        "  color: palette(window-text);"
+        "  font-weight: 600;"
+        "  border-bottom: 2px solid palette(highlight);"
+        "}"
+        "QTabBar::tab:!selected {"
+        "  color: %1;"
+        "}"
+        "QTabBar::tab:!selected:hover {"
+        "  color: palette(window-text);"
+        "  background: palette(alternate-base);"
+        "  border-radius: 6px 6px 0 0;"
+        "}").arg(mutedColor.name(QColor::HexArgb)));
+
+    QFont monoFont = QFontDatabase::systemFont(QFontDatabase::FixedFont);
+    if (monoFont.pointSizeF() <= 0)
+        monoFont.setPointSize(10);
+
+    auto* generalPage = new QWidget(codeEditorTabs);
+    auto* generalLay = new QVBoxLayout(generalPage);
+    generalLay->setContentsMargins(0, 12, 0, 4);
+    generalLay->setSpacing(12);
+
+    auto* langCard = makeInner(generalPage);
+    auto* langLay = new QVBoxLayout(langCard);
+    langLay->setContentsMargins(12, 12, 12, 12);
+    langLay->setSpacing(8);
+    auto* langTitle = new QLabel(QStringLiteral("Language"), langCard);
+    langTitle->setStyleSheet(sectionTitleCss);
+    langLay->addWidget(langTitle);
+    codeEditorLanguageCombo = new QComboBox(langCard);
+    codeEditorLanguageCombo->addItem(QStringLiteral("AxScript"), QStringLiteral("axscript"));
+    codeEditorLanguageCombo->addItem(QStringLiteral("C"), QStringLiteral("c"));
+    codeEditorLanguageCombo->addItem(QStringLiteral("C++"), QStringLiteral("cpp"));
+    codeEditorLanguageCombo->addItem(QStringLiteral("Plain text"), QStringLiteral("plain"));
+    codeEditorLanguageCombo->setMinimumHeight(32);
+    langLay->addWidget(codeEditorLanguageCombo);
+    auto* langHint = new QLabel(QStringLiteral("Syntax highlighting for the editor. Handlers & panel live on the other tabs."), langCard);
+    langHint->setWordWrap(true);
+    langHint->setStyleSheet(mutedCss);
+    langLay->addWidget(langHint);
+    generalLay->addWidget(langCard);
+
+    auto* panelCard = makeInner(generalPage);
+    auto* panelCardLay = new QVBoxLayout(panelCard);
+    panelCardLay->setContentsMargins(12, 12, 12, 12);
+    panelCardLay->setSpacing(8);
+    auto* panelTitle = new QLabel(QStringLiteral("Bottom panel"), panelCard);
+    panelTitle->setStyleSheet(sectionTitleCss);
+    panelCardLay->addWidget(panelTitle);
+    codeEditorPanelEnabledSwitch = new oclero::qlementine::Switch(panelCard);
+    codeEditorPanelEnabledSwitch->setText(QStringLiteral("Show GeneratePanel under the editor"));
+    codeEditorPanelEnabledSwitch->setToolTip(
+        QStringLiteral("On — AxScript GeneratePanel() in the editor bottom strip.\n"
+                       "Off — no config panel."));
+    panelCardLay->addWidget(codeEditorPanelEnabledSwitch);
+    auto* panelHint = new QLabel(QStringLiteral("Edit the script on the Panel tab. Values are free-form keys in the container."), panelCard);
+    panelHint->setWordWrap(true);
+    panelHint->setStyleSheet(mutedCss);
+    panelCardLay->addWidget(panelHint);
+    generalLay->addWidget(panelCard);
+
+    auto* flowCard = makeInner(generalPage);
+    auto* flowLay = new QVBoxLayout(flowCard);
+    flowLay->setContentsMargins(12, 12, 12, 12);
+    flowLay->setSpacing(6);
+    auto* flowTitle = new QLabel(QStringLiteral("How it works"), flowCard);
+    flowTitle->setStyleSheet(sectionTitleCss);
+    flowLay->addWidget(flowTitle);
+    auto* flowBody = new QLabel(
+        QStringLiteral(
+            "1. Panel — GeneratePanel() builds fields (cmd, switches, …)\n"
+            "2. Toolbar — buttons with AxScript handlers\n"
+            "3. Handler — get_panel_data + content + eval / job_start\n"
+            "4. Log — editor.log / job stdout / ax.log"),
+        flowCard);
+    flowBody->setWordWrap(true);
+    flowBody->setStyleSheet(mutedCss);
+    flowLay->addWidget(flowBody);
+    generalLay->addWidget(flowCard);
+
+    auto* resetRow = new QHBoxLayout();
+    resetRow->addStretch(1);
+    auto* resetBtn = new QPushButton(QStringLiteral("Reset panel & actions to defaults"), generalPage);
+    resetBtn->setFixedHeight(30);
+    resetBtn->setToolTip(QStringLiteral("Replace GeneratePanel script and toolbar handlers with current defaults for this profile type."));
+    resetRow->addWidget(resetBtn);
+    generalLay->addLayout(resetRow);
+    generalLay->addStretch(1);
+
+    connect(resetBtn, &QPushButton::clicked, this, [this]() {
+        if (codeEditorEditingId.isEmpty())
+            return;
+        auto* mgr = CodeEditorProfileManager::instance();
+        const BuildProfile* cur = mgr->profile(codeEditorEditingId);
+        if (!cur || cur->isSystem())
+            return;
+        const auto reply = QMessageBox::question(this, QStringLiteral("Reset profile?"),
+            QStringLiteral("Reset panel script and toolbar actions for “%1” to defaults?\n"
+                           "Panel field values (panelState) are kept when possible.")
+                .arg(cur->name),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (reply != QMessageBox::Yes)
+            return;
+        BuildProfile p = *cur;
+        p.applyCurrentDefaults(true);
+        mgr->updateProfile(p);
+        loadCodeEditorProfileToForm(p.name);
+        buttonApply->setEnabled(true);
+    });
+    codeEditorResetDefaultsBtn = resetBtn;
+
+    codeEditorBuildFields = nullptr;
+    codeEditorBuildEdit = nullptr;
+    codeEditorRunEdit = nullptr;
+    codeEditorDefinesEdit = nullptr;
+    codeEditorMainEngineSwitch = nullptr;
+
+    codeEditorTabs->addTab(generalPage, QStringLiteral("General"));
+
+    auto* toolbarPage = new QWidget(codeEditorTabs);
+    auto* toolbarLay = new QVBoxLayout(toolbarPage);
+    toolbarLay->setContentsMargins(0, 12, 0, 4);
+    toolbarLay->setSpacing(12);
+
+    auto* builtInCard = makeInner(toolbarPage);
+    auto* builtInLay = new QVBoxLayout(builtInCard);
+    builtInLay->setContentsMargins(12, 10, 12, 10);
+    builtInLay->setSpacing(6);
+    auto* builtInTitle = new QLabel(QStringLiteral("Editor chrome"), builtInCard);
+    builtInTitle->setStyleSheet(sectionTitleCss);
+    builtInLay->addWidget(builtInTitle);
+
+    auto makeCb = [builtInCard](const QString& text) {
+        auto* cb = new QCheckBox(text, builtInCard);
+        cb->setMinimumHeight(24);
+        return cb;
+    };
+    codeEditorTbNewFile = makeCb(QStringLiteral("New"));
+    codeEditorTbOpenFile = makeCb(QStringLiteral("Open"));
+    codeEditorTbOpenFolder = makeCb(QStringLiteral("Folder"));
+    codeEditorTbSave = makeCb(QStringLiteral("Save"));
+    codeEditorTbExplorer = makeCb(QStringLiteral("Explorer"));
+    codeEditorTbBuildLog = makeCb(QStringLiteral("Log"));
+    codeEditorTbMinimap = makeCb(QStringLiteral("Minimap"));
+    codeEditorTbWordWrap = makeCb(QStringLiteral("Wrap"));
+
+    auto* tbGrid = new QGridLayout();
+    tbGrid->setContentsMargins(0, 4, 0, 0);
+    tbGrid->setHorizontalSpacing(14);
+    tbGrid->setVerticalSpacing(6);
+    tbGrid->setColumnMinimumWidth(0, 44);
+    auto placeRow = [&](int row, const QString& title, std::initializer_list<QCheckBox*> cbs) {
+        auto* t = new QLabel(title, builtInCard);
+        t->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+        t->setStyleSheet(mutedCss + QStringLiteral(" font-weight: 600;"));
+        tbGrid->addWidget(t, row, 0, Qt::AlignVCenter);
+        int col = 1;
+        for (QCheckBox* cb : cbs)
+            tbGrid->addWidget(cb, row, col++, Qt::AlignVCenter | Qt::AlignLeft);
+        tbGrid->setColumnStretch(col, 1);
+    };
+    placeRow(0, QStringLiteral("Files"), {codeEditorTbNewFile, codeEditorTbOpenFile, codeEditorTbOpenFolder, codeEditorTbSave});
+    placeRow(1, QStringLiteral("View"), {codeEditorTbExplorer, codeEditorTbBuildLog, codeEditorTbMinimap, codeEditorTbWordWrap});
+    builtInLay->addLayout(tbGrid);
+    toolbarLay->addWidget(builtInCard);
+
+    auto* customHead = new QHBoxLayout();
+    customHead->setSpacing(8);
+    customHead->setAlignment(Qt::AlignVCenter);
+    auto* customLabel = new QLabel(QStringLiteral("Toolbar actions"), toolbarPage);
+    customLabel->setStyleSheet(sectionTitleCss);
+    codeEditorActionAddBtn = new QPushButton(QStringLiteral("Add button"), toolbarPage);
+    codeEditorActionRemoveBtn = new QPushButton(QStringLiteral("Remove"), toolbarPage);
+    codeEditorActionAddBtn->setFixedHeight(28);
+    codeEditorActionRemoveBtn->setFixedHeight(28);
+    customHead->addWidget(customLabel, 0, Qt::AlignVCenter);
+    customHead->addStretch(1);
+    customHead->addWidget(codeEditorActionAddBtn, 0, Qt::AlignVCenter);
+    customHead->addWidget(codeEditorActionRemoveBtn, 0, Qt::AlignVCenter);
+    toolbarLay->addLayout(customHead);
+
+    codeEditorCustomStack = new QStackedWidget(toolbarPage);
+
+    auto* emptyPage = makeInner(codeEditorCustomStack);
+    auto* emptyLay = new QVBoxLayout(emptyPage);
+    emptyLay->setContentsMargins(20, 28, 20, 28);
+    emptyLay->setSpacing(12);
+    emptyLay->setAlignment(Qt::AlignCenter);
+    codeEditorCustomEmptyLabel = new QLabel(
+        QStringLiteral("No toolbar actions yet.\n"
+                       "Add toolbar actions — each runs an AxScript handler with global editor."),
+        emptyPage);
+    codeEditorCustomEmptyLabel->setAlignment(Qt::AlignCenter);
+    codeEditorCustomEmptyLabel->setWordWrap(true);
+    codeEditorCustomEmptyLabel->setStyleSheet(QStringLiteral("color: %1; font-size: 12px;").arg(mutedColor.name(QColor::HexArgb)));
+    emptyLay->addWidget(codeEditorCustomEmptyLabel, 0, Qt::AlignCenter);
+    auto* emptyAdd = new QPushButton(QStringLiteral("Add first button"), emptyPage);
+    emptyAdd->setFixedHeight(30);
+    emptyAdd->setMinimumWidth(140);
+    emptyLay->addWidget(emptyAdd, 0, Qt::AlignCenter);
+    connect(emptyAdd, &QPushButton::clicked, codeEditorActionAddBtn, &QPushButton::click);
+    codeEditorCustomStack->addWidget(emptyPage);
+
+    codeEditorCustomEditorPage = new QWidget(codeEditorCustomStack);
+    auto* customSplit = new QHBoxLayout(codeEditorCustomEditorPage);
+    customSplit->setContentsMargins(0, 0, 0, 0);
+    customSplit->setSpacing(10);
+
+    codeEditorActionsTable = new QTableWidget(0, 4, codeEditorCustomEditorPage);
+    codeEditorActionsTable->setHorizontalHeaderLabels({
+        QStringLiteral(""), QStringLiteral("Action"), QStringLiteral("Type"), QStringLiteral("Body")
+    });
+    codeEditorActionsTable->setColumnHidden(2, true);
+    codeEditorActionsTable->setColumnHidden(3, true);
+    codeEditorActionsTable->horizontalHeader()->setStretchLastSection(false);
+    codeEditorActionsTable->horizontalHeader()->setSectionResizeMode(0, QHeaderView::Fixed);
+    codeEditorActionsTable->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
+    codeEditorActionsTable->setColumnWidth(0, 40);
+    codeEditorActionsTable->verticalHeader()->setVisible(false);
+    codeEditorActionsTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    codeEditorActionsTable->setSelectionMode(QAbstractItemView::SingleSelection);
+    codeEditorActionsTable->setShowGrid(false);
+    codeEditorActionsTable->setAlternatingRowColors(false);
+    codeEditorActionsTable->setIconSize(QSize(20, 20));
+    codeEditorActionsTable->setMaximumWidth(200);
+    codeEditorActionsTable->setMinimumWidth(168);
+    codeEditorActionsTable->setStyleSheet(QStringLiteral(
+        "QTableWidget {"
+        "  border: 1px solid palette(mid);"
+        "  border-radius: 8px;"
+        "  background: palette(base);"
+        "  gridline-color: transparent;"
+        "  outline: none;"
+        "}"
+        "QTableWidget::item {"
+        "  padding: 6px 8px;"
+        "}"
+        "QTableWidget::item:selected {"
+        "  background: palette(highlight);"
+        "  color: palette(highlighted-text);"
+        "}"
+        "QHeaderView::section {"
+        "  background: palette(alternate-base);"
+        "  color: %1;"
+        "  border: none;"
+        "  border-bottom: 1px solid palette(mid);"
+        "  padding: 6px 8px;"
+        "  font-weight: 600;"
+        "  font-size: 11px;"
+        "}")
+        .arg(mutedColor.name(QColor::HexArgb)));
+    customSplit->addWidget(codeEditorActionsTable, 0);
+
+    auto* detailCard = makeInner(codeEditorCustomEditorPage);
+    auto* scriptCol = new QVBoxLayout(detailCard);
+    scriptCol->setContentsMargins(12, 10, 12, 10);
+    scriptCol->setSpacing(8);
+
+    auto* metaRow = new QHBoxLayout();
+    metaRow->setSpacing(10);
+    codeEditorActionIconBtn = new QPushButton(detailCard);
+    codeEditorActionIconBtn->setFixedSize(40, 40);
+    codeEditorActionIconBtn->setToolTip(QStringLiteral("Choose icon from client resources (:/icons)"));
+    codeEditorActionIconBtn->setEnabled(false);
+    codeEditorActionIconBtn->setIconSize(QSize(24, 24));
+    codeEditorActionIconBtn->setCursor(Qt::PointingHandCursor);
+    auto* metaRight = new QVBoxLayout();
+    metaRight->setSpacing(2);
+    metaRight->setContentsMargins(0, 0, 0, 0);
+    auto* labelCaption = new QLabel(QStringLiteral("Label"), detailCard);
+    labelCaption->setStyleSheet(mutedCss);
+    codeEditorActionLabelEdit = new QLineEdit(detailCard);
+    codeEditorActionLabelEdit->setPlaceholderText(QStringLiteral("Button label"));
+    codeEditorActionLabelEdit->setEnabled(false);
+    codeEditorActionLabelEdit->setFixedHeight(32);
+    metaRight->addWidget(labelCaption);
+    metaRight->addWidget(codeEditorActionLabelEdit);
+    metaRow->addWidget(codeEditorActionIconBtn, 0, Qt::AlignBottom);
+    metaRow->addLayout(metaRight, 1);
+    scriptCol->addLayout(metaRow);
+
+    codeEditorActionScriptHost = new QWidget(detailCard);
+    auto* scriptHostLay = new QVBoxLayout(codeEditorActionScriptHost);
+    scriptHostLay->setContentsMargins(0, 0, 0, 0);
+    scriptHostLay->setSpacing(4);
+    codeEditorActionBodyLabel = new QLabel(QStringLiteral("Handler (AxScript)"), codeEditorActionScriptHost);
+    codeEditorActionBodyLabel->setStyleSheet(mutedCss);
+    codeEditorActionScriptEdit = new QPlainTextEdit(codeEditorActionScriptHost);
+    codeEditorActionScriptEdit->setPlaceholderText(QStringLiteral(
+        "let p = editor.get_panel_data();\n"
+        "editor.eval(editor.content(), { main: !!p.mainEngine });\n"));
+    codeEditorActionScriptEdit->setFont(monoFont);
+    codeEditorActionScriptEdit->setTabStopDistance(28);
+    codeEditorActionScriptEdit->setEnabled(false);
+    codeEditorActionScriptEdit->setStyleSheet(QStringLiteral(
+        "QPlainTextEdit {"
+        "  background: palette(base);"
+        "  border: 1px solid palette(mid);"
+        "  border-radius: 6px;"
+        "  padding: 6px;"
+        "}"));
+    scriptHostLay->addWidget(codeEditorActionBodyLabel);
+    scriptHostLay->addWidget(codeEditorActionScriptEdit, 1);
+    scriptCol->addWidget(codeEditorActionScriptHost, 1);
+
+    auto* axHint = new QLabel(
+        QStringLiteral(
+            "editor: get_panel_data · content · file · save · expand · log · eval · job_*\n"
+            "save() = write current tab to disk · file() path · content() text"),
+        detailCard);
+    axHint->setStyleSheet(mutedCss);
+    axHint->setWordWrap(true);
+    scriptCol->addWidget(axHint);
+
+    customSplit->addWidget(detailCard, 1);
+    codeEditorCustomStack->addWidget(codeEditorCustomEditorPage);
+    codeEditorCustomStack->setCurrentIndex(0);
+
+    toolbarLay->addWidget(codeEditorCustomStack, 1);
+    codeEditorTabs->addTab(toolbarPage, QStringLiteral("Toolbar"));
+
+    auto* panelPage = new QWidget(codeEditorTabs);
+    auto* panelLay = new QVBoxLayout(panelPage);
+    panelLay->setContentsMargins(0, 12, 0, 4);
+    panelLay->setSpacing(10);
+
+    auto* panelToggleRow = new QHBoxLayout();
+    panelToggleRow->setSpacing(10);
+    codeEditorPanelScriptHint = new QLabel(panelPage);
+    codeEditorPanelScriptHint->setStyleSheet(mutedCss);
+    codeEditorPanelScriptHint->setWordWrap(true);
+    panelToggleRow->addWidget(codeEditorPanelScriptHint, 1, Qt::AlignVCenter);
+    codeEditorPanelScriptTplBtn = new QPushButton(QStringLiteral("Insert template"), panelPage);
+    codeEditorPanelScriptTplBtn->setToolTip(QStringLiteral("Insert GeneratePanel() skeleton"));
+    codeEditorPanelScriptTplBtn->setFixedHeight(28);
+    panelToggleRow->addWidget(codeEditorPanelScriptTplBtn, 0, Qt::AlignVCenter);
+    panelLay->addLayout(panelToggleRow);
+
+    codeEditorPanelScriptEdit = new QPlainTextEdit(panelPage);
+    codeEditorPanelScriptEdit->setPlaceholderText(QStringLiteral("function GeneratePanel() { … }"));
+    codeEditorPanelScriptEdit->setFont(monoFont);
+    codeEditorPanelScriptEdit->setTabStopDistance(28);
+    codeEditorPanelScriptEdit->setStyleSheet(QStringLiteral(
+        "QPlainTextEdit {"
+        "  background: palette(base);"
+        "  border: 1px solid palette(mid);"
+        "  border-radius: 8px;"
+        "  padding: 10px;"
+        "  selection-background-color: palette(highlight);"
+        "}"
+        "QPlainTextEdit:disabled {"
+        "  color: %1;"
+        "  background: palette(alternate-base);"
+        "}")
+        .arg(mutedColor.name(QColor::HexArgb)));
+    panelLay->addWidget(codeEditorPanelScriptEdit, 1);
+
+    auto* panelGlobals = new QLabel(QStringLiteral("Panel context: __state  ·  __profileName  ·  __language  (values restored into container after GeneratePanel)"), panelPage);
+    panelGlobals->setObjectName(QStringLiteral("CePanelGlobals"));
+    panelGlobals->setStyleSheet(mutedCss);
+    panelLay->addWidget(panelGlobals);
+
+    codeEditorTabs->addTab(panelPage, QStringLiteral("Panel"));
+
+    rightLay->addWidget(codeEditorTabs, 1);
+    codeEditorLayout->addWidget(rightCard, 1);
+    codeEditorWidget->setLayout(codeEditorLayout);
+
+    auto listItemKey = [](QListWidgetItem* item) -> QString {
+        if (!item)
+            return {};
+        const QString id = item->data(Qt::UserRole).toString();
+        return id.isEmpty() ? item->text() : id;
+    };
+
+    connect(codeEditorProfileList, &QListWidget::currentItemChanged, this, [this, listItemKey](QListWidgetItem* current, QListWidgetItem* /*previous*/) {
+        if (!codeEditorLoading && !codeEditorEditingId.isEmpty())
+            saveCodeEditorProfileFromForm();
+        if (current)
+            loadCodeEditorProfileToForm(listItemKey(current));
+        else if (!codeEditorLoading)
+            codeEditorEditingId.clear();
+    });
+    connect(codeEditorAddBtn, &QPushButton::clicked, this, [this]() {
+        if (!codeEditorLoading && !codeEditorEditingId.isEmpty())
+            saveCodeEditorProfileFromForm();
+        auto* mgr = CodeEditorProfileManager::instance();
+        const QString created = mgr->addProfile(QStringLiteral("Profile"));
+        refreshCodeEditorProfilesList();
+        const auto items = codeEditorProfileList->findItems(created, Qt::MatchExactly);
+        if (!items.isEmpty())
+            codeEditorProfileList->setCurrentItem(items.first());
+        if (codeEditorNameEdit) {
+            codeEditorNameEdit->setFocus(Qt::OtherFocusReason);
+            codeEditorNameEdit->selectAll();
+        }
+        buttonApply->setEnabled(true);
+    });
+    connect(codeEditorForkBtn, &QPushButton::clicked, this, [this, listItemKey]() {
+        auto* item = codeEditorProfileList->currentItem();
+        if (!item)
+            return;
+        if (!codeEditorLoading && !codeEditorEditingId.isEmpty())
+            saveCodeEditorProfileFromForm();
+        auto* mgr = CodeEditorProfileManager::instance();
+        const QString key = listItemKey(item);
+        const BuildProfile* src = mgr->profile(key);
+        if (!src)
+            return;
+        const QString newId = mgr->forkProfile(key);
+        if (newId.isEmpty()) {
+            QMessageBox::warning(this, QStringLiteral("Fork Profile"), QStringLiteral("Could not fork profile."));
+            return;
+        }
+        refreshCodeEditorProfilesList();
+        for (int i = 0; i < codeEditorProfileList->count(); ++i) {
+            auto* it = codeEditorProfileList->item(i);
+            if (it && it->data(Qt::UserRole).toString() == newId) {
+                codeEditorProfileList->setCurrentItem(it);
+                break;
+            }
+        }
+        buttonApply->setEnabled(true);
+    });
+    connect(codeEditorRemoveBtn, &QPushButton::clicked, this, [this, listItemKey]() {
+        auto* item = codeEditorProfileList->currentItem();
+        if (!item)
+            return;
+        auto* mgr = CodeEditorProfileManager::instance();
+        const BuildProfile* p = mgr->profile(listItemKey(item));
+        if (!p || !p->isDeletable()) {
+            QMessageBox::information(this, QStringLiteral("Remove Profile"), QStringLiteral("System profiles (AxScript, BOF, Event Handler) cannot be removed."));
+            return;
+        }
+        const auto reply = QMessageBox::question(this, QStringLiteral("Remove Profile"),
+            QStringLiteral("Remove profile '%1'?").arg(p->name),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (reply != QMessageBox::Yes)
+            return;
+        codeEditorEditingId.clear();
+        if (mgr->removeProfile(p->id))
+            refreshCodeEditorProfilesList();
+    });
+    connect(codeEditorExportBtn, &QPushButton::clicked, this, [this]() { exportCodeEditorProfile(); });
+    connect(codeEditorImportBtn, &QPushButton::clicked, this, [this]() { importCodeEditorProfile(); });
+
+    auto markDirty = [this]() {
+        if (!codeEditorLoading)
+            buttonApply->setEnabled(true);
+    };
+    connect(codeEditorNameEdit,    &QLineEdit::textEdited, this, [markDirty](const QString&) { markDirty(); });
+    connect(codeEditorLanguageCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this, markDirty](int) {
+        markDirty();
+        updateCodeEditorPanelScriptVisibility();
+    });
+    if (codeEditorPanelEnabledSwitch) {
+        connect(codeEditorPanelEnabledSwitch, &oclero::qlementine::Switch::toggled, this, [this, markDirty](bool) {
+                    updateCodeEditorPanelScriptVisibility();
+                    markDirty();
+                });
+    }
+    if (codeEditorPanelScriptEdit)
+        connect(codeEditorPanelScriptEdit, &QPlainTextEdit::textChanged, this, [markDirty]() { markDirty(); });
+    if (codeEditorPanelScriptTplBtn) {
+        connect(codeEditorPanelScriptTplBtn, &QPushButton::clicked, this, [this, markDirty]() {
+            if (!codeEditorPanelScriptEdit)
+                return;
+            if (!codeEditorPanelScriptEdit->toPlainText().trimmed().isEmpty()) {
+                const auto reply = QMessageBox::question(this, QStringLiteral("Insert template"),
+                    QStringLiteral("Replace current panel script with the template?"),
+                    QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+                if (reply != QMessageBox::Yes)
+                    return;
+            }
+            QString tpl = CodeEditorWidget::defaultPanelScriptTemplate();
+            if (codeEditorLanguageCombo
+                && codeEditorLanguageCombo->currentData().toString() == QLatin1String("axscript"))
+                tpl = BuildProfile::defaultAxScriptPanelScript();
+            else if (codeEditorLanguageCombo) {
+                const QString lang = codeEditorLanguageCombo->currentData().toString();
+                if (lang == QLatin1String("c") || lang == QLatin1String("cpp"))
+                    tpl = BuildProfile::defaultBofPanelScript();
+            }
+            codeEditorPanelScriptEdit->setPlainText(tpl);
+            markDirty();
+        });
+    }
+    if (codeEditorActionAddBtn) {
+        connect(codeEditorActionAddBtn, &QPushButton::clicked, this, [this, markDirty]() {
+            if (!codeEditorActionsTable)
+                return;
+            syncCodeEditorActionScriptToTable(codeEditorActionEditRow);
+            if (codeEditorCustomStack)
+                codeEditorCustomStack->setCurrentIndex(1);
+            const int row = codeEditorActionsTable->rowCount();
+            codeEditorActionsTable->insertRow(row);
+            auto* iconItem = new QTableWidgetItem();
+            iconItem->setFlags(iconItem->flags() & ~Qt::ItemIsEditable);
+            iconItem->setTextAlignment(Qt::AlignCenter);
+            codeEditorActionsTable->setItem(row, 0, iconItem);
+            codeEditorActionsTable->setItem(row, 1, new QTableWidgetItem(QStringLiteral("Action")));
+            codeEditorActionsTable->setItem(row, 2, new QTableWidgetItem(QStringLiteral("axscript")));
+            codeEditorActionsTable->setItem(row, 3, new QTableWidgetItem(QStringLiteral(
+                "let p = editor.get_panel_data();\n"
+                "editor.eval(editor.content(), { main: !!p.mainEngine });\n")));
+            codeEditorActionsTable->selectRow(row);
+            loadCodeEditorActionScriptFromRow(row);
+            markDirty();
+        });
+    }
+    if (codeEditorActionRemoveBtn) {
+        connect(codeEditorActionRemoveBtn, &QPushButton::clicked, this, [this, markDirty]() {
+            if (!codeEditorActionsTable)
+                return;
+            const int row = codeEditorActionsTable->currentRow();
+            if (row < 0)
+                return;
+            codeEditorActionsTable->removeRow(row);
+            const int next = qMin(row, codeEditorActionsTable->rowCount() - 1);
+            if (next >= 0) {
+                codeEditorActionsTable->selectRow(next);
+                loadCodeEditorActionScriptFromRow(next);
+            } else {
+                if (codeEditorCustomStack)
+                    codeEditorCustomStack->setCurrentIndex(0);
+                loadCodeEditorActionScriptFromRow(-1);
+            }
+            markDirty();
+        });
+    }
+    if (codeEditorActionsTable) {
+        connect(codeEditorActionsTable, &QTableWidget::itemChanged, this, [markDirty](QTableWidgetItem*) {
+            markDirty();
+        });
+        connect(codeEditorActionsTable, &QTableWidget::currentCellChanged, this,
+                [this](int row, int, int prevRow, int) {
+                    if (row == prevRow)
+                        return;
+                    if (prevRow >= 0)
+                        syncCodeEditorActionScriptToTable(prevRow);
+                    loadCodeEditorActionScriptFromRow(row);
+                });
+    }
+    if (codeEditorActionScriptEdit) {
+        connect(codeEditorActionScriptEdit, &QPlainTextEdit::textChanged, this, [this, markDirty]() {
+            if (codeEditorActionScriptLoading || codeEditorLoading)
+                return;
+            syncCodeEditorActionScriptToTable(codeEditorActionEditRow);
+            markDirty();
+        });
+    }
+    if (codeEditorActionLabelEdit) {
+        connect(codeEditorActionLabelEdit, &QLineEdit::textEdited, this, [this, markDirty](const QString&) {
+            if (codeEditorActionScriptLoading || codeEditorLoading)
+                return;
+            syncCodeEditorActionScriptToTable(codeEditorActionEditRow);
+            markDirty();
+        });
+    }
+    for (QCheckBox* cb : {
+             codeEditorTbNewFile, codeEditorTbOpenFile, codeEditorTbOpenFolder, codeEditorTbSave,
+             codeEditorTbExplorer, codeEditorTbBuildLog, codeEditorTbMinimap, codeEditorTbWordWrap
+         }) {
+        if (cb)
+            connect(cb, &QCheckBox::toggled, this, [markDirty](bool) { markDirty(); });
+    }
+    if (codeEditorActionIconBtn)
+        connect(codeEditorActionIconBtn, &QPushButton::clicked, this, [this, markDirty]() {
+            pickCodeEditorActionIcon();
+            markDirty();
+        });
 
     sessionsWidget = new QWidget(this);
     sessionsLayout = new QGridLayout(sessionsWidget);
@@ -984,6 +1727,78 @@ void DialogSettings::createUI()
     shortcutsLayout->setContentsMargins(0, 0, 0, 0);
     shortcutsWidget->setLayout(shortcutsLayout);
 
+    scriptSecWidget = new QWidget(this);
+    scriptSecLayout = new QVBoxLayout(scriptSecWidget);
+    scriptSecLayout->setContentsMargins(0, 0, 0, 0);
+    scriptSecLayout->setSpacing(12);
+
+    auto makePolicyGroup = [&](const QString& title, const QString& hint, oclero::qlementine::Switch** readSw, oclero::qlementine::Switch** writeSw, oclero::qlementine::Switch** processSw, oclero::qlementine::Switch** sandboxSw, bool processEnabled) {
+        auto* box = new QGroupBox(title, scriptSecWidget);
+        auto* lay = new QVBoxLayout(box);
+        lay->setSpacing(6);
+        if (!hint.isEmpty()) {
+            auto* h = new QLabel(hint, box);
+            h->setWordWrap(true);
+            h->setStyleSheet(QStringLiteral("color: palette(placeholderText); font-size: 11px;"));
+            lay->addWidget(h);
+        }
+        auto addSw = [&](oclero::qlementine::Switch** out, const QString& text, bool enabled = true) {
+            auto* sw = new oclero::qlementine::Switch(box);
+            sw->setText(text);
+            sw->setEnabled(enabled);
+            if (!enabled)
+                sw->setChecked(false);
+            lay->addWidget(sw);
+            *out = sw;
+        };
+        addSw(readSw, QStringLiteral("File read (ax.file_read)"));
+        addSw(writeSw, QStringLiteral("File write (ax.file_write)"));
+        addSw(processSw, QStringLiteral("Process exec (process.exec)"), processEnabled);
+        if (!processEnabled && processSw && *processSw)
+            (*processSw)->setToolTip(QStringLiteral("Not available for this context (hard-limited)"));
+        addSw(sandboxSw, QStringLiteral("Sandbox filesystem (restrict paths)"));
+        return box;
+    };
+
+    scriptSecLayout->addWidget(makePolicyGroup(
+        QStringLiteral("Server scripts"),
+        QStringLiteral("Delivered from the teamserver."),
+        &scriptServerRead, &scriptServerWrite, &scriptServerProcess, &scriptServerSandbox, false));
+    scriptSecLayout->addWidget(makePolicyGroup(
+        QStringLiteral("Local scripts"),
+        QStringLiteral("Main engine, user extensions, extender ax_config."),
+        &scriptLocalRead, &scriptLocalWrite, &scriptLocalProcess, &scriptLocalSandbox, false));
+    scriptSecLayout->addWidget(makePolicyGroup(
+        QStringLiteral("Code Editor — Run / Panel"),
+        QStringLiteral("GeneratePanel and Run (isolated or main engine)."),
+        &scriptEditorRead, &scriptEditorWrite, &scriptEditorProcess, &scriptEditorSandbox, false));
+    scriptSecLayout->addWidget(makePolicyGroup(
+        QStringLiteral("Code Editor — Toolbar actions"),
+        QStringLiteral("AxScript handlers on profile toolbar buttons. Only this context may run process.exec."),
+        &scriptActionRead, &scriptActionWrite, &scriptActionProcess, &scriptActionSandbox, true));
+
+    auto* sandBox = new QGroupBox(QStringLiteral("Sandbox directory"), scriptSecWidget);
+    auto* sandLay = new QHBoxLayout(sandBox);
+    auto* sandLabel = new QLabel(QStringLiteral("Root:"), sandBox);
+    scriptSandboxDirEdit = new QLineEdit(sandBox);
+    scriptSandboxDirEdit->setPlaceholderText(QStringLiteral("~/.adaptix/script_sandbox"));
+    scriptSandboxDirEdit->setToolTip(QStringLiteral(
+        "Absolute path or ~/… / ~\\… (home expansion works on Windows too).\n"
+        "Relative file paths are mapped under this root.\n"
+        "Local scripts may also read/write their own script directory when sandbox is on."));
+    sandLay->addWidget(sandLabel);
+    sandLay->addWidget(scriptSandboxDirEdit, 1);
+    scriptSecLayout->addWidget(sandBox);
+
+    auto* note = new QLabel(
+        QStringLiteral("Policy changes apply to newly created script engines (reload scripts / restart action). "
+                       "process.exec is hard-limited to Code Editor toolbar actions even if other toggles appear."),
+        scriptSecWidget);
+    note->setWordWrap(true);
+    note->setStyleSheet(QStringLiteral("color: palette(placeholderText); font-size: 11px;"));
+    scriptSecLayout->addWidget(note);
+    scriptSecLayout->addStretch(1);
+
     listSettings = new QListWidget(this);
     listSettings->setFixedWidth(150);
     listSettings->setSpacing(2);
@@ -994,6 +1809,7 @@ void DialogSettings::createUI()
         item->setFlags(Qt::NoItemFlags);
         item->setSizeHint(QSize(0, 28));
         auto* label = new QLabel(title, listSettings);
+        label->setObjectName("SidebarSectionLabel");
         label->setStyleSheet(QStringLiteral(
             "QLabel#SidebarSectionLabel {"
             "  color: palette(highlight);"
@@ -1017,6 +1833,9 @@ void DialogSettings::createUI()
     addSectionHeader("INTERFACE");
     addNavItem("Appearance");
     addNavItem("Console");
+    addNavItem("Code Editor");
+    addSectionHeader("SECURITY");
+    addNavItem("AxScript");
     addSectionHeader("DATA");
     addNavItem("Sessions");
     addNavItem("Tasks");
@@ -1059,9 +1878,22 @@ void DialogSettings::createUI()
     buttonApply->setDefault(true);
     buttonApply->setEnabled(false);
 
+    auto markScriptDirty = [this](bool) { buttonApply->setEnabled(true); };
+    for (auto* sw : {scriptServerRead, scriptServerWrite, scriptServerProcess, scriptServerSandbox,
+                     scriptLocalRead, scriptLocalWrite, scriptLocalProcess, scriptLocalSandbox,
+                     scriptEditorRead, scriptEditorWrite, scriptEditorProcess, scriptEditorSandbox,
+                     scriptActionRead, scriptActionWrite, scriptActionProcess, scriptActionSandbox}) {
+        if (sw)
+            connect(sw, &oclero::qlementine::Switch::toggled, buttonApply, markScriptDirty);
+    }
+    if (scriptSandboxDirEdit)
+        connect(scriptSandboxDirEdit, &QLineEdit::textEdited, buttonApply, [this](const QString&){ buttonApply->setEnabled(true); });
+
     stackSettings = new QStackedWidget(this);
     stackSettings->addWidget(appearanceWidget);
     stackSettings->addWidget(consolePageWidget);
+    stackSettings->addWidget(codeEditorWidget);
+    stackSettings->addWidget(scriptSecWidget);
     stackSettings->addWidget(sessionsWidget);
     stackSettings->addWidget(tasksWidget);
     stackSettings->addWidget(targetsWidget);
@@ -1128,9 +1960,628 @@ void DialogSettings::onUseAppThemeChange() const
     consoleThemeDeleteBtn->setEnabled(!useApp);
 }
 
+void DialogSettings::refreshCodeEditorProfilesList()
+{
+    if (!codeEditorProfileList)
+        return;
+    codeEditorLoading = true;
+    const QString prevId = codeEditorProfileList->currentItem()
+        ? codeEditorProfileList->currentItem()->data(Qt::UserRole).toString()
+        : codeEditorEditingId;
+    codeEditorProfileList->clear();
+    auto* mgr = CodeEditorProfileManager::instance();
+    for (const auto& p : mgr->profiles()) {
+        auto* item = new QListWidgetItem(p.name, codeEditorProfileList);
+        item->setData(Qt::UserRole, p.id);
+        if (p.isSystem())
+            item->setToolTip(QStringLiteral("System profile · %1").arg(p.id));
+        else if (p.isManaged())
+            item->setToolTip(QStringLiteral("Managed (AxScript) · %1").arg(p.id));
+        else
+            item->setToolTip(QStringLiteral("User profile · %1").arg(p.id));
+    }
+    QListWidgetItem* select = nullptr;
+    if (!prevId.isEmpty()) {
+        for (int i = 0; i < codeEditorProfileList->count(); ++i) {
+            auto* it = codeEditorProfileList->item(i);
+            if (it && (it->data(Qt::UserRole).toString() == prevId || it->text() == prevId)) {
+                select = it;
+                break;
+            }
+        }
+    }
+    if (!select && codeEditorProfileList->count() > 0)
+        select = codeEditorProfileList->item(0);
+    if (select)
+        codeEditorProfileList->setCurrentItem(select);
+    codeEditorLoading = false;
+    if (select) {
+        const QString key = select->data(Qt::UserRole).toString();
+        loadCodeEditorProfileToForm(key.isEmpty() ? select->text() : key);
+    }
+}
+
+void DialogSettings::loadCodeEditorProfileToForm(const QString& name)
+{
+    if (!codeEditorNameEdit)
+        return;
+    codeEditorLoading = true;
+    auto* mgr = CodeEditorProfileManager::instance();
+    const BuildProfile* p = mgr->profile(name);
+    if (!p) {
+        codeEditorEditingId.clear();
+        codeEditorLoading = false;
+        return;
+    }
+
+    codeEditorEditingId = p->id;
+    codeEditorNameEdit->setText(p->name);
+    codeEditorNameEdit->setReadOnly(!p->isRenameable());
+    codeEditorNameEdit->setToolTip(p->isRenameable()
+        ? QStringLiteral("Profile display name (id: %1)").arg(p->id)
+        : (p->isSystem()
+               ? QStringLiteral("System profile name cannot be changed")
+               : QStringLiteral("Managed profile name is set by AxScript (id: %1)").arg(p->id)));
+
+    if (codeEditorLanguageCombo) {
+        const int li = codeEditorLanguageCombo->findData(p->language);
+        codeEditorLanguageCombo->setCurrentIndex(li >= 0 ? li : 0);
+    }
+    if (codeEditorPanelEnabledSwitch) {
+        const QString panel = p->toolbar.panel;
+        const bool on = (panel != QLatin1String("none"));
+        QSignalBlocker b(codeEditorPanelEnabledSwitch);
+        codeEditorPanelEnabledSwitch->setChecked(on);
+    }
+
+    if (codeEditorPanelScriptEdit)
+        codeEditorPanelScriptEdit->setPlainText(p->panelScript);
+
+    if (codeEditorActionsTable) {
+        codeEditorActionsTable->blockSignals(true);
+        codeEditorActionsTable->setRowCount(0);
+        for (const BuildProfileAction& a : p->customActions) {
+            const int row = codeEditorActionsTable->rowCount();
+            codeEditorActionsTable->insertRow(row);
+            auto* iconItem = new QTableWidgetItem();
+            iconItem->setData(Qt::UserRole, a.icon);
+            iconItem->setToolTip(a.icon);
+            if (!a.icon.isEmpty())
+                iconItem->setIcon(QIcon(a.icon));
+            iconItem->setTextAlignment(Qt::AlignCenter);
+            iconItem->setFlags(iconItem->flags() & ~Qt::ItemIsEditable);
+            codeEditorActionsTable->setItem(row, 0, iconItem);
+            codeEditorActionsTable->setItem(row, 1, new QTableWidgetItem(a.label));
+            codeEditorActionsTable->setItem(row, 2, new QTableWidgetItem(QStringLiteral("axscript")));
+            codeEditorActionsTable->setItem(row, 3, new QTableWidgetItem(a.script));
+        }
+        codeEditorActionsTable->blockSignals(false);
+        if (codeEditorCustomStack)
+            codeEditorCustomStack->setCurrentIndex(codeEditorActionsTable->rowCount() > 0 ? 1 : 0);
+        if (codeEditorActionsTable->rowCount() > 0) {
+            codeEditorActionsTable->selectRow(0);
+            loadCodeEditorActionScriptFromRow(0);
+        } else {
+            loadCodeEditorActionScriptFromRow(-1);
+        }
+    }
+
+    const BuildProfileToolbar& t = p->toolbar;
+    auto setCb = [](QCheckBox* cb, bool on) {
+        if (cb) cb->setChecked(on);
+    };
+    setCb(codeEditorTbNewFile, t.newFile);
+    setCb(codeEditorTbOpenFile, t.openFile);
+    setCb(codeEditorTbOpenFolder, t.openFolder);
+    setCb(codeEditorTbSave, t.save);
+    setCb(codeEditorTbExplorer, t.explorer);
+    setCb(codeEditorTbBuildLog, t.buildLog);
+    setCb(codeEditorTbMinimap, t.minimap);
+    setCb(codeEditorTbWordWrap, t.wordWrap);
+
+    if (codeEditorRemoveBtn)
+        codeEditorRemoveBtn->setEnabled(p->isDeletable());
+
+    setCodeEditorFormEditable(p->isEditable());
+    updateCodeEditorPanelScriptVisibility();
+    codeEditorLoading = false;
+}
+
+void DialogSettings::setCodeEditorFormEditable(bool editable)
+{
+    if (codeEditorNameEdit)
+        codeEditorNameEdit->setReadOnly(!editable);
+    if (codeEditorLanguageCombo)
+        codeEditorLanguageCombo->setEnabled(editable);
+    if (codeEditorPanelEnabledSwitch)
+        codeEditorPanelEnabledSwitch->setEnabled(editable);
+    if (codeEditorPanelScriptEdit)
+        codeEditorPanelScriptEdit->setReadOnly(!editable);
+    if (codeEditorPanelScriptTplBtn)
+        codeEditorPanelScriptTplBtn->setEnabled(editable && codeEditorPanelEnabledSwitch && codeEditorPanelEnabledSwitch->isChecked());
+    if (codeEditorResetDefaultsBtn)
+        codeEditorResetDefaultsBtn->setEnabled(editable);
+    if (codeEditorActionAddBtn)
+        codeEditorActionAddBtn->setEnabled(editable);
+    if (codeEditorActionRemoveBtn)
+        codeEditorActionRemoveBtn->setEnabled(editable);
+    if (codeEditorActionScriptEdit)
+        codeEditorActionScriptEdit->setReadOnly(!editable);
+    const bool hasRow = codeEditorActionsTable && codeEditorActionsTable->currentRow() >= 0;
+    if (codeEditorActionLabelEdit) {
+        codeEditorActionLabelEdit->setEnabled(hasRow);
+        codeEditorActionLabelEdit->setReadOnly(!editable);
+    }
+    if (codeEditorActionIconBtn) {
+        codeEditorActionIconBtn->setEnabled(editable && hasRow);
+        codeEditorActionIconBtn->setToolTip(
+            editable
+                ? QStringLiteral("Choose icon from client resources (:/icons)")
+                : QStringLiteral("System profile — icons are locked"));
+    }
+    if (codeEditorActionsTable)
+        codeEditorActionsTable->setEditTriggers(
+            editable ? (QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed
+                        | QAbstractItemView::AnyKeyPressed)
+                     : QAbstractItemView::NoEditTriggers);
+
+    for (QCheckBox* cb : {
+             codeEditorTbNewFile, codeEditorTbOpenFile, codeEditorTbOpenFolder, codeEditorTbSave,
+             codeEditorTbExplorer, codeEditorTbBuildLog, codeEditorTbMinimap, codeEditorTbWordWrap
+         }) {
+        if (cb)
+            cb->setEnabled(editable);
+    }
+
+}
+
+void DialogSettings::saveCodeEditorProfileFromForm()
+{
+    if (codeEditorEditingId.isEmpty())
+        return;
+    syncCodeEditorActionScriptToTable(codeEditorActionEditRow);
+    auto* mgr = CodeEditorProfileManager::instance();
+    const BuildProfile* cur = mgr->profile(codeEditorEditingId);
+    if (!cur)
+        return;
+    if (cur->isSystem())
+        return;
+
+    QString newName = codeEditorNameEdit ? codeEditorNameEdit->text().trimmed() : cur->name;
+    if (newName.isEmpty())
+        newName = cur->name;
+
+    if (newName != cur->name) {
+        if (!cur->isRenameable()) {
+            if (codeEditorNameEdit)
+                codeEditorNameEdit->setText(cur->name);
+        } else {
+            const QString stableId = codeEditorEditingId;
+            QString finalName;
+            if (mgr->renameProfile(stableId, newName, &finalName) && !finalName.isEmpty()) {
+                if (codeEditorProfileList) {
+                    QSignalBlocker block(codeEditorProfileList);
+                    for (int i = 0; i < codeEditorProfileList->count(); ++i) {
+                        if (auto* item = codeEditorProfileList->item(i)) {
+                            if (item->data(Qt::UserRole).toString() == stableId) {
+                                item->setText(finalName);
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (codeEditorNameEdit && codeEditorNameEdit->text().trimmed() != finalName)
+                    codeEditorNameEdit->setText(finalName);
+                cur = mgr->profile(stableId);
+                if (!cur)
+                    return;
+            } else {
+                if (codeEditorNameEdit)
+                    codeEditorNameEdit->setText(cur->name);
+                cur = mgr->profile(codeEditorEditingId);
+                if (!cur)
+                    return;
+            }
+        }
+    }
+
+    if (cur->isSystem())
+        return;
+
+    BuildProfile p = *cur;
+    if (codeEditorLanguageCombo)
+        p.language = codeEditorLanguageCombo->currentData().toString();
+
+    BuildProfileToolbar& t = p.toolbar;
+    auto getCb = [](QCheckBox* cb, bool def) { return cb ? cb->isChecked() : def; };
+    t.newFile = getCb(codeEditorTbNewFile, t.newFile);
+    t.openFile = getCb(codeEditorTbOpenFile, t.openFile);
+    t.openFolder = getCb(codeEditorTbOpenFolder, t.openFolder);
+    t.save = getCb(codeEditorTbSave, t.save);
+    t.explorer = getCb(codeEditorTbExplorer, t.explorer);
+    t.buildLog = getCb(codeEditorTbBuildLog, t.buildLog);
+    t.minimap = getCb(codeEditorTbMinimap, t.minimap);
+    t.wordWrap = getCb(codeEditorTbWordWrap, t.wordWrap);
+    if (codeEditorPanelEnabledSwitch)
+        t.panel = codeEditorPanelEnabledSwitch->isChecked()
+            ? QStringLiteral("axscript")
+            : QStringLiteral("none");
+    else
+        t.panel = QStringLiteral("axscript");
+
+    if (codeEditorPanelScriptEdit)
+        p.panelScript = codeEditorPanelScriptEdit->toPlainText();
+
+    p.customActions.clear();
+    if (codeEditorActionsTable) {
+        for (int row = 0; row < codeEditorActionsTable->rowCount(); ++row) {
+            BuildProfileAction a;
+            auto cell = [&](int col) -> QString {
+                if (auto* it = codeEditorActionsTable->item(row, col))
+                    return it->text();
+                return {};
+            };
+            a.label  = cell(1).trimmed();
+            if (auto* iconIt = codeEditorActionsTable->item(row, 0)) {
+                a.icon = iconIt->data(Qt::UserRole).toString();
+                if (a.icon.isEmpty())
+                    a.icon = iconIt->text().trimmed();
+            }
+            a.script = cell(3);
+            a.id = a.label.isEmpty()
+                ? QStringLiteral("action_%1").arg(row + 1)
+                : a.label.toLower().replace(QRegularExpression(QStringLiteral("[^a-z0-9_]+")), QStringLiteral("_"));
+            if (a.label.isEmpty() && a.script.trimmed().isEmpty())
+                continue;
+            p.customActions.append(a);
+        }
+    }
+
+    mgr->updateProfile(p);
+}
+
+void DialogSettings::updateCodeEditorPanelScriptVisibility()
+{
+    const bool axPanel = codeEditorPanelEnabledSwitch
+        ? codeEditorPanelEnabledSwitch->isChecked()
+        : true;
+
+    if (codeEditorPanelScriptHint) {
+        codeEditorPanelScriptHint->setText(axPanel
+            ? QStringLiteral("Return { ui_panel, ui_container }. Toolbar handlers use global editor.")
+            : QStringLiteral("Panel is off — enable to edit GeneratePanel()."));
+    }
+    bool editable = true;
+    if (auto* mgr = CodeEditorProfileManager::instance()) {
+        if (const BuildProfile* p = mgr->profile(codeEditorEditingId))
+            editable = p->isEditable();
+    }
+    if (codeEditorPanelScriptEdit) {
+        codeEditorPanelScriptEdit->setEnabled(axPanel);
+        codeEditorPanelScriptEdit->setReadOnly(!editable);
+    }
+    if (codeEditorPanelScriptTplBtn)
+        codeEditorPanelScriptTplBtn->setEnabled(editable && axPanel);
+    if (auto* globals = codeEditorTabs
+            ? codeEditorTabs->findChild<QLabel*>(QStringLiteral("CePanelGlobals"))
+            : nullptr) {
+        globals->setVisible(axPanel);
+    }
+}
+
+void DialogSettings::syncCodeEditorActionScriptToTable(int row)
+{
+    if (!codeEditorActionsTable || codeEditorActionScriptLoading)
+        return;
+    if (row < 0)
+        row = codeEditorActionEditRow;
+    if (row < 0 || row >= codeEditorActionsTable->rowCount())
+        return;
+
+    QSignalBlocker blockTable(codeEditorActionsTable);
+
+    auto ensureItem = [&](int col) -> QTableWidgetItem* {
+        auto* it = codeEditorActionsTable->item(row, col);
+        if (!it) {
+            it = new QTableWidgetItem();
+            codeEditorActionsTable->setItem(row, col, it);
+        }
+        return it;
+    };
+
+    ensureItem(2)->setText(QStringLiteral("axscript"));
+
+    if (auto* iconItem = ensureItem(0)) {
+        iconItem->setText(QString());
+        iconItem->setData(Qt::UserRole, codeEditorActionIconPath);
+        iconItem->setToolTip(codeEditorActionIconPath);
+        iconItem->setIcon(codeEditorActionIconPath.isEmpty() ? QIcon() : QIcon(codeEditorActionIconPath));
+        iconItem->setTextAlignment(Qt::AlignCenter);
+        iconItem->setFlags(iconItem->flags() & ~Qt::ItemIsEditable);
+    }
+    if (codeEditorActionLabelEdit)
+        ensureItem(1)->setText(codeEditorActionLabelEdit->text());
+
+    if (codeEditorActionScriptEdit)
+        ensureItem(3)->setText(codeEditorActionScriptEdit->toPlainText());
+}
+
+void DialogSettings::updateCodeEditorActionTypeUi()
+{
+    if (codeEditorActionScriptHost)
+        codeEditorActionScriptHost->setVisible(true);
+    if (codeEditorActionBodyLabel)
+        codeEditorActionBodyLabel->setText(QStringLiteral("AxScript handler"));
+}
+
+void DialogSettings::pickCodeEditorActionIcon()
+{
+    if (!codeEditorActionIconBtn)
+        return;
+    if (auto* mgr = CodeEditorProfileManager::instance()) {
+        if (const BuildProfile* p = mgr->profile(codeEditorEditingId)) {
+            if (!p->isEditable())
+                return;
+        }
+    }
+
+    QDialog dlg(this);
+    dlg.setWindowTitle(QStringLiteral("Choose icon — client resources"));
+    dlg.resize(520, 500);
+    auto* lay = new QVBoxLayout(&dlg);
+    lay->setSpacing(8);
+
+    auto* hint = new QLabel(QStringLiteral("Icons from AdaptixClient resources (:/icons)"), &dlg);
+    hint->setStyleSheet(QStringLiteral("color: palette(placeholderText);"));
+    lay->addWidget(hint);
+
+    auto* filterEdit = new QLineEdit(&dlg);
+    filterEdit->setPlaceholderText(QStringLiteral("Filter by name…"));
+    filterEdit->setClearButtonEnabled(true);
+    lay->addWidget(filterEdit);
+
+    auto* list = new QListWidget(&dlg);
+    list->setViewMode(QListView::IconMode);
+    list->setFlow(QListView::LeftToRight);
+    list->setWrapping(true);
+    list->setResizeMode(QListWidget::Adjust);
+    list->setMovement(QListView::Static);
+    list->setUniformItemSizes(true);
+    list->setSpacing(2);
+    list->setIconSize(QSize(36, 36));
+    list->setGridSize(QSize(100, 86));
+    list->setWordWrap(true);
+    list->setTextElideMode(Qt::ElideRight);
+    list->setStyleSheet(QStringLiteral(
+        "QListWidget {"
+        "  outline: none;"
+        "  background: palette(base);"
+        "  border: 1px solid palette(mid);"
+        "  border-radius: 8px;"
+        "  padding: 6px;"
+        "}"
+        "QListWidget::item {"
+        "  color: palette(window-text);"
+        "  padding: 4px 2px 2px 2px;"
+        "  border-radius: 6px;"
+        "}"
+        "QListWidget::item:selected {"
+        "  background: palette(highlight);"
+        "  color: palette(highlighted-text);"
+        "}"));
+
+    auto makeItem = [](const QString& path, const QString& label) {
+        auto* it = new QListWidgetItem(path.isEmpty() ? QIcon() : QIcon(path), label);
+        it->setData(Qt::UserRole, path);
+        it->setData(Qt::UserRole + 1, label);
+        it->setToolTip(path.isEmpty() ? label : QStringLiteral("%1\n%2").arg(label, path));
+        it->setTextAlignment(Qt::AlignHCenter | Qt::AlignBottom);
+        it->setFlags(it->flags() | Qt::ItemIsSelectable | Qt::ItemIsEnabled);
+        return it;
+    };
+
+    list->addItem(makeItem(QString(), QStringLiteral("(none)")));
+    for (const QString& path : BuildProfileAction::toolbarIconPaths()) {
+        const QString label = path.section(QLatin1Char('/'), -1);
+        list->addItem(makeItem(path, label));
+    }
+    lay->addWidget(list, 1);
+
+    auto applyFilter = [list](const QString& text) {
+        const QString q = text.trimmed();
+        for (int i = 0; i < list->count(); ++i) {
+            QListWidgetItem* it = list->item(i);
+            if (!it)
+                continue;
+            if (q.isEmpty()) {
+                it->setHidden(false);
+                continue;
+            }
+            const QString label = it->data(Qt::UserRole + 1).toString();
+            const QString path  = it->data(Qt::UserRole).toString();
+            it->setHidden(!(label.contains(q, Qt::CaseInsensitive) || path.contains(q, Qt::CaseInsensitive)));
+        }
+    };
+    connect(filterEdit, &QLineEdit::textChanged, &dlg, applyFilter);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    lay->addWidget(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+    connect(list, &QListWidget::itemDoubleClicked, &dlg, &QDialog::accept);
+
+    filterEdit->setFocus(Qt::OtherFocusReason);
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+    auto* cur = list->currentItem();
+    if (!cur || cur->isHidden())
+        return;
+    codeEditorActionIconPath = cur->data(Qt::UserRole).toString();
+    codeEditorActionIconBtn->setIcon(codeEditorActionIconPath.isEmpty() ? QIcon() : QIcon(codeEditorActionIconPath));
+    syncCodeEditorActionScriptToTable(codeEditorActionEditRow);
+}
+
+void DialogSettings::loadCodeEditorActionScriptFromRow(int row)
+{
+    codeEditorActionScriptLoading = true;
+    codeEditorActionEditRow = row;
+
+    bool editable = true;
+    if (auto* mgr = CodeEditorProfileManager::instance()) {
+        if (const BuildProfile* p = mgr->profile(codeEditorEditingId))
+            editable = p->isEditable();
+    }
+
+    if (row < 0 || !codeEditorActionsTable || row >= codeEditorActionsTable->rowCount()) {
+        if (codeEditorActionScriptEdit) {
+            codeEditorActionScriptEdit->clear();
+            codeEditorActionScriptEdit->setEnabled(false);
+        }
+        if (codeEditorActionLabelEdit) {
+            codeEditorActionLabelEdit->clear();
+            codeEditorActionLabelEdit->setEnabled(false);
+        }
+        if (codeEditorActionIconBtn) {
+            codeEditorActionIconBtn->setEnabled(false);
+            codeEditorActionIconBtn->setIcon(QIcon());
+            codeEditorActionIconBtn->setToolTip(QStringLiteral("Choose icon from client resources (:/icons)"));
+        }
+        codeEditorActionIconPath.clear();
+        if (codeEditorActionScriptHost)
+            codeEditorActionScriptHost->setVisible(true);
+    } else {
+        codeEditorActionIconPath.clear();
+        if (auto* it = codeEditorActionsTable->item(row, 0)) {
+            codeEditorActionIconPath = it->data(Qt::UserRole).toString();
+            if (codeEditorActionIconPath.isEmpty())
+                codeEditorActionIconPath = it->text();
+        }
+        if (codeEditorActionIconBtn) {
+            codeEditorActionIconBtn->setEnabled(editable);
+            codeEditorActionIconBtn->setIcon(codeEditorActionIconPath.isEmpty()
+                                                 ? QIcon()
+                                                 : QIcon(codeEditorActionIconPath));
+            codeEditorActionIconBtn->setToolTip(
+                editable
+                    ? QStringLiteral("Choose icon from client resources (:/icons)")
+                    : QStringLiteral("System profile — icons are locked"));
+        }
+
+        QString label;
+        if (auto* it = codeEditorActionsTable->item(row, 1))
+            label = it->text();
+        if (codeEditorActionLabelEdit) {
+            codeEditorActionLabelEdit->setText(label);
+            codeEditorActionLabelEdit->setEnabled(true);
+            codeEditorActionLabelEdit->setReadOnly(!editable);
+        }
+
+        QString body;
+        if (auto* it = codeEditorActionsTable->item(row, 3))
+            body = it->text();
+        if (codeEditorActionScriptEdit) {
+            codeEditorActionScriptEdit->setPlainText(body);
+            codeEditorActionScriptEdit->setEnabled(true);
+            codeEditorActionScriptEdit->setReadOnly(!editable);
+        }
+        updateCodeEditorActionTypeUi();
+    }
+    codeEditorActionScriptLoading = false;
+}
+
+void DialogSettings::exportCodeEditorProfile()
+{
+    if (!codeEditorEditingId.isEmpty())
+        saveCodeEditorProfileFromForm();
+
+    auto* mgr = CodeEditorProfileManager::instance();
+    const QString name = codeEditorEditingId.isEmpty()
+        ? (codeEditorProfileList && codeEditorProfileList->currentItem()
+               ? codeEditorProfileList->currentItem()->text()
+               : QString())
+        : codeEditorEditingId;
+    const BuildProfile* p = mgr->profile(name);
+    if (!p) {
+        QMessageBox::information(this, QStringLiteral("Export Profile"),
+            QStringLiteral("Select a profile to export."));
+        return;
+    }
+
+    const QString path = QFileDialog::getSaveFileName(
+        this,
+        QStringLiteral("Export Code Editor Profile"),
+        p->name + QStringLiteral(".json"),
+        QStringLiteral("JSON files (*.json)"));
+    if (path.isEmpty())
+        return;
+
+    QJsonObject root = p->toJson();
+    root[QStringLiteral("format")] = QStringLiteral("adaptix.code_editor_profile");
+    root[QStringLiteral("version")] = 1;
+
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        QMessageBox::warning(this, QStringLiteral("Export Profile"),
+            QStringLiteral("Cannot write file:\n%1").arg(path));
+        return;
+    }
+    f.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    f.close();
+}
+
+void DialogSettings::importCodeEditorProfile()
+{
+    const QString path = QFileDialog::getOpenFileName(
+        this,
+        QStringLiteral("Import Code Editor Profile"),
+        QString(),
+        QStringLiteral("JSON files (*.json)"));
+    if (path.isEmpty())
+        return;
+
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) {
+        QMessageBox::warning(this, QStringLiteral("Import Profile"),
+            QStringLiteral("Cannot read file:\n%1").arg(path));
+        return;
+    }
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll());
+    f.close();
+    if (!doc.isObject()) {
+        QMessageBox::warning(this, QStringLiteral("Import Profile"),
+            QStringLiteral("Invalid profile JSON."));
+        return;
+    }
+
+    BuildProfile imported = BuildProfile::fromJson(doc.object());
+    if (imported.name.trimmed().isEmpty())
+        imported.name = QFileInfo(path).completeBaseName();
+    if (imported.name.trimmed().isEmpty())
+        imported.name = QStringLiteral("Imported");
+
+    if (imported.isSystem())
+        imported.name = imported.name + QStringLiteral("_imported");
+
+    if (!codeEditorLoading && !codeEditorEditingId.isEmpty())
+        saveCodeEditorProfileFromForm();
+
+    auto* mgr = CodeEditorProfileManager::instance();
+    QString created = mgr->addProfile(imported.name);
+    imported.name = created;
+    mgr->updateProfile(imported);
+
+    refreshCodeEditorProfilesList();
+    const auto items = codeEditorProfileList->findItems(created, Qt::MatchExactly);
+    if (!items.isEmpty())
+        codeEditorProfileList->setCurrentItem(items.first());
+    buttonApply->setEnabled(true);
+}
+
 void DialogSettings::onApply() const
 {
     buttonApply->setEnabled(false);
+
+    const_cast<DialogSettings*>(this)->saveCodeEditorProfileFromForm();
 
     bool themeChanged = settings->data.MainTheme != themeCombo->currentText();
     bool fontChanged  = settings->data.FontSize != fontSizeSpin->value() || settings->data.FontFamily != fontFamilyCombo->currentText();
@@ -1280,6 +2731,23 @@ void DialogSettings::onApply() const
     for (auto it = m_tabblinkChecks.begin(); it != m_tabblinkChecks.end(); ++it)
         settings->data.BlinkWidgets[it.key()] = it.value()->isChecked();
 
+    auto savePol = [](oclero::qlementine::Switch* r, oclero::qlementine::Switch* w, oclero::qlementine::Switch* p, oclero::qlementine::Switch* s, AxScriptPolicy* pol) {
+        if (!pol) return;
+        if (r) pol->fileRead  = r->isChecked();
+        if (w) pol->fileWrite = w->isChecked();
+        if (p) pol->process   = p->isChecked();
+        if (s) pol->sandboxFs = s->isChecked();
+    };
+    savePol(scriptServerRead, scriptServerWrite, scriptServerProcess, scriptServerSandbox, &settings->data.ScriptServer);
+    savePol(scriptLocalRead, scriptLocalWrite, scriptLocalProcess, scriptLocalSandbox, &settings->data.ScriptLocal);
+    savePol(scriptEditorRead, scriptEditorWrite, scriptEditorProcess, scriptEditorSandbox, &settings->data.ScriptEditor);
+    savePol(scriptActionRead, scriptActionWrite, scriptActionProcess, scriptActionSandbox, &settings->data.ScriptEditorAction);
+    settings->data.ScriptServer.process = false;
+    settings->data.ScriptLocal.process = false;
+    settings->data.ScriptEditor.process = false;
+    if (scriptSandboxDirEdit)
+        settings->data.ScriptSandboxDir = scriptSandboxDirEdit->text().trimmed();
+
     settings->SaveToDB();
     settings->getMainAdaptix()->mainUI->ApplyFeedViewPreferences();
 }
@@ -1327,6 +2795,8 @@ void DialogSettings::updateThemeSwatches()
 
 void DialogSettings::loadSettings()
 {
+    refreshCodeEditorProfilesList();
+
     themeCombo->setCurrentText(settings->data.MainTheme);
     updateThemeSwatches();
     fontFamilyCombo->setCurrentText(settings->data.FontFamily);
@@ -1421,6 +2891,22 @@ void DialogSettings::loadSettings()
             it.value()->setChecked(enabled);
         }
     }
+
+    auto loadPol = [](oclero::qlementine::Switch* r, oclero::qlementine::Switch* w, oclero::qlementine::Switch* p, oclero::qlementine::Switch* s, const AxScriptPolicy& pol) {
+        if (r) r->setChecked(pol.fileRead);
+        if (w) w->setChecked(pol.fileWrite);
+        if (p) p->setChecked(pol.process);
+        if (s) s->setChecked(pol.sandboxFs);
+    };
+    loadPol(scriptServerRead, scriptServerWrite, scriptServerProcess, scriptServerSandbox, settings->data.ScriptServer);
+    loadPol(scriptLocalRead, scriptLocalWrite, scriptLocalProcess, scriptLocalSandbox, settings->data.ScriptLocal);
+    loadPol(scriptEditorRead, scriptEditorWrite, scriptEditorProcess, scriptEditorSandbox, settings->data.ScriptEditor);
+    loadPol(scriptActionRead, scriptActionWrite, scriptActionProcess, scriptActionSandbox, settings->data.ScriptEditorAction);
+    if (scriptServerProcess) { scriptServerProcess->setChecked(false); scriptServerProcess->setEnabled(false); }
+    if (scriptLocalProcess)  { scriptLocalProcess->setChecked(false);  scriptLocalProcess->setEnabled(false); }
+    if (scriptEditorProcess) { scriptEditorProcess->setChecked(false); scriptEditorProcess->setEnabled(false); }
+    if (scriptSandboxDirEdit)
+        scriptSandboxDirEdit->setText(settings->data.ScriptSandboxDir);
 
     buttonApply->setEnabled(false);
 }

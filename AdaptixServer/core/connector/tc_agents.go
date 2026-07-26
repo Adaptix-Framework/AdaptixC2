@@ -138,7 +138,7 @@ func (tc *TsConnector) dispatchAgentCommand(ctx *gin.Context, username string, c
 		go func(agentName string, agentId int64, clientName, hookId, handlerId, cmdline string, ui bool, a map[string]any) {
 			defer func() {
 				if r := recover(); r != nil {
-					tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "panic in agent command: %v", r)
+					tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "panic in agent command: %v", r)
 				}
 			}()
 			err := tc.teamserver.TsAgentCommand(agentName, agentId, clientName, hookId, handlerId, cmdline, ui, a)
@@ -173,7 +173,7 @@ func (tc *TsConnector) TcAgentCommandExecute(ctx *gin.Context) {
 
 	err = json.Unmarshal([]byte(commandData.Data), &args)
 	if err != nil {
-		tc.teamserver.TsLogAdd(adaptix.LogStatusDebug, 0, "server:connector", "Error parsing commands JSON: %s", err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "connector", "Error parsing commands JSON: %s", err.Error())
 		respondError(ctx, http.StatusOK, "invalid command data")
 		return
 	}
@@ -220,7 +220,7 @@ func (tc *TsConnector) TcAgentCommandFile(ctx *gin.Context) {
 	args := make(map[string]any)
 	err = json.Unmarshal([]byte(commandData.Data), &args)
 	if err != nil {
-		tc.teamserver.TsLogAdd(adaptix.LogStatusDebug, 0, "server:connector", "Error parsing commands JSON: %s", err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "connector", "Error parsing commands JSON: %s", err.Error())
 		respondError(ctx, http.StatusOK, "invalid command data")
 		return
 	}

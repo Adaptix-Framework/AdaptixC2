@@ -9,6 +9,7 @@
 #include <Client/AxScript/AxScriptManager.h>
 #include <UI/Dialogs/DialogAgentData.h>
 #include <Utils/FontManager.h>
+#include <Utils/Logs.h>
 #include <MainAdaptix.h>
 
 #include <oclero/qlementine/widgets/Menu.hpp>
@@ -213,6 +214,7 @@ SessionsFeedWidget::SessionsFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), ad
     setDelegate(delegate);
 
     m_groupingAdaptixWidget = w;
+    setGroupingScope(QStringLiteral("agents"));
     rebuildModelChain();
 
     enableSearch(true);
@@ -223,12 +225,30 @@ SessionsFeedWidget::SessionsFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), ad
     if (activeFilter() && GlobalClient && GlobalClient->settings)
         activeFilter()->setChecked(GlobalClient->settings->data.SessionsAutoHideInactive);
     enableGroupCombo(true);
+    if (groupCombo()) {
+        groupCombo()->blockSignals(true);
+        groupCombo()->clear();
+        groupCombo()->addItem("No grouping");
+        groupCombo()->addItem("By Domain");
+        groupCombo()->addItem("By Computer");
+        groupCombo()->addItem("By User");
+        groupCombo()->addItem("By Tag");
+        groupCombo()->addItem("By Listener");
+        groupCombo()->addItem("By OS");
+        groupCombo()->addItem("By Agent Type");
+        groupCombo()->addItem("Custom Groups");
+        groupCombo()->addItem("Pivot Tree");
+        groupCombo()->blockSignals(false);
+    }
     finalizeSearchWidget();
 
     enableCompactSwitch(true);
     if (GlobalClient && GlobalClient->settings)
         setCompactMode(GlobalClient->settings->data.SessionsCompactMode);
     setBlockGap(12);
+
+    setupCustomGroupsUi();
+    wireGroupingProxy(groupingProxy());
 
     dockWidget = new KDDockWidgets::QtWidgets::DockWidget( "SessionsFeed:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
     dockWidget->setTitle("Sessions");
@@ -251,9 +271,102 @@ void SessionsFeedWidget::rebuildAgentIndex()
     }
 }
 
+void SessionsFeedWidget::setupCustomGroupsUi()
+{
+    if (!treeView())
+        return;
+
+    treeView()->setDragDropMode(QAbstractItemView::DragDrop);
+    treeView()->setDefaultDropAction(Qt::MoveAction);
+    treeView()->setDragEnabled(true);
+    treeView()->setAcceptDrops(true);
+    treeView()->setDropIndicatorShown(true);
+
+    if (!btnGroupManager) {
+        btnGroupManager = new QPushButton(this);
+        btnGroupManager->setIcon(style()->standardIcon(QStyle::SP_DirIcon));
+        btnGroupManager->setToolTip("Manage custom groups");
+        btnGroupManager->setFixedSize(28, 28);
+        addToolbarWidgetAfter(btnGroupManager);
+    }
+}
+
+void SessionsFeedWidget::wireGroupingProxy(GroupingProxyModel* model)
+{
+    if (!model || !adaptixWidget)
+        return;
+
+    if (groupPopup) {
+        groupPopup->deleteLater();
+        groupPopup = nullptr;
+    }
+    groupPopup = new GroupManagerPopup(model, adaptixWidget, QStringLiteral("agents"), btnGroupManager, this);
+    if (btnGroupManager) {
+        disconnect(btnGroupManager, nullptr, nullptr, nullptr);
+        connect(btnGroupManager, &QPushButton::clicked, groupPopup, &GroupManagerPopup::showPopup);
+    }
+    connect(model, &GroupingProxyModel::groupStructureChanged, groupPopup, &GroupManagerPopup::Rebuild);
+    connect(model, &GroupingProxyModel::agentsDroppedOnGroup, this,
+        [this](const QList<QPair<qint64, qint64>>& moves, qint64 toGroupId) {
+            AuthProfile* profile = adaptixWidget->GetProfile();
+            if (!profile)
+                return;
+            const int64_t to = (toGroupId < 0) ? 0 : static_cast<int64_t>(toGroupId);
+            for (const auto& [agentId, fromGroupId] : moves) {
+                const int64_t from = (fromGroupId < 0) ? 0 : static_cast<int64_t>(fromGroupId);
+                HttpReqGroupMoveMemberAsync(agentId, from, to, *profile, [](bool ok, const QString& message, const QJsonObject&) {
+                    if (!ok)
+                        MessageError(message.isEmpty() ? QStringLiteral("Failed to move agent between groups") : message);
+                });
+            }
+        });
+    connect(model, &GroupingProxyModel::groupReparented, this,
+        [this](int64_t groupId, int64_t newParentId) {
+            AuthProfile* profile = adaptixWidget->GetProfile();
+            if (!profile)
+                return;
+            const int64_t parent = (newParentId < 0) ? 0 : newParentId;
+            HttpReqGroupReparentAsync(groupId, parent, *profile, [](bool ok, const QString& message, const QJsonObject&) {
+                if (!ok)
+                    MessageError(message.isEmpty() ? QStringLiteral("Failed to reparent group") : message);
+            });
+        });
+}
+
+void SessionsFeedWidget::rebuildModelChain()
+{
+    ListFeedWidget::rebuildModelChain();
+    wireGroupingProxy(groupingProxy());
+}
+
 void SessionsFeedWidget::onGroupModeChanged(int index)
 {
-    ListFeedWidget::onGroupModeChanged(index);
+    auto* gp = groupingProxy();
+    if (!gp)
+        return;
+
+    switch (index) {
+        case 0:  gp->setViewMode(VM_Flat); break;
+        case 1:  gp->setViewMode(VM_AutoGroup); gp->setAutoGroupField(AG_ByDomain); break;
+        case 2:  gp->setViewMode(VM_AutoGroup); gp->setAutoGroupField(AG_ByComputer); break;
+        case 3:  gp->setViewMode(VM_AutoGroup); gp->setAutoGroupField(AG_ByUser); break;
+        case 4:  gp->setViewMode(VM_AutoGroup); gp->setAutoGroupField(AG_ByTag); break;
+        case 5:  gp->setViewMode(VM_AutoGroup); gp->setAutoGroupField(AG_ByListener); break;
+        case 6:  gp->setViewMode(VM_AutoGroup); gp->setAutoGroupField(AG_ByOs); break;
+        case 7:  gp->setViewMode(VM_AutoGroup); gp->setAutoGroupField(AG_ByAgentType); break;
+        case 8:  gp->setViewMode(VM_CustomGroups); break;
+        case 9:  gp->setViewMode(VM_Pivots); break;
+        default: gp->setViewMode(VM_Flat); break;
+    }
+
+    const bool treeMode = gp->viewMode() != VM_Flat;
+    if (treeView()) {
+        treeView()->setRootIsDecorated(treeMode);
+        treeView()->setUniformRowHeights(!treeMode);
+        treeView()->setExpandsOnDoubleClick(treeMode);
+        if (treeMode)
+            treeView()->expandAll();
+    }
 }
 
 void SessionsFeedWidget::onFilterChanged()
@@ -350,6 +463,9 @@ void SessionsFeedWidget::UpdateAgentItem(const AgentData& oldData, const Agent* 
 
 void SessionsFeedWidget::RemoveAgentItem(qint64 agentId)
 {
+    if (groupingProxy())
+        groupingProxy()->removeAgentFromAllCustomGroups(agentId);
+
     auto it = agentIdToRow.find(agentId);
     if (it == agentIdToRow.end())
         return;
@@ -440,6 +556,8 @@ void SessionsFeedWidget::Clear()
 {
     feedBlockModel->clear();
     agentIdToRow.clear();
+    if (groupingProxy())
+        groupingProxy()->clearCustomGroups();
     if (filterCombo()) {
         filterCombo()->blockSignals(true);
         filterCombo()->clear();
@@ -493,41 +611,41 @@ void SessionsFeedWidget::handleFeedMenu(const QPoint& pos)
         }
         if (agentIds.isEmpty()) return;
 
-        auto agentMenu = ctxMenu.addMenu("Agent");
-        agentMenu->addAction("Execute command", this, &SessionsFeedWidget::actionExecuteCommand);
-        agentMenu->addAction("Task manager", this, &SessionsFeedWidget::actionTasksOpen);
+        auto agentMenu = ctxMenu.addMenu(QIcon(":/icons/agent"), "Agent");
+        agentMenu->addAction(QIcon(":/icons/keyboard_command"), "Execute command", this, &SessionsFeedWidget::actionExecuteCommand);
+        agentMenu->addAction(QIcon(":/icons/job"), "Task manager", this, &SessionsFeedWidget::actionTasksOpen);
         agentMenu->addSeparator();
         int agentCount = adaptixWidget->ScriptManager->AddMenuSession(agentMenu, "SessionAgent", agentIds);
         if (agentCount > 0)
             agentMenu->addSeparator();
-        agentMenu->addAction("Remove console data", this, &SessionsFeedWidget::actionConsoleDelete);
-        agentMenu->addAction("Remove from server", this, &SessionsFeedWidget::actionAgentRemove);
+        agentMenu->addAction(QIcon(":/icons/delete"), "Remove console data", this, &SessionsFeedWidget::actionConsoleDelete);
+        agentMenu->addAction(QIcon(":/icons/delete"), "Remove from server", this, &SessionsFeedWidget::actionAgentRemove);
 
-        auto sessionMenu = ctxMenu.addMenu("Session");
-        sessionMenu->addAction("Mark as Active", this, &SessionsFeedWidget::actionMarkActive);
-        sessionMenu->addAction("Mark as Inactive", this, &SessionsFeedWidget::actionMarkInactive);
+        auto sessionMenu = ctxMenu.addMenu(QIcon(":/icons/settings"), "Session");
+        sessionMenu->addAction(QIcon(":/icons/wifi_signal"), "Mark as Active", this, &SessionsFeedWidget::actionMarkActive);
+        sessionMenu->addAction(QIcon(":/icons/wifi_null"), "Mark as Inactive", this, &SessionsFeedWidget::actionMarkInactive);
         sessionMenu->addSeparator();
         if (agentIds.size() == 1)
-            sessionMenu->addAction("Set data", this, &SessionsFeedWidget::actionSetData);
-        sessionMenu->addAction("Set tag", this, &SessionsFeedWidget::actionSetTag);
+            sessionMenu->addAction(QIcon(":/icons/info"), "Set data", this, &SessionsFeedWidget::actionSetData);
+        sessionMenu->addAction(QIcon(":/icons/tag"), "Set tag", this, &SessionsFeedWidget::actionSetTag);
         sessionMenu->addSeparator();
-        sessionMenu->addAction("Set items color", this, &SessionsFeedWidget::actionItemColor);
-        sessionMenu->addAction("Set text color", this, &SessionsFeedWidget::actionTextColor);
-        sessionMenu->addAction("Reset color", this, &SessionsFeedWidget::actionColorReset);
+        sessionMenu->addAction(QIcon(":/icons/color_fill"), "Set items color", this, &SessionsFeedWidget::actionItemColor);
+        sessionMenu->addAction(QIcon(":/icons/color_text"), "Set text color", this, &SessionsFeedWidget::actionTextColor);
+        sessionMenu->addAction(QIcon(":/icons/color_reset"), "Reset color", this, &SessionsFeedWidget::actionColorReset);
         sessionMenu->addSeparator();
-        sessionMenu->addAction("Hide on client", this, &SessionsFeedWidget::actionHide);
+        sessionMenu->addAction(QIcon(":/icons/visibility_off"), "Hide on client", this, &SessionsFeedWidget::actionHide);
 
-        ctxMenu.addAction("Console", this, &SessionsFeedWidget::actionConsoleOpen);
+        ctxMenu.addAction(QIcon(":/icons/interact"), "Interact", this, &SessionsFeedWidget::actionConsoleOpen);
         ctxMenu.addSeparator();
         ctxMenu.addMenu(agentMenu);
 
-        auto browserMenu = ctxMenu.addMenu("Browsers");
+        auto browserMenu = ctxMenu.addMenu(QIcon(":/icons/open_folder"), "Browsers");
         int browserCount = adaptixWidget->ScriptManager->AddMenuSession(browserMenu, "SessionBrowser", agentIds);
         if (browserCount > 0)
             ctxMenu.addMenu(browserMenu);
         else ctxMenu.removeAction(browserMenu->menuAction());
 
-        auto accessMenu = ctxMenu.addMenu("Access");
+        auto accessMenu = ctxMenu.addMenu(QIcon(":/icons/exchange"), "Access");
         int accessCount = adaptixWidget->ScriptManager->AddMenuSession(accessMenu, "SessionAccess", agentIds);
         if (accessCount > 0)
             ctxMenu.addMenu(accessMenu);
@@ -538,7 +656,7 @@ void SessionsFeedWidget::handleFeedMenu(const QPoint& pos)
         ctxMenu.addSeparator();
         ctxMenu.addMenu(sessionMenu);
     }
-    ctxMenu.addAction("Show all items", this, &SessionsFeedWidget::actionItemsShowAll);
+    ctxMenu.addAction(QIcon(":/icons/visibility"), "Show all items", this, &SessionsFeedWidget::actionItemsShowAll);
     ctxMenu.exec(treeView()->viewport()->mapToGlobal(pos));
 }
 

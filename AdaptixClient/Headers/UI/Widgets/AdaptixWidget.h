@@ -2,6 +2,7 @@
 #define ADAPTIXCLIENT_ADAPTIXWIDGET_H
 
 #include <Agent/Commander.h>
+#include <Client/CodeEditorProfileManager.h>
 #include <main.h>
 
 #include <kddockwidgets/qtwidgets/views/DockWidget.h>
@@ -65,7 +66,23 @@ typedef struct AgentTypeInfo {
 struct ServerScriptInfo {
     QString name;
     QString description;
-    bool    enabled;
+    bool    enabled = false;
+};
+
+struct EventHandlerInfo {
+    QString id;
+    QString name;
+    QString description;
+    QString group;
+    QString event;
+    QString source;
+    QString lastError;
+    QJsonObject filters;
+    qint64  lastRunAt = 0;
+    bool    enabled = false;
+    bool    eventMuted = false;
+
+    bool isAxHandler() const { return source == QLatin1String("handler"); }
 };
 
 class AdaptixWidget : public QWidget
@@ -83,6 +100,11 @@ Q_OBJECT
     QPushButton*    logsButton        = nullptr;
     QPushButton*    chatButton        = nullptr;
     oclero::qlementine::NotificationBadge* chatBadge = nullptr;
+    oclero::qlementine::NotificationBadge* logsBadge = nullptr;
+    oclero::qlementine::NotificationBadge* downloadsBadge = nullptr;
+    oclero::qlementine::NotificationBadge* extDocksBadge = nullptr;
+    int             m_chatUnreadCount = 0;
+    int             m_logsUnreadCount = 0;
     QPushButton*    sessionsButton    = nullptr;
     QPushButton*    graphButton       = nullptr;
     QPushButton*    tasksButton       = nullptr;
@@ -226,6 +248,10 @@ public:
     void ClearChatStream();
     void ChatUnreadIncrement();
     void ChatUnreadClear();
+    void LogsUnreadIncrement();
+    void LogsUnreadClear();
+    void UpdateDownloadsBadge();
+    void UpdateExtDocksBadge();
     void ClearConsoleStreams();
     void ClearNotificationsStream();
 
@@ -237,6 +263,7 @@ public:
     void EnableServerScript(const QString &name);
     void DisableServerScript(const QString &name);
     QList<ServerScriptInfo> GetServerScripts() const;
+
     RegListenerConfig GetRegListener(const QString &listenerName);
     QList<QString>    GetAgentNames(const QString &listenerType) const;
     RegAgentConfig    GetRegAgent(const QString &agentName, const QString &listenerName, int os);
@@ -266,6 +293,7 @@ Q_SIGNALS:
     void LoadGlobalScriptSignal(QString path);
     void UnloadGlobalScriptSignal(QString path);
     void serverScriptsChanged();
+    void eventHandlersChanged();
 
     void agentTickUpdated(qint64 agentId);
 
@@ -285,18 +313,23 @@ public Q_SLOTS:
     void SetSessionsTableUI() const;
     void SetGraphUI() const;
     void SetTasksUI() const;
-    void LoadScriptsUI() const;
-    void LoadCodeEditorUI() const;
-    void OpenInDevTools(const QString& filePath);
+    void LoadScriptsUI(int segment = 0, const QString& originFilter = QString()) const;
+    void LoadCodeEditorUI(const CodeEditorOpenOptions& opts = CodeEditorOpenOptions()) const;
+    void LoadAgentCodeEditorUI(qint64 AgentId, const CodeEditorOpenOptions& opts = CodeEditorOpenOptions());
     void LoadLogsUI() const;
     void LoadChatUI() const;
     void LoadListenersUI() const;
     void LoadTunnelsUI() const;
     void LoadDownloadsUI() const;
+    void LoadFilesUI(int segment = 0) const;
     void LoadScreenshotsUI() const;
     void LoadCredentialsUI() const;
     void LoadTargetsUI() const;
     void OnReconnect();
+
+private Q_SLOTS:
+    void onFilesButtonContextMenu(const QPoint& pos);
+    void onScriptsButtonContextMenu(const QPoint& pos);
 };
 
 #endif

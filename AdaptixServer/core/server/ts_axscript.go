@@ -335,7 +335,7 @@ func (ts *Teamserver) TsPresyncAxScriptData() []interface{} {
 
 			data, err := json.Marshal([]interface{}{group})
 			if err != nil {
-				ts.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "Presync marshal error for group '%s': %v", group.GroupName, err)
+				ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "axscript", "Presync marshal error for group '%s': %v", group.GroupName, err)
 				continue
 			}
 
@@ -370,6 +370,34 @@ func (ts *Teamserver) TsAxScriptBroadcastData() {
 	for _, p := range packets {
 		ts.TsSyncAllClients(p)
 	}
+	ts.TsSyncAllClients(ts.TsPresyncAxScriptList())
+}
+
+func (ts *Teamserver) TsPresyncAxScriptList() interface{} {
+	items := make([]map[string]interface{}, 0)
+	if ts.ScriptManager == nil {
+		return CreateSpAxScriptList(items)
+	}
+	for _, s := range ts.ScriptManager.ListScripts() {
+		origin := "profile"
+		if s.ScriptType == "agent" {
+			origin = "agent"
+		} else if s.ScriptType == "user" {
+			origin = "user"
+		}
+		item := map[string]interface{}{
+			"name":        s.Name,
+			"path":        s.Path,
+			"origin":      origin,
+			"enabled":     true,
+			"description": s.ScriptType,
+		}
+		if s.Path != "" {
+			item["path"] = s.Path
+		}
+		items = append(items, item)
+	}
+	return CreateSpAxScriptList(items)
 }
 
 func (ts *Teamserver) TsGetAgentCommandGroups(agentName string) []AxCommandBatch {
@@ -387,7 +415,7 @@ func (ts *Teamserver) TsGetAgentCommandGroups(agentName string) []AxCommandBatch
 
 		data, err := json.Marshal(batch.Groups)
 		if err != nil {
-			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "Marshal error for agent '%s': %v", agentName, err)
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "axscript", "Marshal error for agent '%s': %v", agentName, err)
 			continue
 		}
 
@@ -442,7 +470,6 @@ func (ts *Teamserver) AxAgentSetMark(agentIds []int64, mark string) error {
 
 // /---
 func (ts *Teamserver) AxAgentSetColor(agentIds []int64, background string, foreground string, reset bool) error {
-	// Agent color is a client-only visual property, no server-side storage
 	return nil
 }
 
@@ -462,7 +489,7 @@ func (ts *Teamserver) TsAxScriptLoadFromProfile() {
 	for _, scriptPath := range ts.Profile.Server.AxScripts {
 		err := ts.ScriptManager.LoadAxScript(scriptPath)
 		if err != nil {
-			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:axscript_manager", "Failed to load profile axscript '%s': %v", scriptPath, err)
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "axscript", "Failed to load profile axscript '%s': %v", scriptPath, err)
 		}
 	}
 }

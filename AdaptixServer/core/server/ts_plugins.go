@@ -56,7 +56,7 @@ func (ts *Teamserver) TsAgentReg(agentInfo extender.AgentInfo) error {
 	if ts.ScriptManager != nil && agentInfo.AX != "" {
 		err := ts.TsAxScriptLoadAgent(agentInfo.Name, agentInfo.AX, agentInfo.Listeners)
 		if err != nil {
-			ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server:extender_manager", "Agent %s: AxScript load failed (commands will come from client): %v", agentInfo.Name, err)
+			ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "extender", "Agent %s: AxScript load failed (commands will come from client): %v", agentInfo.Name, err)
 		}
 	}
 	return nil

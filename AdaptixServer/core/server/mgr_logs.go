@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -55,45 +56,66 @@ func NewLogManager(debug bool) *LogManager {
 
 func (lm *LogManager) IsDebug() bool { return lm.debug }
 
-func (lm *LogManager) Info(source string, level int, format string, args ...any) {
-	lm.Add(adaptix.LogEntry{Status: adaptix.LogStatusInfo, Level: level, Source: source, Message: fmt.Sprintf(format, args...)})
+func (lm *LogManager) Info(source, category string, level int, format string, args ...any) {
+	lm.Add(adaptix.LogEntry{Status: adaptix.LogStatusInfo, Level: level, Source: source, Category: category, Message: fmt.Sprintf(format, args...)})
 }
 
-func (lm *LogManager) Success(source string, level int, format string, args ...any) {
-	lm.Add(adaptix.LogEntry{Status: adaptix.LogStatusSuccess, Level: level, Source: source, Message: fmt.Sprintf(format, args...)})
+func (lm *LogManager) Success(source, category string, level int, format string, args ...any) {
+	lm.Add(adaptix.LogEntry{Status: adaptix.LogStatusSuccess, Level: level, Source: source, Category: category, Message: fmt.Sprintf(format, args...)})
 }
 
-func (lm *LogManager) Warn(source string, level int, format string, args ...any) {
-	lm.Add(adaptix.LogEntry{Status: adaptix.LogStatusWarn, Level: level, Source: source, Message: fmt.Sprintf(format, args...)})
+func (lm *LogManager) Warn(source, category string, level int, format string, args ...any) {
+	lm.Add(adaptix.LogEntry{Status: adaptix.LogStatusWarn, Level: level, Source: source, Category: category, Message: fmt.Sprintf(format, args...)})
 }
 
-func (lm *LogManager) Error(source string, level int, format string, args ...any) {
-	lm.Add(adaptix.LogEntry{Status: adaptix.LogStatusError, Level: level, Source: source, Message: fmt.Sprintf(format, args...)})
+func (lm *LogManager) Error(source, category string, level int, format string, args ...any) {
+	lm.Add(adaptix.LogEntry{Status: adaptix.LogStatusError, Level: level, Source: source, Category: category, Message: fmt.Sprintf(format, args...)})
 }
 
-func (lm *LogManager) Debug(source string, level int, format string, args ...any) {
-	lm.Add(adaptix.LogEntry{Status: adaptix.LogStatusDebug, Level: level, Source: source, Message: fmt.Sprintf(format, args...)})
+func (lm *LogManager) Debug(source, category string, level int, format string, args ...any) {
+	lm.Add(adaptix.LogEntry{Status: adaptix.LogStatusDebug, Level: level, Source: source, Category: category, Message: fmt.Sprintf(format, args...)})
 }
 
 func (lm *LogManager) Bind(ts *Teamserver) {
 	lm.ts = ts
 
-	gin.DefaultWriter = ts.TsLogWriter(adaptix.LogStatusInfo, "server:gin")
-	gin.DefaultErrorWriter = ts.TsLogWriter(adaptix.LogStatusError, "server:gin")
-	log.SetOutput(ts.TsLogWriter(adaptix.LogStatusInfo, "server:stdlib"))
+	gin.DefaultWriter = ts.TsLogWriter(adaptix.LogStatusDebug, "server", "gin")
+	gin.DefaultErrorWriter = ts.TsLogWriter(adaptix.LogStatusError, "server", "gin")
+	log.SetOutput(ts.TsLogWriter(adaptix.LogStatusDebug, "server", "stdlib"))
 	log.SetFlags(0)
 }
 
 func (lm *LogManager) Add(entry adaptix.LogEntry) {
+	if entry.Status == adaptix.LogStatusDebug && !lm.debug {
+		return
+	}
 	if entry.Id == 0 {
 		entry.Id = lm.nextId.Add(1)
 	}
 	if entry.Time == 0 {
 		entry.Time = time.Now().UTC().Unix()
 	}
+	entry.Source, entry.Category = normalizeLogFields(entry.Source, entry.Category)
 	lm.writeRing(entry)
 	lm.printStdout(entry)
 	lm.queueWS(entry)
+}
+
+func normalizeLogFields(source, category string) (string, string) {
+	source = strings.TrimSpace(source)
+	category = strings.TrimSpace(category)
+	if source == "" {
+		source = "server"
+	}
+	if category == "" {
+		if i := strings.Index(source, "::"); i > 0 {
+			return source[:i], source[i+2:]
+		}
+		if i := strings.IndexByte(source, ':'); i > 0 {
+			return source[:i], source[i+1:]
+		}
+	}
+	return source, category
 }
 
 func (lm *LogManager) writeRing(entry adaptix.LogEntry) {
@@ -131,7 +153,11 @@ func (lm *LogManager) printStdout(entry adaptix.LogEntry) {
 	}
 	timestamp := tformat.SetBold(time.Unix(entry.Time, 0).Format("02/01 15:04:05"))
 	mark := tformat.SetColor(symbol, color)
-	fmt.Printf("%s%s %s [%s]\n", indent, mark, entry.Message, timestamp)
+	src := entry.LogSourceKey()
+	if src == "" {
+		src = "server"
+	}
+	fmt.Printf("%s%s %s [%s] (%s)\n", indent, mark, entry.Message, timestamp, src)
 }
 
 func (lm *LogManager) queueWS(entry adaptix.LogEntry) {
@@ -179,58 +205,160 @@ func (lm *LogManager) Stop() {
 	close(lm.stopCh)
 }
 
-func (lm *LogManager) Page(offset, limit int) ([]adaptix.LogEntry, int) {
-	lm.mu.RLock()
-	defer lm.mu.RUnlock()
-
-	total := lm.size
-	if limit <= 0 || offset < 0 || offset >= total {
-		return []adaptix.LogEntry{}, total
+func matchLogEntry(e adaptix.LogEntry, sourceFilter, categoryFilter, contains string) bool {
+	if sourceFilter != "" && e.Source != sourceFilter {
+		return false
 	}
-
-	end := offset + limit
-	if end > total {
-		end = total
+	if categoryFilter != "" && e.Category != categoryFilter {
+		return false
 	}
-
-	out := make([]adaptix.LogEntry, 0, end-offset)
-	for i := offset; i < end; i++ {
-		idx := (lm.head - 1 - i + len(lm.ring)) % len(lm.ring)
-		out = append(out, lm.ring[idx])
+	if contains != "" {
+		q := strings.ToLower(contains)
+		if !strings.Contains(strings.ToLower(e.Source), q) && !strings.Contains(strings.ToLower(e.Category), q) && !strings.Contains(strings.ToLower(e.LogSourceKey()), q) && !strings.Contains(strings.ToLower(e.Message), q) {
+			return false
+		}
 	}
-	return out, total
+	return true
 }
 
-func (lm *LogManager) PageBeforeId(beforeId int64, limit int) ([]adaptix.LogEntry, int) {
+func (lm *LogManager) HasOlderThan(beforeId int64, sourceFilter, categoryFilter, contains string) bool {
+	if lm == nil || beforeId <= 0 {
+		return false
+	}
+	lm.mu.RLock()
+	defer lm.mu.RUnlock()
+	for i := 0; i < lm.size; i++ {
+		idx := (lm.head - 1 - i + len(lm.ring)) % len(lm.ring)
+		entry := lm.ring[idx]
+		if entry.Id <= 0 || entry.Id >= beforeId {
+			continue
+		}
+		if matchLogEntry(entry, sourceFilter, categoryFilter, contains) {
+			return true
+		}
+	}
+	return false
+}
+
+func (lm *LogManager) Catalog() (sources []string, categories map[string][]string) {
 	lm.mu.RLock()
 	defer lm.mu.RUnlock()
 
-	total := lm.size
-	if limit <= 0 || total == 0 {
-		return []adaptix.LogEntry{}, total
+	srcSet := make(map[string]struct{})
+	catSet := make(map[string]map[string]struct{})
+	for i := 0; i < lm.size; i++ {
+		idx := (lm.head - 1 - i + len(lm.ring)) % len(lm.ring)
+		e := lm.ring[idx]
+		if e.Source == "" {
+			continue
+		}
+		srcSet[e.Source] = struct{}{}
+		if e.Category == "" {
+			continue
+		}
+		if catSet[e.Source] == nil {
+			catSet[e.Source] = make(map[string]struct{})
+		}
+		catSet[e.Source][e.Category] = struct{}{}
+	}
+	sources = make([]string, 0, len(srcSet))
+	for s := range srcSet {
+		sources = append(sources, s)
+	}
+	sort.Strings(sources)
+	categories = make(map[string][]string, len(catSet))
+	for src, set := range catSet {
+		list := make([]string, 0, len(set))
+		for c := range set {
+			list = append(list, c)
+		}
+		sort.Strings(list)
+		categories[src] = list
+	}
+	return sources, categories
+}
+
+func (lm *LogManager) Page(offset, limit int) ([]adaptix.LogEntry, int) {
+	return lm.PageFiltered(offset, limit, "", "", "")
+}
+
+func (lm *LogManager) PageFiltered(offset, limit int, sourceFilter, categoryFilter, contains string) ([]adaptix.LogEntry, int) {
+	lm.mu.RLock()
+	defer lm.mu.RUnlock()
+
+	totalMatch := 0
+	for i := 0; i < lm.size; i++ {
+		idx := (lm.head - 1 - i + len(lm.ring)) % len(lm.ring)
+		if matchLogEntry(lm.ring[idx], sourceFilter, categoryFilter, contains) {
+			totalMatch++
+		}
+	}
+	if limit <= 0 || offset < 0 || offset >= totalMatch {
+		return []adaptix.LogEntry{}, totalMatch
 	}
 
 	out := make([]adaptix.LogEntry, 0, limit)
-	for i := 0; i < total && len(out) < limit; i++ {
+	matched := 0
+	for i := 0; i < lm.size && len(out) < limit; i++ {
 		idx := (lm.head - 1 - i + len(lm.ring)) % len(lm.ring)
 		entry := lm.ring[idx]
+		if !matchLogEntry(entry, sourceFilter, categoryFilter, contains) {
+			continue
+		}
+		if matched < offset {
+			matched++
+			continue
+		}
+		out = append(out, entry)
+		matched++
+	}
+	return out, totalMatch
+}
+
+func (lm *LogManager) PageBeforeId(beforeId int64, limit int) ([]adaptix.LogEntry, int) {
+	return lm.PageBeforeIdFiltered(beforeId, limit, "", "", "")
+}
+
+func (lm *LogManager) PageBeforeIdFiltered(beforeId int64, limit int, sourceFilter, categoryFilter, contains string) ([]adaptix.LogEntry, int) {
+	lm.mu.RLock()
+	defer lm.mu.RUnlock()
+
+	totalMatch := 0
+	for i := 0; i < lm.size; i++ {
+		idx := (lm.head - 1 - i + len(lm.ring)) % len(lm.ring)
+		if matchLogEntry(lm.ring[idx], sourceFilter, categoryFilter, contains) {
+			totalMatch++
+		}
+	}
+	if limit <= 0 || totalMatch == 0 {
+		return []adaptix.LogEntry{}, totalMatch
+	}
+
+	out := make([]adaptix.LogEntry, 0, limit)
+	for i := 0; i < lm.size && len(out) < limit; i++ {
+		idx := (lm.head - 1 - i + len(lm.ring)) % len(lm.ring)
+		entry := lm.ring[idx]
+		if !matchLogEntry(entry, sourceFilter, categoryFilter, contains) {
+			continue
+		}
 		if beforeId > 0 && entry.Id >= beforeId {
 			continue
 		}
 		out = append(out, entry)
 	}
-	return out, total
+	return out, totalMatch
 }
 
 type LogWriter struct {
-	lm     *LogManager
-	status adaptix.LogStatus
-	source string
+	lm       *LogManager
+	status   adaptix.LogStatus
+	source   string
+	category string
 
 	mu      sync.Mutex
-	buf     []byte      // bytes received since last '\n'
-	pending []string    // lines accumulated for the current logical entry
-	timer   *time.Timer // fires logWriterFlushDelay after last activity
+	buf     []byte
+	pending []string
+	timer   *time.Timer
 
 	throttleWindow   time.Time
 	throttleCount    int
@@ -238,8 +366,8 @@ type LogWriter struct {
 	lastThrottleEmit time.Time
 }
 
-func newLogWriter(lm *LogManager, status adaptix.LogStatus, source string) *LogWriter {
-	return &LogWriter{lm: lm, status: status, source: source}
+func newLogWriter(lm *LogManager, status adaptix.LogStatus, source, category string) *LogWriter {
+	return &LogWriter{lm: lm, status: status, source: source, category: category}
 }
 
 func (w *LogWriter) Write(p []byte) (int, error) {
@@ -293,9 +421,10 @@ func (w *LogWriter) flushPendingLocked() {
 		return
 	}
 	w.lm.Add(adaptix.LogEntry{
-		Status:  w.status,
-		Source:  w.source,
-		Message: msg,
+		Status:   w.status,
+		Source:   w.source,
+		Category: w.category,
+		Message:  msg,
 	})
 }
 
@@ -353,8 +482,9 @@ func (w *LogWriter) maybeEmitThrottleSummaryLocked() {
 	w.throttleDropped = 0
 	w.lastThrottleEmit = now
 	w.lm.Add(adaptix.LogEntry{
-		Status:  adaptix.LogStatusWarn,
-		Source:  w.source,
-		Message: fmt.Sprintf("[LogWriter] throttled %d entries (rate cap %d/sec)", n, logWriterRatePerSec),
+		Status:   adaptix.LogStatusWarn,
+		Source:   w.source,
+		Category: w.category,
+		Message:  fmt.Sprintf("[LogWriter] throttled %d entries (rate cap %d/sec)", n, logWriterRatePerSec),
 	})
 }

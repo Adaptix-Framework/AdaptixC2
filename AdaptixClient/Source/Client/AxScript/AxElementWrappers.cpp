@@ -1,21 +1,219 @@
 #include <Client/AxScript/AxElementWrappers.h>
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxScriptManager.h>
+#include <Client/AxScript/AxScriptUtils.h>
+#include <Client/AuthProfile.h>
+#include <Client/PagedTableHelper.h>
+#include <UI/Widgets/AdaptixWidget.h>
 #include <Agent/Agent.h>
 #include <Utils/NonBlockingDialogs.h>
 #include <Utils/CustomElements/BoldHeaderView.h>
 #include <Utils/CustomElements/Delegates.h>
+#include <Utils/CustomElements/PageNavBar.h>
+
+#include <oclero/qlementine/widgets/Menu.hpp>
+#include <oclero/qlementine/widgets/Switch.hpp>
+#include <oclero/qlementine/widgets/SegmentedControl.hpp>
 
 #include <QJSEngine>
+#include <QJsonArray>
 #include <QJsonObject>
 #include <QJsonDocument>
 #include <QFrame>
 #include <QDateEdit>
 #include <QDialog>
+#include <QHeaderView>
 #include <QMenu>
-#include <oclero/qlementine/widgets/Menu.hpp>
-#include <oclero/qlementine/widgets/Switch.hpp>
-#include <oclero/qlementine/widgets/SegmentedControl.hpp>
+#include <QApplication>
+#include <QScreen>
+#include <QGuiApplication>
+#include <QWindow>
+
+namespace {
+
+QString credFieldToSortKey(const QString& field)
+{
+    if (field == QLatin1String("id"))        return QStringLiteral("CredId");
+    if (field == QLatin1String("username"))  return QStringLiteral("Username");
+    if (field == QLatin1String("password"))  return QStringLiteral("Password");
+    if (field == QLatin1String("realm"))     return QStringLiteral("Realm");
+    if (field == QLatin1String("type"))      return QStringLiteral("Type");
+    if (field == QLatin1String("tag"))       return QStringLiteral("Tag");
+    if (field == QLatin1String("date"))      return QStringLiteral("Date");
+    if (field == QLatin1String("storage"))   return QStringLiteral("Storage");
+    if (field == QLatin1String("agent_id"))  return QStringLiteral("AgentId");
+    if (field == QLatin1String("host"))      return QStringLiteral("Host");
+    return {};
+}
+
+QString targetFieldToSortKey(const QString& field)
+{
+    if (field == QLatin1String("id"))       return QStringLiteral("TargetId");
+    if (field == QLatin1String("computer")) return QStringLiteral("Computer");
+    if (field == QLatin1String("domain"))   return QStringLiteral("Domain");
+    if (field == QLatin1String("address"))  return QStringLiteral("Address");
+    if (field == QLatin1String("tag"))      return QStringLiteral("Tag");
+    if (field == QLatin1String("os"))       return QStringLiteral("Os");
+    if (field == QLatin1String("os_desc"))  return QStringLiteral("OsDesk");
+    if (field == QLatin1String("info"))     return QStringLiteral("Info");
+    if (field == QLatin1String("date"))     return QStringLiteral("Date");
+    if (field == QLatin1String("alive"))    return QStringLiteral("Alive");
+    return {};
+}
+
+QString downloadFieldToSortKey(const QString& field)
+{
+    if (field == QLatin1String("id"))         return QStringLiteral("FileId");
+    if (field == QLatin1String("agent_id"))   return QStringLiteral("AgentId");
+    if (field == QLatin1String("agent_name")) return QStringLiteral("AgentName");
+    if (field == QLatin1String("user"))       return QStringLiteral("User");
+    if (field == QLatin1String("computer"))   return QStringLiteral("Computer");
+    if (field == QLatin1String("filename"))   return QStringLiteral("RemotePath");
+    if (field == QLatin1String("total_size")) return QStringLiteral("TotalSize");
+    if (field == QLatin1String("recv_size"))  return QStringLiteral("RecvSize");
+    if (field == QLatin1String("state"))      return QStringLiteral("State");
+    if (field == QLatin1String("date"))       return QStringLiteral("Date");
+    return {};
+}
+
+AuthProfile* profileFromEngine(AxScriptEngine* jsEngine)
+{
+    if (!jsEngine || !jsEngine->manager())
+        return nullptr;
+    AdaptixWidget* aw = jsEngine->manager()->GetAdaptix();
+    return aw ? aw->GetProfile() : nullptr;
+}
+
+QWidget* selectorTransientHost(AxScriptEngine* jsEngine)
+{
+    if (jsEngine && jsEngine->manager()) {
+        if (AdaptixWidget* aw = jsEngine->manager()->GetAdaptix()) {
+            if (QWidget* w = aw->window())
+                return w;
+        }
+    }
+    if (QWidget* active = QApplication::activeWindow())
+        return active;
+    const auto tops = QApplication::topLevelWidgets();
+    for (QWidget* w : tops) {
+        if (w && w->isVisible() && w->isWindow())
+            return w;
+    }
+    return nullptr;
+}
+
+void prepareSelectorDialog(QDialog* dialog, const QString& title, AxScriptEngine* jsEngine)
+{
+    if (!dialog)
+        return;
+
+    if (dialog->parentWidget())
+        dialog->setParent(nullptr);
+
+    dialog->setWindowFlags(Qt::Dialog | Qt::WindowTitleHint | Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
+    dialog->setWindowTitle(title);
+    dialog->setWindowModality(Qt::ApplicationModal);
+    dialog->setModal(true);
+    dialog->setMinimumSize(640, 400);
+    if (dialog->width() < 200 || dialog->height() < 150)
+        dialog->resize(900, 520);
+
+    if (QWidget* host = selectorTransientHost(jsEngine)) {
+        const QRect pr = host->frameGeometry();
+        const QSize sz = dialog->size().expandedTo(dialog->minimumSize());
+        dialog->move(pr.center() - QPoint(sz.width() / 2, sz.height() / 2));
+    } else if (QScreen* scr = QGuiApplication::primaryScreen()) {
+        const QRect ag = scr->availableGeometry();
+        dialog->move(ag.center() - dialog->rect().center());
+    }
+}
+
+int execSelectorDialog(QDialog* dialog, AxScriptEngine* jsEngine)
+{
+    if (!dialog)
+        return QDialog::Rejected;
+
+    prepareSelectorDialog(dialog, dialog->windowTitle(), jsEngine);
+
+    dialog->ensurePolished();
+    dialog->winId();
+    if (QWidget* host = selectorTransientHost(jsEngine)) {
+        host->winId();
+        if (QWindow* dw = dialog->windowHandle()) {
+            if (QWindow* hw = host->windowHandle())
+                dw->setTransientParent(hw);
+        }
+    }
+
+    dialog->show();
+    dialog->raise();
+    dialog->activateWindow();
+    QApplication::alert(dialog);
+    QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+    return dialog->exec();
+}
+
+static constexpr int kSelectorDefaultPageSize = 50;
+
+void configureSelectorPagination(PageNavBar* bar, PagedTableHelper* helper, int size = kSelectorDefaultPageSize)
+{
+    if (!bar || !helper)
+        return;
+    bar->setIsolated(true);
+    bar->setPageSize(size, /*syncGlobal=*/false);
+    helper->setPageSize(bar->pageSize());
+}
+
+void fillSelectorHeaders(const QJSValue& headers, const QMap<QString, QString>& fieldMap, const QStringList& defaultKeys, const QString& hiddenLabel, const QString& hiddenKey, QVector<QString>& headerLabels, QVector<QString>& fieldKeys)
+{
+    headerLabels.clear();
+    fieldKeys.clear();
+
+    const bool headersOk = headers.isArray();
+    const int length = headersOk ? headers.property(QStringLiteral("length")).toInt() : 0;
+    for (int i = 0; i < length; ++i) {
+        const QString val = headers.property(i).toString();
+        if (fieldMap.contains(val)) {
+            headerLabels.append(fieldMap.value(val));
+            fieldKeys.append(val);
+        }
+    }
+
+    if (fieldKeys.isEmpty()) {
+        for (const QString& val : defaultKeys) {
+            if (fieldMap.contains(val)) {
+                headerLabels.append(fieldMap.value(val));
+                fieldKeys.append(val);
+            }
+        }
+    }
+
+    headerLabels.append(hiddenLabel);
+    fieldKeys.append(hiddenKey);
+}
+
+void applySelectorTableColumns(QTableView* tableView, const QVector<QString>& headerLabels)
+{
+    if (!tableView || headerLabels.isEmpty())
+        return;
+    const int lastCol = headerLabels.size() - 1;
+    if (lastCol >= 0)
+        tableView->hideColumn(lastCol);
+    if (headerLabels.size() > 2) {
+        for (int i = 0; i < headerLabels.size() - 2; ++i)
+            tableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+    }
+}
+
+QJSValue emptyJsArray(AxScriptEngine* jsEngine)
+{
+    if (!jsEngine || !jsEngine->engine())
+        return {};
+    return jsEngine->engine()->newArray(0);
+}
+
+}
 
 /// MENU
 
@@ -37,6 +235,12 @@ void AxActionWrapper::triggerWithContext(const QVariantList& arg) const
     QJSValue jsContext = engine->toScriptValue(arg);
     if (this->handler.isCallable())
         this->handler.call({ jsContext });
+}
+
+void AxActionWrapper::setIcon(const QString& resourcePath)
+{
+    if (pAction)
+        pAction->setIcon(AxScriptUtils::resolveMenuIcon(resourcePath));
 }
 
 
@@ -78,6 +282,12 @@ void AxMenuWrapper::addItem(AbstractAxMenuItem* axItem)
     }
 }
 
+void AxMenuWrapper::setIcon(const QString& resourcePath)
+{
+    if (pMenu)
+        pMenu->setIcon(AxScriptUtils::resolveMenuIcon(resourcePath));
+}
+
 
 
 /// LAYOUT
@@ -92,6 +302,24 @@ void AxBoxLayoutWrapper::addWidget(QObject* wrapper) const
         boxLayout->addWidget(formElement->widget());
     else if (auto* spacerElement = qobject_cast<AxSpacerWrapper*>(wrapper))
         boxLayout->addItem(spacerElement->widget());
+}
+
+void AxBoxLayoutWrapper::addStretch(const int stretch) const
+{
+    if (boxLayout)
+        boxLayout->addStretch(stretch);
+}
+
+void AxBoxLayoutWrapper::setContentsMargins(const int left, const int top, const int right, const int bottom) const
+{
+    if (boxLayout)
+        boxLayout->setContentsMargins(left, top, right, bottom);
+}
+
+void AxBoxLayoutWrapper::setSpacing(const int spacing) const
+{
+    if (boxLayout)
+        boxLayout->setSpacing(spacing);
 }
 
 /// GRID LAYOUT
@@ -1172,9 +1400,12 @@ void AxSelectorFile::jsonUnmarshal(const QVariant& value)
 
 void AxSelectorFile::onSelectFile()
 {
+    if (!lineEdit)
+        return;
+
     NonBlockingDialogs::getOpenFileName(lineEdit, "Select a file", "", "All Files (*.*)",
         [this](const QString& selectedFile) {
-            if (selectedFile.isEmpty())
+            if (!lineEdit || selectedFile.isEmpty())
                 return;
 
             lineEdit->setText(selectedFile);
@@ -1192,14 +1423,14 @@ void AxSelectorFile::onSelectFile()
 
 /// SELECTOR CREDENTIALS
 
-AxDialogCreds::AxDialogCreds(const QJSValue &headers, const QVector<CredentialData> &vecCreds, QWidget *parent)
+AxDialogCreds::AxDialogCreds(const QJSValue &headers, AuthProfile* profile, QWidget *parent) : QDialog(parent)
 {
     this->setProperty("Main", "base");
 
     tableView = new QTableView(this);
     tableView->setAlternatingRowColors(true);
     tableView->setShowGrid(false);
-    tableView->setSortingEnabled(true);
+    tableView->setSortingEnabled(false);
     tableView->setWordWrap(true);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
@@ -1207,13 +1438,19 @@ AxDialogCreds::AxDialogCreds(const QJSValue &headers, const QVector<CredentialDa
     tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tableView->horizontalHeader()->setCascadingSectionResizes(true);
     tableView->horizontalHeader()->setHighlightSections(false);
+    tableView->horizontalHeader()->setSortIndicatorShown(true);
+    tableView->horizontalHeader()->setSectionsClickable(true);
     tableView->verticalHeader()->setVisible(false);
     tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     tableModel = new AxCredsTableModel(this);
-    proxyModel = new AxCredsFilterProxyModel(this);
-    proxyModel->setSourceModel(tableModel);
-    tableView->setModel(proxyModel);
+    tableView->setModel(tableModel);
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+
+    pageNavBar = new PageNavBar(this);
+    pageNavBar->setFilterPlaceholder("filter: (adm | user) & aes256");
+    pageNavBar->setAgentComboVisible(false);
+    pageNavBar->setAutoVisible(true);
 
     chooseButton = new QPushButton("Choose", this);
 
@@ -1225,56 +1462,152 @@ AxDialogCreds::AxDialogCreds(const QJSValue &headers, const QVector<CredentialDa
     bottomLayout->addWidget(chooseButton);
     bottomLayout->addItem(spacer_2);
 
-    searchWidget = new QWidget(this);
-
-    searchLineEdit = new QLineEdit(searchWidget);
-    searchLineEdit->setPlaceholderText("filter");
-
-    hideButton = new ClickableLabel("X");
-    hideButton->setCursor(Qt::PointingHandCursor);
-
-    searchLayout = new QHBoxLayout(searchWidget);
-    searchLayout->setContentsMargins(0, 0, 0, 0);
-    searchLayout->setSpacing(4);
-    searchLayout->addWidget(searchLineEdit);
-    searchLayout->addWidget(hideButton);
-
     mainLayout = new QVBoxLayout();
-    mainLayout->addWidget(searchWidget);
+    mainLayout->addWidget(pageNavBar);
     mainLayout->addWidget(tableView);
     mainLayout->addLayout(bottomLayout);
 
     setLayout(mainLayout);
 
-    connect(searchLineEdit, &QLineEdit::textEdited,   this, &AxDialogCreds::handleSearch);
-    connect(chooseButton,   &QPushButton::clicked,    this, &AxDialogCreds::onClicked);
-    connect(hideButton,     &ClickableLabel::clicked, this, &AxDialogCreds::clearSearch);
+    connect(chooseButton, &QPushButton::clicked, this, &AxDialogCreds::onClicked);
+    connect(tableView, &QTableView::doubleClicked, this, &AxDialogCreds::onClicked);
+    connect(this, &QDialog::finished, this, [this](int) {
+        if (pageHelper)
+            pageHelper->cancel();
+    });
 
     QVector<QString> headerLabels;
     QVector<QString> fieldKeys;
-
-    const int length = headers.property("length").toInt();
-    for (int i = 0; i < length; ++i) {
-        QString val = headers.property(i).toString();
-        if (FIELD_MAP_CREDS.contains(val)) {
-            headerLabels.append(FIELD_MAP_CREDS[val]);
-            fieldKeys.append(val);
-        }
-    }
-    headerLabels.append("CredId");
-    fieldKeys.append("id");
+    fillSelectorHeaders( headers, FIELD_MAP_CREDS, {"username", "password", "realm", "type", "tag", "storage", "host"}, "CredId", "id", headerLabels, fieldKeys);
 
     tableModel->setHeaders(headerLabels, fieldKeys);
-    tableModel->setData(vecCreds);
+    applySelectorTableColumns(tableView, headerLabels);
 
-    int lastCol = headerLabels.size() - 1;
-    tableView->hideColumn(lastCol);
-
-    if (headerLabels.size() > 2) {
-        for (int i = 0; i < headerLabels.size() - 2; ++i) {
-            tableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+    for (int i = 0; i < fieldKeys.size(); ++i) {
+        if (fieldKeys[i] == QLatin1String("date")) {
+            tableView->horizontalHeader()->setSortIndicator(i, Qt::DescendingOrder);
+            break;
         }
     }
+
+    if (profile) {
+        pageHelper = new PagedTableHelper(profile, QStringLiteral("/creds/list"), this);
+        configureSelectorPagination(pageNavBar, pageHelper);
+
+        connect(pageHelper, &PagedTableHelper::pageReady,      this, &AxDialogCreds::onPageReady);
+        connect(pageHelper, &PagedTableHelper::errorOccurred,  this, &AxDialogCreds::onPageError);
+        connect(pageHelper, &PagedTableHelper::loadingChanged, this, [this](bool loading) {
+            pageNavBar->setLoading(loading);
+            tableView->setEnabled(!loading);
+            chooseButton->setEnabled(!loading);
+        });
+
+        connect(pageNavBar, &PageNavBar::prevClicked, this, [this]() {
+            m_offset = qMax(0, m_offset - pageNavBar->pageSize());
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::nextClicked, this, [this]() {
+            m_offset += pageNavBar->pageSize();
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::pageSizeChanged, this, [this](int size) {
+            pageHelper->setPageSize(size);
+            m_offset = 0;
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::filterChanged, this, [this]() {
+            m_offset = 0;
+            loadCurrentPage();
+        });
+
+        connect(tableView->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this, [this](int section, Qt::SortOrder order) {
+            const QString key = credFieldToSortKey(tableModel->fieldKey(section));
+            if (key.isEmpty())
+                return;
+            const QString newOrder = (order == Qt::AscendingOrder) ? QStringLiteral("asc") : QStringLiteral("desc");
+            if (key == m_sortCol && newOrder == m_sortOrder)
+                return;
+            m_sortCol = key;
+            m_sortOrder = newOrder;
+            m_offset = 0;
+            loadCurrentPage();
+        });
+    } else {
+        pageNavBar->setError(QStringLiteral("No auth profile"));
+        pageNavBar->setPrevEnabled(false);
+        pageNavBar->setNextEnabled(false);
+    }
+}
+
+AxDialogCreds::~AxDialogCreds()
+{
+    if (pageHelper)
+        pageHelper->cancel();
+}
+
+void AxDialogCreds::prepare()
+{
+    selectedData.clear();
+    m_offset = 0;
+    if (pageHelper)
+        loadCurrentPage();
+}
+
+void AxDialogCreds::loadCurrentPage()
+{
+    if (!pageHelper)
+        return;
+    pageHelper->setPageSize(pageNavBar->pageSize());
+    pageHelper->setParam(QStringLiteral("q"), pageNavBar->filterText());
+    pageHelper->setParam(QStringLiteral("sort"), m_sortCol);
+    pageHelper->setParam(QStringLiteral("order"), m_sortOrder);
+    pageHelper->loadPage(m_offset);
+}
+
+void AxDialogCreds::onPageReady(const QJsonObject& response)
+{
+    QJsonArray items = response.value(QStringLiteral("items")).toArray();
+
+    QVector<CredentialData> page;
+    page.reserve(items.size());
+
+    for (const QJsonValue& v : items) {
+        QJsonObject obj = v.toObject();
+        CredentialData c;
+        c.CredId        = parseI64(obj, QStringLiteral("c_creds_id"));
+        c.Username      = obj[QStringLiteral("c_username")].toString();
+        c.Password      = obj[QStringLiteral("c_password")].toString();
+        c.Realm         = obj[QStringLiteral("c_realm")].toString();
+        c.Type          = obj[QStringLiteral("c_type")].toString();
+        c.Tag           = obj[QStringLiteral("c_tag")].toString();
+        c.DateTimestamp = parseI64(obj, QStringLiteral("c_date"));
+        c.Date          = UnixTimestampGlobalToStringLocal(c.DateTimestamp);
+        c.Storage       = obj[QStringLiteral("c_storage")].toString();
+        c.AgentId       = parseI64(obj, QStringLiteral("c_agent_id"));
+        c.Host          = obj[QStringLiteral("c_host")].toString();
+        page.append(c);
+    }
+
+    tableModel->setData(page);
+
+    const int total = response[QStringLiteral("total")].toInt();
+    const int shown = page.size();
+    const int from  = shown == 0 ? 0 : m_offset + 1;
+    const int to    = m_offset + shown;
+    pageNavBar->setInfo(from, to, total);
+    pageNavBar->setPrevEnabled(m_offset > 0);
+    pageNavBar->setNextEnabled(m_offset + shown < total);
+}
+
+void AxDialogCreds::onPageError(const QString& message)
+{
+    if (message.contains(QStringLiteral("invalid filter"), Qt::CaseInsensitive) || message.startsWith(QStringLiteral("filter:"), Qt::CaseInsensitive))
+        return;
+
+    tableModel->setData({});
+    pageNavBar->setError(message);
+    pageNavBar->setPrevEnabled(false);
+    pageNavBar->setNextEnabled(false);
 }
 
 QVector<CredentialData> AxDialogCreds::data() { return selectedData; }
@@ -1282,41 +1615,36 @@ QVector<CredentialData> AxDialogCreds::data() { return selectedData; }
 void AxDialogCreds::onClicked()
 {
     selectedData.clear();
-    QModelIndexList selected = tableView->selectionModel()->selectedRows();
-    for (const auto& proxyIndex : selected) {
-        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
-        if (sourceIndex.isValid()) {
-            selectedData.append(tableModel->getCredential(sourceIndex.row()));
-        }
+    const QModelIndexList selected = tableView->selectionModel()->selectedRows();
+    for (const auto& index : selected) {
+        if (index.isValid())
+            selectedData.append(tableModel->getCredential(index.row()));
     }
     this->accept();
 }
 
-void AxDialogCreds::handleSearch()
+AxSelectorCreds::AxSelectorCreds(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent) : QObject(parent), scriptEngine(jsEngine)
 {
-    proxyModel->setFilterText(searchLineEdit->text());
+    dialog = new AxDialogCreds(headers, profileFromEngine(jsEngine), nullptr);
+    prepareSelectorDialog(dialog, "Choose credentials", jsEngine);
 }
 
-void AxDialogCreds::clearSearch()
+void AxSelectorCreds::setSize(const int w, const int h ) const
 {
-    searchLineEdit->clear();
-    handleSearch();
+    if (dialog)
+        dialog->resize(w, h);
 }
-
-AxSelectorCreds::AxSelectorCreds(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
-{
-    auto vecCreds = scriptEngine->manager()->GetCredentials();
-
-    dialog = new AxDialogCreds(headers, vecCreds);
-    dialog->setWindowTitle("Choose credentials");
-}
-
-void AxSelectorCreds::setSize(const int w, const int h ) const { dialog->resize(w, h); }
 
 QJSValue AxSelectorCreds::exec() const
 {
+    if (!dialog || !scriptEngine || !scriptEngine->engine())
+        return emptyJsArray(scriptEngine);
+
+    prepareSelectorDialog(dialog, "Choose credentials", scriptEngine);
+    dialog->prepare();
+
     QVector<CredentialData> vecCreds;
-    if (dialog->exec() == QDialog::Accepted) {
+    if (execSelectorDialog(dialog, scriptEngine) == QDialog::Accepted) {
         vecCreds = dialog->data();
     }
 
@@ -1335,14 +1663,19 @@ QJSValue AxSelectorCreds::exec() const
         map["host"]     = cred.Host;
         list.append(map);
     }
-    return this->scriptEngine->engine()->toScriptValue(list);
+    return scriptEngine->engine()->toScriptValue(list);
 }
 
-void AxSelectorCreds::close() const { dialog->close(); }
+void AxSelectorCreds::close() const
+{
+    if (dialog)
+        dialog->close();
+}
 
 /// SELECTOR AGENTS
 
 AxDialogAgents::AxDialogAgents(const QJSValue &headers, const QVector<AgentData> &vecAgents, QWidget *parent)
+    : QDialog(parent)
 {
     this->setProperty("Main", "base");
 
@@ -1364,6 +1697,7 @@ AxDialogAgents::AxDialogAgents(const QJSValue &headers, const QVector<AgentData>
     proxyModel = new AxAgentsFilterProxyModel(this);
     proxyModel->setSourceModel(tableModel);
     tableView->setModel(proxyModel);
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
 
     chooseButton = new QPushButton("Choose", this);
 
@@ -1402,29 +1736,11 @@ AxDialogAgents::AxDialogAgents(const QJSValue &headers, const QVector<AgentData>
 
     QVector<QString> headerLabels;
     QVector<QString> fieldKeys;
-
-    const int length = headers.property("length").toInt();
-    for (int i = 0; i < length; ++i) {
-        QString val = headers.property(i).toString();
-        if (FIELD_MAP_AGENTS.contains(val)) {
-            headerLabels.append(FIELD_MAP_AGENTS[val]);
-            fieldKeys.append(val);
-        }
-    }
-    headerLabels.append("Agent ID");
-    fieldKeys.append("id");
+    fillSelectorHeaders( headers, FIELD_MAP_AGENTS, {"id", "type", "computer", "username", "process", "pid", "os", "tags"}, "Agent ID", "id", headerLabels, fieldKeys);
 
     tableModel->setHeaders(headerLabels, fieldKeys);
     tableModel->setData(vecAgents);
-
-    int lastCol = headerLabels.size() - 1;
-    tableView->hideColumn(lastCol);
-
-    if (headerLabels.size() > 2) {
-        for (int i = 0; i < headerLabels.size() - 2; ++i) {
-            tableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
-        }
-    }
+    applySelectorTableColumns(tableView, headerLabels);
 }
 
 QVector<AgentData> AxDialogAgents::data() { return selectedData; }
@@ -1453,24 +1769,36 @@ void AxDialogAgents::clearSearch()
     handleSearch();
 }
 
-AxSelectorAgents::AxSelectorAgents(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
+AxSelectorAgents::AxSelectorAgents(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent) : QObject(parent), scriptEngine(jsEngine)
 {
     QVector<AgentData> vecAgents;
+    if (scriptEngine && scriptEngine->manager()) {
+        const auto agents = scriptEngine->manager()->GetAgents().values();
+        for (auto* agent : agents) {
+            if (agent)
+                vecAgents.append(agent->data);
+        }
+    }
 
-    auto agents = scriptEngine->manager()->GetAgents().values();
-    for (auto agent : agents)
-        vecAgents.append(agent->data);
-
-    dialog = new AxDialogAgents(headers, vecAgents);
-    dialog->setWindowTitle("Choose agent");
+    dialog = new AxDialogAgents(headers, vecAgents, nullptr);
+    prepareSelectorDialog(dialog, "Choose agent", jsEngine);
 }
 
-void AxSelectorAgents::setSize(const int w, const int h ) const { dialog->resize(w, h); }
+void AxSelectorAgents::setSize(const int w, const int h ) const
+{
+    if (dialog)
+        dialog->resize(w, h);
+}
 
 QJSValue AxSelectorAgents::exec() const
 {
+    if (!dialog || !scriptEngine || !scriptEngine->engine())
+        return emptyJsArray(scriptEngine);
+
+    prepareSelectorDialog(dialog, "Choose agent", scriptEngine);
+
     QVector<AgentData> vecAgents;
-    if (dialog->exec() == QDialog::Accepted) {
+    if (execSelectorDialog(dialog, scriptEngine) == QDialog::Accepted) {
         vecAgents = dialog->data();
     }
 
@@ -1505,16 +1833,20 @@ QJSValue AxSelectorAgents::exec() const
         map["tags"]        = agentData.Tags;
         list.append(map);
     }
-    return this->scriptEngine->engine()->toScriptValue(list);
+    return scriptEngine->engine()->toScriptValue(list);
 }
 
-void AxSelectorAgents::close() const { dialog->close(); }
+void AxSelectorAgents::close() const
+{
+    if (dialog)
+        dialog->close();
+}
 
 
 
 /// SELECTOR LISTENERS
 
-AxDialogListeners::AxDialogListeners(const QJSValue &headers, const QVector<ListenerData> &vecListeners, QWidget *parent)
+AxDialogListeners::AxDialogListeners(const QJSValue &headers, const QVector<ListenerData> &vecListeners, QWidget *parent) : QDialog(parent)
 {
     this->setProperty("Main", "base");
 
@@ -1536,6 +1868,7 @@ AxDialogListeners::AxDialogListeners(const QJSValue &headers, const QVector<List
     proxyModel = new AxListenersFilterProxyModel(this);
     proxyModel->setSourceModel(tableModel);
     tableView->setModel(proxyModel);
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
 
     chooseButton = new QPushButton("Choose", this);
 
@@ -1574,29 +1907,11 @@ AxDialogListeners::AxDialogListeners(const QJSValue &headers, const QVector<List
 
     QVector<QString> headerLabels;
     QVector<QString> fieldKeys;
-
-    const int length = headers.property("length").toInt();
-    for (int i = 0; i < length; ++i) {
-        QString val = headers.property(i).toString();
-        if (FIELD_MAP_LISTENERS.contains(val)) {
-            headerLabels.append(FIELD_MAP_LISTENERS[val]);
-            fieldKeys.append(val);
-        }
-    }
-    headerLabels.append("Name");
-    fieldKeys.append("name");
+    fillSelectorHeaders(headers, FIELD_MAP_LISTENERS, {"name", "type", "protocol", "bind_host", "bind_port", "status"}, "Name", "name", headerLabels, fieldKeys);
 
     tableModel->setHeaders(headerLabels, fieldKeys);
     tableModel->setData(vecListeners);
-
-    int lastCol = headerLabels.size() - 1;
-    tableView->hideColumn(lastCol);
-
-    if (headerLabels.size() > 2) {
-        for (int i = 0; i < headerLabels.size() - 2; ++i) {
-            tableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
-        }
-    }
+    applySelectorTableColumns(tableView, headerLabels);
 }
 
 QVector<ListenerData> AxDialogListeners::data() { return selectedData; }
@@ -1625,20 +1940,31 @@ void AxDialogListeners::clearSearch()
     handleSearch();
 }
 
-AxSelectorListeners::AxSelectorListeners(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
+AxSelectorListeners::AxSelectorListeners(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent) : QObject(parent), scriptEngine(jsEngine)
 {
-    auto vecListeners = scriptEngine->manager()->GetListeners();
+    QVector<ListenerData> vecListeners;
+    if (scriptEngine && scriptEngine->manager())
+        vecListeners = scriptEngine->manager()->GetListeners();
 
-    dialog = new AxDialogListeners(headers, vecListeners);
-    dialog->setWindowTitle("Choose listener");
+    dialog = new AxDialogListeners(headers, vecListeners, nullptr);
+    prepareSelectorDialog(dialog, "Choose listener", jsEngine);
 }
 
-void AxSelectorListeners::setSize(const int w, const int h ) const { dialog->resize(w, h); }
+void AxSelectorListeners::setSize(const int w, const int h ) const
+{
+    if (dialog)
+        dialog->resize(w, h);
+}
 
 QJSValue AxSelectorListeners::exec() const
 {
+    if (!dialog || !scriptEngine || !scriptEngine->engine())
+        return emptyJsArray(scriptEngine);
+
+    prepareSelectorDialog(dialog, "Choose listener", scriptEngine);
+
     QVector<ListenerData> vecListeners;
-    if (dialog->exec() == QDialog::Accepted) {
+    if (execSelectorDialog(dialog, scriptEngine) == QDialog::Accepted) {
         vecListeners = dialog->data();
     }
 
@@ -1655,23 +1981,27 @@ QJSValue AxSelectorListeners::exec() const
         map["date"]       = listener.Date;
         list.append(map);
     }
-    return this->scriptEngine->engine()->toScriptValue(list);
+    return scriptEngine->engine()->toScriptValue(list);
 }
 
-void AxSelectorListeners::close() const { dialog->close(); }
+void AxSelectorListeners::close() const
+{
+    if (dialog)
+        dialog->close();
+}
 
 
 
 /// SELECTOR TARGETS
 
-AxDialogTargets::AxDialogTargets(const QJSValue &headers, const QVector<TargetData> &vecTargets, QWidget *parent)
+AxDialogTargets::AxDialogTargets(const QJSValue &headers, AuthProfile* profile, QWidget *parent) : QDialog(parent)
 {
     this->setProperty("Main", "base");
 
     tableView = new QTableView(this);
     tableView->setAlternatingRowColors(true);
     tableView->setShowGrid(false);
-    tableView->setSortingEnabled(true);
+    tableView->setSortingEnabled(false);
     tableView->setWordWrap(true);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
@@ -1679,13 +2009,19 @@ AxDialogTargets::AxDialogTargets(const QJSValue &headers, const QVector<TargetDa
     tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tableView->horizontalHeader()->setCascadingSectionResizes(true);
     tableView->horizontalHeader()->setHighlightSections(false);
+    tableView->horizontalHeader()->setSortIndicatorShown(true);
+    tableView->horizontalHeader()->setSectionsClickable(true);
     tableView->verticalHeader()->setVisible(false);
     tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     tableModel = new AxTargetsTableModel(this);
-    proxyModel = new AxTargetsFilterProxyModel(this);
-    proxyModel->setSourceModel(tableModel);
-    tableView->setModel(proxyModel);
+    tableView->setModel(tableModel);
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+
+    pageNavBar = new PageNavBar(this);
+    pageNavBar->setFilterPlaceholder("filter: (win | linux) & ^(test)");
+    pageNavBar->setAgentComboVisible(false);
+    pageNavBar->setAutoVisible(true);
 
     chooseButton = new QPushButton("Choose", this);
 
@@ -1697,56 +2033,156 @@ AxDialogTargets::AxDialogTargets(const QJSValue &headers, const QVector<TargetDa
     bottomLayout->addWidget(chooseButton);
     bottomLayout->addItem(spacer_2);
 
-    searchWidget = new QWidget(this);
-
-    searchLineEdit = new QLineEdit(searchWidget);
-    searchLineEdit->setPlaceholderText("filter");
-
-    hideButton = new ClickableLabel("X");
-    hideButton->setCursor(Qt::PointingHandCursor);
-
-    searchLayout = new QHBoxLayout(searchWidget);
-    searchLayout->setContentsMargins(0, 0, 0, 0);
-    searchLayout->setSpacing(4);
-    searchLayout->addWidget(searchLineEdit);
-    searchLayout->addWidget(hideButton);
-
     mainLayout = new QVBoxLayout();
-    mainLayout->addWidget(searchWidget);
+    mainLayout->addWidget(pageNavBar);
     mainLayout->addWidget(tableView);
     mainLayout->addLayout(bottomLayout);
 
     setLayout(mainLayout);
 
-    connect(searchLineEdit, &QLineEdit::textEdited,   this, &AxDialogTargets::handleSearch);
-    connect(chooseButton,   &QPushButton::clicked,    this, &AxDialogTargets::onClicked);
-    connect(hideButton,     &ClickableLabel::clicked, this, &AxDialogTargets::clearSearch);
+    connect(chooseButton, &QPushButton::clicked, this, &AxDialogTargets::onClicked);
+    connect(tableView, &QTableView::doubleClicked, this, &AxDialogTargets::onClicked);
+    connect(this, &QDialog::finished, this, [this](int) {
+        if (pageHelper)
+            pageHelper->cancel();
+    });
 
     QVector<QString> headerLabels;
     QVector<QString> fieldKeys;
-
-    const int length = headers.property("length").toInt();
-    for (int i = 0; i < length; ++i) {
-        QString val = headers.property(i).toString();
-        if (FIELD_MAP_TARGETS.contains(val)) {
-            headerLabels.append(FIELD_MAP_TARGETS[val]);
-            fieldKeys.append(val);
-        }
-    }
-    headerLabels.append("Target ID");
-    fieldKeys.append("id");
+    fillSelectorHeaders(headers, FIELD_MAP_TARGETS, {"computer", "domain", "address", "os", "tag", "alive"}, "Target ID", "id", headerLabels, fieldKeys);
 
     tableModel->setHeaders(headerLabels, fieldKeys);
-    tableModel->setData(vecTargets);
+    applySelectorTableColumns(tableView, headerLabels);
 
-    int lastCol = headerLabels.size() - 1;
-    tableView->hideColumn(lastCol);
-
-    if (headerLabels.size() > 2) {
-        for (int i = 0; i < headerLabels.size() - 2; ++i) {
-            tableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+    for (int i = 0; i < fieldKeys.size(); ++i) {
+        if (fieldKeys[i] == QLatin1String("date")) {
+            tableView->horizontalHeader()->setSortIndicator(i, Qt::DescendingOrder);
+            break;
         }
     }
+
+    if (profile) {
+        pageHelper = new PagedTableHelper(profile, QStringLiteral("/targets/list"), this);
+        configureSelectorPagination(pageNavBar, pageHelper);
+
+        connect(pageHelper, &PagedTableHelper::pageReady,      this, &AxDialogTargets::onPageReady);
+        connect(pageHelper, &PagedTableHelper::errorOccurred,  this, &AxDialogTargets::onPageError);
+        connect(pageHelper, &PagedTableHelper::loadingChanged, this, [this](bool loading) {
+            pageNavBar->setLoading(loading);
+            tableView->setEnabled(!loading);
+            chooseButton->setEnabled(!loading);
+        });
+
+        connect(pageNavBar, &PageNavBar::prevClicked, this, [this]() {
+            m_offset = qMax(0, m_offset - pageNavBar->pageSize());
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::nextClicked, this, [this]() {
+            m_offset += pageNavBar->pageSize();
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::pageSizeChanged, this, [this](int size) {
+            pageHelper->setPageSize(size);
+            m_offset = 0;
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::filterChanged, this, [this]() {
+            m_offset = 0;
+            loadCurrentPage();
+        });
+
+        connect(tableView->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this, [this](int section, Qt::SortOrder order) {
+            const QString key = targetFieldToSortKey(tableModel->fieldKey(section));
+            if (key.isEmpty())
+                return;
+            const QString newOrder = (order == Qt::AscendingOrder) ? QStringLiteral("asc") : QStringLiteral("desc");
+            if (key == m_sortCol && newOrder == m_sortOrder)
+                return;
+            m_sortCol = key;
+            m_sortOrder = newOrder;
+            m_offset = 0;
+            loadCurrentPage();
+        });
+    } else {
+        pageNavBar->setError(QStringLiteral("No auth profile"));
+        pageNavBar->setPrevEnabled(false);
+        pageNavBar->setNextEnabled(false);
+    }
+}
+
+AxDialogTargets::~AxDialogTargets()
+{
+    if (pageHelper)
+        pageHelper->cancel();
+}
+
+void AxDialogTargets::prepare()
+{
+    selectedData.clear();
+    m_offset = 0;
+    if (pageHelper)
+        loadCurrentPage();
+}
+
+void AxDialogTargets::loadCurrentPage()
+{
+    if (!pageHelper)
+        return;
+    pageHelper->setPageSize(pageNavBar->pageSize());
+    pageHelper->setParam(QStringLiteral("q"), pageNavBar->filterText());
+    pageHelper->setParam(QStringLiteral("sort"), m_sortCol);
+    pageHelper->setParam(QStringLiteral("order"), m_sortOrder);
+    pageHelper->loadPage(m_offset);
+}
+
+void AxDialogTargets::onPageReady(const QJsonObject& response)
+{
+    QJsonArray items = response.value(QStringLiteral("items")).toArray();
+
+    QVector<TargetData> page;
+    page.reserve(items.size());
+
+    for (const QJsonValue& v : items) {
+        QJsonObject obj = v.toObject();
+        TargetData t;
+        t.TargetId      = parseI64(obj, QStringLiteral("t_target_id"));
+        t.Computer      = obj[QStringLiteral("t_computer")].toString();
+        t.Domain        = obj[QStringLiteral("t_domain")].toString();
+        t.Address       = obj[QStringLiteral("t_address")].toString();
+        t.Tag           = obj[QStringLiteral("t_tag")].toString();
+        t.Os            = obj[QStringLiteral("t_os")].toInt();
+        t.OsDesc        = obj[QStringLiteral("t_os_desk")].toString();
+        t.DateTimestamp = parseI64(obj, QStringLiteral("t_date"));
+        t.Date          = UnixTimestampGlobalToStringLocal(t.DateTimestamp);
+        t.Info          = obj[QStringLiteral("t_info")].toString();
+        t.Alive         = obj[QStringLiteral("t_alive")].toBool();
+        for (const QJsonValue& av : obj[QStringLiteral("t_agents")].toArray()) {
+            if (av.isDouble() || av.isString())
+                t.Agents.append(parseI64(av));
+        }
+        page.append(t);
+    }
+
+    tableModel->setData(page);
+
+    const int total = response[QStringLiteral("total")].toInt();
+    const int shown = page.size();
+    const int from  = shown == 0 ? 0 : m_offset + 1;
+    const int to    = m_offset + shown;
+    pageNavBar->setInfo(from, to, total);
+    pageNavBar->setPrevEnabled(m_offset > 0);
+    pageNavBar->setNextEnabled(m_offset + shown < total);
+}
+
+void AxDialogTargets::onPageError(const QString& message)
+{
+    if (message.contains(QStringLiteral("invalid filter"), Qt::CaseInsensitive) || message.startsWith(QStringLiteral("filter:"), Qt::CaseInsensitive))
+        return;
+
+    tableModel->setData({});
+    pageNavBar->setError(message);
+    pageNavBar->setPrevEnabled(false);
+    pageNavBar->setNextEnabled(false);
 }
 
 QVector<TargetData> AxDialogTargets::data() { return selectedData; }
@@ -1754,41 +2190,36 @@ QVector<TargetData> AxDialogTargets::data() { return selectedData; }
 void AxDialogTargets::onClicked()
 {
     selectedData.clear();
-    QModelIndexList selected = tableView->selectionModel()->selectedRows();
-    for (const auto& proxyIndex : selected) {
-        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
-        if (sourceIndex.isValid()) {
-            selectedData.append(tableModel->getTarget(sourceIndex.row()));
-        }
+    const QModelIndexList selected = tableView->selectionModel()->selectedRows();
+    for (const auto& index : selected) {
+        if (index.isValid())
+            selectedData.append(tableModel->getTarget(index.row()));
     }
     this->accept();
 }
 
-void AxDialogTargets::handleSearch()
+AxSelectorTargets::AxSelectorTargets(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent) : QObject(parent), scriptEngine(jsEngine)
 {
-    proxyModel->setFilterText(searchLineEdit->text());
+    dialog = new AxDialogTargets(headers, profileFromEngine(jsEngine), nullptr);
+    prepareSelectorDialog(dialog, QStringLiteral("Choose target"), jsEngine);
 }
 
-void AxDialogTargets::clearSearch()
+void AxSelectorTargets::setSize(const int w, const int h ) const
 {
-    searchLineEdit->clear();
-    handleSearch();
+    if (dialog)
+        dialog->resize(w, h);
 }
-
-AxSelectorTargets::AxSelectorTargets(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
-{
-    auto vecTargets = scriptEngine->manager()->GetTargets();
-
-    dialog = new AxDialogTargets(headers, vecTargets);
-    dialog->setWindowTitle("Choose target");
-}
-
-void AxSelectorTargets::setSize(const int w, const int h ) const { dialog->resize(w, h); }
 
 QJSValue AxSelectorTargets::exec() const
 {
+    if (!dialog || !scriptEngine || !scriptEngine->engine())
+        return emptyJsArray(scriptEngine);
+
+    prepareSelectorDialog(dialog, QStringLiteral("Choose target"), scriptEngine);
+    dialog->prepare();
+
     QVector<TargetData> vecTargets;
-    if (dialog->exec() == QDialog::Accepted) {
+    if (execSelectorDialog(dialog, scriptEngine) == QDialog::Accepted) {
         vecTargets = dialog->data();
     }
 
@@ -1812,23 +2243,27 @@ QJSValue AxSelectorTargets::exec() const
         map["alive"]    = target.Alive;
         list.append(map);
     }
-    return this->scriptEngine->engine()->toScriptValue(list);
+    return scriptEngine->engine()->toScriptValue(list);
 }
 
-void AxSelectorTargets::close() const { dialog->close(); }
+void AxSelectorTargets::close() const
+{
+    if (dialog)
+        dialog->close();
+}
 
 
 
 /// SELECTOR DOWNLOADS
 
-AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, const QVector<TransferData> &vecDownloads, QWidget *parent)
+AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, AuthProfile* profile, QWidget *parent) : QDialog(parent)
 {
     this->setProperty("Main", "base");
 
     tableView = new QTableView(this);
     tableView->setAlternatingRowColors(true);
     tableView->setShowGrid(false);
-    tableView->setSortingEnabled(true);
+    tableView->setSortingEnabled(false);
     tableView->setWordWrap(true);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
@@ -1836,13 +2271,19 @@ AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, const QVector<Tran
     tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tableView->horizontalHeader()->setCascadingSectionResizes(true);
     tableView->horizontalHeader()->setHighlightSections(false);
+    tableView->horizontalHeader()->setSortIndicatorShown(true);
+    tableView->horizontalHeader()->setSectionsClickable(true);
     tableView->verticalHeader()->setVisible(false);
     tableView->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
     tableModel = new AxDownloadsTableModel(this);
-    proxyModel = new AxDownloadsFilterProxyModel(this);
-    proxyModel->setSourceModel(tableModel);
-    tableView->setModel(proxyModel);
+    tableView->setModel(tableModel);
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+
+    pageNavBar = new PageNavBar(this);
+    pageNavBar->setFilterPlaceholder("filter: report | .zip");
+    pageNavBar->setAgentComboVisible(false);
+    pageNavBar->setAutoVisible(true);
 
     chooseButton = new QPushButton("Choose", this);
 
@@ -1854,56 +2295,154 @@ AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, const QVector<Tran
     bottomLayout->addWidget(chooseButton);
     bottomLayout->addItem(spacer_2);
 
-    searchWidget = new QWidget(this);
-
-    searchLineEdit = new QLineEdit(searchWidget);
-    searchLineEdit->setPlaceholderText("filter");
-
-    hideButton = new ClickableLabel("X");
-    hideButton->setCursor(Qt::PointingHandCursor);
-
-    searchLayout = new QHBoxLayout(searchWidget);
-    searchLayout->setContentsMargins(0, 0, 0, 0);
-    searchLayout->setSpacing(4);
-    searchLayout->addWidget(searchLineEdit);
-    searchLayout->addWidget(hideButton);
-
     mainLayout = new QVBoxLayout();
-    mainLayout->addWidget(searchWidget);
+    mainLayout->addWidget(pageNavBar);
     mainLayout->addWidget(tableView);
     mainLayout->addLayout(bottomLayout);
 
     setLayout(mainLayout);
 
-    connect(searchLineEdit, &QLineEdit::textEdited,   this, &AxDialogDownloads::handleSearch);
-    connect(chooseButton,   &QPushButton::clicked,    this, &AxDialogDownloads::onClicked);
-    connect(hideButton,     &ClickableLabel::clicked, this, &AxDialogDownloads::clearSearch);
+    connect(chooseButton, &QPushButton::clicked, this, &AxDialogDownloads::onClicked);
+    connect(tableView, &QTableView::doubleClicked, this, &AxDialogDownloads::onClicked);
+    connect(this, &QDialog::finished, this, [this](int) {
+        if (pageHelper)
+            pageHelper->cancel();
+    });
 
     QVector<QString> headerLabels;
     QVector<QString> fieldKeys;
-
-    const int length = headers.property("length").toInt();
-    for (int i = 0; i < length; ++i) {
-        QString val = headers.property(i).toString();
-        if (FIELD_MAP_DOWNLOADS.contains(val)) {
-            headerLabels.append(FIELD_MAP_DOWNLOADS[val]);
-            fieldKeys.append(val);
-        }
-    }
-    headerLabels.append("File ID");
-    fieldKeys.append("id");
+    fillSelectorHeaders(headers, FIELD_MAP_DOWNLOADS, {"filename", "agent_name", "computer", "total_size", "state"}, "File ID", "id", headerLabels, fieldKeys);
 
     tableModel->setHeaders(headerLabels, fieldKeys);
-    tableModel->setData(vecDownloads);
+    applySelectorTableColumns(tableView, headerLabels);
 
-    int lastCol = headerLabels.size() - 1;
-    tableView->hideColumn(lastCol);
-
-    if (headerLabels.size() > 2) {
-        for (int i = 0; i < headerLabels.size() - 2; ++i) {
-            tableView->horizontalHeader()->setSectionResizeMode(i, QHeaderView::ResizeToContents);
+    for (int i = 0; i < fieldKeys.size(); ++i) {
+        if (fieldKeys[i] == QLatin1String("date")) {
+            tableView->horizontalHeader()->setSortIndicator(i, Qt::DescendingOrder);
+            break;
         }
     }
+
+    if (profile) {
+        pageHelper = new PagedTableHelper(profile, QStringLiteral("/download/list"), this);
+        configureSelectorPagination(pageNavBar, pageHelper);
+
+        connect(pageHelper, &PagedTableHelper::pageReady,      this, &AxDialogDownloads::onPageReady);
+        connect(pageHelper, &PagedTableHelper::errorOccurred,  this, &AxDialogDownloads::onPageError);
+        connect(pageHelper, &PagedTableHelper::loadingChanged, this, [this](bool loading) {
+            pageNavBar->setLoading(loading);
+            tableView->setEnabled(!loading);
+            chooseButton->setEnabled(!loading);
+        });
+
+        connect(pageNavBar, &PageNavBar::prevClicked, this, [this]() {
+            m_offset = qMax(0, m_offset - pageNavBar->pageSize());
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::nextClicked, this, [this]() {
+            m_offset += pageNavBar->pageSize();
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::pageSizeChanged, this, [this](int size) {
+            pageHelper->setPageSize(size);
+            m_offset = 0;
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::filterChanged, this, [this]() {
+            m_offset = 0;
+            loadCurrentPage();
+        });
+
+        connect(tableView->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this, [this](int section, Qt::SortOrder order) {
+            const QString key = downloadFieldToSortKey(tableModel->fieldKey(section));
+            if (key.isEmpty())
+                return;
+            const QString newOrder = (order == Qt::AscendingOrder) ? QStringLiteral("asc") : QStringLiteral("desc");
+            if (key == m_sortCol && newOrder == m_sortOrder)
+                return;
+            m_sortCol = key;
+            m_sortOrder = newOrder;
+            m_offset = 0;
+            loadCurrentPage();
+        });
+    } else {
+        pageNavBar->setError(QStringLiteral("No auth profile"));
+        pageNavBar->setPrevEnabled(false);
+        pageNavBar->setNextEnabled(false);
+    }
+}
+
+AxDialogDownloads::~AxDialogDownloads()
+{
+    if (pageHelper)
+        pageHelper->cancel();
+}
+
+void AxDialogDownloads::prepare()
+{
+    selectedData.clear();
+    m_offset = 0;
+    if (pageHelper)
+        loadCurrentPage();
+}
+
+void AxDialogDownloads::loadCurrentPage()
+{
+    if (!pageHelper)
+        return;
+    pageHelper->setPageSize(pageNavBar->pageSize());
+    pageHelper->setParam(QStringLiteral("q"), pageNavBar->filterText());
+    pageHelper->setParam(QStringLiteral("sort"), m_sortCol);
+    pageHelper->setParam(QStringLiteral("order"), m_sortOrder);
+    pageHelper->loadPage(m_offset);
+}
+
+void AxDialogDownloads::onPageReady(const QJsonObject& response)
+{
+    QJsonArray items = response.value(QStringLiteral("items")).toArray();
+
+    QVector<TransferData> page;
+    page.reserve(items.size());
+
+    for (const QJsonValue& v : items) {
+        QJsonObject obj = v.toObject();
+        TransferData t;
+        t.FileId        = parseI64(obj, QStringLiteral("t_file_id"));
+        t.AgentId       = parseI64(obj, QStringLiteral("t_agent_id"));
+        t.AgentName     = obj[QStringLiteral("t_agent_name")].toString();
+        t.User          = obj[QStringLiteral("t_user")].toString();
+        t.Computer      = obj[QStringLiteral("t_computer")].toString();
+        t.Filename      = obj[QStringLiteral("t_remote_path")].toString();
+        t.TotalSize     = parseI64(obj, QStringLiteral("t_total_size"));
+        t.Progress      = parseI64(obj, QStringLiteral("t_progress"));
+        t.DateTimestamp = parseI64(obj, QStringLiteral("t_date"));
+        t.Date          = UnixTimestampGlobalToStringLocal(t.DateTimestamp);
+        t.State         = obj[QStringLiteral("t_state")].toInt();
+        t.Tag           = obj[QStringLiteral("t_tag")].toString();
+        t.Kind          = obj[QStringLiteral("t_kind")].toInt();
+        page.append(t);
+    }
+
+    tableModel->setData(page);
+
+    const int total = response[QStringLiteral("total")].toInt();
+    const int shown = page.size();
+    const int from  = shown == 0 ? 0 : m_offset + 1;
+    const int to    = m_offset + shown;
+    pageNavBar->setInfo(from, to, total);
+    pageNavBar->setPrevEnabled(m_offset > 0);
+    pageNavBar->setNextEnabled(m_offset + shown < total);
+}
+
+void AxDialogDownloads::onPageError(const QString& message)
+{
+    if (message.contains(QStringLiteral("invalid filter"), Qt::CaseInsensitive) || message.startsWith(QStringLiteral("filter:"), Qt::CaseInsensitive))
+        return;
+
+    tableModel->setData({});
+    pageNavBar->setError(message);
+    pageNavBar->setPrevEnabled(false);
+    pageNavBar->setNextEnabled(false);
 }
 
 QVector<TransferData> AxDialogDownloads::data() { return selectedData; }
@@ -1911,44 +2450,36 @@ QVector<TransferData> AxDialogDownloads::data() { return selectedData; }
 void AxDialogDownloads::onClicked()
 {
     selectedData.clear();
-    QModelIndexList selected = tableView->selectionModel()->selectedRows();
-    for (const auto& proxyIndex : selected) {
-        QModelIndex sourceIndex = proxyModel->mapToSource(proxyIndex);
-        if (sourceIndex.isValid()) {
-            selectedData.append(tableModel->getDownload(sourceIndex.row()));
-        }
+    const QModelIndexList selected = tableView->selectionModel()->selectedRows();
+    for (const auto& index : selected) {
+        if (index.isValid())
+            selectedData.append(tableModel->getDownload(index.row()));
     }
     this->accept();
 }
 
-void AxDialogDownloads::handleSearch()
+AxSelectorDownloads::AxSelectorDownloads(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent) : QObject(parent), scriptEngine(jsEngine)
 {
-    proxyModel->setFilterText(searchLineEdit->text());
+    dialog = new AxDialogDownloads(headers, profileFromEngine(jsEngine), nullptr);
+    prepareSelectorDialog(dialog, "Choose download", jsEngine);
 }
 
-void AxDialogDownloads::clearSearch()
+void AxSelectorDownloads::setSize(const int w, const int h ) const
 {
-    searchLineEdit->clear();
-    handleSearch();
+    if (dialog)
+        dialog->resize(w, h);
 }
-
-AxSelectorDownloads::AxSelectorDownloads(const QJSValue &headers, AxScriptEngine* jsEngine, QWidget* parent) : QObject(parent), scriptEngine(jsEngine)
-{
-    auto mapDownloads = scriptEngine->manager()->GetDownloads();
-    QVector<TransferData> vecDownloads;
-    for (const auto& download : mapDownloads)
-        vecDownloads.append(download);
-
-    dialog = new AxDialogDownloads(headers, vecDownloads);
-    dialog->setWindowTitle("Choose download");
-}
-
-void AxSelectorDownloads::setSize(const int w, const int h ) const { dialog->resize(w, h); }
 
 QJSValue AxSelectorDownloads::exec() const
 {
+    if (!dialog || !scriptEngine || !scriptEngine->engine())
+        return emptyJsArray(scriptEngine);
+
+    prepareSelectorDialog(dialog, "Choose download", scriptEngine);
+    dialog->prepare();
+
     QVector<TransferData> vecDownloads;
-    if (dialog->exec() == QDialog::Accepted) {
+    if (execSelectorDialog(dialog, scriptEngine) == QDialog::Accepted) {
         vecDownloads = dialog->data();
     }
 
@@ -1975,10 +2506,14 @@ QJSValue AxSelectorDownloads::exec() const
         map["date"]       = download.Date;
         list.append(map);
     }
-    return this->scriptEngine->engine()->toScriptValue(list);
+    return scriptEngine->engine()->toScriptValue(list);
 }
 
-void AxSelectorDownloads::close() const { dialog->close(); }
+void AxSelectorDownloads::close() const
+{
+    if (dialog)
+        dialog->close();
+}
 
 
 

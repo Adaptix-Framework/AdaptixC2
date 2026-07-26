@@ -1,9 +1,10 @@
 #include <Agent/Agent.h>
 #include <UI/Widgets/CredentialsWidget.h>
-#include <oclero/qlementine/widgets/Menu.hpp>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogCredential.h>
+#include <UI/Dialogs/DialogImportCreds.h>
+#include <Utils/Logs.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/Settings.h>
@@ -15,6 +16,8 @@
 #include <Utils/CustomElements/PageNavBar.h>
 #include <Utils/CustomElements/SearchPanel.h>
 #include <Utils/NonBlockingDialogs.h>
+
+#include <oclero/qlementine/widgets/Menu.hpp>
 
 REGISTER_DOCK_WIDGET(CredentialsWidget, "Credentials", true)
 
@@ -575,7 +578,8 @@ void CredentialsWidget::CredentialsAdd(QList<CredentialData> credsList)
 void CredentialsWidget::handleCredentialsMenu(const QPoint &pos ) const
 {
     oclero::qlementine::Menu ctxMenu;
-    ctxMenu.addAction("Create", this, &CredentialsWidget::onCreateCreds );
+    ctxMenu.addAction(QIcon(":/icons/plus"), "Create", this, &CredentialsWidget::onCreateCreds );
+    ctxMenu.addAction(QIcon(":/icons/file_open"), "Import...", this, &CredentialsWidget::onImportCreds );
 
     QModelIndex index = tableView->indexAt(pos);
     if (index.isValid()) {
@@ -590,21 +594,36 @@ void CredentialsWidget::handleCredentialsMenu(const QPoint &pos ) const
             credsStr.append(QString::number(credId));
         }
 
-        ctxMenu.addAction("Edit",   this, &CredentialsWidget::onEditCreds );
-        ctxMenu.addAction("Remove", this, &CredentialsWidget::onRemoveCreds );
+        ctxMenu.addAction(QIcon(":/icons/edit_note"), "Edit", this, &CredentialsWidget::onEditCreds );
+        ctxMenu.addAction(QIcon(":/icons/delete"), "Remove", this, &CredentialsWidget::onRemoveCreds );
         ctxMenu.addSeparator();
 
         int centerCount = adaptixWidget->ScriptManager->AddMenuCreds(&ctxMenu, "Creds", credsStr);
         if (centerCount > 0)
             ctxMenu.addSeparator();
 
-        ctxMenu.addAction("Set tag",           this, &CredentialsWidget::onSetTag );
-        ctxMenu.addAction("Export to file",    this, &CredentialsWidget::onExportCreds );
-        ctxMenu.addAction("Copy to clipboard", this, &CredentialsWidget::onCopyToClipboard );
+        ctxMenu.addAction(QIcon(":/icons/tag"), "Set tag", this, &CredentialsWidget::onSetTag );
+        ctxMenu.addAction(QIcon(":/icons/save_as"), "Export to file", this, &CredentialsWidget::onExportCreds );
+        ctxMenu.addAction(QIcon(":/icons/copy_all"), "Copy to clipboard", this, &CredentialsWidget::onCopyToClipboard );
     }
 
     QPoint globalPos = tableView->mapToGlobal(pos);
     ctxMenu.exec(globalPos);
+}
+
+void CredentialsWidget::onImportCreds()
+{
+    DialogImportCreds dialog(this);
+    dialog.StartDialog();
+    if (!dialog.IsValid())
+        return;
+
+    const QList<CredentialData> list = dialog.GetCreds();
+    if (list.isEmpty())
+        return;
+
+    CredentialsAdd(list);
+    MessageSuccess(QStringLiteral("Importing %1 credential(s)…").arg(list.size()));
 }
 
 void CredentialsWidget::onCreateCreds()

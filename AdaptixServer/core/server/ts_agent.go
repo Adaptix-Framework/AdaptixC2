@@ -126,7 +126,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentUid []byte, beat []byt
 
 	tid, err := ts.TsTargetsCreateAlive(agentData)
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:agent", "failed to create target for agent %d: %v", agentData.Id, err)
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "agent", "failed to create target for agent %d: %v", agentData.Id, err)
 	}
 	agent.UpdateData(func(d *adaptix.AgentData) {
 		d.TargetId = tid
@@ -134,7 +134,7 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentUid []byte, beat []byt
 
 	err = ts.DBMS.DbAgentInsert(agent.GetData())
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:agent", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "agent", "%s", err.Error())
 	}
 
 	ts.TsNotifyAgent(false, agent.GetData())
@@ -205,7 +205,7 @@ func (ts *Teamserver) TsAgentProcessData(agentId int64, bodyData []byte) error {
 	if markChanged {
 		err := ts.DBMS.DbAgentUpdate(agent.GetData())
 		if err != nil {
-			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:agent", "%s", err.Error())
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "agent", "%s", err.Error())
 		}
 
 		// --- POST HOOK ---
@@ -386,7 +386,7 @@ func (ts *Teamserver) TsAgentUpdateData(newAgentData adaptix.AgentData) error {
 	agentData := agent.GetData()
 	err := ts.DBMS.DbAgentUpdate(agentData)
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:agent", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "agent", "%s", err.Error())
 	}
 
 	packetNew := CreateSpAgentUpdate(agentData)
@@ -413,7 +413,7 @@ func (ts *Teamserver) TsAgentUpdateDataPartial(agentId int64, updateData interfa
 
 	err := ts.DBMS.DbAgentUpdate(agent.GetData())
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:agent", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "agent", "%s", err.Error())
 		return nil
 	}
 
@@ -752,7 +752,7 @@ func (ts *Teamserver) TsAgentTerminate(agentId int64, terminateTaskId int64) err
 	agentData := agent.GetData()
 	err := ts.DBMS.DbAgentUpdate(agentData)
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:agent", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "agent", "%s", err.Error())
 	}
 
 	packetNew := CreateSpAgentUpdate(agentData)
@@ -827,7 +827,7 @@ func (ts *Teamserver) TsAgentRemove(agentId int64) error {
 
 	err := ts.DBMS.DbAgentDelete(agentId)
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:agent", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "agent", "%s", err.Error())
 	} else {
 		_ = ts.DBMS.DbTaskDelete(0, agentId)
 		_ = ts.DBMS.DbConsoleDelete(agentId)

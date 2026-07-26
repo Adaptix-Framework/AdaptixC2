@@ -18,6 +18,7 @@ var InitialSyncCategories = []string{
 	SyncCategoryAgents,
 	SyncCategoryPivots,
 	SyncCategoryGroups,
+	SyncCategoryTunnels,
 }
 
 func (ts *Teamserver) TsClientConnect(username string, socket adaptix.WebSocketConn, clientType uint8, consoleTeamMode bool, subscriptions []string) {
@@ -70,13 +71,23 @@ func (ts *Teamserver) TsClientDisconnect(username string) {
 
 	var tunnelIds []int64
 	ts.TunnelManager.ForEachTunnel(func(key int64, tunnel *Tunnel) bool {
-		if tunnel.Data.Client == username {
+		if tunnel != nil && tunnel.Data.Client == username {
 			tunnelIds = append(tunnelIds, tunnel.Data.TunnelId)
 		}
 		return true
 	})
 	for _, id := range tunnelIds {
-		_ = ts.TsTunnelStop(id)
+		if err := ts.TsTunnelDeactivate(id, username); err != nil {
+			if tunnel, ok := ts.TunnelManager.GetTunnel(id); ok && tunnel != nil {
+				tunnel.mu.Lock()
+				tunnel.Active = false
+				tunnel.Data.Active = false
+				data := tunnel.Data
+				typeCode := tunnel.Type
+				tunnel.mu.Unlock()
+				_ = ts.DBMS.DbTunnelUpdate(data, typeCode)
+			}
+		}
 	}
 
 	ts.TsProcessHookJobsForDisconnectedClient(username)

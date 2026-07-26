@@ -14,6 +14,8 @@
 #include <QSplitter>
 #include <QScrollBar>
 #include <QKeyEvent>
+#include <QSpinBox>
+#include <QToolButton>
 
 class AdaptixWidget;
 
@@ -101,27 +103,47 @@ private:
 class TodoWidget : public QWidget {
     Q_OBJECT
 public:
+    static constexpr int kPanelMinW = 320;
+    static constexpr int kPanelPreferredW = 640;
+    static constexpr int kChatPreferredW = 520;
+    static constexpr int kChatMinW = 280;
+    static constexpr int kChatSeedPct = 42;
+
     explicit TodoWidget(QWidget* parent = nullptr);
     void SetTodo(const QString& content, const QString& updatedBy, qint64 updatedAt);
+    QString content() const;
+    bool isEmpty() const;
+    bool isEditMode() const { return editMode; }
+
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
 
 Q_SIGNALS:
     void saveRequested(const QString& content);
+    void contentPresenceChanged(bool hasContent);
 
 private:
     void setEditMode(bool on);
     void updatePreview();
     void insertMarkdown(const QString& before, const QString& after);
     void applyFonts();
+    void updateEmptyChrome();
+    void showEmptyPlaceholder();
+    void applyPanelStyle();
 
+    QFrame*          panelFrame = nullptr;
+    QLabel*          titleLabel = nullptr;
     QStackedWidget*  contentStack = nullptr;
     QTextBrowser*    renderedView = nullptr;
     QPlainTextEdit*  editor = nullptr;
     QTextBrowser*    livePreview = nullptr;
     QFrame*          toolbarRow = nullptr;
+    QWidget*         wrapRowWidget = nullptr;
     QPushButton*     editBtn = nullptr;
     QPushButton*     saveBtn = nullptr;
     QPushButton*     cancelBtn = nullptr;
     QLabel*          statusLabel = nullptr;
+    QLabel*          emptyHintLabel = nullptr;
     QTimer*          debounceTimer = nullptr;
     bool             updating = false;
     bool             editMode = false;
@@ -131,16 +153,31 @@ class ChatWidget : public DockTab
 {
     Q_OBJECT
 
-    AdaptixWidget*         adaptixWidget = nullptr;
-    ChatMessageModel*      messageModel = nullptr;
-    ChatMessageDelegate*   messageDelegate = nullptr;
-    QListView*             messageView = nullptr;
-    TodoWidget*            todoWidget = nullptr;
+    AdaptixWidget*       adaptixWidget   = nullptr;
+    ChatMessageModel*    messageModel    = nullptr;
+    ChatMessageDelegate* messageDelegate = nullptr;
+    QListView*           messageView     = nullptr;
+    QWidget*             chatHost        = nullptr;
+    TodoWidget*          todoWidget      = nullptr;
+    QSplitter*           mainSplitter    = nullptr;
+    QPushButton*         sendBtn         = nullptr;
 
-    QFrame*       searchBar = nullptr;
-    QLineEdit*    searchInput = nullptr;
-    QPushButton*  searchBtn = nullptr;
+    QFrame*       searchChrome      = nullptr;
+    QLineEdit*    searchInput       = nullptr;
+    QPushButton*  searchBtn         = nullptr;
     QLabel*       searchResultLabel = nullptr;
+    QToolButton*  searchCloseBtn    = nullptr;
+    QToolButton*  clearChatBtn      = nullptr;
+    oclero::qlementine::Switch* hideDeletedSwitch = nullptr;
+    QLabel*       hideDeletedLabel  = nullptr;
+
+    QFrame*      historyBar      = nullptr;
+    QLabel*      loadStatusLabel = nullptr;
+    QLabel*      pageSizeLabel   = nullptr;
+    QSpinBox*    pageSizeSpin    = nullptr;
+    QToolButton* loadEarlierBtn  = nullptr;
+    QToolButton* jumpLatestBtn   = nullptr;
+    oclero::qlementine::Switch* autoLoadSwitch = nullptr;
 
     QPlainTextEdit* chatInput = nullptr;
     QTextBrowser*   mdPreview = nullptr;
@@ -148,32 +185,38 @@ class ChatWidget : public DockTab
     QFrame*         replyPreview = nullptr;
     QLabel*         replyLabel = nullptr;
 
-    QPushButton* loadEarlierBtn = nullptr;
-    QLabel*      loadStatusLabel = nullptr;
-    QPushButton* clearChatBtn = nullptr;
     QPushButton* deleteSelectedBtn = nullptr;
-    oclero::qlementine::Switch* hideDeletedSwitch = nullptr;
-    bool         hideDeleted = false;
-    bool         loadingMore = false;
-    bool         hasMore = true;
-    int          totalMessages = 0;
+    bool         hideDeleted     = false;
+    bool         loadingMore     = false;
+    bool         hasMore         = true;
+    bool         autoLoadEarlier = true;
+    int          pageSize        = 50;
+    int          totalMessages   = 0;
 
-    bool atBottom = true;
-    bool editMode = false;
-    bool presyncing = true;
-    qint64 editId = 0;
+    bool atBottom    = true;
+    bool editMode    = false;
+    bool presyncing  = true;
+    bool splitSeeded = false;
+    qint64 editId    = 0;
     qint64 replyToId = 0;
     QString replyToName;
-    qint64 flashId = 0;
+    qint64 flashId   = 0;
 
     void createUI();
     void loadHistory();
     void loadMore();
     void updateLoadStatus();
+    void updateHistoryControls();
     void scrollToBottomIfNeeded();
+    void seedSplitterSizes();
+    void applyChatChromeStyle();
+    void applyChatChromeMetrics();
+    void positionChatOverlays();
+    void toggleSearchChrome(bool forceShow = false);
 
 protected:
     bool eventFilter(QObject* obj, QEvent* event) override;
+    void showEvent(QShowEvent* event) override;
 
 public:
     explicit ChatWidget(AdaptixWidget* w);

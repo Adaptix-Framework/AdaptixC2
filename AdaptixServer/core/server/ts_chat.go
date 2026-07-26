@@ -14,7 +14,7 @@ func (ts *Teamserver) TsChatSendMessage(username string, message string, replyTo
 	date := time.Now().UTC().Unix()
 	id, err := ts.DBMS.DbChatInsertEx(username, message, date, replyToId, replyToName)
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:chat", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "chat", "%s", err.Error())
 		return
 	}
 	packet := CreateSpChatMessageEx(database.ChatDataEx{

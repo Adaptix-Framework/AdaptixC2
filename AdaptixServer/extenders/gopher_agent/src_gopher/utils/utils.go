@@ -1,76 +1,43 @@
-package utils
+package main
 
 import (
-	"context"
-	"net"
+	"archive/zip"
+	"bytes"
+	"fmt"
+	"io"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
 )
 
-type Connection struct {
-	PackType     int
-	Conn         net.Conn
-	Ctx          context.Context
-	HandleCancel context.CancelFunc
-	JobCancel    context.CancelFunc
+func goAgentBuildEnv(overrides map[string]string) []string {
+	env := os.Environ()
+	if len(overrides) == 0 {
+		return env
+	}
+	out := make([]string, 0, len(env)+len(overrides))
+	seen := make(map[string]struct{}, len(overrides))
+	for _, e := range env {
+		key, _, ok := strings.Cut(e, "=")
+		if !ok {
+			out = append(out, e)
+			continue
+		}
+		if val, hit := overrides[key]; hit {
+			out = append(out, key+"="+val)
+			seen[key] = struct{}{}
+			continue
+		}
+		out = append(out, e)
+	}
+	for k, v := range overrides {
+		if _, ok := seen[k]; !ok {
+			out = append(out, k+"="+v)
+		}
+	}
+	return out
 }
-
-/// Listener
-
-const (
-	INIT_PACK     = 1
-	RESUME_PACK   = 2
-	EXFIL_PACK    = 3
-	JOB_PACK      = 4
-	TUNNEL_PACK   = 5
-	TERMINAL_PACK = 6
-	BOF_PACK      = 7
-)
-
-type StartMsg struct {
-	Type int    `msgpack:"id"`
-	Data []byte `msgpack:"data"`
-}
-
-type InitPack struct {
-	Type uint   `msgpack:"type"`
-	Data []byte `msgpack:"data"`
-}
-
-type ResumePack struct {
-	Id int64 `msgpack:"id"`
-}
-
-type ExfilPack struct {
-	Id   int64  `msgpack:"id"`
-	Type uint   `msgpack:"type"`
-	Task string `msgpack:"task"`
-}
-
-type JobPack struct {
-	Id   int64  `msgpack:"id"`
-	Type uint   `msgpack:"type"`
-	Task string `msgpack:"task"`
-}
-
-type TunnelPack struct {
-	Id        int64  `msgpack:"id"`
-	Type      uint   `msgpack:"type"`
-	ChannelId int    `msgpack:"channel_id"`
-	Key       []byte `msgpack:"key"`
-	Iv        []byte `msgpack:"iv"`
-	Alive     bool   `msgpack:"alive"`
-	Reason    byte   `msgpack:"reason"`
-}
-
-type TermPack struct {
-	Id     int64  `msgpack:"id"`
-	TermId int    `msgpack:"term_id"`
-	Key    []byte `msgpack:"key"`
-	Iv     []byte `msgpack:"iv"`
-	Alive  bool   `msgpack:"alive"`
-	Status string `msgpack:"status"`
-}
-
-/// Agent
 
 type Profile struct {
 	Type        uint     `msgpack:"type"`
@@ -365,3 +332,106 @@ const (
 	CALLBACK_AX_SCREENSHOT   = 0x81
 	CALLBACK_AX_DOWNLOAD_MEM = 0x82
 )
+
+func parseDurationToSeconds(input string) (int, error) {
+	re := regexp.MustCompile(`(\d+)(h|m|s)`)
+	matches := re.FindAllStringSubmatch(input, -1)
+
+	if matches == nil {
+		input = input + "s"
+		matches = re.FindAllStringSubmatch(input, -1)
+	}
+
+	totalSeconds := 0
+	for _, match := range matches {
+		value, err := strconv.Atoi(match[1])
+		if err != nil {
+			return 0, err
+		}
+
+		switch match[2] {
+		case "h":
+			totalSeconds += value * 3600
+		case "m":
+			totalSeconds += value * 60
+		case "s":
+			totalSeconds += value
+		}
+	}
+
+	return totalSeconds, nil
+}
+
+func ZipBytes(data []byte, name string) ([]byte, error) {
+	var buf bytes.Buffer
+	zipWriter := zip.NewWriter(&buf)
+
+	writer, err := zipWriter.Create(name)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = writer.Write(data)
+	if err != nil {
+		return nil, err
+	}
+
+	err = zipWriter.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+func UnzipBytes(zipData []byte) (map[string][]byte, error) {
+	result := make(map[string][]byte)
+	reader := bytes.NewReader(zipData)
+
+	zipReader, err := zip.NewReader(reader, int64(len(zipData)))
+	if err != nil {
+		return nil, err
+	}
+
+	for _, file := range zipReader.File {
+		rc, err := file.Open()
+		if err != nil {
+			return nil, err
+		}
+
+		var buf bytes.Buffer
+		_, err = io.Copy(&buf, rc)
+		rc.Close()
+		if err != nil {
+			return nil, err
+		}
+
+		result[file.Name] = buf.Bytes()
+	}
+
+	return result, nil
+}
+
+func ensureNewline(s string) string {
+	if s == "" || strings.HasSuffix(s, "\n") {
+		return s
+	}
+	return s + "\n"
+}
+
+func SizeBytesToFormat(bytes int64) string {
+	const (
+		KB = 1024.0
+		MB = KB * 1024
+		GB = MB * 1024
+	)
+
+	size := float64(bytes)
+
+	if size >= GB {
+		return fmt.Sprintf("%.2f Gb", size/GB)
+	} else if size >= MB {
+		return fmt.Sprintf("%.2f Mb", size/MB)
+	}
+	return fmt.Sprintf("%.2f Kb", size/KB)
+}

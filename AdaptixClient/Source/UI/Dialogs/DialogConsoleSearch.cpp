@@ -122,7 +122,7 @@ void DialogConsoleSearch::createUI()
 
     contextView = new TextEditConsole(this, 20000, true, false);
     contextView->setReadOnly(true);
-    contextView->setFont(FontManager::instance().getFont("Hack"));
+    contextView->setFont(FontManager::instance().appMonoFont());
     contextView->setPlaceholderText(tr("Select a result to preview nearby history"));
 
     contextSpin = new QSpinBox(this);

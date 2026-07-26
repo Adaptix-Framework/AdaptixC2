@@ -1,0 +1,22 @@
+# Example axtool.spec for a service that builds into dist/.
+#
+# Install:
+#     axtool adaptix.spec ext install /path/to/repo -f
+# or
+#     axtool adaptix.spec ext install https://github.com/MaorSabag/SiteManagementAx -f
+
+extenders:
+  - name: file_host
+    version: 0.2  .0
+    type: service
+    description: "HTTP/HTTPS file hosting service for AdaptixC2"
+    author: MaorSabag
+    min_server_version: "v2.0"
+
+    build:
+      - mkdir -p dist
+      - go build -buildmode=plugin -ldflags="-s -w" -o dist/service_filehost.so .
+      - cp -f config.yaml ax_config.axs dist/
+
+    release:
+      dir: dist/

@@ -117,7 +117,7 @@ func (dbms *DBMS) DbUploadAll() []adaptix.TransferData {
 	selectQuery := `SELECT FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, Progress, Date, State, Tag, Cancellable, Kind, ArtifactName, ArtifactType FROM Uploads ORDER BY Date;`
 	query, err := dbms.database.Query(selectQuery)
 	if err != nil {
-		dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query uploads: %s", err.Error())
+		dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query uploads: %s", err.Error())
 		return uploads
 	}
 	defer func(query *sql.Rows) { _ = query.Close() }(query)

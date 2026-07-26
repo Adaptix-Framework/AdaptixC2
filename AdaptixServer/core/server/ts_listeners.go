@@ -26,7 +26,7 @@ func (ts *Teamserver) TsListenerList() (string, error) {
 	return string(jsonListeners), nil
 }
 
-func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName string, listenerConfig string, createTime int64, listenerWatermark string, listenerCustomData []byte) error {
+func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName string, listenerConfig string, createTime int64, listenerWatermark string, listenerCustomData []byte, tags string) error {
 	// --- PRE HOOK ---
 	preEvent := &eventing.EventDataListenerStart{
 		ListenerName: listenerName,
@@ -58,6 +58,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 	listenerData.Name = listenerName
 	listenerData.RegName = listenerRegName
 	listenerData.Data = listenerConfig
+	listenerData.Tags = tags
 	listenerData.Type = listenerInfo.Type
 	if listenerData.Protocol == "" {
 		listenerData.Protocol = listenerInfo.Protocol
@@ -73,7 +74,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 
 	if !isvalid.ValidHex8(listenerData.Watermark) {
 		if listenerData.Watermark != "" {
-			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:listener", "Listener %s is invalid watermark. Set random...", listenerName)
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "listener", "", "Listener %s is invalid watermark. Set random...", listenerName)
 		}
 		listenerData.Watermark, _ = krypt.GenerateUID(8)
 	}
@@ -81,7 +82,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 	err = ts.Extender.ExListenerStart(listenerName)
 	if err != nil {
 		listenerData.Status = "Stopped"
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:listener", "Listener %s created but failed to start: %s", listenerName, err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "listener", "", "Listener %s created but failed to start: %s", listenerName, err.Error())
 	} else {
 		listenerData.Status = "Listen"
 	}
@@ -109,14 +110,13 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 	return nil
 }
 
-func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string, listenerConfig string) error {
+func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string, listenerConfig string, tags string) error {
 	listenerInfo, ok := ts.listener_configs.Get(listenerRegName)
 	if !ok {
 		return fmt.Errorf("listener %v does not register", listenerRegName)
 	}
 
-	existingData, ok := ts.listeners.Get(listenerName)
-	if !ok {
+	if !ts.listeners.Contains(listenerName) {
 		return fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
@@ -125,7 +125,7 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string
 		return err
 	}
 
-	listenerData.Tags = existingData.Tags
+	listenerData.Tags = tags
 	listenerData.Name = listenerName
 	listenerData.RegName = listenerRegName
 	listenerData.Data = listenerConfig
@@ -141,7 +141,7 @@ func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string
 
 	ts.TsNotifyListenerStart(true, listenerName, listenerRegName)
 
-	_ = ts.DBMS.DbListenerUpdate(listenerName, listenerConfig, customData)
+	_ = ts.DBMS.DbListenerUpdate(listenerName, listenerConfig, customData, tags)
 
 	return nil
 }
@@ -168,7 +168,7 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 	}
 
 	if err := ts.Extender.ExListenerStop(listenerName); err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:listener", "failed to stop listener '%s': %v", listenerName, err)
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "listener", "", "failed to stop listener '%s': %v", listenerName, err)
 		return err
 	}
 	ts.listeners.Delete(listenerName)

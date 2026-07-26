@@ -85,6 +85,44 @@ func (e *ScriptEngine) Execute(script string) error {
 	return nil
 }
 
+func (e *ScriptEngine) CompileHandler(script string) (goja.Callable, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if _, err := e.runtime.RunString(script); err != nil {
+		return nil, fmt.Errorf("handler compile error in '%s': %w", e.name, err)
+	}
+
+	for _, name := range []string{"handler", "onEvent"} {
+		val := e.runtime.Get(name)
+		if val == nil || goja.IsUndefined(val) || goja.IsNull(val) {
+			continue
+		}
+		fn, ok := goja.AssertFunction(val)
+		if ok {
+			return fn, nil
+		}
+	}
+	return nil, fmt.Errorf("handler compile error in '%s': define function handler(event) { ... }", e.name)
+}
+
+func (e *ScriptEngine) Interrupt(reason string) {
+	if e == nil || e.runtime == nil {
+		return
+	}
+	if reason == "" {
+		reason = "interrupted"
+	}
+	e.runtime.Interrupt(reason)
+}
+
+func (e *ScriptEngine) ClearInterrupt() {
+	if e == nil || e.runtime == nil {
+		return
+	}
+	e.runtime.ClearInterrupt()
+}
+
 //////////
 
 // /---

@@ -10,7 +10,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-const logSrc = "listener:beacon_http"
+const (
+	logSrc = "listener"
+	logCtg = "Beacon_HTTP"
+)
 
 type PluginListener struct{}
 

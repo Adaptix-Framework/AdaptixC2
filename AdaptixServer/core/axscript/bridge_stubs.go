@@ -189,6 +189,15 @@ func registerEventStubs(engine *ScriptEngine) {
 	rt.Set("event", eventObj)
 }
 
+func RegisterHandlerBridges(engine *ScriptEngine) {
+	if engine == nil {
+		return
+	}
+	registerFormStubs(engine)
+	registerMenuStubs(engine)
+	registerEventStubs(engine)
+	registerAxBridge(engine)
+}
 func fileBasename(p string) string {
 	return filepath.Base(filepath.Clean(strings.ReplaceAll(p, `\`, `/`)))
 }

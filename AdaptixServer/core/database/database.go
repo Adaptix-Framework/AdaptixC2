@@ -11,7 +11,7 @@ import (
 )
 
 type Teamserver interface {
-	TsLogAdd(status adaptix.LogStatus, level int, source string, format string, args ...any)
+	TsLogAdd(status adaptix.LogStatus, level int, source, category string, format string, args ...any)
 }
 
 type batchWriteOp struct {
@@ -121,19 +121,19 @@ func (dbms *DBMS) flushBatch(batch []batchWriteOp) {
 
 	tx, err := dbms.database.Begin()
 	if err != nil {
-		dbms.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:database", "batch writer: BEGIN failed: %v", err)
+		dbms.ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "database", "batch writer: BEGIN failed: %v", err)
 		return
 	}
 
 	for _, op := range batch {
 		_, err := tx.Exec(op.query, op.args...)
 		if err != nil {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "batch writer: Exec failed: %v", err)
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "batch writer: Exec failed: %v", err)
 		}
 	}
 
 	if err := tx.Commit(); err != nil {
-		dbms.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:database", "batch writer: COMMIT failed: %v", err)
+		dbms.ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "database", "batch writer: COMMIT failed: %v", err)
 		_ = tx.Rollback()
 	}
 }
@@ -316,6 +316,13 @@ func (dbms *DBMS) DatabaseInit() error {
 		return fmt.Errorf("create table failed: %w", err)
 	}
 
+	_, _ = dbms.database.Exec(`ALTER TABLE "Agents" ADD COLUMN "UID" BLOB;`)
+	_, _ = dbms.database.Exec(`ALTER TABLE "Agents" ADD COLUMN "Impersonated" TEXT;`)
+	_, _ = dbms.database.Exec(`ALTER TABLE "Agents" ADD COLUMN "WorkingTime" INTEGER;`)
+	_, _ = dbms.database.Exec(`ALTER TABLE "Agents" ADD COLUMN "KillDate" INTEGER;`)
+	_, _ = dbms.database.Exec(`ALTER TABLE "Agents" ADD COLUMN "TargetId" INTEGER;`)
+	_, _ = dbms.database.Exec(`ALTER TABLE "Agents" ADD COLUMN "CustomData" BLOB;`)
+
 	createTableQuery = `CREATE TABLE IF NOT EXISTS "Tasks" (
     	"TaskId" INTEGER NOT NULL UNIQUE, 
     	"AgentId" INTEGER NOT NULL,
@@ -365,6 +372,31 @@ func (dbms *DBMS) DatabaseInit() error {
     	"ParentAgentId" INTEGER NOT NULL,
     	"ChildAgentId" INTEGER NOT NULL
     );`
+	_, err = dbms.database.Exec(createTableQuery)
+	if err != nil {
+		return fmt.Errorf("create table failed: %w", err)
+	}
+
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Tunnels" (
+		"Id" INTEGER PRIMARY KEY AUTOINCREMENT,
+		"TunnelId" INTEGER NOT NULL UNIQUE,
+		"AgentId" INTEGER NOT NULL,
+		"Computer" TEXT,
+		"Username" TEXT,
+		"Process" TEXT,
+		"Type" TEXT,
+		"TypeCode" INTEGER NOT NULL,
+		"Info" TEXT,
+		"Interface" TEXT,
+		"Port" TEXT,
+		"Client" TEXT,
+		"Fhost" TEXT,
+		"Fport" TEXT,
+		"AuthUser" TEXT,
+		"AuthPass" TEXT,
+		"Date" BIGINT,
+		"Active" BOOLEAN NOT NULL DEFAULT 0
+	);`
 	_, err = dbms.database.Exec(createTableQuery)
 	if err != nil {
 		return fmt.Errorf("create table failed: %w", err)
@@ -426,6 +458,35 @@ func (dbms *DBMS) DatabaseInit() error {
 		"Scope" TEXT NOT NULL,
 		"Members" TEXT NOT NULL DEFAULT ''
     );`
+	_, err = dbms.database.Exec(createTableQuery)
+	if err != nil {
+		return fmt.Errorf("create table failed: %w", err)
+	}
+
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "EventHandlers" (
+		"Id" TEXT NOT NULL UNIQUE,
+		"Name" TEXT NOT NULL,
+		"GroupName" TEXT DEFAULT '',
+		"Description" TEXT DEFAULT '',
+		"Event" TEXT NOT NULL,
+		"Script" TEXT NOT NULL,
+		"Enabled" INTEGER NOT NULL DEFAULT 1,
+		"Filters" TEXT DEFAULT '',
+		"CreatedBy" TEXT DEFAULT '',
+		"UpdatedBy" TEXT DEFAULT '',
+		"CreatedAt" BIGINT DEFAULT 0,
+		"UpdatedAt" BIGINT DEFAULT 0,
+		"LastError" TEXT DEFAULT '',
+		"LastRunAt" BIGINT DEFAULT 0
+	);`
+	_, err = dbms.database.Exec(createTableQuery)
+	if err != nil {
+		return fmt.Errorf("create table failed: %w", err)
+	}
+	_, _ = dbms.database.Exec(`CREATE INDEX IF NOT EXISTS idx_event_handlers_event ON EventHandlers(Event);`)
+	_, _ = dbms.database.Exec(`CREATE INDEX IF NOT EXISTS idx_event_handlers_group ON EventHandlers(GroupName);`)
+
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "EventMutes" ("Event" TEXT NOT NULL UNIQUE);`
 	_, err = dbms.database.Exec(createTableQuery)
 	if err != nil {
 		return fmt.Errorf("create table failed: %w", err)

@@ -7,147 +7,78 @@
 #include <Client/AxScript/AxElementWrappers.h>
 #include <UI/Dialogs/DialogListener.h>
 #include <UI/Dialogs/DialogAgent.h>
+#include <Utils/CustomElements/ControlCard.h>
 #include <Utils/FontManager.h>
 #include <MainAdaptix.h>
 
 #include <oclero/qlementine/widgets/Menu.hpp>
+#include <oclero/qlementine/widgets/LineEdit.hpp>
 
-#include <QPainter>
 #include <QJSEngine>
 #include <QInputDialog>
+#include <QMessageBox>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QLineEdit>
+#include <QComboBox>
+#include <QPushButton>
+#include <QLabel>
+#include <QDateTime>
 
-namespace ListenersBlock {
-    enum {
-        Id = 0,
-        Main = 1,
-        Tags = 2,
-        Right = 3,
-        Count = 4
-    };
-}
-
-static FeedRow listenerToFeedRow(const ListenerData& l) {
-    FeedRow row;
-    row.resize(ListenersBlock::Count);
-    row.entityId = 0;
-    row[ListenersBlock::Id] = QVariantMap{{"id", l.Name}, {"badge", l.ListenerProtocol}, {"date", QDateTime::fromSecsSinceEpoch(l.DateTimestamp).toString("dd/MM HH:mm:ss")}};
-
-    QString bindText;
-    if (!l.BindHost.isEmpty() && !l.BindPort.isEmpty())
-        bindText = l.BindHost + " : " + l.BindPort;
-    else if (!l.BindHost.isEmpty())
-        bindText = l.BindHost;
-    else if (!l.BindPort.isEmpty())
-        bindText = ":" + l.BindPort;
-    else
-        bindText = "-";
-
-    row[ListenersBlock::Main] = QVariantMap{{"main", bindText}, {"submain", l.ListenerRegName}, {"second", l.ListenerType + ": " + l.AgentAddresses}};
-    row[ListenersBlock::Tags] = l.Tags.isEmpty() ? QStringList{} : l.Tags.split(",", Qt::SkipEmptyParts);
-    row[ListenersBlock::Right] = QVariantMap{{"main", QString()}, {"second", QString()}, {"status", l.Status}, {"statusType", l.Status == "Listen" ? "success" : "error"}, {"dateNum", l.DateTimestamp}};
-    row.isDead = false;
-    return row;
-}
-
-static ListFeedDelegate* createListenersDelegate(QObject* parent) {
-    auto* d = new ListFeedDelegate(parent);
-    d->addBlock(new IdBadgeBlock());
-    d->addBlock(new MainBlock());
-    d->addBlock(new TagsBlock());
-    d->addBlock(new StatusBlock());
-    d->addBlock(new GroupHeaderBlock());
-    return d;
-}
-
-
-
-ListenersFilterProxy::ListenersFilterProxy(QObject* parent) : QSortFilterProxyModel(parent) {}
-
-void ListenersFilterProxy::setSearchText(const QString& text) { m_searchText = text; }
-void ListenersFilterProxy::setProtocol(const QString& protocol) { m_protocol = protocol; }
-
-bool ListenersFilterProxy::filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const
+static bool listenerIsActive(const ListenerData& l)
 {
-    auto* srcModel = qobject_cast<FeedListModel*>(sourceModel());
-    if (!srcModel || sourceRow < 0 || sourceRow >= srcModel->size())
-        return true;
-
-    const FeedRow& row = srcModel->rowAt(sourceRow);
-
-    // Protocol filter
-    if (!m_protocol.isEmpty()) {
-        QString proto = row.blockData[ListenersBlock::Id].toMap()["badge"].toString();
-        if (proto != m_protocol)
-            return false;
-    }
-
-    // Search filter
-    if (!m_searchText.isEmpty()) {
-        QString lower = m_searchText.toLower();
-        for (int i = 0; i < row.size(); ++i) {
-            QString text = row.blockData[i].toString().toLower();
-            if (text.contains(lower))
-                return true;
-            auto map = row.blockData[i].toMap();
-            for (auto it = map.begin(); it != map.end(); ++it) {
-                if (it.value().toString().toLower().contains(lower))
-                    return true;
-            }
-            auto list = row.blockData[i].toStringList();
-            for (const auto& s : list) {
-                if (s.toLower().contains(lower))
-                    return true;
-            }
-        }
-        return false;
-    }
-
-    return true;
+    const QString s = l.Status.trimmed();
+    return s.compare(QStringLiteral("Listen"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("Running"), Qt::CaseInsensitive) == 0 || s.compare(QStringLiteral("Active"), Qt::CaseInsensitive) == 0;
 }
 
-
-
-ListenersFeedWidget::ListenersFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), m_adaptixWidget(w)
+ListenersFeedWidget::ListenersFeedWidget(AdaptixWidget* w) : QWidget(w), m_adaptixWidget(w)
 {
-    feedBlockModel = new FeedListModel(this);
-    auto* delegate = createListenersDelegate(this);
-    delegate->setFeedModel(feedBlockModel);
+    auto* root = new QVBoxLayout(this);
+    root->setContentsMargins(0, 0, 0, 0);
+    root->setSpacing(0);
 
-    filterProxy = new ListenersFilterProxy(this);
-    filterProxy->setSourceModel(feedBlockModel);
+    auto* toolbar = new QWidget(this);
+    auto* tb = new QHBoxLayout(toolbar);
+    tb->setContentsMargins(8, 6, 8, 6);
+    tb->setSpacing(8);
 
-    setModel(feedBlockModel);
-    setDelegate(delegate);
-    setFilterModel(filterProxy);
-    rebuildModelChain();
+    auto* searchEdit = new oclero::qlementine::LineEdit(toolbar);
+    searchEdit->setIcon(QIcon(QStringLiteral(":/icons/search")));
+    searchEdit->setPlaceholderText(QStringLiteral("Search listeners..."));
+    searchEdit->setClearButtonEnabled(true);
+    searchEdit->setMinimumWidth(160);
+    searchEdit->setFixedHeight(FontManager::instance().typography().controlHeight);
+    m_search = searchEdit;
+    tb->addWidget(m_search, 1);
 
-    enableSearch(true);
-    enableFilterCombo(true, "All protocols");
-    enableSortingCombo(true, {"No sorting", "Date", "Status", "Protocol", "Type", "Name", "RegName"});
-    enableGroupCombo(true);
-    finalizeSearchWidget();
+    m_protocolFilter = new QComboBox(toolbar);
+    m_protocolFilter->addItem(QStringLiteral("All protocols"));
+    m_protocolFilter->setMinimumWidth(120);
+    tb->addWidget(m_protocolFilter, 0);
 
-    enableCompactSwitch(true);
-    setBlockGap(12);
+    m_addBtn = new QPushButton(QStringLiteral("+ Add Listener"), toolbar);
+    tb->addWidget(m_addBtn, 0);
 
-    auto* addBtn = new QPushButton("+ Add Listener", this);
-    connect(addBtn, &QPushButton::clicked, this, &ListenersFeedWidget::onCreateListener);
-    addToolbarWidgetAfter(addBtn);
+    m_cardList = new ControlCardList(this);
 
-    if (groupCombo()) {
-        groupCombo()->clear();
-        groupCombo()->addItem("No grouping");
-        groupCombo()->addItem("By Protocol");
-        groupCombo()->addItem("By Type");
-        groupCombo()->addItem("By Status");
-    }
+    root->addWidget(toolbar, 0);
+    root->addWidget(m_cardList, 1);
+
+    connect(m_search, &QLineEdit::textChanged, this, &ListenersFeedWidget::onSearchChanged);
+    connect(m_protocolFilter, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &ListenersFeedWidget::onProtocolFilterChanged);
+    connect(m_addBtn, &QPushButton::clicked, this, &ListenersFeedWidget::onCreateListener);
+
+    connect(m_cardList, &ControlCardList::primaryActionClicked, this, &ListenersFeedWidget::onCardPrimary);
+    connect(m_cardList, &ControlCardList::deleteClicked, this, &ListenersFeedWidget::onCardDelete);
+    connect(m_cardList, &ControlCardList::generateClicked, this, &ListenersFeedWidget::onCardGenerate);
+    connect(m_cardList, &ControlCardList::doubleClicked, this, &ListenersFeedWidget::onCardDoubleClick);
+    connect(m_cardList, &ControlCardList::selectionChanged, this, &ListenersFeedWidget::onCardSelected);
+    connect(m_cardList, &ControlCardList::contextMenuRequested, this, &ListenersFeedWidget::onCardContextMenu);
 
     dockWidget = new KDDockWidgets::QtWidgets::DockWidget("ListenersFeed:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
     dockWidget->setTitle("Listeners");
     dockWidget->setWidget(this);
     dockWidget->setIcon(QIcon(":/icons/listeners"), KDDockWidgets::IconPlace::TabBar);
-
-    connect(treeView(), &QTreeView::customContextMenuRequested, this, &ListenersFeedWidget::handleFeedMenu);
 }
 
 ListenersFeedWidget::~ListenersFeedWidget() = default;
@@ -156,115 +87,182 @@ KDDockWidgets::QtWidgets::DockWidget* ListenersFeedWidget::dock() { return dockW
 
 void ListenersFeedWidget::SetUpdatesEnabled(bool enabled)
 {
-    treeView()->setUpdatesEnabled(enabled);
-}
-
-void ListenersFeedWidget::onFilterChanged()
-{
-    if (!filterProxy)
-        return;
-
-    QString searchText = searchInput() ? searchInput()->text() : QString();
-    QString protocol = filterCombo() && filterCombo()->currentIndex() > 0 ? filterCombo()->currentText() : QString();
-
-    filterProxy->setSearchText(searchText);
-    filterProxy->setProtocol(protocol);
-    filterProxy->invalidate();
-}
-
-void ListenersFeedWidget::onGroupModeChanged(int index)
-{
-    if (!groupingProxy())
-        return;
-
-    if (index == 0) {
-        groupingProxy()->setViewMode(VM_Flat);
-    } else {
-        int blockIdx = -1;
-        QString fieldKey;
-        switch (index) {
-            case 1: blockIdx = ListenersBlock::Id; fieldKey = "badge"; break;     // By Protocol
-            case 2: blockIdx = ListenersBlock::Main; fieldKey = "second"; break;  // By Type
-            case 3: blockIdx = ListenersBlock::Right; fieldKey = "status"; break; // By Status
-        }
-        if (blockIdx >= 0) {
-            feedBlockModel->setGroupKeySource(blockIdx, fieldKey);
-            groupingProxy()->setGroupKeyRole(FeedListModel::GroupKeyRole);
-            groupingProxy()->setAutoGroupField(AG_ByRole);
-            groupingProxy()->setViewMode(VM_AutoGroup);
-        }
-    }
-    treeView()->setRootIsDecorated(index > 0);
-    treeView()->expandAll();
-}
-
-void ListenersFeedWidget::onSortingChanged(int index)
-{
-    if (!feedBlockModel || index == 0)
-        return;
-
-    Qt::SortOrder order = isSortAscending() ? Qt::AscendingOrder : Qt::DescendingOrder;
-
-    switch (index) {
-        case 1: feedBlockModel->sortByFieldNumeric(ListenersBlock::Right, "dateNum", order); break; // Date
-        case 2: feedBlockModel->sortByField(ListenersBlock::Right, "status", order); break;         // Status
-        case 3: feedBlockModel->sortByField(ListenersBlock::Id, "badge", order); break;             // Protocol
-        case 4: feedBlockModel->sortByField(ListenersBlock::Main, "second", order); break;          // Type
-        case 5: feedBlockModel->sortByField(ListenersBlock::Main, "main", order); break;            // Name
-        case 6: feedBlockModel->sortByField(ListenersBlock::Main, "submain", order); break;         // RegName
-    }
+    setUpdatesEnabled(enabled);
+    if (m_cardList)
+        m_cardList->setUpdatesEnabled(enabled);
 }
 
 void ListenersFeedWidget::Clear()
 {
-    if (feedBlockModel) feedBlockModel->clear();
+    m_items.clear();
+    m_selectedName.clear();
+    if (m_cardList)
+        m_cardList->clear();
+    if (m_protocolFilter) {
+        m_protocolFilter->blockSignals(true);
+        while (m_protocolFilter->count() > 1)
+            m_protocolFilter->removeItem(1);
+        m_protocolFilter->blockSignals(false);
+    }
+}
+
+ControlCardData ListenersFeedWidget::toCard(const ListenerData& l) const
+{
+    ControlCardData d;
+    d.id = l.Name;
+    d.bodyLayout = ControlCard::BodyThreeLine;
+    d.contentStyle = ControlCard::StyleListener;
+
+    d.title = l.Name.isEmpty() ? QStringLiteral("listener") : l.Name;
+
+    QString typeVal;
+    if (!l.ListenerProtocol.isEmpty())
+        typeVal = l.ListenerProtocol.trimmed().toUpper();
+    if (!l.ListenerType.isEmpty()) {
+        const QString lt = l.ListenerType.trimmed();
+        if (typeVal.isEmpty())
+            typeVal = lt;
+        else if (lt.compare(typeVal, Qt::CaseInsensitive) != 0)
+            typeVal += QStringLiteral(" · ") + lt;
+    }
+    if (typeVal.isEmpty())
+        typeVal = QStringLiteral("—");
+    d.primaryPrefix = QStringLiteral("type");
+    d.primary = typeVal;
+
+    d.detailPrefix = QStringLiteral("bind");
+    if (!l.BindHost.isEmpty() && !l.BindPort.isEmpty())
+        d.detail = l.BindHost + QStringLiteral(" :") + l.BindPort;
+    else if (!l.BindHost.isEmpty())
+        d.detail = l.BindHost;
+    else if (!l.BindPort.isEmpty())
+        d.detail = QStringLiteral(":") + l.BindPort;
+    else
+        d.detail = QStringLiteral("—");
+
+    if (!l.Tags.isEmpty())
+        d.sideText = l.Tags;
+
+    if (!l.Date.isEmpty())
+        d.dateText = l.Date;
+    else if (l.DateTimestamp > 0)
+        d.dateText = QDateTime::fromSecsSinceEpoch(l.DateTimestamp).toString(QStringLiteral("dd/MM/yy HH:mm"));
+
+    d.secondaryLead = l.ListenerRegName.trimmed().isEmpty() ? QStringLiteral("—") : l.ListenerRegName.trimmed();
+    d.secondaryPrefix = QStringLiteral("CALLBACK");
+    d.secondary = l.AgentAddresses.trimmed().isEmpty() ? QStringLiteral("—") : l.AgentAddresses.trimmed();
+
+    d.status = l.Status.isEmpty() ? QStringLiteral("Unknown") : l.Status;
+    d.active = listenerIsActive(l);
+    d.showPrimaryAction = true;
+    if (d.active) {
+        d.primaryAction = ControlCard::ActionStop;
+        d.primaryActionLabel = QStringLiteral("Pause");
+    } else {
+        d.primaryAction = ControlCard::ActionStart;
+        d.primaryActionLabel = QStringLiteral("Resume");
+    }
+    d.showDelete = true;
+    d.deleteActionLabel = QStringLiteral("Remove");
+    d.showGenerate = true;
+    d.generateActionLabel = QStringLiteral("Agent");
+    return d;
+}
+
+bool ListenersFeedWidget::matchesFilter(const ListenerData& l) const
+{
+    if (m_protocolFilter && m_protocolFilter->currentIndex() > 0) {
+        if (l.ListenerProtocol != m_protocolFilter->currentText())
+            return false;
+    }
+    if (m_search) {
+        const QString q = m_search->text().trimmed().toLower();
+        if (!q.isEmpty()) {
+            const QString hay = (l.Name + l.ListenerProtocol + l.ListenerRegName + l.ListenerType + l.BindHost + l.BindPort + l.AgentAddresses + l.Tags + l.Status).toLower();
+            if (!hay.contains(q))
+                return false;
+        }
+    }
+    return true;
+}
+
+void ListenersFeedWidget::rebuildVisible()
+{
+    if (!m_cardList)
+        return;
+    QVector<ControlCardData> cards;
+    cards.reserve(m_items.size());
+    for (const auto& l : m_items) {
+        if (matchesFilter(l))
+            cards.append(toCard(l));
+    }
+    m_cardList->setCards(cards);
+    if (!m_selectedName.isEmpty())
+        m_cardList->setSelectedId(m_selectedName);
+}
+
+ListenerData* ListenersFeedWidget::findByName(const QString& name)
+{
+    for (auto& l : m_items) {
+        if (l.Name == name)
+            return &l;
+    }
+    return nullptr;
+}
+
+const ListenerData* ListenersFeedWidget::findByName(const QString& name) const
+{
+    for (const auto& l : m_items) {
+        if (l.Name == name)
+            return &l;
+    }
+    return nullptr;
 }
 
 void ListenersFeedWidget::AddListenerItem(const ListenerData& newListener)
 {
-    if (!feedBlockModel)
-        return;
-
-    for (int i = 0; i < feedBlockModel->size(); ++i) {
-        if (feedBlockModel->rowAt(i).blockData[ListenersBlock::Id].toMap()["id"].toString() == newListener.Name) {
-            feedBlockModel->updateRow(i, listenerToFeedRow(newListener));
+    for (int i = 0; i < m_items.size(); ++i) {
+        if (m_items[i].Name == newListener.Name) {
+            m_items[i] = newListener;
             for (int j = 0; j < m_adaptixWidget->Listeners.size(); ++j) {
                 if (m_adaptixWidget->Listeners[j].Name == newListener.Name) {
                     m_adaptixWidget->Listeners[j] = newListener;
                     break;
                 }
             }
+            if (m_cardList && matchesFilter(newListener))
+                m_cardList->upsertCard(toCard(newListener));
+            else
+                rebuildVisible();
             return;
         }
     }
 
-    feedBlockModel->insertRow(0, listenerToFeedRow(newListener));
+    m_items.prepend(newListener);
     m_adaptixWidget->Listeners.append(newListener);
 
-    if (filterCombo()) {
-        QString proto = newListener.ListenerProtocol;
+    if (m_protocolFilter) {
+        const QString proto = newListener.ListenerProtocol;
         bool found = false;
-        for (int i = 0; i < filterCombo()->count(); ++i) {
-            if (filterCombo()->itemText(i) == proto) {
+        for (int i = 0; i < m_protocolFilter->count(); ++i) {
+            if (m_protocolFilter->itemText(i) == proto) {
                 found = true;
                 break;
             }
         }
         if (!found && !proto.isEmpty())
-            filterCombo()->addItem(proto);
+            m_protocolFilter->addItem(proto);
     }
+
+    if (matchesFilter(newListener))
+        m_cardList->upsertCard(toCard(newListener));
 }
 
 void ListenersFeedWidget::EditListenerItem(const ListenerData& newListener)
 {
-    if (!feedBlockModel)
-        return;
-
-    for (int i = 0; i < feedBlockModel->size(); ++i) {
-        const FeedRow& r = feedBlockModel->rowAt(i);
-        if (r.blockData[ListenersBlock::Id].toMap()["id"].toString() == newListener.Name) {
-            FeedRow newRow = listenerToFeedRow(newListener);
-            feedBlockModel->updateRow(i, newRow);
+    for (int i = 0; i < m_items.size(); ++i) {
+        if (m_items[i].Name == newListener.Name) {
+            m_items[i] = newListener;
             break;
         }
     }
@@ -274,17 +272,19 @@ void ListenersFeedWidget::EditListenerItem(const ListenerData& newListener)
             break;
         }
     }
+    if (m_cardList) {
+        if (matchesFilter(newListener))
+            m_cardList->upsertCard(toCard(newListener));
+        else
+            m_cardList->removeCard(newListener.Name);
+    }
 }
 
 void ListenersFeedWidget::RemoveListenerItem(const QString& listenerName)
 {
-    if (!feedBlockModel)
-        return;
-
-    for (int i = 0; i < feedBlockModel->size(); ++i) {
-        const FeedRow& r = feedBlockModel->rowAt(i);
-        if (r.blockData[ListenersBlock::Id].toMap()["id"].toString() == listenerName) {
-            feedBlockModel->removeRow(i);
+    for (int i = 0; i < m_items.size(); ++i) {
+        if (m_items[i].Name == listenerName) {
+            m_items.removeAt(i);
             break;
         }
     }
@@ -294,51 +294,90 @@ void ListenersFeedWidget::RemoveListenerItem(const QString& listenerName)
             break;
         }
     }
+    if (m_selectedName == listenerName)
+        m_selectedName.clear();
+    if (m_cardList)
+        m_cardList->removeCard(listenerName);
 }
 
-void ListenersFeedWidget::handleFeedMenu(const QPoint& pos)
+ListenersFeedWidget::ListenerInfo ListenersFeedWidget::currentListenerInfo() const
 {
+    ListenerInfo info;
+    if (m_selectedName.isEmpty())
+        return info;
+    const ListenerData* l = findByName(m_selectedName);
+    if (!l)
+        return info;
+    info.name = l->Name;
+    info.regName = l->ListenerRegName;
+    info.tags = l->Tags;
+    info.valid = !info.name.isEmpty();
+    return info;
+}
+
+void ListenersFeedWidget::onSearchChanged(const QString&)
+{
+    rebuildVisible();
+}
+
+void ListenersFeedWidget::onProtocolFilterChanged(int)
+{
+    rebuildVisible();
+}
+
+void ListenersFeedWidget::onCardSelected(const QVariant& id)
+{
+    m_selectedName = id.toString();
+}
+
+void ListenersFeedWidget::onCardPrimary(const QVariant& id)
+{
+    m_selectedName = id.toString();
+    const ListenerData* l = findByName(m_selectedName);
+    if (!l)
+        return;
+    if (listenerIsActive(*l))
+        onPauseListener();
+    else
+        onResumeListener();
+}
+
+void ListenersFeedWidget::onCardDelete(const QVariant& id)
+{
+    m_selectedName = id.toString();
+    onRemoveListener();
+}
+
+void ListenersFeedWidget::onCardGenerate(const QVariant& id)
+{
+    m_selectedName = id.toString();
+    onGenerateAgent();
+}
+
+void ListenersFeedWidget::onCardDoubleClick(const QVariant& id)
+{
+    m_selectedName = id.toString();
+    onEditListener();
+}
+
+void ListenersFeedWidget::onCardContextMenu(const QVariant& id, const QPoint& globalPos)
+{
+    if (m_cardList)
+        m_cardList->ensureSelected(id);
+    m_selectedName = id.toString();
+
+    const int selCount = m_cardList ? m_cardList->selectedIds().size() : 1;
+    if (selCount <= 1)
+        return;
+
     oclero::qlementine::Menu ctxMenu;
-
-    QModelIndex index = prepareContextMenuSelection(pos);
-    if (index.isValid()) {
-        QModelIndex srcIdx = index;
-        QAbstractItemModel* m = const_cast<QAbstractItemModel*>(index.model());
-        while (m && m != feedBlockModel) {
-            auto* sp = qobject_cast<QSortFilterProxyModel*>(m);
-            if (sp) {
-                srcIdx = sp->mapToSource(srcIdx);
-                m = sp->sourceModel();
-                continue;
-            }
-            auto* gp = qobject_cast<GroupingProxyModel*>(m);
-            if (gp) {
-                srcIdx = gp->mapToSource(srcIdx);
-                m = gp->sourceModel();
-                continue;
-            }
-            break;
-        }
-        if (srcIdx.isValid() && srcIdx.row() >= 0 && srcIdx.row() < feedBlockModel->size()) {
-            const FeedRow& row = feedBlockModel->rowAt(srcIdx.row());
-            QString listenerName = row.blockData[ListenersBlock::Id].toMap()["id"].toString();
-            if (!listenerName.isEmpty()) {
-                ctxMenu.addSeparator();
-                ctxMenu.addAction("Edit", this, &ListenersFeedWidget::onEditListener);
-                ctxMenu.addAction("Remove", this, &ListenersFeedWidget::onRemoveListener);
-                ctxMenu.addSeparator();
-                ctxMenu.addAction("Pause", this, &ListenersFeedWidget::onPauseListener);
-                ctxMenu.addAction("Resume", this, &ListenersFeedWidget::onResumeListener);
-                ctxMenu.addSeparator();
-                ctxMenu.addAction("Set tag", this, &ListenersFeedWidget::onSetTag);
-                ctxMenu.addSeparator();
-                ctxMenu.addAction("Generate Agent", this, &ListenersFeedWidget::onGenerateAgent);
-                // ctxMenu.addAction("Create Connector", this, &ListenersFeedWidget::onCreateConnector);
-            }
-        }
-    }
-
-    ctxMenu.exec(treeView()->viewport()->mapToGlobal(pos));
+    ctxMenu.addAction(QIcon(":/icons/tag"), "Set tag", this, &ListenersFeedWidget::onSetTag);
+    ctxMenu.addSeparator();
+    ctxMenu.addAction(QIcon(":/icons/stop"), "Pause", this, &ListenersFeedWidget::onPauseListener);
+    ctxMenu.addAction(QIcon(":/icons/start"), "Resume", this, &ListenersFeedWidget::onResumeListener);
+    ctxMenu.addSeparator();
+    ctxMenu.addAction(QIcon(":/icons/delete"), "Remove", this, &ListenersFeedWidget::onRemoveListener);
+    ctxMenu.exec(globalPos);
 }
 
 void ListenersFeedWidget::onCreateListener()
@@ -399,43 +438,6 @@ void ListenersFeedWidget::onCreateListener()
     dialogListener->SetProfile(*(m_adaptixWidget->GetProfile()));
     dialogListener->AddExListeners(listeners, ax_uis);
     dialogListener->Start();
-}
-
-ListenersFeedWidget::ListenerInfo ListenersFeedWidget::currentListenerInfo() const
-{
-    QModelIndex idx = treeView()->currentIndex();
-    if (!idx.isValid() || !feedBlockModel)
-        return {};
-
-    QModelIndex srcIdx = idx;
-    QAbstractItemModel* m = const_cast<QAbstractItemModel*>(idx.model());
-    while (m && m != feedBlockModel) {
-        auto* sp = qobject_cast<QSortFilterProxyModel*>(m);
-        if (sp) {
-            srcIdx = sp->mapToSource(srcIdx);
-            m = sp->sourceModel();
-            continue;
-        }
-        auto* gp = qobject_cast<GroupingProxyModel*>(m);
-        if (gp) {
-            srcIdx = gp->mapToSource(srcIdx);
-            m = gp->sourceModel();
-            continue;
-        }
-        break;
-    }
-    if (!srcIdx.isValid() || srcIdx.row() < 0 || srcIdx.row() >= feedBlockModel->size())
-        return {};
-
-    const FeedRow& r = feedBlockModel->rowAt(srcIdx.row());
-    auto idMap = r.blockData[ListenersBlock::Id].toMap();
-    auto mainMap = r.blockData[ListenersBlock::Main].toMap();
-    ListenerInfo info;
-    info.name = idMap["id"].toString();
-    info.regName = mainMap["submain"].toString();
-    info.tags = r.blockData[ListenersBlock::Tags].toStringList().join(",");
-    info.valid = !info.name.isEmpty();
-    return info;
 }
 
 void ListenersFeedWidget::onEditListener()
@@ -502,58 +504,87 @@ void ListenersFeedWidget::onEditListener()
     dialogListener->setAttribute(Qt::WA_DeleteOnClose);
     dialogListener->SetProfile(*(m_adaptixWidget->GetProfile()));
     dialogListener->AddExListeners(listeners, ax_uis);
-    dialogListener->SetEditMode(info.name);
+    dialogListener->SetEditMode(info.name, info.tags);
     dialogListener->Start();
 }
 
 void ListenersFeedWidget::onRemoveListener()
 {
-    ListenerInfo info = currentListenerInfo();
-    if (!info.valid)
+    QList<QVariant> ids = m_cardList ? m_cardList->selectedIds() : QList<QVariant>{};
+    if (ids.isEmpty() && !m_selectedName.isEmpty())
+        ids.append(m_selectedName);
+    if (ids.isEmpty())
         return;
 
-    QMessageBox::StandardButton reply = QMessageBox::question(this, "Remove Listener", "Remove listener \"" + info.name + "\"?", QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    QString prompt = (ids.size() == 1) ? QStringLiteral("Remove listener \"%1\"?").arg(ids.first().toString()) : QStringLiteral("Remove %1 selected listeners?").arg(ids.size());
+    QMessageBox::StandardButton reply = QMessageBox::question( this, QStringLiteral("Remove Listener"), prompt, QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (reply != QMessageBox::Yes)
         return;
 
-    HttpReqListenerStopAsync(info.name, info.regName, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-        if (!success) MessageError(message.isEmpty() ? "Response timeout" : message);
-    });
+    for (const QVariant& id : ids) {
+        const ListenerData* l = findByName(id.toString());
+        if (!l)
+            continue;
+        HttpReqListenerStopAsync(l->Name, l->ListenerRegName, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? QStringLiteral("Response timeout") : message);
+        });
+    }
 }
 
 void ListenersFeedWidget::onPauseListener()
 {
-    ListenerInfo info = currentListenerInfo();
-    if (!info.valid)
-        return;
-
-    HttpReqListenerPauseAsync(info.name, info.regName, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-        if (!success) MessageError(message.isEmpty() ? "Response timeout" : message);
-    });
+    QList<QVariant> ids = m_cardList ? m_cardList->selectedIds() : QList<QVariant>{};
+    if (ids.isEmpty() && !m_selectedName.isEmpty())
+        ids.append(m_selectedName);
+    for (const QVariant& id : ids) {
+        const ListenerData* l = findByName(id.toString());
+        if (!l)
+            continue;
+        HttpReqListenerPauseAsync(l->Name, l->ListenerRegName, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success) MessageError(message.isEmpty() ? QStringLiteral("Response timeout") : message);
+        });
+    }
 }
 
 void ListenersFeedWidget::onResumeListener()
 {
-    ListenerInfo info = currentListenerInfo();
-    if (!info.valid)
-        return;
-
-    HttpReqListenerResumeAsync(info.name, info.regName, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-        if (!success) MessageError(message.isEmpty() ? "Response timeout" : message);
-    });
+    QList<QVariant> ids = m_cardList ? m_cardList->selectedIds() : QList<QVariant>{};
+    if (ids.isEmpty() && !m_selectedName.isEmpty())
+        ids.append(m_selectedName);
+    for (const QVariant& id : ids) {
+        const ListenerData* l = findByName(id.toString());
+        if (!l)
+            continue;
+        HttpReqListenerResumeAsync(l->Name, l->ListenerRegName, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success) MessageError(message.isEmpty() ? QStringLiteral("Response timeout") : message);
+        });
+    }
 }
 
 void ListenersFeedWidget::onSetTag()
 {
-    ListenerInfo info = currentListenerInfo();
-    if (!info.valid)
+    QList<QVariant> ids = m_cardList ? m_cardList->selectedIds() : QList<QVariant>{};
+    if (ids.isEmpty() && !m_selectedName.isEmpty())
+        ids.append(m_selectedName);
+    if (ids.isEmpty())
         return;
 
-    bool inputOk;
-    QString newTag = QInputDialog::getText(this, "Set tags", "New tag", QLineEdit::Normal, info.tags, &inputOk);
-    if (inputOk) {
-        HttpReqListenerSetTagsAsync(info.name, newTag, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-            if (!success) MessageError(message.isEmpty() ? "Response timeout" : message);
+    QString seedTags;
+    if (const ListenerData* first = findByName(ids.first().toString()))
+        seedTags = first->Tags;
+
+    bool inputOk = false;
+    QString newTag = QInputDialog::getText(this, QStringLiteral("Set tags"), ids.size() == 1 ? QStringLiteral("New tag") : QStringLiteral("New tag for %1 listeners").arg(ids.size()), QLineEdit::Normal, seedTags, &inputOk);
+    if (!inputOk)
+        return;
+
+    for (const QVariant& id : ids) {
+        const ListenerData* l = findByName(id.toString());
+        if (!l)
+            continue;
+        HttpReqListenerSetTagsAsync(l->Name, newTag, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success) MessageError(message.isEmpty() ? QStringLiteral("Response timeout") : message);
         });
     }
 }

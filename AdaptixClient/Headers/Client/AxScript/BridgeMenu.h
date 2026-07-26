@@ -25,8 +25,8 @@ public:
     void reg(const QString &type, AbstractAxMenuItem *item, const QJSValue &agents, const QJSValue &os, const QJSValue &listeners);
 
 public Q_SLOTS:
-    AxActionWrapper*    create_action(const QString& text, const QJSValue& handler);
-    AxMenuWrapper*      create_menu(const QString& title);
+    AxActionWrapper*    create_action(const QString& text, const QJSValue& handler, const QString& icon = QString());
+    AxMenuWrapper*      create_menu(const QString& title, const QString& icon = QString());
     AxSeparatorWrapper* create_separator();
 
     void add_session_main(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue());

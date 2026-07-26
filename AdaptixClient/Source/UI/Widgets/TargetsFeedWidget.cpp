@@ -1,6 +1,8 @@
 #include <UI/Widgets/TargetsFeedWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Dialogs/DialogTarget.h>
+#include <UI/Dialogs/DialogImportTargets.h>
+#include <Utils/Logs.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/Settings.h>
@@ -119,7 +121,9 @@ static ListFeedDelegate* createTargetsDelegate(QObject* parent)
     d->addBlock(new IconBlock());
     d->addBlock(new IdBadgeBlock());
     d->addBlock(new TextBlock());
-    d->addBlock(new MainBlock());
+    auto* main = new MainBlock();
+    main->setMainTextPointOffset(-0.5);
+    d->addBlock(main);
     d->addBlock(new TagsBlock());
     d->addBlock(new StatusBlock());
     d->addBlock(new GroupHeaderBlock());
@@ -150,6 +154,13 @@ TargetsFeedWidget::TargetsFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), m_ad
     setBlockGap(12);
 
     enablePagination(true);
+
+    auto* importBtn = new QPushButton(this);
+    importBtn->setIcon(QIcon(QStringLiteral(":/icons/file_open")));
+    importBtn->setToolTip(QStringLiteral("Import from file…"));
+    importBtn->setFixedSize(28, 28);
+    connect(importBtn, &QPushButton::clicked, this, &TargetsFeedWidget::onImportTargets);
+    addToolbarWidgetAfter(importBtn);
 
     auto* addBtn = new QPushButton("+ Add Target", this);
     connect(addBtn, &QPushButton::clicked, this, &TargetsFeedWidget::onCreateTarget);
@@ -618,23 +629,41 @@ void TargetsFeedWidget::handleFeedMenu(const QPoint& pos)
                 if (topCount > 0)
                     ctxMenu.addSeparator();
 
-                ctxMenu.addAction("Edit",   this, &TargetsFeedWidget::onEditTarget);
-                ctxMenu.addAction("Remove", this, &TargetsFeedWidget::onRemoveTarget);
+                ctxMenu.addAction(QIcon(":/icons/edit_note"), "Edit", this, &TargetsFeedWidget::onEditTarget);
+                ctxMenu.addAction(QIcon(":/icons/delete"), "Remove", this, &TargetsFeedWidget::onRemoveTarget);
                 ctxMenu.addSeparator();
 
                 int centerCount = m_adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsCenter", targetIds);
                 if (centerCount > 0)
                     ctxMenu.addSeparator();
 
-                ctxMenu.addAction("Set tag",           this, &TargetsFeedWidget::onSetTag);
-                ctxMenu.addAction("Export to file",    this, &TargetsFeedWidget::onExportTarget);
-                ctxMenu.addAction("Copy to clipboard", this, &TargetsFeedWidget::onCopyToClipboard);
+                ctxMenu.addAction(QIcon(":/icons/tag"), "Set tag", this, &TargetsFeedWidget::onSetTag);
+                ctxMenu.addAction(QIcon(":/icons/save_as"), "Export to file", this, &TargetsFeedWidget::onExportTarget);
+                ctxMenu.addAction(QIcon(":/icons/copy_all"), "Copy to clipboard", this, &TargetsFeedWidget::onCopyToClipboard);
                 m_adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targetIds);
             }
         }
     }
 
     ctxMenu.exec(treeView()->viewport()->mapToGlobal(pos));
+}
+
+void TargetsFeedWidget::onImportTargets()
+{
+    if (!m_adaptixWidget)
+        return;
+
+    DialogImportTargets dialog(this);
+    dialog.StartDialog();
+    if (!dialog.IsValid())
+        return;
+
+    const QList<TargetData> list = dialog.GetTargets();
+    if (list.isEmpty())
+        return;
+
+    TargetsAdd(list);
+    MessageSuccess(QStringLiteral("Importing %1 target(s)…").arg(list.size()));
 }
 
 void TargetsFeedWidget::onCreateTarget()

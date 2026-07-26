@@ -21,6 +21,8 @@ func getPacketCategory(packet interface{}) string {
 	switch packet.(type) {
 	case SyncPackerListenerReg, SyncPackerAgentReg, SyncPackerServiceReg, SyncPackerAxScriptData:
 		return "extenders"
+	case SyncPackerAxScriptList:
+		return SyncCategoryScripts
 	case SyncPackerListenerStart:
 		return "listeners"
 	case SyncPackerAgentNew, SyncPackerAgentUpdate:
@@ -111,6 +113,8 @@ func (ts *Teamserver) TsSyncCategories(client *ClientHandler, categories []strin
 	if requested[SyncCategoryScripts] {
 		delete(requested, SyncCategoryScripts)
 		packets = append(packets, ts.TsPresyncAxScriptData()...)
+		packets = append(packets, ts.TsPresyncAxScriptList())
+		packets = append(packets, ts.TsPresyncEventHandlers())
 	}
 	if requested[SyncCategoryListeners] {
 		delete(requested, SyncCategoryListeners)
@@ -427,11 +431,23 @@ func (ts *Teamserver) TsPresyncChatTodo() []interface{} {
 }
 
 func (ts *Teamserver) TsPresyncTunnels() []interface{} {
-	count := int(ts.TunnelManager.stats.ActiveTunnels.Load())
+	count := 0
+	ts.TunnelManager.ForEachTunnel(func(key int64, tunnel *Tunnel) bool {
+		count++
+		return true
+	})
 	packets := make([]interface{}, 0, count)
 	ts.TunnelManager.ForEachTunnel(func(key int64, tunnel *Tunnel) bool {
-		t := CreateSpTunnelCreate(tunnel.Data, tunnel.BytesSent.Load(), tunnel.BytesRecv.Load())
-		packets = append(packets, t)
+		if tunnel == nil {
+			return true
+		}
+		tunnel.mu.RLock()
+		d := tunnel.Data
+		d.Active = tunnel.Active
+		sent := tunnel.BytesSent.Load()
+		recv := tunnel.BytesRecv.Load()
+		tunnel.mu.RUnlock()
+		packets = append(packets, CreateSpTunnelCreate(d, sent, recv))
 		return true
 	})
 	return packets

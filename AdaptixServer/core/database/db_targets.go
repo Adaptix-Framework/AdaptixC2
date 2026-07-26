@@ -50,6 +50,58 @@ func splitInt64s(s string) []int64 {
 	return out
 }
 
+func parseTargetId(v interface{}) (int64, bool) {
+	switch t := v.(type) {
+	case int64:
+		return t, true
+	case int32:
+		return int64(t), true
+	case int:
+		return int64(t), true
+	case float64:
+		return int64(t), true
+	case []byte:
+		return parseTargetId(string(t))
+	case string:
+		s := strings.TrimSpace(t)
+		if s == "" {
+			return 0, false
+		}
+		if id, err := strconv.ParseInt(s, 10, 64); err == nil {
+			return id, true
+		}
+		return 0, false
+	default:
+		return 0, false
+	}
+}
+
+func scanTargetRow(scanner interface {
+	Scan(dest ...interface{}) error
+}, target *adaptix.TargetData) error {
+	var (
+		rawId     interface{}
+		agentsStr string
+		alive     bool
+	)
+	err := scanner.Scan(&rawId, &target.Computer, &target.Domain, &target.Address, &target.Os, &target.OsDesk, &target.Tag, &target.Info, &target.Date, &alive, &agentsStr)
+	if err != nil {
+		return err
+	}
+	id, ok := parseTargetId(rawId)
+	if !ok {
+		return fmt.Errorf("unusable target id %v", rawId)
+	}
+	target.TargetId = id
+	target.Alive = alive
+	if agentsStr != "" {
+		target.Agents = splitInt64s(agentsStr)
+	} else {
+		target.Agents = nil
+	}
+	return nil
+}
+
 func (dbms *DBMS) DbTargetExist(targetId int64) bool {
 	var id string
 	err := dbms.database.QueryRow("SELECT TargetId FROM Targets WHERE TargetId = ? LIMIT 1;", targetId).Scan(&id)
@@ -81,7 +133,7 @@ func (dbms *DBMS) DbTargetsAdd(targetsData []*adaptix.TargetData) error {
 		_, err = stmt.Exec(targetData.TargetId, targetData.Computer, targetData.Domain, targetData.Address, targetData.Os,
 			targetData.OsDesk, targetData.Tag, targetData.Info, targetData.Date, targetData.Alive, joinInt64s(targetData.Agents))
 		if err != nil {
-			dbms.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:database", "%s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "database", "%s", err.Error())
 			continue
 		}
 	}
@@ -95,9 +147,9 @@ func (dbms *DBMS) DbTargetUpdate(targetData *adaptix.TargetData) error {
 		return errors.New("database does not exist")
 	}
 
-	updateQuery := `UPDATE Targets SET Computer = ?, Domain = ?, Address = ?, Os = ?, OsDesk = ?, Tag = ?, Info = ?, Alive = ?, Agents = ? WHERE TargetId = ?;`
-	result, err := dbms.database.Exec(updateQuery, targetData.Computer, targetData.Domain, targetData.Address, targetData.Os,
-		targetData.OsDesk, targetData.Tag, targetData.Info, targetData.Alive, joinInt64s(targetData.Agents), targetData.TargetId)
+	idStr := strconv.FormatInt(targetData.TargetId, 10)
+	updateQuery := `UPDATE Targets SET Computer = ?, Domain = ?, Address = ?, Os = ?, OsDesk = ?, Tag = ?, Info = ?, Alive = ?, Agents = ? WHERE TargetId = ? OR CAST(TargetId AS TEXT) = ?;`
+	result, err := dbms.database.Exec(updateQuery, targetData.Computer, targetData.Domain, targetData.Address, targetData.Os, targetData.OsDesk, targetData.Tag, targetData.Info, targetData.Alive, joinInt64s(targetData.Agents), targetData.TargetId, idStr)
 	if err != nil {
 		return err
 	}
@@ -157,7 +209,7 @@ func (dbms *DBMS) DbTargetUpdateBatch(targets []*adaptix.TargetData) error {
 		return err
 	}
 
-	updateQuery := `UPDATE Targets SET Computer = ?, Domain = ?, Address = ?, Os = ?, OsDesk = ?, Tag = ?, Info = ?, Alive = ?, Agents = ? WHERE TargetId = ?;`
+	updateQuery := `UPDATE Targets SET Computer = ?, Domain = ?, Address = ?, Os = ?, OsDesk = ?, Tag = ?, Info = ?, Alive = ?, Agents = ? WHERE TargetId = ? OR CAST(TargetId AS TEXT) = ?;`
 	stmt, err := tx.Prepare(updateQuery)
 	if err != nil {
 		_ = tx.Rollback()
@@ -168,7 +220,8 @@ func (dbms *DBMS) DbTargetUpdateBatch(targets []*adaptix.TargetData) error {
 	}(stmt)
 
 	for _, t := range targets {
-		_, err = stmt.Exec(t.Computer, t.Domain, t.Address, t.Os, t.OsDesk, t.Tag, t.Info, t.Alive, joinInt64s(t.Agents), t.TargetId)
+		idStr := strconv.FormatInt(t.TargetId, 10)
+		_, err = stmt.Exec(t.Computer, t.Domain, t.Address, t.Os, t.OsDesk, t.Tag, t.Info, t.Alive, joinInt64s(t.Agents), t.TargetId, idStr)
 		if err != nil {
 			_ = tx.Rollback()
 			return err
@@ -182,16 +235,12 @@ func (dbms *DBMS) DbTargetById(targetId int64) (*adaptix.TargetData, error) {
 	if !dbms.DatabaseExists() {
 		return nil, errors.New("database does not exist")
 	}
+	selectQuery := `SELECT TargetId, Computer, Domain, Address, Os, OsDesk, Tag, Info, Date, Alive, Agents FROM Targets WHERE TargetId = ? OR CAST(TargetId AS TEXT) = ? LIMIT 1;`
+	idStr := strconv.FormatInt(targetId, 10)
+	row := dbms.database.QueryRow(selectQuery, targetId, idStr)
 	target := &adaptix.TargetData{}
-	agentsStr := ""
-	selectQuery := `SELECT TargetId, Computer, Domain, Address, Os, OsDesk, Tag, Info, Date, Alive, Agents FROM Targets WHERE TargetId = ?;`
-	err := dbms.database.QueryRow(selectQuery, targetId).Scan(&target.TargetId, &target.Computer, &target.Domain, &target.Address, &target.Os,
-		&target.OsDesk, &target.Tag, &target.Info, &target.Date, &target.Alive, &agentsStr)
-	if err != nil {
+	if err := scanTargetRow(row, target); err != nil {
 		return nil, fmt.Errorf("target %d not found", targetId)
-	}
-	if agentsStr != "" {
-		target.Agents = splitInt64s(agentsStr)
 	}
 	return target, nil
 }
@@ -201,18 +250,45 @@ func (dbms *DBMS) DbTargetFindByMatch(address, computer, domain string) (*adapti
 		return nil, errors.New("database does not exist")
 	}
 
-	selectQuery := `SELECT TargetId, Computer, Domain, Address, Os, OsDesk, Tag, Info, Date, Alive, Agents FROM Targets WHERE (Address = ? AND Address != '') OR (LOWER(Computer) = LOWER(?) AND LOWER(Domain) = LOWER(?)) LIMIT 1;`
-	target := &adaptix.TargetData{}
-	agentsStr := ""
-	err := dbms.database.QueryRow(selectQuery, address, computer, domain).Scan(&target.TargetId, &target.Computer, &target.Domain, &target.Address, &target.Os,
-		&target.OsDesk, &target.Tag, &target.Info, &target.Date, &target.Alive, &agentsStr)
-	if err != nil {
-		return nil, fmt.Errorf("target not found")
+	address = strings.TrimSpace(address)
+	computer = strings.TrimSpace(computer)
+	domain = strings.TrimSpace(domain)
+
+	const cols = `TargetId, Computer, Domain, Address, Os, OsDesk, Tag, Info, Date, Alive, Agents`
+	const order = ` ORDER BY CASE WHEN CAST(TargetId AS TEXT) GLOB '[0-9]*' THEN 0 ELSE 1 END, Date DESC`
+
+	tryQuery := func(q string, args ...interface{}) *adaptix.TargetData {
+		rows, err := dbms.database.Query(q, args...)
+		if err != nil {
+			return nil
+		}
+		defer func() { _ = rows.Close() }()
+		for rows.Next() {
+			t := &adaptix.TargetData{}
+			if err := scanTargetRow(rows, t); err != nil {
+				continue
+			}
+			return t
+		}
+		return nil
 	}
-	if agentsStr != "" {
-		target.Agents = splitInt64s(agentsStr)
+
+	if address != "" {
+		if t := tryQuery(
+			`SELECT `+cols+` FROM Targets WHERE Address != '' AND Address = ?`+order,
+			address,
+		); t != nil {
+			return t, nil
+		}
 	}
-	return target, nil
+
+	if computer != "" {
+		if t := tryQuery(`SELECT `+cols+` FROM Targets WHERE Computer != '' AND LOWER(Computer) = LOWER(?) AND LOWER(IFNULL(Domain, '')) = LOWER(?)`+order, computer, domain); t != nil {
+			return t, nil
+		}
+	}
+
+	return nil, fmt.Errorf("target not found")
 }
 
 func (dbms *DBMS) DbTargetSetTagBatch(targetIds []int64, tag string) error {
@@ -242,7 +318,7 @@ func (dbms *DBMS) DbTargetsAll() []*adaptix.TargetData {
 		selectQuery := `SELECT TargetId, Computer, Domain, Address, Os, OsDesk, Tag, Info, Date, Alive, Agents FROM Targets ORDER BY Date;`
 		query, err := dbms.database.Query(selectQuery)
 		if err != nil {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query targets: %s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query targets: %s", err.Error())
 			return targets
 		}
 		defer func(query *sql.Rows) {
@@ -251,16 +327,9 @@ func (dbms *DBMS) DbTargetsAll() []*adaptix.TargetData {
 
 		for query.Next() {
 			targetData := &adaptix.TargetData{}
-			agentsStr := ""
-			err = query.Scan(&targetData.TargetId, &targetData.Computer, &targetData.Domain, &targetData.Address, &targetData.Os,
-				&targetData.OsDesk, &targetData.Tag, &targetData.Info, &targetData.Date, &targetData.Alive, &agentsStr)
-			if err != nil {
+			if err = scanTargetRow(query, targetData); err != nil {
 				continue
 			}
-			if agentsStr != "" {
-				targetData.Agents = splitInt64s(agentsStr)
-			}
-
 			targets = append(targets, targetData)
 		}
 	}
@@ -320,13 +389,8 @@ func (dbms *DBMS) DbTargetsGetPage(offset, limit int, filterExpr, sortCol, sortO
 	out := make([]adaptix.TargetData, 0, limit)
 	for rows.Next() {
 		var t adaptix.TargetData
-		agentsStr := ""
-		err := rows.Scan(&t.TargetId, &t.Computer, &t.Domain, &t.Address, &t.Os, &t.OsDesk, &t.Tag, &t.Info, &t.Date, &t.Alive, &agentsStr)
-		if err != nil {
+		if err := scanTargetRow(rows, &t); err != nil {
 			continue
-		}
-		if agentsStr != "" {
-			t.Agents = splitInt64s(agentsStr)
 		}
 		out = append(out, t)
 	}

@@ -67,12 +67,12 @@ void NotificationBadge::setWidget(QWidget* widget) {
       // Modify the parent to ensure the widget is not clipped.
       setParent(_widgetParent ? _widgetParent : _widget);
 
-      // Update the position.
       QTimer::singleShot(0, [this]() {
-        if (_widget->isVisible()) {
+        if (!_widget)
+          return;
+        updatePosition();
+        if (_widget->isVisible() && !_text.isEmpty())
           show();
-          updatePosition();
-        }
       });
     }
   }
@@ -92,6 +92,7 @@ void NotificationBadge::setText(const QString& text) {
     _text = simplifiedText;
     Q_EMIT textChanged();
     updateGeometry();
+    updatePosition();
   }
 }
 
@@ -200,14 +201,24 @@ bool NotificationBadge::eventFilter(QObject* obj, QEvent* evt) {
       break;
     case QEvent::Type::ParentChange:
       if (obj == _widget) {
+        if (_widgetParent)
+          _widgetParent->removeEventFilter(this);
         _widgetParent = _widget->parentWidget();
+        if (_widgetParent)
+          _widgetParent->installEventFilter(this);
+        setParent(_widgetParent.data() ? _widgetParent.data() : _widget.data());
+        if (!_text.isEmpty()) {
+          show();
+          raise();
+        }
         updatePosition();
       }
       break;
     case QEvent::Type::Show:
       if (obj == _widget) {
-        show();
         updatePosition();
+        if (!_text.isEmpty())
+          show();
       }
       break;
     case QEvent::Type::Hide:
@@ -249,11 +260,12 @@ void NotificationBadge::updatePosition() {
   }
 
   const auto widgetRect = _widget->geometry();
-  const auto badgeSize = size();
+  const auto badgeSize = sizeHint().expandedTo(minimumSizeHint());
 
   const auto x = widgetRect.x() + widgetRect.width() - badgeSize.width() + _relativePos.x();
   const auto y = widgetRect.y() + _relativePos.y();
 
+  setFixedSize(badgeSize);
   setGeometry(x, y, badgeSize.width(), badgeSize.height());
 }
 } // namespace oclero::qlementine

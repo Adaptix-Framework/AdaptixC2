@@ -206,7 +206,6 @@ SET( HEADERS
         Headers/Utils/FilterExpression.h
         Headers/UI/Models/GroupingProxyModel.h
         Headers/Utils/CustomElements/BoldHeaderView.h
-        Headers/Utils/CustomElements/CardListWidget.h
         Headers/Utils/CustomElements/ClickableLabel.h
         Headers/Utils/CustomElements/Delegates.h
         Headers/Utils/CustomElements/GroupManagerPopup.h
@@ -238,6 +237,14 @@ SET( HEADERS
         Headers/UI/Dialogs/DialogConsoleSearch.h
         Headers/UI/Models/AgentsFilterProxyModel.h
         Headers/UI/Widgets/TaskOutputWidget.h
+        Headers/UI/Dialogs/DialogImportCreds.h
+        Headers/UI/Dialogs/DialogImportTargets.h
+        Headers/Utils/Import/CredsImport.h
+        Headers/Utils/Import/TargetsImport.h
+        Headers/Utils/ChatLayoutHelpers.h
+        Headers/Utils/CustomElements/ControlCard.h
+        Headers/Utils/CustomElements/CardListWidget.h
+        Headers/Client/AxScript/BridgeProcess.h
 )
 
 add_executable(AdaptixClient
@@ -349,6 +356,12 @@ add_executable(AdaptixClient
         Source/UI/Widgets/TargetsFeedWidget.cpp
         Source/UI/Dialogs/DialogConsoleSearch.cpp
         Source/UI/Widgets/TaskOutputWidget.cpp
+        Source/UI/Dialogs/DialogImportCreds.cpp
+        Source/UI/Dialogs/DialogImportTargets.cpp
+        Source/Utils/Import/CredsImport.cpp
+        Source/Utils/Import/TargetsImport.cpp
+        Source/Utils/CustomElements/ControlCard.cpp
+        Source/Client/AxScript/BridgeProcess.cpp
 )
 
 target_compile_definitions(

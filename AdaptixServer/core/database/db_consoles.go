@@ -54,7 +54,7 @@ func (dbms *DBMS) DbConsoleAll(agentId int64) [][]byte {
 				consoles = append(consoles, message)
 			}
 		} else {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query consoles: %s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query consoles: %s", err.Error())
 		}
 	}
 	return consoles
@@ -78,7 +78,7 @@ func (dbms *DBMS) DbConsoleLimited(agentId int64, limit int) [][]byte {
 				consoles = append(consoles, message)
 			}
 		} else {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query consoles: %s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query consoles: %s", err.Error())
 		}
 	}
 	for i, j := 0, len(consoles)-1; i < j; i, j = i+1, j-1 {

@@ -110,7 +110,7 @@ func (dbms *DBMS) DbDownloadAll() []adaptix.TransferData {
 		selectQuery := `SELECT FileId, AgentId, AgentName, User, Computer, RemotePath, LocalPath, TotalSize, RecvSize, Date, State, Tag FROM Downloads ORDER BY Date;`
 		query, err := dbms.database.Query(selectQuery)
 		if err != nil {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query downloads: %s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query downloads: %s", err.Error())
 			return downloads
 		}
 		defer func(query *sql.Rows) {

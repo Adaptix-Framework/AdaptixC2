@@ -13,6 +13,8 @@
 
 #include <QPointer>
 #include <QToolButton>
+#include <QSet>
+#include <QHash>
 
 
 class Agent;
@@ -80,6 +82,10 @@ class ConsoleWidget : public DockTab
     int  effectiveLoadLimit() const;
 
     bool userSelectedCompletion = false;
+
+    mutable QSet<QString> m_consoleTaskPrompted;  // taskId → prompt already printed
+    mutable QSet<QString> m_consoleTaskClosed;    // taskId → completed footer already printed
+    mutable QSet<QString> m_consoleTaskMsgKeys;   // taskId|type|message|text → body already printed
 
     Agent*     agent     = nullptr;
     Commander* commander = nullptr;

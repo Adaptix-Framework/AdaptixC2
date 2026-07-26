@@ -105,7 +105,7 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
 					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color, TargetId, CustomData FROM Agents;`
 		query, err := dbms.database.Query(selectQuery)
 		if err != nil {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query agents: %s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query agents: %s", err.Error())
 			return agents
 		}
 		defer func(query *sql.Rows) {
@@ -122,7 +122,7 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
 				&agentData.Tags, &agentData.Mark, &agentData.Color, &agentData.TargetId, &agentData.CustomData,
 			)
 			if err != nil {
-				dbms.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server:database", "failed to scan agent row: %v", err)
+				dbms.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "database", "failed to scan agent row: %v", err)
 				continue
 			}
 			agents = append(agents, agentData)

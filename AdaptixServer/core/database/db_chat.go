@@ -55,7 +55,7 @@ func (dbms *DBMS) DbChatRecent(limit int, beforeId int64) []ChatDataEx {
 		)
 	}
 	if err != nil {
-		dbms.ts.TsLogAdd(0, 0, "server:database", "%s", err.Error())
+		dbms.ts.TsLogAdd(0, 0, "server", "database", "%s", err.Error())
 		return messages
 	}
 	defer func() { _ = rows.Close() }()
@@ -96,7 +96,7 @@ func (dbms *DBMS) DbChatSearch(query string, limit int, beforeId int64) []ChatDa
 		)
 	}
 	if err != nil {
-		dbms.ts.TsLogAdd(0, 0, "server:database", "%s", err.Error())
+		dbms.ts.TsLogAdd(0, 0, "server", "database", "%s", err.Error())
 		return messages
 	}
 	defer func() { _ = rows.Close() }()

@@ -60,7 +60,7 @@ func (ex *AdaptixExtender) ExServiceLoad(configPath string) error {
 		axPath := filepath.Dir(configPath) + "/" + configService.AxFile
 		axContent, err := os.ReadFile(axPath)
 		if err != nil {
-			ex.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server:extender_manager", "failed to read ax file %s: %s", axPath, err.Error())
+			ex.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "extender", "failed to read ax file %s: %s", axPath, err.Error())
 		} else {
 			serviceInfo.AX = string(axContent)
 		}
@@ -72,7 +72,7 @@ func (ex *AdaptixExtender) ExServiceLoad(configPath string) error {
 	}
 
 	ex.serviceModules.Put(serviceInfo.Name, plService)
-	ex.ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server:extender_manager", "Service '%s' loaded", configService.ServiceName)
+	ex.ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server", "extender", "Service '%s' loaded", configService.ServiceName)
 	return nil
 }
 
@@ -87,7 +87,7 @@ func (ex *AdaptixExtender) ExServiceUnload(serviceName string) error {
 	}
 
 	ex.serviceModules.Delete(serviceName)
-	ex.ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server:extender_manager", "Service '%s' unloaded", serviceName)
+	ex.ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server", "extender", "Service '%s' unloaded", serviceName)
 	return nil
 }
 

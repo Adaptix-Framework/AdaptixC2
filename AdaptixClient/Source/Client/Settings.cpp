@@ -85,6 +85,28 @@ void Settings::SetDefault()
     this->data.PageSize = 100;
 
     this->data.TabBlinkEnabled = true;
+
+    this->data.ScriptServer.fileRead  = true;
+    this->data.ScriptServer.fileWrite = false;
+    this->data.ScriptServer.process   = false;
+    this->data.ScriptServer.sandboxFs = true;
+
+    this->data.ScriptLocal.fileRead  = true;
+    this->data.ScriptLocal.fileWrite = true;
+    this->data.ScriptLocal.process   = false;
+    this->data.ScriptLocal.sandboxFs = true;
+
+    this->data.ScriptEditor.fileRead  = true;
+    this->data.ScriptEditor.fileWrite = true;
+    this->data.ScriptEditor.process   = false;
+    this->data.ScriptEditor.sandboxFs = true;
+
+    this->data.ScriptEditorAction.fileRead  = true;
+    this->data.ScriptEditorAction.fileWrite = true;
+    this->data.ScriptEditorAction.process   = true;
+    this->data.ScriptEditorAction.sandboxFs = true;
+
+    this->data.ScriptSandboxDir.clear();
 }
 
 void Settings::LoadFromDB()
@@ -98,6 +120,7 @@ void Settings::LoadFromDB()
     mainAdaptix->storage->SelectSettingsCredentials( &data );
     mainAdaptix->storage->SelectSettingsFiles( &data );
     mainAdaptix->storage->SelectSettingsTabBlink( &data );
+    mainAdaptix->storage->SelectSettingsScript( &data );
 }
 
 void Settings::SaveToDB() const
@@ -111,4 +134,5 @@ void Settings::SaveToDB() const
     mainAdaptix->storage->UpdateSettingsCredentials( data );
     mainAdaptix->storage->UpdateSettingsFiles( data );
     mainAdaptix->storage->UpdateSettingsTabBlink( data );
+    mainAdaptix->storage->UpdateSettingsScript( data );
 }

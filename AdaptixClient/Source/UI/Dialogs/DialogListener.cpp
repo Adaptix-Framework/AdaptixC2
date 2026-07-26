@@ -40,6 +40,11 @@ void DialogListener::createUI()
     inputListenerName = new QLineEdit(this);
     inputListenerName->setToolTip("Listener name");
 
+    listenerTagLabel = new QLabel("Tag:", this);
+    inputListenerTag = new QLineEdit(this);
+    inputListenerTag->setToolTip("Optional tags for this listener");
+    inputListenerTag->setPlaceholderText("tag…");
+
     configStackWidget = new QStackedWidget(this);
 
     stackGridLayout = new QGridLayout(this);
@@ -61,7 +66,9 @@ void DialogListener::createUI()
     leftPanelLayout->addWidget(listenerCombobox,       0, 3);
 
     leftPanelLayout->addWidget(listenerNameLabel,      1, 0);
-    leftPanelLayout->addWidget(inputListenerName,      1, 1, 1, 3);
+    leftPanelLayout->addWidget(inputListenerName,      1, 1);
+    leftPanelLayout->addWidget(listenerTagLabel,       1, 2);
+    leftPanelLayout->addWidget(inputListenerTag,       1, 3);
 
     leftPanelLayout->addWidget(listenerConfigGroupbox, 2, 0, 1, 4);
 
@@ -69,7 +76,7 @@ void DialogListener::createUI()
     leftPanelLayout->setRowStretch(1, 0);
     leftPanelLayout->setRowStretch(2, 1);
     leftPanelLayout->setColumnStretch(0, 0);
-    leftPanelLayout->setColumnStretch(1, 1);
+    leftPanelLayout->setColumnStretch(1, 2);
     leftPanelLayout->setColumnStretch(2, 0);
     leftPanelLayout->setColumnStretch(3, 1);
 
@@ -86,8 +93,8 @@ void DialogListener::createUI()
     separatorLine->setFrameShadow(QFrame::Sunken);
 
     menuContext = new oclero::qlementine::Menu(this);
-    menuContext->addAction("Rename", this, &DialogListener::onProfileRename);
-    menuContext->addAction("Remove", this, &DialogListener::onProfileRemove);
+    menuContext->addAction(QIcon(":/icons/edit_note"), "Rename", this, &DialogListener::onProfileRename);
+    menuContext->addAction(QIcon(":/icons/delete"), "Remove", this, &DialogListener::onProfileRemove);
 
     label_Profiles = new QLabel("Profiles", this);
     label_Profiles->setObjectName("ProfilesHeader");
@@ -228,11 +235,13 @@ void DialogListener::SetProfile(const AuthProfile &profile)
     loadProfiles();
 }
 
-void DialogListener::SetEditMode(const QString &name)
+void DialogListener::SetEditMode(const QString &name, const QString &tags)
 {
     this->setWindowTitle( "Edit Listener" );
     inputListenerName->setText(name);
     inputListenerName->setDisabled(true);
+    if (inputListenerTag)
+        inputListenerTag->setText(tags);
     listenerCombobox->setDisabled(true);
     listenerTypeCombobox->setDisabled(true);
     buttonCreate->setText("Edit");
@@ -272,6 +281,7 @@ void DialogListener::onButtonCreate()
 {
     auto configName = inputListenerName->text();
     auto configType = listenerCombobox->currentText();
+    auto tags = inputListenerTag ? inputListenerTag->text().trimmed() : QString();
     auto profileName = inputProfileName->text().trimmed();
     bool shouldSaveProfile = actionSaveProfile->isChecked() && !profileName.isEmpty();
 
@@ -295,19 +305,20 @@ void DialogListener::onButtonCreate()
                 safeThis->buttonCreate->setEnabled(true);
                 safeThis->buttonCreate->setText(isEditMode ? "Edit" : "Create");
             }
-        } else {
-            if (shouldSaveProfile) {
-                safeThis->saveProfile(profileName, configName, configType, configData);
-                safeThis->loadProfiles();
-            }
-            safeThis->close();
+            return;
         }
+
+        if (shouldSaveProfile) {
+            safeThis->saveProfile(profileName, configName, configType, configData);
+            safeThis->loadProfiles();
+        }
+        safeThis->close();
     };
 
     if (editMode)
-        HttpReqListenerEditAsync(configName, configType, configData, authProfile, callback);
+        HttpReqListenerEditAsync(configName, configType, configData, tags, authProfile, callback);
     else
-        HttpReqListenerStartAsync(configName, configType, configData, authProfile, callback);
+        HttpReqListenerStartAsync(configName, configType, configData, tags, authProfile, callback);
 }
 
 void DialogListener::saveProfile(const QString &profileName, const QString &configName, const QString &configType, const QString &configData)
@@ -424,6 +435,8 @@ void DialogListener::onButtonSave()
 void DialogListener::onButtonNewProfile()
 {
     inputListenerName->clear();
+    if (inputListenerTag)
+        inputListenerTag->clear();
     inputProfileName->clear();
     cardWidget->clearSelection();
     actionSaveProfile->setChecked(true);

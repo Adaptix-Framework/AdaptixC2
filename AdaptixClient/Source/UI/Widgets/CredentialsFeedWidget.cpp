@@ -1,6 +1,8 @@
 #include <UI/Widgets/CredentialsFeedWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Dialogs/DialogCredential.h>
+#include <UI/Dialogs/DialogImportCreds.h>
+#include <Utils/Logs.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/Settings.h>
@@ -83,7 +85,9 @@ static ListFeedDelegate* createCredsDelegate(QObject* parent)
     auto* d = new ListFeedDelegate(parent);
     d->addBlock(new IdBadgeBlock());
     d->addBlock(new TextBlock());
-    d->addBlock(new MainBlock());
+    auto* main = new MainBlock();
+    main->setMainTextPointOffset(-0.5);
+    d->addBlock(main);
     d->addBlock(new TagsBlock());
     d->addBlock(new TextBlock());
     d->addBlock(new GroupHeaderBlock());
@@ -109,6 +113,13 @@ CredentialsFeedWidget::CredentialsFeedWidget(AdaptixWidget* w) : ListFeedWidget(
     finalizeSearchWidget();
 
     enablePagination(true);
+
+    auto* importBtn = new QPushButton(this);
+    importBtn->setIcon(QIcon(QStringLiteral(":/icons/file_open")));
+    importBtn->setToolTip(QStringLiteral("Import from file"));
+    importBtn->setFixedSize(28, 28);
+    connect(importBtn, &QPushButton::clicked, this, &CredentialsFeedWidget::onImportCreds);
+    addToolbarWidgetAfter(importBtn);
 
     auto* addBtn = new QPushButton("+ Add Credential", this);
     connect(addBtn, &QPushButton::clicked, this, &CredentialsFeedWidget::onCreateCreds);
@@ -575,22 +586,40 @@ void CredentialsFeedWidget::handleFeedMenu(const QPoint& pos)
                 if (credsStr.isEmpty())
                     credsStr.append(QString::number(credId));
 
-                ctxMenu.addAction("Edit",   this, &CredentialsFeedWidget::onEditCreds);
-                ctxMenu.addAction("Remove", this, &CredentialsFeedWidget::onRemoveCreds);
+                ctxMenu.addAction(QIcon(":/icons/edit_note"), "Edit", this, &CredentialsFeedWidget::onEditCreds);
+                ctxMenu.addAction(QIcon(":/icons/delete"), "Remove", this, &CredentialsFeedWidget::onRemoveCreds);
                 ctxMenu.addSeparator();
 
                 int centerCount = m_adaptixWidget->ScriptManager->AddMenuCreds(&ctxMenu, "Creds", credsStr);
                 if (centerCount > 0)
                     ctxMenu.addSeparator();
 
-                ctxMenu.addAction("Set tag",           this, &CredentialsFeedWidget::onSetTag);
-                ctxMenu.addAction("Export to file",    this, &CredentialsFeedWidget::onExportCreds);
-                ctxMenu.addAction("Copy to clipboard", this, &CredentialsFeedWidget::onCopyToClipboard);
+                ctxMenu.addAction(QIcon(":/icons/tag"), "Set tag", this, &CredentialsFeedWidget::onSetTag);
+                ctxMenu.addAction(QIcon(":/icons/save_as"), "Export to file", this, &CredentialsFeedWidget::onExportCreds);
+                ctxMenu.addAction(QIcon(":/icons/copy_all"), "Copy to clipboard", this, &CredentialsFeedWidget::onCopyToClipboard);
             }
         }
     }
 
     ctxMenu.exec(treeView()->viewport()->mapToGlobal(pos));
+}
+
+void CredentialsFeedWidget::onImportCreds()
+{
+    if (!m_adaptixWidget)
+        return;
+
+    DialogImportCreds dialog(this);
+    dialog.StartDialog();
+    if (!dialog.IsValid())
+        return;
+
+    const QList<CredentialData> list = dialog.GetCreds();
+    if (list.isEmpty())
+        return;
+
+    CredentialsAdd(list);
+    MessageSuccess(QStringLiteral("Importing %1 credential(s)…").arg(list.size()));
 }
 
 void CredentialsFeedWidget::onCreateCreds()

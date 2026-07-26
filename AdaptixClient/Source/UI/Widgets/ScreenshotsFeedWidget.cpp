@@ -919,9 +919,9 @@ void ScreenshotsFeedWidget::handleFeedMenu(const QPoint& pos)
         return;
 
     oclero::qlementine::Menu ctxMenu;
-    ctxMenu.addAction("Set note", this, &ScreenshotsFeedWidget::actionNote);
-    ctxMenu.addAction("Download", this, &ScreenshotsFeedWidget::actionDownload);
-    ctxMenu.addAction("Delete",   this, &ScreenshotsFeedWidget::actionDelete);
+    ctxMenu.addAction(QIcon(":/icons/notes"), "Set note", this, &ScreenshotsFeedWidget::actionNote);
+    ctxMenu.addAction(QIcon(":/icons/downloads"), "Download", this, &ScreenshotsFeedWidget::actionDownload);
+    ctxMenu.addAction(QIcon(":/icons/delete"), "Delete", this, &ScreenshotsFeedWidget::actionDelete);
     ctxMenu.exec(view->viewport()->mapToGlobal(pos));
 }
 

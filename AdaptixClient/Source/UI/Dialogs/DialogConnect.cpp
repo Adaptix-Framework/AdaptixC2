@@ -268,7 +268,7 @@ void DialogConnect::createUI()
     formWidget->setLayout(formLayout);
 
     menuContext = new oclero::qlementine::Menu(this);
-    menuContext->addAction("Remove", this, &DialogConnect::itemRemove);
+    menuContext->addAction(QIcon(":/icons/delete"), "Remove", this, &DialogConnect::itemRemove);
 
     label_Profiles = new QLabel(this);
     label_Profiles->setAlignment(Qt::AlignCenter);

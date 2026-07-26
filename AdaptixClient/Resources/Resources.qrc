@@ -6,6 +6,27 @@
         <file alias="Back">Back.png</file>
     </qresource>
 
+    <qresource prefix="/axscript">
+        <file alias="panels/axscript_panel.axs">axscript/panels/axscript_panel.axs</file>
+        <file alias="panels/bof_panel.axs">axscript/panels/bof_panel.axs</file>
+        <file alias="panels/custom_panel.axs">axscript/panels/custom_panel.axs</file>
+        <file alias="panels/event_handler_panel.axs">axscript/panels/event_handler_panel.axs</file>
+
+        <file alias="actions/axscript_run.axs">axscript/actions/axscript_run.axs</file>
+        <file alias="actions/axscript_stop.axs">axscript/actions/axscript_stop.axs</file>
+        <file alias="actions/bof_build.axs">axscript/actions/bof_build.axs</file>
+        <file alias="actions/bof_stop.axs">axscript/actions/bof_stop.axs</file>
+        <file alias="actions/event_handler_helpers.axs">axscript/actions/event_handler_helpers.axs</file>
+        <file alias="actions/event_handler_register.axs">axscript/actions/event_handler_register.axs</file>
+        <file alias="actions/event_handler_test_local.axs">axscript/actions/event_handler_test_local.axs</file>
+
+        <file alias="templates/handler_shell.axs">axscript/templates/handler_shell.axs</file>
+        <file alias="templates/handler_body_agent.axs">axscript/templates/handler_body_agent.axs</file>
+        <file alias="templates/handler_body_task.axs">axscript/templates/handler_body_task.axs</file>
+        <file alias="templates/handler_body_client.axs">axscript/templates/handler_body_client.axs</file>
+        <file alias="templates/handler_body_generic.axs">axscript/templates/handler_body_generic.axs</file>
+    </qresource>
+
     <qresource prefix="/fonts">
         <file alias="Hack">fonts/Hack/Hack-Regular.ttf</file>
         <file alias="Hack_B">fonts/Hack/Hack-Bold.ttf</file>
@@ -35,6 +56,7 @@
         <file alias="listeners">icons/headphones_64dp.png</file>
         <file alias="extension">icons/extension_64dp.png</file>
         <file alias="folder_code">icons/folder_code_64dp.png</file>
+        <file alias="code_blocks">icons/code_blocks_64dp.png</file>
         <file alias="code">icons/code_xml_64dp.png</file>
         <file alias="format_list">icons/format_list_bulleted_64dp.png</file>
         <file alias="graph">icons/hub_64dp.png</file>
@@ -73,6 +95,48 @@
         <file alias="delete">icons/delete_64dp.png</file>
         <file alias="new_file">icons/new_window_64dp.png</file>
         <file alias="open_folder">icons/folder_open_64dp.png</file>
+        <file alias="notes">icons/notes_64dp.png</file>
+        <file alias="reply">icons/reply_64dp.png</file>
+        <file alias="forum">icons/forum_64dp.png</file>
+        <file alias="keyboard_command">icons/keyboard_command_key_64dp.png</file>
+        <file alias="tag">icons/tag_64dp.png</file>
+        <file alias="settings">icons/settings_64dp.png</file>
+
+        <file alias="visibility">icons/visibility_64dp.png</file>
+        <file alias="visibility_off">icons/visibility_off_64dp.png</file>
+        <file alias="agent">icons/vacuum_64dp.png</file>
+        <file alias="edit_note">icons/edit_note_64dp.png</file>
+        <file alias="kill">icons/kill_64dp.png</file>
+        <file alias="wrap_text">icons/wrap_text_64dp.png</file>
+        <file alias="bottom_drawer">icons/bottom_drawer_64dp.png</file>
+        <file alias="dock_bottom">icons/dock_bottom_64dp.png</file>
+        <file alias="dock_left">icons/dock_left_64dp.png</file>
+        <file alias="dock_right">icons/dock_right_64dp.png</file>
+        <file alias="computer">icons/computer_64dp.png</file>
+        <file alias="terminal">icons/terminal_64dp.png</file>
+        <file alias="interact">icons/interact_64dp.png</file>
+        <file alias="dns">icons/dns_64dp.png</file>
+        <file alias="info">icons/info_64dp.png</file>
+        <file alias="wifi">icons/wifi_64dp.png</file>
+        <file alias="wifi_null">icons/wifi_null_64dp.png</file>
+        <file alias="wifi_signal">icons/wifi_signal_64dp.png</file>
+        <file alias="wifi_off">icons/wifi_off_64dp.png</file>
+        <file alias="power">icons/power_64dp.png</file>
+        <file alias="view_headline">icons/view_headline_64dp.png</file>
+        <file alias="notifications_off">icons/notifications_off_64dp.png</file>
+        <file alias="notification">icons/notification_64dp.png</file>
+        <file alias="tabs">icons/tabs_64dp.png</file>
+        <file alias="snippet_folder">icons/snippet_folder_64dp.png</file>
+        <file alias="exchange">icons/exchange_64dp.png</file>
+        <file alias="arrow_cool_down">icons/arrow_cool_down_64dp.png</file>
+        <file alias="arrow_warm_up">icons/arrow_warm_up_64dp.png</file>
+        <file alias="data_arrows">icons/data_arrows_64dp.png</file>
+        <file alias="two_pager">icons/two_pager_64dp.png</file>
+        <file alias="color_fill">icons/color_fill_64dp.png</file>
+        <file alias="color_reset">icons/color_reset_64dp.png</file>
+        <file alias="color_text">icons/color_text_64dp.png</file>
+        <file alias="add_reaction">icons/add_reaction_64dp.png</file>
+        <file alias="copy_all">icons/copy_all_64dp.png</file>
 
         <file alias="fs_ssd">icons/filesystem/ssd_64dp.png</file>
         <file alias="fs_document">icons/filesystem/document_64dp.png</file>

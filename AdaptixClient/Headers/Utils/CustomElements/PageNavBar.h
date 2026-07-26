@@ -19,6 +19,7 @@ Q_OBJECT
     QSpinBox*    pageSizeSpin  = nullptr;
     QTimer*      filterDebounce = nullptr;
     int          m_lastAppliedSize = 100;
+    bool         m_isolated        = false;
 
     static QList<PageNavBar*> s_instances;
 
@@ -37,6 +38,8 @@ public:
     void setLoading(bool loading);
 
     int  pageSize() const;
+    void setPageSize(int size, bool syncGlobal = true);
+    void setIsolated(bool isolated);
 
     QString filterText() const;
     void    clearFilter();

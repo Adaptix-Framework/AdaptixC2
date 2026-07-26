@@ -1,0 +1,24 @@
+# Single-plugin repository — agent using make + dist/.
+#
+# Copy to the plugin repository root as axtool.spec and edit.
+
+extenders:
+  - name: my_agent
+    version: 0.1.0
+    type: agent
+    description: "My agent plugin"
+    author: Your Name <you@example.com>
+
+    min_server_version: "v2.0"
+
+    requires:
+      - my_listener
+
+    build:
+      - make
+
+    # After build, copy everything under dist/ into <ext_dir>/my_agent/
+    release:
+      dir: dist/
+      # Optional: if config is not named config.yaml / config.yml:
+      # config: my_config.yaml

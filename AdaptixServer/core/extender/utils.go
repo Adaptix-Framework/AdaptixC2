@@ -73,8 +73,8 @@ type ServiceInfo struct {
 /// Plugin Interfaces
 
 type Teamserver interface {
-	TsLogAdd(status adaptix.LogStatus, level int, source string, format string, args ...any)
-	TsLogWriter(status adaptix.LogStatus, source string) io.Writer
+	TsLogAdd(status adaptix.LogStatus, level int, source, category string, format string, args ...any)
+	TsLogWriter(status adaptix.LogStatus, source, category string) io.Writer
 
 	TsListenerReg(listenerInfo ListenerInfo) error
 	TsListenerRegByName(listenerName string) (string, error)

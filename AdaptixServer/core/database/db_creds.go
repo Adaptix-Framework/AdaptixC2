@@ -54,7 +54,7 @@ func (dbms *DBMS) DbCredentialsAdd(credsData []*adaptix.CredsData) error {
 		_, err = stmt.Exec(creds.CredId, creds.Username, creds.Password, creds.Realm, creds.Type,
 			creds.Tag, creds.Date, creds.Storage, creds.AgentId, creds.Host)
 		if err != nil {
-			dbms.ts.TsLogAdd(adaptix.LogStatusError, 0, "server:database", "%s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "database", "%s", err.Error())
 			continue
 		}
 	}
@@ -200,7 +200,7 @@ func (dbms *DBMS) DbCredentialsAll() []*adaptix.CredsData {
 		selectQuery := `SELECT CredId, Username, Password, Realm, Type, Tag, Date, Storage, AgentId, Host FROM Credentials ORDER BY Date;`
 		query, err := dbms.database.Query(selectQuery)
 		if err != nil {
-			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query credentials: %s", err.Error())
+			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query credentials: %s", err.Error())
 			return creds
 		}
 		defer func(query *sql.Rows) {
@@ -230,7 +230,7 @@ func (dbms *DBMS) DbCredentialsLimited(limit int) []*adaptix.CredsData {
 	selectQuery := `SELECT CredId, Username, Password, Realm, Type, Tag, Date, Storage, AgentId, Host FROM Credentials ORDER BY Date DESC LIMIT ?;`
 	rows, err := dbms.database.Query(selectQuery, limit)
 	if err != nil {
-		dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server:database", "Failed to query credentials: %s", err.Error())
+		dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query credentials: %s", err.Error())
 		return creds
 	}
 	defer func() { _ = rows.Close() }()

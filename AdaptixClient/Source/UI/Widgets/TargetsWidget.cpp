@@ -2,6 +2,8 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogTarget.h>
+#include <UI/Dialogs/DialogImportTargets.h>
+#include <Utils/Logs.h>
 #include <Client/Requestor.h>
 #include <Client/AuthProfile.h>
 #include <Client/Settings.h>
@@ -279,6 +281,8 @@ void TargetsWidget::createUI()
     tableView->horizontalHeader()->setSectionResizeMode(TRC_Tag,      QHeaderView::Stretch);
     tableView->horizontalHeader()->setSectionResizeMode(TRC_Os,       QHeaderView::Stretch);
     tableView->horizontalHeader()->setSectionResizeMode(TRC_Info,     QHeaderView::Stretch);
+
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
 
     this->UpdateColumnsVisible();
 
@@ -589,7 +593,8 @@ void TargetsWidget::TargetsAdd(QList<TargetData> targetList)
 void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
 {
     oclero::qlementine::Menu ctxMenu;
-    ctxMenu.addAction("Create", this, &TargetsWidget::onCreateTarget );
+    ctxMenu.addAction(QIcon(":/icons/plus"), "Create", this, &TargetsWidget::onCreateTarget );
+    ctxMenu.addAction(QIcon(":/icons/file_open"), "Import...", this, &TargetsWidget::onImportTargets );
 
     QModelIndex index = tableView->indexAt(pos);
     if (index.isValid()) {
@@ -609,21 +614,36 @@ void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
         if (topCount > 0)
             ctxMenu.addSeparator();
 
-        ctxMenu.addAction("Edit",   this, &TargetsWidget::onEditTarget );
-        ctxMenu.addAction("Remove", this, &TargetsWidget::onRemoveTarget );
+        ctxMenu.addAction(QIcon(":/icons/edit_note"), "Edit", this, &TargetsWidget::onEditTarget );
+        ctxMenu.addAction(QIcon(":/icons/delete"), "Remove", this, &TargetsWidget::onRemoveTarget );
         ctxMenu.addSeparator();
 
         int centerCount = adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsCenter", targets);
         if (centerCount > 0)
             ctxMenu.addSeparator();
 
-        ctxMenu.addAction("Set tag",           this, &TargetsWidget::onSetTag );
-        ctxMenu.addAction("Export to file",    this, &TargetsWidget::onExportTarget );
-        ctxMenu.addAction("Copy to clipboard", this, &TargetsWidget::onCopyToClipboard );
+        ctxMenu.addAction(QIcon(":/icons/tag"), "Set tag", this, &TargetsWidget::onSetTag );
+        ctxMenu.addAction(QIcon(":/icons/save_as"), "Export to file", this, &TargetsWidget::onExportTarget );
+        ctxMenu.addAction(QIcon(":/icons/copy_all"), "Copy to clipboard", this, &TargetsWidget::onCopyToClipboard );
         adaptixWidget->ScriptManager->AddMenuTargets(&ctxMenu, "TargetsBottom", targets);
     }
     QPoint globalPos = tableView->mapToGlobal(pos);
     ctxMenu.exec(globalPos);
+}
+
+void TargetsWidget::onImportTargets()
+{
+    DialogImportTargets dialog(this);
+    dialog.StartDialog();
+    if (!dialog.IsValid())
+        return;
+
+    const QList<TargetData> list = dialog.GetTargets();
+    if (list.isEmpty())
+        return;
+
+    TargetsAdd(list);
+    MessageSuccess(QStringLiteral("Importing %1 target(s)…").arg(list.size()));
 }
 
 void TargetsWidget::onCreateTarget()

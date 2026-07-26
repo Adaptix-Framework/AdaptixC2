@@ -76,7 +76,7 @@ func (ts *Teamserver) TsDownloadAdd(agentId int64, fileId int64, fileName string
 	ts.downloads.Put(downloadData.FileId, downloadData)
 
 	if err := ts.DBMS.DbDownloadInsert(downloadData); err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:transfer_manager", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "transfer_manager", "%s", err.Error())
 	}
 
 	packet := CreateSpTransferCreate(downloadData, TRANSFER_DOWNLOAD)
@@ -168,7 +168,7 @@ func (ts *Teamserver) TsDownloadClose(fileId int64, reason int) error {
 
 	err := ts.DBMS.DbDownloadUpdateState(downloadData.FileId, downloadData.State, downloadData.Progress)
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:transfer_manager", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "transfer_manager", "%s", err.Error())
 	}
 
 	packet := CreateSpTransferUpdate(downloadData, TRANSFER_DOWNLOAD)
@@ -230,7 +230,7 @@ func (ts *Teamserver) TsDownloadSave(agentId int64, fileId int64, filename strin
 
 	err = ts.DBMS.DbDownloadInsert(downloadData)
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:transfer_manager", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "transfer_manager", "%s", err.Error())
 	}
 
 	return nil

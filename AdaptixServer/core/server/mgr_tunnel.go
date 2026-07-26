@@ -134,7 +134,16 @@ func (tm *TunnelManager) statsLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			tm.ForEachTunnel(func(key int64, tunnel *Tunnel) bool {
-				packet := CreateSpTunnelCreate(tunnel.Data, tunnel.BytesSent.Load(), tunnel.BytesRecv.Load())
+				if tunnel == nil {
+					return true
+				}
+				tunnel.mu.RLock()
+				d := tunnel.Data
+				d.Active = tunnel.Active
+				sent := tunnel.BytesSent.Load()
+				recv := tunnel.BytesRecv.Load()
+				tunnel.mu.RUnlock()
+				packet := CreateSpTunnelCreate(d, sent, recv)
 				tm.ts.TsSyncAllClientsWithCategory(packet, SyncCategoryTunnels)
 				return true
 			})
@@ -442,7 +451,9 @@ func (tm *TunnelManager) ListTunnels() []adaptix.TunnelData {
 	var tunnels []adaptix.TunnelData
 	tm.tunnels.ForEachFast(func(key int64, tunnel *Tunnel) bool {
 		tunnel.mu.RLock()
-		tunnels = append(tunnels, tunnel.Data)
+		d := tunnel.Data
+		d.Active = tunnel.Active
+		tunnels = append(tunnels, d)
 		tunnel.mu.RUnlock()
 		return true
 	})

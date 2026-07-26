@@ -126,7 +126,7 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId int64, chAgentId in
 	if !isRestore {
 		err := ts.DBMS.DbPivotInsert(*pivotData)
 		if err != nil {
-			ts.TsLogAdd(adaptix.LogStatusError, 0, "server:pivot", "%s", err.Error())
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "pivot", "%s", err.Error())
 		}
 	}
 
@@ -185,7 +185,7 @@ func (ts *Teamserver) TsPivotDelete(pivotId string) error {
 
 	err := ts.DBMS.DbPivotDelete(pivotId)
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server:pivot", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "pivot", "%s", err.Error())
 	}
 
 	packet := CreateSpPivotDelete(pivotId)

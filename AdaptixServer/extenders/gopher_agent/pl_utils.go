@@ -5,10 +5,39 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 )
+
+func goAgentBuildEnv(overrides map[string]string) []string {
+	env := os.Environ()
+	if len(overrides) == 0 {
+		return env
+	}
+	out := make([]string, 0, len(env)+len(overrides))
+	seen := make(map[string]struct{}, len(overrides))
+	for _, e := range env {
+		key, _, ok := strings.Cut(e, "=")
+		if !ok {
+			out = append(out, e)
+			continue
+		}
+		if val, hit := overrides[key]; hit {
+			out = append(out, key+"="+val)
+			seen[key] = struct{}{}
+			continue
+		}
+		out = append(out, e)
+	}
+	for k, v := range overrides {
+		if _, ok := seen[k]; !ok {
+			out = append(out, k+"="+v)
+		}
+	}
+	return out
+}
 
 type Profile struct {
 	Type        uint     `msgpack:"type"`

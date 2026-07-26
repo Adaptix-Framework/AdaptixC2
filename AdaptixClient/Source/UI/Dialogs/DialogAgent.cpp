@@ -151,8 +151,8 @@ void DialogAgent::createUI()
     buildButton->setFocus();
 
     menuContext = new oclero::qlementine::Menu(this);
-    menuContext->addAction("Rename", this, &DialogAgent::onProfileRename);
-    menuContext->addAction("Remove", this, &DialogAgent::onProfileRemove);
+    menuContext->addAction(QIcon(":/icons/edit_note"), "Rename", this, &DialogAgent::onProfileRename);
+    menuContext->addAction(QIcon(":/icons/delete"), "Remove", this, &DialogAgent::onProfileRemove);
 
     label_Profiles = new QLabel(this);
     label_Profiles->setText("Profiles");

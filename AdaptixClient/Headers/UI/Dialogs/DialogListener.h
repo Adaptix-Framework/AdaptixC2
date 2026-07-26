@@ -18,6 +18,8 @@ Q_OBJECT
     QGridLayout*    stackGridLayout        = nullptr;
     QLabel*         listenerNameLabel      = nullptr;
     QLineEdit*      inputListenerName      = nullptr;
+    QLabel*         listenerTagLabel       = nullptr;
+    QLineEdit*      inputListenerTag       = nullptr;
     QAction*        actionSaveProfile      = nullptr;
     QLineEdit*      inputProfileName       = nullptr;
     bool            profileNameManuallyEdited = false;
@@ -55,7 +57,7 @@ public:
     void AddExListeners(const QList<RegListenerConfig> &listeners, const QMap<QString, AxUI> &uis);
     void SetProfile(const AuthProfile &profile);
     void Start();
-    void SetEditMode(const QString &name);
+    void SetEditMode(const QString &name, const QString &tags = QString());
 
 protected Q_SLOTS:
     void changeConfig(const QString &fn);

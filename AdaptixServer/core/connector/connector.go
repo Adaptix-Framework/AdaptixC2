@@ -154,12 +154,31 @@ func respondOKMessage(ctx *gin.Context, message any) {
 	ctx.JSON(http.StatusOK, gin.H{"message": message, "ok": true})
 }
 
+func respondJSONItems(ctx *gin.Context, jsonArray string) {
+	if jsonArray == "" {
+		jsonArray = "[]"
+	}
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(`{"ok":true,"message":"","items":`+jsonArray+`}`))
+}
+
+func respondJSONRawOK(ctx *gin.Context, jsonRaw string) {
+	if jsonRaw == "" {
+		jsonRaw = "{}"
+	}
+	trimmed := strings.TrimSpace(jsonRaw)
+	if strings.HasPrefix(trimmed, "[") {
+		respondJSONItems(ctx, trimmed)
+		return
+	}
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(`{"ok":true,"message":"","data":`+jsonRaw+`}`))
+}
+
 func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServer profile.TsHttpServer) (*TsConnector, error) {
 	gin.SetMode(gin.ReleaseMode)
 
 	var connector = new(TsConnector)
 	connector.Engine = gin.New()
-	// connector.Engine.Use(gin.LoggerWithWriter(ts.TsLogWriter(adaptix.LogStatusInfo, "server:gin"))) /// ToDo
+	// connector.Engine.Use(gin.LoggerWithWriter(ts.TsLogWriter(adaptix.LogStatusInfo, "server", "gin"))) /// ToDo
 	connector.teamserver = ts
 	connector.Interface = tsProfile.Interface
 	connector.Port = tsProfile.Port
@@ -271,6 +290,7 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		api_group.POST("/group/rename", connector.TcGroupRename)
 		api_group.POST("/group/delete", connector.TcGroupDelete)
 		api_group.POST("/group/members", connector.TcGroupMembers)
+		api_group.POST("/group/move_member", connector.TcGroupMoveMember)
 		api_group.POST("/group/reparent", connector.TcGroupReparent)
 
 		api_group.GET("/agent/task/list", connector.TcAgentTaskList)
@@ -324,6 +344,8 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		api_group.POST("/tunnel/start/lportfwd", connector.TcTunnelStartLpf)
 		api_group.POST("/tunnel/start/rportfwd", connector.TcTunnelStartRpf)
 		api_group.POST("/tunnel/stop", connector.TcTunnelStop)
+		api_group.POST("/tunnel/pause", connector.TcTunnelPause)
+		api_group.POST("/tunnel/resume", connector.TcTunnelResume)
 		api_group.POST("/tunnel/set/info", connector.TcTunnelSetIno)
 
 		api_group.GET("/service/list", connector.TcServiceList)
@@ -335,6 +357,17 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		//api_group.POST("/axscript/commands", connector.TcAxScriptCommands)
 		//api_group.POST("/axscript/load", connector.TcAxScriptLoad)
 		//api_group.POST("/axscript/unload", connector.TcAxScriptUnload)
+
+		api_group.GET("/events/handlers", connector.TcEventHandlersList)
+		api_group.POST("/events/handlers/list", connector.TcEventHandlersListPost)
+		api_group.POST("/events/handlers/register", connector.TcEventHandlerRegister)
+		api_group.POST("/events/handlers/get", connector.TcEventHandlerGet)
+		api_group.POST("/events/handlers/enable", connector.TcEventHandlerEnable)
+		api_group.POST("/events/handlers/disable", connector.TcEventHandlerDisable)
+		api_group.POST("/events/handlers/remove", connector.TcEventHandlerRemove)
+		api_group.POST("/events/mute", connector.TcEventMute)
+		api_group.POST("/events/unmute", connector.TcEventUnmute)
+		api_group.POST("/events/mutes", connector.TcEventMutesList)
 	}
 
 	connector.Engine.NoRoute(limitTimeoutMiddleware(httpCfg), default404Middleware(httpErr), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })
@@ -450,7 +483,7 @@ func (tc *TsConnector) Start(finished *chan bool) {
 	host := fmt.Sprintf("%s:%d", tc.Interface, tc.Port)
 
 	if tc.httpServer == nil || tc.httpServer.HTTP == nil || tc.httpServer.TLS == nil {
-		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "HTTP server configuration is not initialized")
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "HTTP server configuration is not initialized")
 		return
 	}
 
@@ -459,16 +492,16 @@ func (tc *TsConnector) Start(finished *chan bool) {
 
 	minTLS, err := tlsVersionFromString(tlsCfgProfile.MinVersion)
 	if err != nil {
-		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "Invalid TLS min_version: %s", err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "Invalid TLS min_version: %s", err.Error())
 		return
 	}
 	maxTLS, err := tlsVersionFromString(tlsCfgProfile.MaxVersion)
 	if err != nil {
-		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "Invalid TLS max_version: %s", err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "Invalid TLS max_version: %s", err.Error())
 		return
 	}
 	if minTLS != 0 && maxTLS != 0 && minTLS > maxTLS {
-		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "Invalid TLS version range: min_version (%v) must be <= max_version (%v)", tlsCfgProfile.MinVersion, tlsCfgProfile.MaxVersion)
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "Invalid TLS version range: min_version (%v) must be <= max_version (%v)", tlsCfgProfile.MinVersion, tlsCfgProfile.MaxVersion)
 		return
 	}
 
@@ -478,7 +511,7 @@ func (tc *TsConnector) Start(finished *chan bool) {
 		for _, cs := range tlsCfgProfile.CipherSuites {
 			id, err := tlsCipherSuiteFromString(cs)
 			if err != nil {
-				tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "Invalid TLS cipher_suites: %s", err.Error())
+				tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "Invalid TLS cipher_suites: %s", err.Error())
 				return
 			}
 			cipherSuites = append(cipherSuites, id)
@@ -509,7 +542,7 @@ func (tc *TsConnector) Start(finished *chan bool) {
 		WriteTimeout:   time.Duration(httpCfg.WriteTimeoutSec) * time.Second,
 		IdleTimeout:    time.Duration(httpCfg.IdleTimeoutSec) * time.Second,
 		MaxHeaderBytes: httpCfg.MaxHeaderBytes,
-		ErrorLog:       log.New(tc.teamserver.TsLogWriter(adaptix.LogStatusWarn, "server:http"), "", 0),
+		ErrorLog:       log.New(tc.teamserver.TsLogWriter(adaptix.LogStatusWarn, "server", "connector"), "", 0),
 	}
 	if httpCfg.ReadHeaderTimeoutSec > 0 {
 		server.ReadHeaderTimeout = time.Duration(httpCfg.ReadHeaderTimeoutSec) * time.Second
@@ -522,7 +555,7 @@ func (tc *TsConnector) Start(finished *chan bool) {
 	err = server.ListenAndServeTLS(tc.Cert, tc.Key)
 	//err := tc.Engine.RunTLS(host, tc.Cert, tc.Key)
 	if err != nil {
-		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "connector", "Failed to start HTTP Server: %s", err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "Failed to start HTTP Server: %s", err.Error())
 		*finished <- true
 		return
 	}

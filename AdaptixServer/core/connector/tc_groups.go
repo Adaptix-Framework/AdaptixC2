@@ -152,3 +152,28 @@ func (tc *TsConnector) TcGroupReparent(ctx *gin.Context) {
 	}
 	respondOK(ctx)
 }
+
+type GroupMoveMemberRequest struct {
+	AgentId     int64 `json:"agent_id"`
+	FromGroupId int64 `json:"from_group_id"`
+	ToGroupId   int64 `json:"to_group_id"`
+}
+
+func (tc *TsConnector) TcGroupMoveMember(ctx *gin.Context) {
+	var req GroupMoveMemberRequest
+	err := ctx.ShouldBindJSON(&req)
+	if err != nil {
+		respondError(ctx, http.StatusOK, "invalid JSON data")
+		return
+	}
+	if req.AgentId == 0 {
+		respondError(ctx, http.StatusOK, "agent_id is required")
+		return
+	}
+	err = tc.teamserver.TsGroupMoveMember(req.AgentId, req.FromGroupId, req.ToGroupId)
+	if err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+	respondOK(ctx)
+}

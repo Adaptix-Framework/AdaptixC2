@@ -159,12 +159,12 @@ func (tc *TsConnector) tcConnectOTP(ctx *gin.Context) {
 	}
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
-		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "WebSocket upgrade error: %s", err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "WebSocket upgrade error: %s", err.Error())
 		return
 	}
 
 	if wsConn == nil {
-		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "WebSocket is nil")
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "WebSocket is nil")
 		return
 	}
 
@@ -198,12 +198,12 @@ func (tc *TsConnector) tcChannelOTP(ctx *gin.Context) {
 	}
 	wsConn, err := wsUpgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
-		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "WebSocket upgrade error: %s", err.Error())
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "WebSocket upgrade error: %s", err.Error())
 		return
 	}
 
 	if wsConn == nil {
-		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "WebSocket is nil")
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "WebSocket is nil")
 		return
 	}
 
@@ -212,25 +212,25 @@ func (tc *TsConnector) tcChannelOTP(ctx *gin.Context) {
 	switch otpType {
 	case "channel_tunnel":
 		if err := tc.teamserver.TsTunnelClientNewChannel(channelDataStr, wsConn); err != nil {
-			tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "Tunnel channel error: %s", err.Error())
+			tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "Tunnel channel error: %s", err.Error())
 			wsConn.Close()
 		}
 
 	case "channel_terminal":
 		if err := tc.teamserver.TsAgentTerminalCreateChannel(channelDataStr, wsConn); err != nil {
-			tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "Terminal channel error: %s", err.Error())
+			tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "Terminal channel error: %s", err.Error())
 			wsConn.Close()
 		}
 
 	case "channel_agent_build":
 		go func() {
 			if err := tc.teamserver.TsAgentBuildCreateChannel(channelDataStr, wsConn); err != nil {
-				tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "Agent build channel error: %s", err.Error())
+				tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "Agent build channel error: %s", err.Error())
 			}
 		}()
 
 	default:
-		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server:connector", "Unknown channel type: %s", otpType)
+		tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "Unknown channel type: %s", otpType)
 		wsConn.Close()
 	}
 }
@@ -241,6 +241,9 @@ func (tc *TsConnector) TcLogsList(ctx *gin.Context) {
 	limit := 200
 	offset := 0
 	var beforeId int64 = 0
+	sourceFilter := ctx.Query("source")
+	categoryFilter := ctx.Query("category")
+	contains := ctx.Query("q")
 
 	if q := ctx.Query("limit"); q != "" {
 		v, err := strconv.Atoi(q)
@@ -261,15 +264,23 @@ func (tc *TsConnector) TcLogsList(ctx *gin.Context) {
 		}
 		beforeId = v
 	}
+	if q := ctx.Query("offset"); q != "" {
+		v, err := strconv.Atoi(q)
+		if err != nil || v < 0 {
+			respondError(ctx, http.StatusBadRequest, "offset must be a non-negative integer")
+			return
+		}
+		offset = v
+	}
 
 	var (
 		jsonData []byte
 		err      error
 	)
 	if beforeId > 0 {
-		jsonData, err = tc.teamserver.TsLogsGetPageBeforeId(beforeId, limit)
+		jsonData, err = tc.teamserver.TsLogsGetPageBeforeIdFiltered(beforeId, limit, sourceFilter, categoryFilter, contains)
 	} else {
-		jsonData, err = tc.teamserver.TsLogsGetPage(offset, limit)
+		jsonData, err = tc.teamserver.TsLogsGetPageFiltered(offset, limit, sourceFilter, categoryFilter, contains)
 	}
 	if err != nil {
 		respondError(ctx, http.StatusBadRequest, err.Error())

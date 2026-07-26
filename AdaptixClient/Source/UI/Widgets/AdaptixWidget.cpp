@@ -1,8 +1,3 @@
-#include <QJSEngine>
-#include <QPointer>
-#include <QElapsedTimer>
-#include <QTimer>
-#include <QEvent>
 #include <Agent/Agent.h>
 #include <Workers/LastTickWorker.h>
 #include <Workers/WebSocketWorker.h>
@@ -11,6 +6,7 @@
 #include <UI/Widgets/ConsoleWidget.h>
 #include <UI/Widgets/ScriptsWidget.h>
 #include <UI/Widgets/CodeEditorWidget.h>
+#include <Client/CodeEditorProfileManager.h>
 #include <UI/Widgets/BrowserFilesWidget.h>
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/TerminalContainerWidget.h>
@@ -37,13 +33,25 @@
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxCommandWrappers.h>
 #include <Utils/FontManager.h>
-
 #include <kddockwidgets/core/DockRegistry.h>
 #include <kddockwidgets/core/DockWidget.h>
 
 #include <oclero/qlementine/style/QlementineStyle.hpp>
 #include <oclero/qlementine/style/Theme.hpp>
 #include <oclero/qlementine/widgets/Popover.hpp>
+#include <oclero/qlementine/widgets/Menu.hpp>
+
+#include <QAction>
+#include <QIcon>
+#include <QJsonArray>
+#include <QJsonObject>
+#include <QJsonValue>
+#include <QJSEngine>
+#include <QPointer>
+#include <QElapsedTimer>
+#include <QTimer>
+#include <QEvent>
+
 
 AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, WebSocketWorker* channelWsWorker)
 {
@@ -59,9 +67,6 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
 
     ScriptManager = new AxScriptManager(this, this);
 
-    if (CodeEditorDock)
-        CodeEditorDock->connectConsoleSignals(ScriptManager);
-
     connect(this, &AdaptixWidget::eventNewAgent,           ScriptManager, &AxScriptManager::emitNewAgent);
     connect(this, &AdaptixWidget::eventFileBrowserDisks,   ScriptManager, &AxScriptManager::emitFileBrowserDisks);
     connect(this, &AdaptixWidget::eventFileBrowserList,    ScriptManager, &AxScriptManager::emitFileBrowserList);
@@ -69,6 +74,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect(this, &AdaptixWidget::eventProcessBrowserList, ScriptManager, &AxScriptManager::emitProcessBrowserList);
 
     CodeEditorDock = new CodeEditorWidget(this);
+    CodeEditorDock->connectConsoleSignals(ScriptManager);
 
     ScriptsDock       = new ScriptsWidget(this);
     LogsDock          = new LogsWidget(this);
@@ -111,13 +117,19 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( graphButton,         &QPushButton::clicked, this, &AdaptixWidget::SetGraphUI);
     connect( tasksButton,         &QPushButton::clicked, this, &AdaptixWidget::SetTasksUI);
     connect( tunnelButton,        &QPushButton::clicked, this, &AdaptixWidget::LoadTunnelsUI);
-    connect( downloadsButton,     &QPushButton::clicked, this, &AdaptixWidget::LoadDownloadsUI);
+    connect( downloadsButton,     &QPushButton::clicked, this, [this]() { LoadFilesUI(0); });
+    downloadsButton->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect( downloadsButton,     &QPushButton::customContextMenuRequested, this, &AdaptixWidget::onFilesButtonContextMenu);
     connect( screensButton,       &QPushButton::clicked, this, &AdaptixWidget::LoadScreenshotsUI);
     connect( credsButton,         &QPushButton::clicked, this, &AdaptixWidget::LoadCredentialsUI);
     connect( targetsButton,       &QPushButton::clicked, this, &AdaptixWidget::LoadTargetsUI);
     connect( connStatusWidget,    &QPushButton::clicked, this, &AdaptixWidget::OnReconnect);
-    connect( scriptManagerButton, &QPushButton::clicked, this, &AdaptixWidget::LoadScriptsUI);
-    connect( codeEditorButton,    &QPushButton::clicked, this, &AdaptixWidget::LoadCodeEditorUI);
+    connect( scriptManagerButton, &QPushButton::clicked, this, [this]() {
+        LoadScriptsUI(0, QStringLiteral("local"));
+    });
+    scriptManagerButton->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect( scriptManagerButton, &QPushButton::customContextMenuRequested, this, &AdaptixWidget::onScriptsButtonContextMenu);
+    connect( codeEditorButton,    &QPushButton::clicked, this, [this]() { LoadCodeEditorUI(); });
     connect( settingsButton,      &QPushButton::clicked, this, [](){ GlobalClient->settings->getDialogSettings()->show(); });
 
     connect( TickThread, &QThread::started, TickWorker, &LastTickWorker::run );
@@ -441,14 +453,14 @@ void AdaptixWidget::createButtons()
     tunnelButton    = mkIconBtn(":/icons/vpn",       "Tunnels table");
     logsButton      = mkIconBtn(":/icons/logs",      "Notifications");
 
-    downloadsButton = mkIconBtn(":/icons/downloads", "Downloads");
+    downloadsButton = mkIconBtn(":/icons/downloads", "Files (right-click: Downloads / Uploads / Sync)");
     targetsButton   = mkIconBtn(":/icons/devices",   "Targets table");
     credsButton     = mkIconBtn(":/icons/key",       "Credentials");
     screensButton   = mkIconBtn(":/icons/picture",   "Screens");
     keysButton      = mkIconBtn(":/icons/keyboard",  "Keystrokes");
     chatButton      = mkIconBtn(":/icons/chat",      "Chat");
 
-    scriptManagerButton = mkIconBtn(":/icons/folder_code", "Script manager");
+    scriptManagerButton = mkIconBtn(":/icons/folder_code", "Scripts (right-click: Local / Teamserver / Events)");
     codeEditorButton    = mkIconBtn(":/icons/code",        "Code editor");
 
     extDocksButton = new oclero::qlementine::PopoverButton("", QIcon(":/icons/extension"), this);
@@ -632,26 +644,26 @@ void AdaptixWidget::placeToolbarInGrid(QGridLayout* grid, int position)
     const int sideW = ty.sideToolbarW;
 
     switch (position) {
-        case 1:
-            toolbarWidget->setFixedHeight(barH);
-            grid->addWidget(toolbarWidget, 2, 1, 1, 1);
-            break;
-        case 2:
-            toolbarWidget->setFixedWidth(sideW);
-            toolbarWidget->layout()->setContentsMargins(6, 8, 14, 8);
-            grid->addWidget(toolbarWidget, 1, 0, 1, 1);
-            break;
-        case 3:
-            toolbarWidget->setFixedWidth(sideW);
-            toolbarWidget->layout()->setContentsMargins(14, 8, 6, 8);
-            grid->addWidget(toolbarWidget, 1, 2, 1, 1);
-            break;
-        case 0:
-        default:
-            toolbarWidget->setFixedHeight(barH);
-            toolbarWidget->layout()->setContentsMargins(6, 4, 6, 4);
-            grid->addWidget(toolbarWidget, 0, 1, 1, 1);
-            break;
+    case 1:
+        toolbarWidget->setFixedHeight(barH);
+        grid->addWidget(toolbarWidget, 2, 1, 1, 1);
+        break;
+    case 2:
+        toolbarWidget->setFixedWidth(sideW);
+        toolbarWidget->layout()->setContentsMargins(6, 8, 14, 8);
+        grid->addWidget(toolbarWidget, 1, 0, 1, 1);
+        break;
+    case 3:
+        toolbarWidget->setFixedWidth(sideW);
+        toolbarWidget->layout()->setContentsMargins(14, 8, 6, 8);
+        grid->addWidget(toolbarWidget, 1, 2, 1, 1);
+        break;
+    case 0:
+    default:
+        toolbarWidget->setFixedHeight(barH);
+        toolbarWidget->layout()->setContentsMargins(6, 4, 6, 4);
+        grid->addWidget(toolbarWidget, 0, 1, 1, 1);
+        break;
     }
 }
 
@@ -877,30 +889,93 @@ void AdaptixWidget::ClearChatStream()
     ChatUnreadClear();
 }
 
+static void ensureToolbarBadge(oclero::qlementine::NotificationBadge*& badge, QWidget* host)
+{
+    if (!host)
+        return;
+    if (!badge) {
+        QWidget* parent = host->parentWidget() ? host->parentWidget() : host;
+        badge = new oclero::qlementine::NotificationBadge(parent);
+        badge->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        badge->setAttribute(Qt::WA_TransparentForMouseEvents);
+        badge->setAttribute(Qt::WA_NoSystemBackground);
+        badge->setPadding(QMargins(3, 1, 3, 1));
+        badge->setRelativePosition(2, -2);
+        badge->setWidget(host);
+        badge->hide();
+    } else if (badge->widget() != host) {
+        badge->setWidget(host);
+    }
+}
+
+static void setToolbarBadgeCount(oclero::qlementine::NotificationBadge* badge, int count)
+{
+    if (!badge)
+        return;
+    if (count <= 0) {
+        badge->setText(QString());
+        badge->hide();
+        return;
+    }
+    badge->setText(count > 99 ? QStringLiteral("99+") : QString::number(count));
+    badge->show();
+    badge->raise();
+    QTimer::singleShot(0, badge, [badge]() {
+        if (!badge || badge->text().isEmpty())
+            return;
+        badge->resize(badge->sizeHint());
+        badge->show();
+        badge->raise();
+    });
+}
+
 void AdaptixWidget::ChatUnreadIncrement()
 {
-    if (!chatBadge) {
-        chatBadge = new oclero::qlementine::NotificationBadge(chatButton);
-        chatBadge->setBackgroundColor(QColor(0xe0, 0x3e, 0x3e));
-        chatBadge->setForegroundColor(Qt::white);
-        chatBadge->setPadding(QMargins(3, 1, 3, 1));
-        chatBadge->setAttribute(Qt::WA_TransparentForMouseEvents);
-    }
-    int count = chatBadge->text().isEmpty() ? 0 : chatBadge->text().toInt();
-    count++;
-    chatBadge->setText(QString::number(count));
-    QSize sz = chatBadge->sizeHint();
-    chatBadge->setGeometry(chatButton->width() - sz.width() - 1, 1, sz.width(), sz.height());
-    chatBadge->show();
-    chatBadge->raise();
+    ensureToolbarBadge(chatBadge, chatButton);
+    ++m_chatUnreadCount;
+    setToolbarBadgeCount(chatBadge, m_chatUnreadCount);
 }
 
 void AdaptixWidget::ChatUnreadClear()
 {
-    if (chatBadge) {
-        chatBadge->setText("");
-        chatBadge->hide();
+    m_chatUnreadCount = 0;
+    setToolbarBadgeCount(chatBadge, 0);
+}
+
+void AdaptixWidget::LogsUnreadIncrement()
+{
+    ensureToolbarBadge(logsBadge, logsButton);
+    ++m_logsUnreadCount;
+    setToolbarBadgeCount(logsBadge, m_logsUnreadCount);
+}
+
+void AdaptixWidget::LogsUnreadClear()
+{
+    m_logsUnreadCount = 0;
+    setToolbarBadgeCount(logsBadge, 0);
+}
+
+void AdaptixWidget::UpdateDownloadsBadge()
+{
+    int running = 0;
+    {
+        QReadLocker locker(&DownloadsLock);
+        for (auto it = Downloads.constBegin(); it != Downloads.constEnd(); ++it) {
+            if (it.value().State == TRANSFER_STATE_RUNNING)
+                ++running;
+        }
     }
+    if (running > 0)
+        ensureToolbarBadge(downloadsBadge, downloadsButton);
+    setToolbarBadgeCount(downloadsBadge, running);
+}
+
+void AdaptixWidget::UpdateExtDocksBadge()
+{
+    const int n = extDocksMap.size();
+    if (n > 0)
+        ensureToolbarBadge(extDocksBadge, extDocksButton);
+    setToolbarBadgeCount(extDocksBadge, n);
 }
 
 void AdaptixWidget::ClearConsoleStreams()
@@ -916,6 +991,7 @@ void AdaptixWidget::ClearNotificationsStream()
 {
     if (LogsDock)
         LogsDock->Clear();
+    LogsUnreadClear();
 }
 
 /// REGISTER
@@ -1157,8 +1233,16 @@ void AdaptixWidget::DisableServerScript(const QString &name)
 QList<ServerScriptInfo> AdaptixWidget::GetServerScripts() const
 {
     QList<ServerScriptInfo> result;
-    for (const auto &data : ScriptManager->ServerScriptList())
-        result.append({data.name, data.description, data.enabled});
+    if (!ScriptManager)
+        return result;
+
+    for (const auto &data : ScriptManager->ServerScriptList()) {
+        ServerScriptInfo info;
+        info.name = data.name;
+        info.description = data.description;
+        info.enabled = data.enabled;
+        result.append(info);
+    }
     return result;
 }
 
@@ -1491,6 +1575,59 @@ void AdaptixWidget::LoadTerminalUI(qint64 AgentId)
         this->PlaceDock(dockBottom, agent->GetTerminal()->dock() );
 }
 
+static void applyCodeEditorOpenPayload(CodeEditorWidget* editor, const CodeEditorOpenOptions& opts)
+{
+    if (!editor)
+        return;
+
+    if (!opts.panelSeed.isEmpty() && !opts.profile.isEmpty()) {
+        if (auto* mgr = CodeEditorProfileManager::instance()) {
+            if (const BuildProfile* base = mgr->profile(opts.profile)) {
+                BuildProfile p = *base;
+                for (auto it = opts.panelSeed.begin(); it != opts.panelSeed.end(); ++it)
+                    p.panelState.insert(it.key(), it.value());
+                mgr->updateProfile(p);
+            }
+        }
+    }
+
+    editor->applyOpenOptions(opts);
+    if (!opts.restrictProfiles && opts.profile.isEmpty())
+        editor->selectProfile(QStringLiteral("system.axscript"));
+    else if (!opts.profile.isEmpty())
+        editor->selectProfile(opts.profile);
+
+    if (!opts.filePath.isEmpty())
+        editor->openScript(opts.filePath);
+    else if (!opts.contentName.isEmpty() || !opts.content.isEmpty() || !opts.documentKey.isEmpty())
+        editor->openScriptContent(
+            opts.contentName.isEmpty() ? QStringLiteral("untitled") : opts.contentName,
+            opts.content,
+            opts.documentKey);
+
+    if (!opts.profile.isEmpty())
+        editor->selectProfile(opts.profile);
+}
+
+void AdaptixWidget::LoadAgentCodeEditorUI(qint64 AgentId, const CodeEditorOpenOptions& opts)
+{
+    QReadLocker locker(&AgentsMapLock);
+    if (!AgentsMap.contains(AgentId))
+        return;
+
+    auto agent = AgentsMap[AgentId];
+    locker.unlock();
+    if (!agent)
+        return;
+
+    CodeEditorWidget* editor = agent->GetCodeEditor();
+    if (!editor)
+        return;
+
+    applyCodeEditorOpenPayload(editor, opts);
+    this->PlaceDock(dockBottom, editor->dock());
+}
+
 void AdaptixWidget::LoadShellUI(qint64 AgentId)
 {
     QReadLocker locker(&AgentsMapLock);
@@ -1650,12 +1787,20 @@ void AdaptixWidget::SetTasksUI() const
     tasksDock->setAsCurrentTab();
 }
 
-void AdaptixWidget::LoadScriptsUI() const { this->PlaceDock(dockBottom, ScriptsDock->dock()); }
+void AdaptixWidget::LoadScriptsUI(int segment, const QString& originFilter) const
+{
+    if (ScriptsDock)
+        ScriptsDock->setSegment(segment, originFilter, /*applyOriginFilter=*/true);
+    if (ScriptsDock)
+        this->PlaceDock(dockBottom, ScriptsDock->dock());
+}
 
-void AdaptixWidget::LoadCodeEditorUI() const
+void AdaptixWidget::LoadCodeEditorUI(const CodeEditorOpenOptions& opts) const
 {
     if (!mainDockWidget || !CodeEditorDock)
         return;
+
+    applyCodeEditorOpenPayload(CodeEditorDock, opts);
 
     auto* dock = CodeEditorDock->dock();
 
@@ -1675,14 +1820,11 @@ void AdaptixWidget::LoadCodeEditorUI() const
     dock->setAsCurrentTab();
 }
 
-void AdaptixWidget::OpenInDevTools(const QString& filePath)
+void AdaptixWidget::LoadLogsUI() const
 {
-    LoadCodeEditorUI();
-    if (CodeEditorDock)
-        CodeEditorDock->openScript(filePath);
+    this->PlaceDock(dockBottom, LogsDock->dock());
+    const_cast<AdaptixWidget*>(this)->LogsUnreadClear();
 }
-
-void AdaptixWidget::LoadLogsUI() const { this->PlaceDock(dockBottom, LogsDock->dock() ); }
 
 void AdaptixWidget::LoadChatUI() const {
     this->PlaceDock(dockBottom, ChatDock->dock());
@@ -1693,7 +1835,54 @@ void AdaptixWidget::LoadListenersUI() const { this->PlaceDock(dockBottom, Listen
 
 void AdaptixWidget::LoadTunnelsUI() const { this->PlaceDock(dockBottom, TunnelsDock->dock() ); }
 
-void AdaptixWidget::LoadDownloadsUI() const { this->PlaceDock(dockBottom, DownloadsDock->dock() ); }
+void AdaptixWidget::LoadDownloadsUI() const { LoadFilesUI(0); }
+
+void AdaptixWidget::LoadFilesUI(int segment) const
+{
+    if (DownloadsDock)
+        DownloadsDock->setSegment(segment);
+    this->PlaceDock(dockBottom, DownloadsDock->dock());
+}
+
+void AdaptixWidget::onFilesButtonContextMenu(const QPoint& pos)
+{
+    oclero::qlementine::Menu menu(this);
+
+    auto* actDl = menu.addAction(QIcon(":/icons/arrow_cool_down"), "Downloads");
+    connect(actDl, &QAction::triggered, this, [this]() { LoadFilesUI(0); });
+
+    auto* actUl = menu.addAction(QIcon(":/icons/arrow_warm_up"), "Uploads");
+    connect(actUl, &QAction::triggered, this, [this]() { LoadFilesUI(1); });
+
+    auto* actSync = menu.addAction(QIcon(":/icons/data_arrows"), "Sync");
+    connect(actSync, &QAction::triggered, this, [this]() { LoadFilesUI(2); });
+
+    if (downloadsButton)
+        menu.exec(downloadsButton->mapToGlobal(pos));
+}
+
+void AdaptixWidget::onScriptsButtonContextMenu(const QPoint& pos)
+{
+    oclero::qlementine::Menu menu(this);
+
+    auto* actLocal = menu.addAction(QIcon(":/icons/computer"), "Scripts Local");
+    connect(actLocal, &QAction::triggered, this, [this]() {
+        LoadScriptsUI(0, QStringLiteral("local"));
+    });
+
+    auto* actServer = menu.addAction(QIcon(":/icons/storage"), "Scripts Teamserver");
+    connect(actServer, &QAction::triggered, this, [this]() {
+        LoadScriptsUI(0, QStringLiteral("server"));
+    });
+
+    menu.addSeparator();
+
+    auto* actEvents = menu.addAction(QIcon(":/icons/calendar"), "Events");
+    connect(actEvents, &QAction::triggered, this, [this]() { LoadScriptsUI(1); });
+
+    if (scriptManagerButton)
+        menu.exec(scriptManagerButton->mapToGlobal(pos));
+}
 
 void AdaptixWidget::LoadScreenshotsUI() const { this->PlaceDock(dockBottom, ScreenshotsDock->dock() ); }
 
@@ -1808,6 +1997,7 @@ void AdaptixWidget::AddExtDock(const QString &id, const QString &title, const st
 
     extDocksListWidget->setVisible(true);
     extDocksEmptyLabel->setVisible(false);
+    UpdateExtDocksBadge();
 }
 
 void AdaptixWidget::RemoveExtDock(const QString &id)
@@ -1828,6 +2018,7 @@ void AdaptixWidget::RemoveExtDock(const QString &id)
     bool empty = extDocksListWidget->count() == 0;
     extDocksListWidget->setVisible(!empty);
     extDocksEmptyLabel->setVisible(empty);
+    UpdateExtDocksBadge();
 }
 
 void AdaptixWidget::ShowExtDocksPopup()

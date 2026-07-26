@@ -1,0 +1,20 @@
+# AxScript kit package — place as axtool.spec in the kit root.
+#
+# Install:
+#   axtool adaptix.spec ext install ./Extension-Kit
+#   axtool adaptix.spec ext install github.com/org/my-scripts@v1
+#
+# Registers Teamserver.axscripts:
+#   - <axscript_prefix>/<name>/<entry>
+# e.g. axscripts/extension-kit/extension-kit.axs
+
+scripts:
+  - name: extension-kit
+    version: 1.0.0
+    description: "AxScript kit"
+    author: Adaptix-Framework
+    min_server_version: "v2.0"
+    entry: extension-kit.axs
+    # Optional: limit which files are copied (default = whole tree except .git)
+    # release:
+    #   globs: ["*.axs", "**/*.axs", "**/*.o", "**/*.bin"]

@@ -124,7 +124,7 @@ func (t *TransportDNS) Start(ts adaptix.Teamserver) error {
 		if err != nil {
 			errOnce.Do(func() { startErr = err })
 			t.setActive(false)
-			Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "UDP listener error: %v", err)
+			Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, logCtg, "UDP listener error: %v", err)
 		}
 	}()
 
@@ -133,7 +133,7 @@ func (t *TransportDNS) Start(ts adaptix.Teamserver) error {
 		if err != nil {
 			errOnce.Do(func() { startErr = err })
 			t.setActive(false)
-			Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "TCP listener error: %v", err)
+			Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, logCtg, "TCP listener error: %v", err)
 		}
 	}()
 
@@ -316,7 +316,7 @@ func (t *TransportDNS) handleHI(req *dnsRequest, w dns.ResponseWriter) {
 		externalIP := extractRemoteIP(w)
 		ad, err := Ts.TsAgentCreate(agentType, agentUid, agentBeat, t.Name, externalIP, true)
 		if err != nil {
-			Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "HI agent create failed: %v", err)
+			Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, logCtg, "HI agent create failed: %v", err)
 			return
 		}
 		agentId = ad.Id
@@ -370,7 +370,7 @@ func (t *TransportDNS) handleGET(req *dnsRequest, w dns.ResponseWriter) []byte {
 		}
 	}
 
-	total, offset, data, taskNonce, isEmpty := Ts.TsFrameGetChunk(agentId, reqOffset, maxChunk, nil)
+	total, offset, data, taskNonce, isEmpty := Ts.TsFrameGetChunkSticky(agentId, reqOffset, maxChunk, nil)
 	if isEmpty || len(data) == 0 {
 		return nil
 	}

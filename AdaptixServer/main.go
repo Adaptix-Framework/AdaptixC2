@@ -36,7 +36,7 @@ func main() {
 
 	if *profilePath != "" {
 		if err := ts.SetProfile(*profilePath); err != nil {
-			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "%s", err.Error())
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "", "%s", err.Error())
 			os.Exit(1)
 		}
 	} else {
@@ -45,7 +45,7 @@ func main() {
 	}
 
 	if err := ts.Profile.IsValid(); err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "%s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "", "%s", err.Error())
 		os.Exit(1)
 	}
 

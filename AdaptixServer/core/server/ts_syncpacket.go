@@ -96,6 +96,8 @@ const (
 	TYPE_TARGETS_SET_TAG = 0x8a
 
 	TYPE_AXSCRIPT_COMMANDS = 0x91
+	TYPE_AXSCRIPT_LIST     = 0x92
+	TYPE_EVENT_HANDLERS    = 0x93
 
 	TYPE_GROUP_CREATE   = 0xa1
 	TYPE_GROUP_RENAME   = 0xa2
@@ -797,6 +799,7 @@ func CreateSpTunnelCreate(tunnelData adaptix.TunnelData, bytesSent, bytesRecv in
 		Date:      tunnelData.Date,
 		BytesSent: bytesSent,
 		BytesRecv: bytesRecv,
+		Active:    tunnelData.Active,
 	}
 }
 
@@ -806,6 +809,7 @@ func CreateSpTunnelEdit(tunnelData adaptix.TunnelData) SyncPackerTunnelEdit {
 
 		TunnelId: tunnelData.TunnelId,
 		Info:     tunnelData.Info,
+		Active:   tunnelData.Active,
 	}
 }
 
@@ -901,6 +905,26 @@ func CreateSpGroupReparent(groupId int64, newParentId int64) SyncPackerGroupRepa
 }
 
 /// AXSCRIPT
+
+func CreateSpAxScriptList(items []map[string]interface{}) SyncPackerAxScriptList {
+	if items == nil {
+		items = []map[string]interface{}{}
+	}
+	return SyncPackerAxScriptList{
+		SpType: TYPE_AXSCRIPT_LIST,
+		Items:  items,
+	}
+}
+
+func CreateSpEventHandlers(items []map[string]interface{}) SyncPackerEventHandlers {
+	if items == nil {
+		items = []map[string]interface{}{}
+	}
+	return SyncPackerEventHandlers{
+		SpType: TYPE_EVENT_HANDLERS,
+		Items:  items,
+	}
+}
 
 func CreateSpAxScriptData(name string, content string, groups []AxCommandBatch) SyncPackerAxScriptData {
 	return SyncPackerAxScriptData{

@@ -12,6 +12,10 @@ func (ts *Teamserver) TsFrameGetChunk(sessionId int64, reqOffset uint32, maxChun
 	return ts.FrameManager.GetChunk(sessionId, reqOffset, maxChunkSize, encode)
 }
 
+func (ts *Teamserver) TsFrameGetChunkSticky(sessionId int64, reqOffset uint32, maxChunkSize int, encode func([]byte) []byte) (uint32, uint32, []byte, uint32, bool) {
+	return ts.FrameManager.GetChunkSticky(sessionId, reqOffset, maxChunkSize, encode)
+}
+
 func (ts *Teamserver) TsFrameAckDelivery(sessionId int64, ackOffset uint32, ackNonce uint32) {
 	ts.FrameManager.AckDelivery(sessionId, ackOffset, ackNonce)
 }

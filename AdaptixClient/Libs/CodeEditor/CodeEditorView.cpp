@@ -9,9 +9,8 @@
 #include <AxScriptHighlighter.h>
 #include <AxScriptCompleter.h>
 #include <CXXHighlighter.h>
+#include <CXXCompleter.h>
 #include <Utils/FontManager.h>
-
-#include <oclero/qlementine/widgets/Switch.hpp>
 
 #include <QSplitter>
 #include <QToolBar>
@@ -24,11 +23,17 @@
 #include <QPlainTextEdit>
 #include <QFontDatabase>
 #include <QVBoxLayout>
-#include <QLabel>
 #include <QDir>
 #include <QTextCursor>
 #include <QTextCharFormat>
 #include <QFileInfo>
+#include <QTimer>
+#include <QSizePolicy>
+#include <QSignalBlocker>
+#include <QWidget>
+#include <QStackedWidget>
+#include <QMenu>
+#include <QAction>
 
 CodeEditorView::CodeEditorView(QWidget* parent) :
     QWidget(parent),
@@ -41,10 +46,6 @@ CodeEditorView::CodeEditorView(QWidget* parent) :
     m_buildPanel(new BuildPanel(m_bottomSplitter)),
     m_findReplace(nullptr),
     m_logPanel(new QPlainTextEdit(m_bottomSplitter)),
-    m_sidebarSwitch(new oclero::qlementine::Switch(this)),
-    m_logSwitch(new oclero::qlementine::Switch(this)),
-    m_minimapSwitch(new oclero::qlementine::Switch(this)),
-    m_wrapSwitch(new oclero::qlementine::Switch(this)),
     m_projectPath()
 {
     buildLayout();
@@ -65,6 +66,10 @@ CodeEditorView::CodeEditorView(QWidget* parent) :
 
     m_fileBrowser->setVisible(true);
     m_bottomSplitter->setVisible(false);
+    if (m_logPanel)
+        m_logPanel->setVisible(false);
+    if (m_configStack)
+        m_configStack->setVisible(false);
 }
 
 void CodeEditorView::buildLayout()
@@ -75,7 +80,16 @@ void CodeEditorView::buildLayout()
     m_editorSplitter->setStretchFactor(1, 1);
     m_editorSplitter->setSizes({250, 750});
 
-    m_bottomSplitter->addWidget(m_buildPanel);
+    m_configStack = new QStackedWidget(m_bottomSplitter);
+    m_configStack->addWidget(m_buildPanel);
+    m_customPanelHost = new QWidget(m_configStack);
+    m_customPanelLayout = new QVBoxLayout(m_customPanelHost);
+    m_customPanelLayout->setContentsMargins(0, 0, 0, 0);
+    m_customPanelLayout->setSpacing(0);
+    m_configStack->addWidget(m_customPanelHost);
+    m_configStack->setCurrentIndex(0);
+
+    m_bottomSplitter->addWidget(m_configStack);
     m_bottomSplitter->addWidget(m_logPanel);
     m_bottomSplitter->setStretchFactor(0, 0);
     m_bottomSplitter->setStretchFactor(1, 1);
@@ -103,6 +117,28 @@ void CodeEditorView::buildLayout()
 
     m_logPanel->setReadOnly(true);
     m_logPanel->setPlaceholderText("Build and run output will appear here...");
+    m_logPanel->setVisible(false);
+    m_logPanel->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect(m_logPanel, &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        if (!m_logPanel)
+            return;
+        QMenu menu(m_logPanel);
+        QAction* clearAct = menu.addAction(QStringLiteral("Clear log"));
+        clearAct->setEnabled(!m_logPanel->document()->isEmpty());
+        menu.addSeparator();
+        QAction* copyAct = menu.addAction(QStringLiteral("Copy"));
+        copyAct->setEnabled(m_logPanel->textCursor().hasSelection());
+        QAction* selectAllAct = menu.addAction(QStringLiteral("Select All"));
+        selectAllAct->setEnabled(!m_logPanel->document()->isEmpty());
+        QAction* chosen = menu.exec(m_logPanel->mapToGlobal(pos));
+        if (chosen == clearAct)
+            m_logPanel->clear();
+        else if (chosen == copyAct)
+            m_logPanel->copy();
+        else if (chosen == selectAllAct)
+            m_logPanel->selectAll();
+    });
+
     connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
         applyTypography();
     });
@@ -122,10 +158,14 @@ void CodeEditorView::applyTypography()
 {
     const AppTypography& ty = FontManager::instance().typography();
     const qreal s = ty.baseSize / 10.0;
-    const int icon = qMax(14, qRound(18 * s));
+    const int icon = qMax(16, qRound(20 * s));
     if (m_toolBar) {
         m_toolBar->setIconSize(QSize(icon, icon));
-        m_toolBar->setFixedHeight(qMax(ty.controlHeight + 4, icon + 12));
+        m_toolBar->setFixedHeight(qMax(ty.controlHeight + 12, icon + 20));
+        m_toolBar->setStyleSheet(QStringLiteral(
+            "QToolBar { spacing: 4px; padding: 4px 6px; }"
+            "QToolButton { padding: 4px; margin: 0 1px; }"
+        ));
     }
     if (m_logPanel)
         m_logPanel->setFont(ty.mono);
@@ -149,57 +189,121 @@ void CodeEditorView::buildToolBar()
         return a;
     };
 
-    auto* newAction = addAction(":/icons/new_file", "New File");
-    connect(newAction, &QAction::triggered, this, &CodeEditorView::newFile);
-
-    auto* openAction = addAction(":/icons/file_open", "Open File");
-    connect(openAction, &QAction::triggered, this, &CodeEditorView::openFile);
-
-    auto* openFolderAction = addAction(":/icons/open_folder", "Open Directory");
-    connect(openFolderAction, &QAction::triggered, this, &CodeEditorView::openFolder);
-
-    m_toolBar->addSeparator();
-
-    auto* saveAction = addAction(":/icons/save_as", "Save");
-    connect(saveAction, &QAction::triggered, this, &CodeEditorView::saveFile);
-
-    m_toolBar->addSeparator();
-
-    auto makeLabel = [this](const QString& text) {
-        auto* lbl = new QLabel(text, this);
-        lbl->setForegroundRole(QPalette::WindowText);
-        return lbl;
+    auto addToggle = [this](const QString& iconPath, const QString& tip, bool checked) {
+        auto* a = m_toolBar->addAction(QIcon(iconPath), QString());
+        a->setToolTip(tip);
+        a->setCheckable(true);
+        a->setChecked(checked);
+        return a;
     };
 
-    m_toolBar->addWidget(makeLabel(" Explorer "));
-    m_toolBar->addWidget(m_sidebarSwitch);
-    m_sidebarSwitch->setChecked(true);
-    connect(m_sidebarSwitch, &oclero::qlementine::Switch::clicked, this, [this]() { setSidebarVisible(m_sidebarSwitch->isChecked()); });
+    m_newFileAction = addAction(":/icons/new_file", "New File");
+    connect(m_newFileAction, &QAction::triggered, this, &CodeEditorView::newFile);
 
-    m_toolBar->addSeparator();
+    m_openFileAction = addAction(":/icons/file_open", "Open File");
+    connect(m_openFileAction, &QAction::triggered, this, &CodeEditorView::openFile);
 
-    m_toolBar->addWidget(makeLabel(" Build "));
-    m_toolBar->addWidget(m_logSwitch);
-    m_logSwitch->setChecked(false);
-    connect(m_logSwitch, &oclero::qlementine::Switch::clicked, this, [this]() { setLogPanelVisible(m_logSwitch->isChecked()); });
+    m_openFolderAction = addAction(":/icons/open_folder", "Open Directory");
+    connect(m_openFolderAction, &QAction::triggered, this, &CodeEditorView::openFolder);
 
-    m_toolBar->addSeparator();
+    m_fileSep1 = m_toolBar->addSeparator();
 
-    m_toolBar->addWidget(makeLabel(" Map "));
-    m_toolBar->addWidget(m_minimapSwitch);
-    m_minimapSwitch->setChecked(false);
-    connect(m_minimapSwitch, &oclero::qlementine::Switch::clicked, this, [this]() { setMinimapEnabled(m_minimapSwitch->isChecked()); });
+    m_saveAction = addAction(":/icons/save_as", "Save");
+    connect(m_saveAction, &QAction::triggered, this, &CodeEditorView::saveFile);
 
-    m_toolBar->addSeparator();
+    m_fileSep2 = m_toolBar->addSeparator();
 
-    m_toolBar->addWidget(makeLabel(" Wrap "));
-    m_toolBar->addWidget(m_wrapSwitch);
-    m_wrapSwitch->setChecked(false);
-    connect(m_wrapSwitch, &oclero::qlementine::Switch::clicked, this, [this]() { setWrapEnabled(m_wrapSwitch->isChecked()); });
+    m_sidebarAction = addToggle(":/icons/dock_left", "File Explorer", true);
+    connect(m_sidebarAction, &QAction::toggled, this, [this](bool on) { setSidebarVisible(on); });
 
-    auto* spring = new QWidget(this);
-    spring->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-    m_toolBar->addWidget(spring);
+    m_logAction = addToggle(":/icons/dock_bottom", "Build / log panel", false);
+    connect(m_logAction, &QAction::toggled, this, [this](bool on) { setLogPanelVisible(on); });
+
+    m_minimapAction = addToggle(":/icons/dock_right", "Minimap", false);
+    connect(m_minimapAction, &QAction::toggled, this, [this](bool on) { setMinimapEnabled(on); });
+
+    m_wrapAction = addToggle(":/icons/wrap_text", "Word wrap", false);
+    connect(m_wrapAction, &QAction::toggled, this, [this](bool on) { setWrapEnabled(on); });
+}
+
+void CodeEditorView::applyFileToolbarFlags(bool newFile, bool openFile, bool openFolder, bool save, bool explorer, bool buildLog, bool minimap, bool wordWrap)
+{
+    auto setAct = [](QAction* a, bool on) {
+        if (a)
+            a->setVisible(on);
+    };
+    setAct(m_newFileAction, newFile);
+    setAct(m_openFileAction, openFile);
+    setAct(m_openFolderAction, openFolder);
+    setAct(m_saveAction, save);
+    setAct(m_sidebarAction, explorer);
+    setAct(m_logAction, buildLog);
+    setAct(m_minimapAction, minimap);
+    setAct(m_wrapAction, wordWrap);
+
+    const bool anyFile = newFile || openFile || openFolder;
+    if (m_fileSep1)
+        m_fileSep1->setVisible(anyFile && save);
+    if (m_fileSep2)
+        m_fileSep2->setVisible(save || explorer || buildLog || minimap || wordWrap);
+
+    if (!explorer)
+        setSidebarVisible(false);
+    if (!buildLog)
+        setLogPanelVisible(false);
+    if (!minimap)
+        setMinimapEnabled(false);
+}
+
+void CodeEditorView::applyLanguage(const QString& language)
+{
+    CodeEditor* editor = currentEditor();
+    if (!editor)
+        return;
+
+    const QString lang = language.toLower();
+    const bool wantAx = (lang == QLatin1String("axscript") || lang == QLatin1String("js"));
+    const bool wantCpp = (lang == QLatin1String("c") || lang == QLatin1String("cpp") || lang == QLatin1String("cxx") || lang.isEmpty());
+
+    if (auto* oldAx = editor->findChild<AxScriptHighlighter*>()) {
+        oldAx->setDocument(nullptr);
+        oldAx->deleteLater();
+    }
+    if (auto* oldCx = editor->findChild<CXXHighlighter*>()) {
+        oldCx->setDocument(nullptr);
+        oldCx->deleteLater();
+    }
+    editor->setHighlighter(nullptr);
+
+    if (wantAx) {
+        auto* ax = new AxScriptHighlighter(editor->document());
+        if (!editor->filePath().isEmpty())
+            ax->setFilePath(editor->filePath());
+        if (editor->syntaxStyle())
+            ax->setSyntaxStyle(editor->syntaxStyle());
+        editor->setHighlighter(ax);
+        if (auto* oldC = editor->completer())
+            oldC->deleteLater();
+        editor->setCompleter(new AxScriptCompleter(editor));
+    } else if (wantCpp || lang == QLatin1String("plain")) {
+        if (lang != QLatin1String("plain")) {
+            auto* cx = new CXXHighlighter(editor->document());
+            if (!editor->filePath().isEmpty())
+                cx->setFilePath(editor->filePath());
+            if (editor->syntaxStyle())
+                cx->setSyntaxStyle(editor->syntaxStyle());
+            editor->setHighlighter(cx);
+        }
+        if (auto* oldC = qobject_cast<AxScriptCompleter*>(editor->completer())) {
+            oldC->deleteLater();
+            editor->setCompleter(new CXXCompleter(editor));
+        } else if (!editor->completer() && lang != QLatin1String("plain")) {
+            editor->setCompleter(new CXXCompleter(editor));
+        }
+    }
+
+    if (editor->highlighter())
+        editor->highlighter()->rehighlight();
 }
 
 void CodeEditorView::setSyntaxStyle(SyntaxStyle* style)
@@ -231,11 +335,25 @@ CodeEditor* CodeEditorView::currentEditor() const { return m_tabWidget->currentE
 FileBrowser* CodeEditorView::fileBrowser() const { return m_fileBrowser; }
 BuildPanel* CodeEditorView::buildPanel() const { return m_buildPanel; }
 QPlainTextEdit* CodeEditorView::logPanel() const { return m_logPanel; }
+
+bool CodeEditorView::hasConfigPanel() const
+{
+    return m_configStack && !m_configStack->isHidden();
+}
+
+void CodeEditorView::updateBottomAreaVisibility()
+{
+    const bool show = hasConfigPanel() || isLogPanelVisible();
+    if (m_bottomSplitter)
+        m_bottomSplitter->setVisible(show);
+    if (show)
+        fitBuildPanel();
+}
 QToolBar* CodeEditorView::toolBar() const { return m_toolBar; }
 FindReplace* CodeEditorView::findReplace() const { return m_findReplace; }
 
 bool CodeEditorView::isSidebarVisible() const { return m_fileBrowser->isVisible(); }
-bool CodeEditorView::isLogPanelVisible() const { return m_bottomSplitter->isVisible(); }
+bool CodeEditorView::isLogPanelVisible() const { return m_logPanel && !m_logPanel->isHidden(); }
 
 bool CodeEditorView::isMinimapEnabled() const
 {
@@ -251,19 +369,40 @@ CodeEditor* CodeEditorView::loadFile(const QString& filePath)
     return editor;
 }
 
-void CodeEditorView::newFile()
+CodeEditor* CodeEditorView::openContent(const QString& fileName, const QString& content, const QString& documentKey)
 {
-    bool ok = false;
-    const QString name = QInputDialog::getText( this, tr("New File"), tr("File name (extension determines syntax/profile):"), QLineEdit::Normal, QStringLiteral("untitled.axs"), &ok);
-    if (!ok || name.trimmed().isEmpty())
-        return;
+    QString title = fileName.trimmed();
+    if (title.isEmpty())
+        title = QStringLiteral("untitled.axs");
+    if (!title.contains(QLatin1Char('.')))
+        title += QStringLiteral(".axs");
 
-    const QString trimmed = name.trimmed();
-    auto* editor = m_tabWidget->newTab(trimmed);
+    const QString key = documentKey.trimmed().isEmpty() ? title : documentKey.trimmed();
 
-    editor->setFilePath(trimmed);
+    for (int i = 0; i < m_tabWidget->count(); ++i) {
+        auto* existing = m_tabWidget->editorAt(i);
+        if (!existing || existing->filePath() != key)
+            continue;
+        m_tabWidget->setCurrentIndex(i);
+        if (!existing->isModified() && existing->toPlainText() != content) {
+            existing->setPlainText(content);
+            existing->markSaved();
+            if (existing->highlighter())
+                existing->highlighter()->rehighlight();
+        }
+        if (m_tabWidget->tabText(i) != title)
+            m_tabWidget->setTabText(i, title);
+        Q_EMIT currentEditorChanged(existing);
+        return existing;
+    }
 
-    const QString suffix = QFileInfo(trimmed).suffix().toLower();
+    auto* editor = m_tabWidget->newTab(title);
+    if (!editor)
+        return nullptr;
+
+    editor->setFilePath(key);
+
+    const QString suffix = QFileInfo(title).suffix().toLower();
     if (suffix == "axs" || suffix == "js" || suffix == "javascript" || suffix == "mjs") {
         auto* oldHl = editor->findChild<CXXHighlighter*>();
         if (oldHl) {
@@ -271,7 +410,7 @@ void CodeEditorView::newFile()
             oldHl->deleteLater();
         }
         auto* axHl = new AxScriptHighlighter(editor->document());
-        axHl->setFilePath(trimmed);
+        axHl->setFilePath(key);
         if (editor->syntaxStyle())
             axHl->setSyntaxStyle(editor->syntaxStyle());
         editor->setHighlighter(axHl);
@@ -281,10 +420,26 @@ void CodeEditorView::newFile()
             oldCompleter->deleteLater();
         editor->setCompleter(new AxScriptCompleter(editor));
     }
+
+    editor->setPlainText(content);
+    if (editor->document())
+        editor->document()->setModified(true);
     if (editor->highlighter())
         editor->highlighter()->rehighlight();
 
-    Q_EMIT fileOpened(trimmed);
+    Q_EMIT fileOpened(key);
+    Q_EMIT currentEditorChanged(editor);
+    return editor;
+}
+
+void CodeEditorView::newFile()
+{
+    bool ok = false;
+    const QString name = QInputDialog::getText( this, tr("New File"), tr("File name (extension determines syntax/profile):"), QLineEdit::Normal, QStringLiteral("untitled.axs"), &ok);
+    if (!ok || name.trimmed().isEmpty())
+        return;
+
+    openContent(name.trimmed(), QString());
 }
 
 void CodeEditorView::openFile()
@@ -337,13 +492,21 @@ void CodeEditorView::closeCurrentTab()
 void CodeEditorView::setSidebarVisible(bool visible)
 {
     m_fileBrowser->setVisible(visible);
-    m_sidebarSwitch->setChecked(visible);
+    if (m_sidebarAction && m_sidebarAction->isChecked() != visible) {
+        QSignalBlocker b(m_sidebarAction);
+        m_sidebarAction->setChecked(visible);
+    }
 }
 
 void CodeEditorView::setLogPanelVisible(bool visible)
 {
-    m_bottomSplitter->setVisible(visible);
-    m_logSwitch->setChecked(visible);
+    if (m_logPanel)
+        m_logPanel->setVisible(visible);
+    if (m_logAction && m_logAction->isChecked() != visible) {
+        QSignalBlocker b(m_logAction);
+        m_logAction->setChecked(visible);
+    }
+    updateBottomAreaVisibility();
     Q_EMIT logPanelVisibilityChanged(visible);
 }
 
@@ -354,7 +517,10 @@ void CodeEditorView::setMinimapEnabled(bool enabled)
         if (editor)
             editor->setMinimapEnabled(enabled);
     }
-    m_minimapSwitch->setChecked(enabled);
+    if (m_minimapAction && m_minimapAction->isChecked() != enabled) {
+        QSignalBlocker b(m_minimapAction);
+        m_minimapAction->setChecked(enabled);
+    }
 }
 
 bool CodeEditorView::isWrapEnabled() const
@@ -365,12 +531,118 @@ bool CodeEditorView::isWrapEnabled() const
 
 void CodeEditorView::fitBuildPanel()
 {
-    if (!m_buildPanel || !m_bottomSplitter)
+    if (!m_bottomSplitter)
         return;
-    int panelH = m_buildPanel->sizeHint().height();
-    if (panelH < 10) panelH = 10;
-    int logH = qMax(m_bottomSplitter->height() - panelH, 50);
-    m_bottomSplitter->setSizes({panelH, logH});
+
+    const bool configOn = hasConfigPanel();
+    const bool logOn = isLogPanelVisible();
+    if (!configOn && !logOn)
+        return;
+
+    int panelH = 0;
+    if (configOn) {
+        QWidget* top = nullptr;
+        if (m_activeCustomPanel && m_activeCustomPanel->isVisible())
+            top = m_activeCustomPanel;
+        else if (m_configStack)
+            top = m_configStack->currentWidget();
+        if (!top)
+            top = m_buildPanel;
+
+        panelH = 48;
+        if (top) {
+            top->updateGeometry();
+            panelH = top->sizeHint().height();
+            if (panelH <= 0)
+                panelH = top->minimumSizeHint().height();
+            if (panelH <= 0)
+                panelH = top->heightForWidth(top->width() > 0 ? top->width() : 400);
+        }
+        if (panelH < 36) panelH = 40;
+        if (panelH > 260) panelH = 260;
+
+        if (m_configStack) {
+            m_configStack->setMinimumHeight(0);
+            m_configStack->setMaximumHeight(panelH + 8);
+            m_configStack->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+        }
+        if (m_customPanelHost) {
+            m_customPanelHost->setMinimumHeight(0);
+            m_customPanelHost->setMaximumHeight(panelH + 8);
+            m_customPanelHost->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+        }
+    }
+
+    if (configOn && logOn) {
+        const int logH = qMax(m_bottomSplitter->height() - panelH, 80);
+        m_bottomSplitter->setSizes({panelH, logH});
+    } else if (configOn) {
+        m_bottomSplitter->setSizes({panelH, 0});
+    } else {
+        m_bottomSplitter->setSizes({0, qMax(120, m_bottomSplitter->height())});
+    }
+}
+
+void CodeEditorView::applyConfigPanel(const QString& mode)
+{
+    const QString id = mode.trimmed().isEmpty() ? QStringLiteral("none") : mode.trimmed();
+
+    if (m_activeCustomPanel && m_customPanelLayout) {
+        m_customPanelLayout->removeWidget(m_activeCustomPanel);
+        m_activeCustomPanel->setParent(nullptr);
+        m_activeCustomPanel->hide();
+        m_activeCustomPanel = nullptr;
+    }
+
+    if (id == QLatin1String("build")) {
+        if (m_configStack) {
+            m_configStack->setMaximumHeight(QWIDGETSIZE_MAX);
+            m_configStack->setVisible(true);
+            m_configStack->setCurrentIndex(0);
+        }
+        if (m_customPanelHost)
+            m_customPanelHost->setMaximumHeight(QWIDGETSIZE_MAX);
+        if (m_buildPanel)
+            m_buildPanel->setVisible(true);
+        updateBottomAreaVisibility();
+        return;
+    }
+
+    if (m_configStack) {
+        m_configStack->setMaximumHeight(QWIDGETSIZE_MAX);
+        m_configStack->setVisible(false);
+    }
+    if (m_customPanelHost)
+        m_customPanelHost->setMaximumHeight(QWIDGETSIZE_MAX);
+    updateBottomAreaVisibility();
+}
+
+void CodeEditorView::applyConfigPanel(QWidget* widget)
+{
+    if (!widget) {
+        applyConfigPanel(QStringLiteral("none"));
+        return;
+    }
+
+    if (m_activeCustomPanel && m_customPanelLayout) {
+        m_customPanelLayout->removeWidget(m_activeCustomPanel);
+        m_activeCustomPanel->setParent(nullptr);
+        m_activeCustomPanel->hide();
+        m_activeCustomPanel = nullptr;
+    }
+
+    if (m_customPanelLayout) {
+        widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+        m_customPanelLayout->addWidget(widget, 0, Qt::AlignTop);
+        widget->show();
+        m_activeCustomPanel = widget;
+    }
+    if (m_configStack) {
+        m_configStack->setVisible(true);
+        m_configStack->setCurrentIndex(1);
+    }
+    updateBottomAreaVisibility();
+    QTimer::singleShot(0, this, [this]() { fitBuildPanel(); });
 }
 
 void CodeEditorView::setWrapEnabled(bool enabled)
@@ -380,7 +652,10 @@ void CodeEditorView::setWrapEnabled(bool enabled)
         if (editor)
             editor->setLineWrapMode(enabled ? QTextEdit::WidgetWidth : QTextEdit::NoWrap);
     }
-    m_wrapSwitch->setChecked(enabled);
+    if (m_wrapAction && m_wrapAction->isChecked() != enabled) {
+        QSignalBlocker b(m_wrapAction);
+        m_wrapAction->setChecked(enabled);
+    }
 }
 
 void CodeEditorView::showFind()
@@ -397,12 +672,8 @@ void CodeEditorView::showReplace()
 
 void CodeEditorView::appendLog(const QString& msg, const QColor& color)
 {
-    if (!m_bottomSplitter->isVisible())
-    {
-        m_bottomSplitter->setVisible(true);
-        m_logSwitch->setChecked(true);
-        Q_EMIT logPanelVisibilityChanged(true);
-    }
+    if (!isLogPanelVisible())
+        setLogPanelVisible(true);
 
     QTextCursor cursor(m_logPanel->document());
     cursor.movePosition(QTextCursor::End);

@@ -306,6 +306,9 @@ void ConsoleWidget::Clear()
     stopLoadAll();
     OutputTextEdit->clear();
     OutputTextEdit->resetHistoryCount();
+    m_consoleTaskPrompted.clear();
+    m_consoleTaskClosed.clear();
+    m_consoleTaskMsgKeys.clear();
     loadedItemCount = 0;
     totalKnown      = 0;
     hasMore         = true;
@@ -382,6 +385,19 @@ void ConsoleWidget::UpdateStatusLabel()
 
 void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &taskId, const int type, const QString &message, const QString &text, const bool completed)
 {
+    if (!taskId.isEmpty() && completed && m_consoleTaskClosed.contains(taskId))
+        return;
+
+    if (!taskId.isEmpty() && (!message.isEmpty() || !text.isEmpty() || completed)) {
+        const QString msgKey = QStringLiteral("%1|%2|%3|%4|%5").arg(taskId).arg(type).arg(message).arg(text).arg(completed ? 1 : 0);
+        if (m_consoleTaskMsgKeys.contains(msgKey)) {
+            if (completed)
+                m_consoleTaskClosed.insert(taskId);
+            return;
+        }
+        m_consoleTaskMsgKeys.insert(msgKey);
+    }
+
     const auto theme = getActiveTheme();
 
     QString promptTime = "";
@@ -412,6 +428,11 @@ void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &
         OutputTextEdit->appendPlain( TrimmedEnds(text) + "\n");
 
     if (completed) {
+        if (!taskId.isEmpty() && m_consoleTaskClosed.contains(taskId))
+            return;
+        if (!taskId.isEmpty())
+            m_consoleTaskClosed.insert(taskId);
+
         QString deleter = "\n+-------------------------------------------------------------------------------------+\n";
         if ( !taskId.isEmpty() )
             deleter = QString("\n+--- Task [%1] closed ----------------------------------------------------------+\n").arg(taskId);
@@ -423,6 +444,12 @@ void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &
 void ConsoleWidget::ConsoleOutputPrompt(const qint64 timestamp, const QString &taskId, const QString &user, const QString &commandLine) const
 {
     if (!agent) return;
+
+    if (!taskId.isEmpty()) {
+        if (m_consoleTaskPrompted.contains(taskId))
+            return;
+        m_consoleTaskPrompted.insert(taskId);
+    }
 
     const auto theme = getActiveTheme();
 
@@ -448,6 +475,7 @@ void ConsoleWidget::ConsoleOutputPrompt(const qint64 timestamp, const QString &t
         OutputTextEdit->appendFormatted(commandLine + "\n", [&](QTextCharFormat& fmt){ fmt = theme.command.toFormat(); });
     }
 }
+
 
 void ConsoleWidget::applyHistoryBarMetrics()
 {
@@ -486,7 +514,6 @@ void ConsoleWidget::applyHistoryBarMetrics()
     for (QFrame* sep : seps)
         sep->setFixedHeight(sepH);
 }
-
 
 void ConsoleWidget::applyHistoryBarStyle()
 {
@@ -552,50 +579,82 @@ void ConsoleWidget::positionHistoryBar()
 
     historyBar->adjustSize();
     historyBar->raise();
-
-    constexpr int margin = 6;
-    int sbW = 0;
-    if (OutputTextEdit && OutputTextEdit->verticalScrollBar() && OutputTextEdit->verticalScrollBar()->isVisible()) {
-        sbW = OutputTextEdit->verticalScrollBar()->width();
-    }
-
-    const int x = qMax(margin, consoleHost->width() - historyBar->width() - margin - sbW);
-    const int y = margin;
-    historyBar->move(x, y);
     historyBar->show();
 }
 
 void ConsoleWidget::positionSearchPanel()
 {
-    if (!consoleHost || !searchPanel)
+    if (!consoleHost || !searchPanel || !searchPanel->isVisible())
         return;
-    if (!searchPanel->isVisible())
-        return;
-
     searchPanel->adjustSize();
     searchPanel->raise();
-
-    constexpr int margin = 6;
-    int maxW = consoleHost->width() - 2 * margin;
-    if (historyBar && historyBar->isVisible())
-        maxW = qMax(120, consoleHost->width() - historyBar->width() - 3 * margin);
-    if (searchPanel->width() > maxW && maxW > 0)
-        searchPanel->setMaximumWidth(maxW);
-    else
-        searchPanel->setMaximumWidth(QWIDGETSIZE_MAX);
-
-    searchPanel->adjustSize();
-    searchPanel->move(margin, margin);
 }
 
 void ConsoleWidget::positionConsoleOverlays()
 {
-    positionHistoryBar();
-    positionSearchPanel();
-    if (historyBar)
+    if (!consoleHost)
+        return;
+
+    constexpr int margin = 6;
+    constexpr int gap = 4;
+
+    int sbW = 0;
+    if (OutputTextEdit && OutputTextEdit->verticalScrollBar() && OutputTextEdit->verticalScrollBar()->isVisible())
+        sbW = OutputTextEdit->verticalScrollBar()->width();
+
+    const int hostW = consoleHost->width();
+    const bool searchVis = searchPanel && searchPanel->isVisible();
+    const bool histVis = historyBar != nullptr;
+
+    if (searchVis) {
+        searchPanel->setMaximumWidth(QWIDGETSIZE_MAX);
+        searchPanel->adjustSize();
+    }
+    if (histVis) {
+        historyBar->adjustSize();
+    }
+
+    const int histW = histVis ? historyBar->width() : 0;
+    const int histH = histVis ? historyBar->height() : 0;
+    const int searchW = searchVis ? searchPanel->width() : 0;
+    const int searchH = searchVis ? searchPanel->height() : 0;
+
+    const int needSideBySide = margin + searchW + gap + histW + margin + sbW;
+    const bool stack = searchVis && histVis && needSideBySide > hostW;
+
+    int histX = margin;
+    int histY = margin;
+    if (histVis) {
+        histX = qMax(margin, hostW - histW - margin - sbW);
+        histY = margin;
+        historyBar->move(histX, histY);
+        historyBar->show();
         historyBar->raise();
-    if (searchPanel && searchPanel->isVisible())
+    }
+
+    if (searchVis) {
+        int searchX = margin;
+        int searchY = margin;
+        if (stack) {
+            searchY = margin + histH + gap;
+            const int maxSearchW = qMax(120, hostW - 2 * margin);
+            if (searchW > maxSearchW) {
+                searchPanel->setMaximumWidth(maxSearchW);
+                searchPanel->adjustSize();
+            }
+        } else {
+            const int maxAlone = qMax(120, hostW - 2 * margin);
+            if (searchW > maxAlone) {
+                searchPanel->setMaximumWidth(maxAlone);
+                searchPanel->adjustSize();
+            }
+            if (histVis && searchX + searchPanel->width() + gap > histX) {
+                searchY = margin + histH + gap;
+            }
+        }
+        searchPanel->move(searchX, searchY);
         searchPanel->raise();
+    }
 }
 
 bool ConsoleWidget::eventFilter(QObject* watched, QEvent* event)
@@ -818,7 +877,9 @@ void ConsoleWidget::loadMorePage()
             self->loadedItemCount += items.size();
             self->totalKnown = total;
             self->hasMore    = response["has_more"].toBool();
-            self->oldestLoadedId = parseI64(response, "oldest_id");
+            const qint64 newOldest = parseI64(response, "oldest_id");
+            if (newOldest > 0)
+                self->oldestLoadedId = newOldest;
             self->searchPanel->clearSelections();
             self->updateHistoryBar();
 
@@ -831,6 +892,14 @@ void ConsoleWidget::loadMorePage()
                 self->loadAllPending = false;
                 self->finishBulkLoad();
                 self->updateHistoryBar();
+            } else if (self->autoLoadEarlier && self->hasMore && self->OutputTextEdit) {
+                QTimer::singleShot(50, self, [self]() {
+                    if (!self || !self->OutputTextEdit || self->loadingPage || !self->hasMore)
+                        return;
+                    auto* bar = self->OutputTextEdit->verticalScrollBar();
+                    if (bar && bar->value() <= 8)
+                        self->loadMorePage();
+                });
             }
         });
 }

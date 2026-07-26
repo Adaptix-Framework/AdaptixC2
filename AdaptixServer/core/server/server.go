@@ -39,7 +39,7 @@ func NewTeamserver(debug bool) *Teamserver {
 
 	dbms, err := database.NewDatabase(paths.DbPath, ts)
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "Failed to create a DBMS: %s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "", "Failed to create a DBMS: %s", err.Error())
 		return nil
 	}
 	ts.DBMS = dbms
@@ -78,6 +78,7 @@ func NewTeamserver(debug bool) *Teamserver {
 	_ = ts.IdGen.Bind(dbms.GetDB())
 
 	ts.ScriptManager = axscript.NewScriptManager(ts)
+	ts.initEventHandlerRegistry()
 	ts.TaskManager = NewTaskManager(ts)
 	ts.TunnelManager = NewTunnelManager(ts)
 	ts.TunnelManager.Start(ts.ctx)
@@ -116,7 +117,7 @@ func (ts *Teamserver) RestoreData() {
 		return
 	}
 
-	ts.TsLogAdd(adaptix.LogStatusInfo, 0, "server", "Restore data from Database...")
+	ts.TsLogAdd(adaptix.LogStatusInfo, 0, "server", "", "Restore data from Database...")
 
 	/// AGENTS
 	countAgents := 0
@@ -125,7 +126,7 @@ func (ts *Teamserver) RestoreData() {
 
 		agentFunctions, err := ts.Extender.ExAgentRestore(agentData.Name, agentData)
 		if err != nil {
-			ts.TsLogAdd(adaptix.LogStatusWarn, 1, "server", "Failed to get agentFunctions for agent %v (%v): %v", agentData.Id, agentData.Name, err.Error())
+			ts.TsLogAdd(adaptix.LogStatusWarn, 1, "server", "", "Failed to get agentFunctions for agent %v (%v): %v", agentData.Id, agentData.Name, err.Error())
 			continue
 		}
 
@@ -151,7 +152,7 @@ func (ts *Teamserver) RestoreData() {
 
 		countAgents++
 	}
-	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v agents", countAgents)
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v agents", countAgents)
 
 	/// PIVOT
 	countPivots := 0
@@ -160,7 +161,7 @@ func (ts *Teamserver) RestoreData() {
 		_ = ts.TsPivotCreate(restorePivot.PivotId, restorePivot.ParentAgentId, restorePivot.ChildAgentId, restorePivot.PivotName, true)
 		countPivots++
 	}
-	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v pivots", countPivots)
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v pivots", countPivots)
 
 	/// GROUPS
 	countGroups := 0
@@ -169,27 +170,46 @@ func (ts *Teamserver) RestoreData() {
 		ts.groups.Put(g.GroupId, g)
 		countGroups++
 	}
-	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v groups", countGroups)
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v groups", countGroups)
 
-	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v listeners", ts.DBMS.DbTableCount("Listeners"))
-	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v screenshots", ts.DBMS.DbTableCount("Screenshots"))
-	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v downloads", ts.DBMS.DbTableCount("Downloads"))
-	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v credentials", ts.DBMS.DbTableCount("Credentials"))
-	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "Restored %v targets", ts.DBMS.DbTableCount("Targets"))
+	/// TUNNELS
+	countTunnels := 0
+	for _, row := range ts.DBMS.DbTunnelAll() {
+		data := row.Data
+		data.Active = false
+		agent, agentOk := ts.Agents.Get(data.AgentId)
+		var cbs adaptix.TunnelCallbacks
+		if agentOk && agent != nil {
+			cbs = agent.Fn.TunnelCB
+		}
+		ts.TunnelManager.PutTunnel(&Tunnel{
+			Data:      data,
+			Type:      row.TypeCode,
+			Active:    false,
+			Callbacks: cbs,
+		})
+		countTunnels++
+	}
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v tunnels (paused)", countTunnels)
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v listeners", ts.DBMS.DbTableCount("Listeners"))
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v screenshots", ts.DBMS.DbTableCount("Screenshots"))
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v downloads", ts.DBMS.DbTableCount("Downloads"))
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v credentials", ts.DBMS.DbTableCount("Credentials"))
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v targets", ts.DBMS.DbTableCount("Targets"))
 
 	/// LISTENERS
 	restoreListeners := ts.DBMS.DbListenerAll()
 	for _, restoreListener := range restoreListeners {
-		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.CreateTime, restoreListener.Watermark, restoreListener.CustomData)
+		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.CreateTime, restoreListener.Watermark, restoreListener.CustomData, restoreListener.Tags)
 		if err != nil {
-			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
 		} else {
 			listenerData, ok := ts.listeners.Get(restoreListener.ListenerName)
 			if ok {
 				if restoreListener.ListenerStatus == "Paused" && listenerData.Status == "Listen" {
 					err = ts.Extender.ExListenerPause(restoreListener.ListenerName)
 					if err != nil {
-						ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "Failed to pause restored listener %s: %s", restoreListener.ListenerName, err.Error())
+						ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "", "Failed to pause restored listener %s: %s", restoreListener.ListenerName, err.Error())
 					} else {
 						listenerData.Status = "Paused"
 						ts.listeners.Put(restoreListener.ListenerName, listenerData)
@@ -232,19 +252,21 @@ func (ts *Teamserver) Start() {
 
 	ts.AdaptixServer, err = connector.NewTsConnector(ts, *ts.Profile.Server, *ts.Profile.HttpServer)
 	if err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "Failed to init HTTP handler: %s", err.Error())
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "", "Failed to init HTTP handler: %s", err.Error())
 		return
 	}
 
 	ts.Extender.LoadPlugins(ts.Profile.Server.Extenders)
 
 	ts.TsAxScriptLoadFromProfile()
+	ts.loadEventMutes()
+	ts.TsEventHandlersLoad()
 
 	go ts.AdaptixServer.Start(&stopped)
-	ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server", "", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
 
 	ts.RestoreData()
-	ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server", "The AdaptixC2 server is ready")
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 0, "server", "", "The AdaptixC2 server is ready")
 
 	go ts.TsAgentTickUpdate(ts.ctx)
 
@@ -253,5 +275,5 @@ func (ts *Teamserver) Start() {
 	ts.LogManager.Stop()
 	ts.FrameManager.Stop()
 	ts.cancel()
-	ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "Teamserver finished")
+	ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "", "Teamserver finished")
 }

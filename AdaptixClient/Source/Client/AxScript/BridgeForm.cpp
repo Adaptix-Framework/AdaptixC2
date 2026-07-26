@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QThread>
 #include <QApplication>
+#include <QJSEngine>
 #include <oclero/qlementine/widgets/Switch.hpp>
 #include <oclero/qlementine/widgets/SegmentedControl.hpp>
 
@@ -316,6 +317,7 @@ QObject* BridgeForm::create_panel()
 {
     auto* panel = new QWidget(getParentWidget());
     panel->setProperty("Main", "base");
+    panel->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
     auto* wrapper = new AxPanelWrapper(panel, this);
     scriptEngine->registerObject(wrapper);
     return wrapper;
@@ -345,41 +347,51 @@ QObject* BridgeForm::create_dialog(const QString& title) const
 
 QObject* BridgeForm::create_selector_credentials(const QJSValue &headers) const
 {
-    auto* parentW = getParentWidget();
-    auto* wrapper = new AxSelectorCreds(headers, scriptEngine, parentW);
-    scriptEngine->registerObject(wrapper);
+    auto* wrapper = new AxSelectorCreds(headers, scriptEngine, scriptEngine);
+    if (scriptEngine && scriptEngine->engine())
+        QJSEngine::setObjectOwnership(wrapper, QJSEngine::CppOwnership);
+    if (scriptEngine)
+        scriptEngine->registerObject(wrapper);
     return wrapper;
 }
 
 QObject* BridgeForm::create_selector_agents(const QJSValue &headers) const
 {
-    auto* parentW = getParentWidget();
-    auto* wrapper = new AxSelectorAgents(headers, scriptEngine, parentW);
-    scriptEngine->registerObject(wrapper);
+    auto* wrapper = new AxSelectorAgents(headers, scriptEngine, scriptEngine);
+    if (scriptEngine && scriptEngine->engine())
+        QJSEngine::setObjectOwnership(wrapper, QJSEngine::CppOwnership);
+    if (scriptEngine)
+        scriptEngine->registerObject(wrapper);
     return wrapper;
 }
 
 QObject* BridgeForm::create_selector_listeners(const QJSValue &headers) const
 {
-    auto* parentW = getParentWidget();
-    auto* wrapper = new AxSelectorListeners(headers, scriptEngine, parentW);
-    scriptEngine->registerObject(wrapper);
+    auto* wrapper = new AxSelectorListeners(headers, scriptEngine, scriptEngine);
+    if (scriptEngine && scriptEngine->engine())
+        QJSEngine::setObjectOwnership(wrapper, QJSEngine::CppOwnership);
+    if (scriptEngine)
+        scriptEngine->registerObject(wrapper);
     return wrapper;
 }
 
 QObject* BridgeForm::create_selector_targets(const QJSValue &headers) const
 {
-    auto* parentW = getParentWidget();
-    auto* wrapper = new AxSelectorTargets(headers, scriptEngine, parentW);
-    scriptEngine->registerObject(wrapper);
+    auto* wrapper = new AxSelectorTargets(headers, scriptEngine, scriptEngine);
+    if (scriptEngine && scriptEngine->engine())
+        QJSEngine::setObjectOwnership(wrapper, QJSEngine::CppOwnership);
+    if (scriptEngine)
+        scriptEngine->registerObject(wrapper);
     return wrapper;
 }
 
 QObject* BridgeForm::create_selector_downloads(const QJSValue &headers) const
 {
-    auto* parentW = getParentWidget();
-    auto* wrapper = new AxSelectorDownloads(headers, scriptEngine, parentW);
-    scriptEngine->registerObject(wrapper);
+    auto* wrapper = new AxSelectorDownloads(headers, scriptEngine, scriptEngine);
+    if (scriptEngine && scriptEngine->engine())
+        QJSEngine::setObjectOwnership(wrapper, QJSEngine::CppOwnership);
+    if (scriptEngine)
+        scriptEngine->registerObject(wrapper);
     return wrapper;
 }
 

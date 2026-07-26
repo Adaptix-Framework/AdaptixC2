@@ -1,0 +1,22 @@
+# Package list for: axtool adaptix.spec ext install --from packages.yaml
+#
+# Each item needs a source (git shorthand, URL, or local path).
+# Optional: name (single item from multi-item repo), path, plugin_dir.
+
+packages:
+  # AxScript kit
+  # - source: github.com/Adaptix-Framework/Extension-Kit@main
+
+  # Extender / service
+  # - source: github.com/org/my-plugin@v1
+
+  # Local path
+  # - source: ../my-plugins/foo
+
+  # Multi-package repo — install only one name from root axtool.spec:
+  # - source: github.com/org/monorepo@v1
+  #   name: golem_agent
+
+  # Or pick a subfolder that has its own axtool.spec:
+  # - source: github.com/org/monorepo@v1
+  #   path: golem/golem_agent
