@@ -73,7 +73,6 @@ CMakeFiles/
 *.make
 .ninja_deps
 .ninja_log
-build/
 
 # MOC/RCC/Qt generated
 *_autogen/
