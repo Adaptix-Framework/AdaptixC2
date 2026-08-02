@@ -82,6 +82,10 @@ void Settings::SetDefault()
         data.FilesTableColumns[i] = true;
     this->data.FilesCompactMode = false;
 
+    for (int i = 0; i < 13; i++)
+        data.PayloadsTableColumns[i] = true;
+    data.PayloadsTableColumns[9] = false;
+
     this->data.PageSize = 100;
 
     this->data.TabBlinkEnabled = true;
@@ -119,6 +123,7 @@ void Settings::LoadFromDB()
     mainAdaptix->storage->SelectSettingsTargets( &data );
     mainAdaptix->storage->SelectSettingsCredentials( &data );
     mainAdaptix->storage->SelectSettingsFiles( &data );
+    mainAdaptix->storage->SelectSettingsPayloads( &data );
     mainAdaptix->storage->SelectSettingsTabBlink( &data );
     mainAdaptix->storage->SelectSettingsScript( &data );
 }
@@ -133,6 +138,7 @@ void Settings::SaveToDB() const
     mainAdaptix->storage->UpdateSettingsTargets( data );
     mainAdaptix->storage->UpdateSettingsCredentials( data );
     mainAdaptix->storage->UpdateSettingsFiles( data );
+    mainAdaptix->storage->UpdateSettingsPayloads( data );
     mainAdaptix->storage->UpdateSettingsTabBlink( data );
     mainAdaptix->storage->UpdateSettingsScript( data );
 }

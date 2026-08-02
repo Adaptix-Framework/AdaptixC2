@@ -13,10 +13,6 @@ func (ts *Teamserver) TsServiceUnload(serviceName string) error {
 	return ts.Extender.ExServiceUnload(serviceName)
 }
 
-func (ts *Teamserver) TsServiceCall(serviceName string, operator string, function string, args string) {
-	ts.Extender.ExServiceCall(serviceName, operator, function, args)
-}
-
 func (ts *Teamserver) TsServiceList() (string, error) {
 	var services []extender.ServiceInfo
 
@@ -30,16 +26,4 @@ func (ts *Teamserver) TsServiceList() (string, error) {
 		return "", err
 	}
 	return string(jsonServices), nil
-}
-
-/// OUT
-
-func (ts *Teamserver) TsServiceSendDataAll(service string, data string) {
-	packet := CreateSpServiceData(service, data)
-	ts.TsSyncAllClients(packet)
-}
-
-func (ts *Teamserver) TsServiceSendDataClient(operator string, service string, data string) {
-	packet := CreateSpServiceData(service, data)
-	ts.TsSyncClient(operator, packet)
 }

@@ -224,7 +224,7 @@ func (tc *TsConnector) tcChannelOTP(ctx *gin.Context) {
 
 	case "channel_agent_build":
 		go func() {
-			if err := tc.teamserver.TsAgentBuildCreateChannel(channelDataStr, wsConn); err != nil {
+			if err := tc.teamserver.TsAgentBuildCreateChannel(channelDataStr, wsConn, wsData.Username); err != nil {
 				tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "Agent build channel error: %s", err.Error())
 			}
 		}()

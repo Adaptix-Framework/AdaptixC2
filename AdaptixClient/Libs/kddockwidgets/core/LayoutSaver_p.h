@@ -136,7 +136,7 @@ struct DOCKS_EXPORT LayoutSaver::DockWidget
     Vector<QString> affinities;
     LayoutSaver::Position lastPosition;
     CloseReason lastCloseReason;
-#if defined(KDDW_FRONTEND_QT) && QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     QVariantMap userData;
 #endif
 

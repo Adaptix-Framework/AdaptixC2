@@ -77,10 +77,26 @@ public:
     ///@param parent just forward to Frame's constructor
     virtual View *createGroup(Core::Group *, View *parent = nullptr) const = 0;
 
+    ///@brief Overload of createGroup() which also receives the userType of the DockWidget
+    ///       that's initially being added to this group (see DockWidget::setUserType()).
+    ///       Override this instead of the above overload if you need to pick a different
+    ///       Group sub-class depending on the dock widget's userType. Note that a group can
+    ///       later have more dock widgets tabbed into it, with different userTypes; this only
+    ///       reflects the one that caused the group to be created.
+    ///       The default implementation just forwards to createGroup(Core::Group*, View*).
+    virtual View *createGroup(Core::Group *controller, View *parent, int userType) const;
+
     ///@brief Called by the framework to create a TitleBar view
     ///       Override to provide your own TitleBar sub-class.
     ///       Just forward the @p controller and @p parent arguments to the TitleBar view ctor
     virtual View *createTitleBar(Core::TitleBar *controller, View *parent) const = 0;
+
+    ///@brief Overload of createTitleBar() which also receives the userType of the DockWidget
+    ///       that's initially covered by this title bar (see DockWidget::setUserType()).
+    ///       Override this instead of the above overload if you need to pick a different
+    ///       TitleBar sub-class depending on the dock widget's userType.
+    ///       The default implementation just forwards to createTitleBar(Core::TitleBar*, View*).
+    virtual View *createTitleBar(Core::TitleBar *controller, View *parent, int userType) const;
 
     ///@brief Called by the framework to create a Stack view
     ///       Override to provide your own Stack sub-class.
@@ -91,6 +107,13 @@ public:
     ///       Override to provide your own TabBar sub-class.
     ///@param parent Just forward to TabBar's's constructor.
     virtual View *createTabBar(Core::TabBar *tabBar, View *parent = nullptr) const = 0;
+
+    ///@brief Overload of createTabBar() which also receives the userType of the DockWidget
+    ///       that's initially being added to this group (see DockWidget::setUserType()).
+    ///       Override this instead of the above overload if you need to pick a different
+    ///       TabBar sub-class depending on the dock widget's userType.
+    ///       The default implementation just forwards to createTabBar(Core::TabBar*, View*).
+    virtual View *createTabBar(Core::TabBar *tabBar, View *parent, int userType) const;
 
     ///@brief Called by the framework to create a Separator view
     ///       Override to provide your own Separator sub-class. The Separator allows
@@ -104,6 +127,16 @@ public:
     virtual View *createFloatingWindow(Core::FloatingWindow *controller,
                                        Core::MainWindow *parent = nullptr,
                                        Qt::WindowFlags windowFlags = {}) const = 0;
+
+    ///@brief Overload of createFloatingWindow() which also receives the userType of the
+    ///       DockWidget that's initially inside this floating window (see
+    ///       DockWidget::setUserType()). Only set when the floating window is created to hold
+    ///       a specific, already-existing Group (e.g. detaching a tab); 0 otherwise.
+    ///       Override this instead of the above overload if you need to pick a different
+    ///       FloatingWindow sub-class depending on the dock widget's userType.
+    ///       The default implementation just forwards to createFloatingWindow(Core::FloatingWindow*, Core::MainWindow*, Qt::WindowFlags).
+    virtual View *createFloatingWindow(Core::FloatingWindow *controller, Core::MainWindow *parent,
+                                       Qt::WindowFlags windowFlags, int userType) const;
 
 
     /// @brief Creates the window that will show the actual drop indicators. They need a higher

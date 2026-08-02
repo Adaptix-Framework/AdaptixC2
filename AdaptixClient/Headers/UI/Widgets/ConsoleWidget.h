@@ -47,6 +47,8 @@ class ConsoleWidget : public DockTab
 
     QWidget*                    consoleHost        = nullptr;
     QFrame*                     historyBar         = nullptr;
+    QWidget*                    historyContent     = nullptr;
+    QToolButton*                historyToggleBtn   = nullptr;
     QLabel*                     historyStatusLabel = nullptr;
     oclero::qlementine::Switch* autoLoadSwitch     = nullptr;
     QLabel*                     pageSizeLabel      = nullptr;
@@ -55,6 +57,7 @@ class ConsoleWidget : public DockTab
     QToolButton*                loadAllButton      = nullptr;
     QToolButton*                jumpLatestButton   = nullptr;
     QToolButton*                stopLoadButton     = nullptr;
+    bool                        historyExpanded    = false;
 
     int  pageSize        = 50;
     int  loadedItemCount = 0;
@@ -64,6 +67,9 @@ class ConsoleWidget : public DockTab
     bool initialLoaded   = false;
     bool loadAllPending  = false;
     bool autoLoadEarlier = true;
+    bool viewCleared     = false;
+    bool historyWindow   = false;
+    quint64 loadGen      = 0;
     qint64 oldestLoadedId = 0;
 
     QPointer<DialogConsoleSearch> searchDialog;
@@ -73,17 +79,19 @@ class ConsoleWidget : public DockTab
     void loadAllPages();
     void stopLoadAll();
     void jumpToLatest();
+    void reloadLatestPage();
     void loadAroundHit(qint64 centerId, int limit = 0);
-    void applyConsolePacket(const QJsonObject& obj);
+    void applyConsolePacket(const QJsonObject& obj, bool fromHistory = false);
     void updateHistoryBar();
     void applyPageItems(const QJsonArray& items, bool prepend);
     void openHistorySearch();
     void finishBulkLoad();
     int  effectiveLoadLimit() const;
+    void resetViewState();
 
     bool userSelectedCompletion = false;
 
-    mutable QSet<QString> m_consoleTaskPrompted;  // taskId → prompt already printed
+    mutable QSet<QString> m_consoleTaskPrompted;  // taskId or local key → prompt printed
     mutable QSet<QString> m_consoleTaskClosed;    // taskId → completed footer already printed
     mutable QSet<QString> m_consoleTaskMsgKeys;   // taskId|type|message|text → body already printed
 
@@ -95,6 +103,7 @@ class ConsoleWidget : public DockTab
     void applyTheme();
     void applyHistoryBarStyle();
     void applyHistoryBarMetrics();
+    void setHistoryBarExpanded(bool on);
     void positionHistoryBar();
     void positionSearchPanel();
     void positionConsoleOverlays();

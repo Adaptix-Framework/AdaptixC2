@@ -72,7 +72,6 @@ public Q_SLOTS:
     void actionConsoleOpen();
     void actionTasksOpen();
     void actionExecuteCommand();
-    void actionConsoleDelete();
     void actionAgentRemove();
     void actionMarkActive();
     void actionMarkInactive();

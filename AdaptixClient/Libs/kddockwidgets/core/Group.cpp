@@ -89,7 +89,8 @@ static StackOptions tabWidgetOptions(FrameOptions options)
 }
 
 Group::Group(View *parent, FrameOptions options, int userType)
-    : Controller(ViewType::Group, Config::self().viewFactory()->createGroup(this, parent))
+    : Controller(ViewType::Group,
+                 Config::self().viewFactory()->createGroup(this, parent, userType))
     , FocusScope(view())
     , d(new Private(this, userType, actualOptions(options)))
     , m_stack(new Core::Stack(this, tabWidgetOptions(options)))
@@ -322,7 +323,7 @@ FloatingWindow *Group::detachTab(DockWidget *dockWidget)
     Rect r = dockWidget->geometry();
     removeWidget(dockWidget);
 
-    auto newGroup = new Group();
+    auto newGroup = new Group(nullptr, FrameOption_None, dockWidget->userType());
     const Point globalPoint = mapToGlobal(Point(0, 0));
     newGroup->addTab(dockWidget);
 

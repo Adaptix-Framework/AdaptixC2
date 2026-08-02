@@ -44,6 +44,7 @@ public:
     void UpdateTargetsColumns();
     void UpdateCredentialsColumns();
     void UpdateFilesColumns();
+    void UpdatePayloadsColumns();
     void ApplyFeedViewPreferences();
     void RebuildToolbars();
 

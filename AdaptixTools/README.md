@@ -17,13 +17,11 @@ Commands that do not need a project (`template`, `completion`) omit that argumen
 ## Build
 
 ```bash
-# From AdaptixTools/
-make
-# → dist/axtool
-
-# Or from the monorepo root
+# monorepo root → dist/axtool
 make tools
-# → dist/axtool
+
+# or inside AdaptixTools → AdaptixTools/dist/axtool
+cd AdaptixTools && go build -o dist/axtool .
 ```
 
 Requires **Go 1.26+**.
@@ -108,6 +106,8 @@ axtool adaptix.spec client build [-j N] [-d]
 
 Stages `AdaptixClient` into **`dist_dir`** from `adaptix.spec` (not a hard-coded path).
 
+Before cmake, axtool checks that **Qt 6.9+** is available (`qmake6 -query QT_VERSION` or `pkg-config Qt6Core`). If Qt is missing or too old, the build stops with a clear error.
+
 ### ext install
 
 ```bash
@@ -146,11 +146,11 @@ Operates on the runtime profile path from `profile:` (default derived from `dist
 
 | Command                   | Description                           |
 |---------------------------|---------------------------------------|
-| `profile show`            | List known `Teamserver` scalar fields |
-| `profile get <key>`       | Print one field                       |
-| `profile set key=value …` | Set one or more fields                |
+| `profile show`            | List all available `Teamserver` scalar fields and values |
+| `profile get <key\|all>`  | Print one field, or all available parameters (`get all`) |
+| `profile set key=value …` | Set one or more fields                                   |
 
-Editable keys: `interface`, `port`, `endpoint`, `password`, `manage_password`, `only_password`, `cert`, `key`, `access_token_live_hours`, `refresh_token_live_hours`.
+Editable keys: `interface`, `port`, `endpoint`, `password`, `only_password`, `cert`, `key`, `access_token_live_hours`, `refresh_token_live_hours`.
 
 ### server daemon
 

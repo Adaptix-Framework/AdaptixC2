@@ -1,14 +1,9 @@
-GOFLAGS ?= -ldflags="-s -w"
-BINARY  := axtool
-DIST    := dist
-
 .PHONY: all clean
 
-all: clean
-	@ echo "  * Building axtool"
-	@ mkdir -p $(DIST)
-	@ go build $(GOFLAGS) -o $(DIST)/$(BINARY) .
-	@ echo "    done -> $(DIST)/$(BINARY)"
+all:
+	@mkdir -p dist
+	@GO111MODULE=on GOWORK=off go build -buildvcs=false -ldflags="-s -w" -o dist/axtool .
+	@echo "done -> dist/axtool"
 
 clean:
-	@ rm -rf $(DIST)
+	@rm -rf dist

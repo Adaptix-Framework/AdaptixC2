@@ -333,7 +333,7 @@ static void to_json(nlohmann::json &json, const LayoutSaver::DockWidget &dw)
     json["uniqueName"] = dw.uniqueName;
     json["lastPosition"] = dw.lastPosition;
     json["lastCloseReason"] = dw.lastCloseReason;
-#if defined(KDDW_FRONTEND_QT) && QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     if (!dw.userData.isEmpty())
         json["userData"] = dw.userData;
 #endif
@@ -352,7 +352,7 @@ static void from_json(const nlohmann::json &json, LayoutSaver::DockWidget &dw)
     dw.lastPosition = jsonValue(json, "lastPosition", LayoutSaver::Position());
     dw.lastCloseReason = jsonValue(json, "lastCloseReason", CloseReason::Unspecified);
 
-#if defined(KDDW_FRONTEND_QT) && QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     auto userDataIt = json.find("userData");
     if (userDataIt != json.end()) {
         QVariantMap userData;

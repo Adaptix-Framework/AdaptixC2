@@ -98,12 +98,15 @@
 #define TYPE_SYNC_CATEGORY_BATCH 0x15
 #define TYPE_LOG_BATCH           0x16
 
-#define TYPE_CHAT_MESSAGE 0x18
-#define TYPE_SERVICE_DATA 0x19
-#define TYPE_CHAT_EDIT    0x1a
-#define TYPE_CHAT_DELETE  0x1b
-#define TYPE_CHAT_REACTION 0x1c
-#define TYPE_CHAT_TODO    0x1d
+#define TYPE_CHAT_MESSAGE  0x18
+#define TYPE_CHAT_EDIT     0x19
+#define TYPE_CHAT_DELETE   0x1a
+#define TYPE_CHAT_REACTION 0x1b
+#define TYPE_CHAT_TODO     0x1c
+
+#define TYPE_PLUGIN_SERVICE_DATA  0x1d
+#define TYPE_PLUGIN_AGENT_DATA    0x1e
+#define TYPE_PLUGIN_LISTENER_DATA 0x1f
 
 #define TYPE_REG_LISTENER 0x21
 #define TYPE_REG_AGENT    0x22
@@ -172,6 +175,11 @@
 #define TYPE_GROUP_DELETE   0xa3
 #define TYPE_GROUP_MEMBERS  0xa4
 #define TYPE_GROUP_REPARENT 0xa5
+
+#define TYPE_PAYLOAD_CREATE 0xb1
+#define TYPE_PAYLOAD_UPDATE 0xb2
+#define TYPE_PAYLOAD_DELETE 0xb3
+#define TYPE_PAYLOAD_EDIT   0xb4
 
 //////////
 
@@ -271,6 +279,8 @@ typedef struct SettingsData {
 
     bool FilesTableColumns[11];
     bool FilesCompactMode;
+
+    bool PayloadsTableColumns[13];
 
     bool TabBlinkEnabled;
     QMap<QString, bool> BlinkWidgets;  // className -> enabled
@@ -392,6 +402,31 @@ typedef struct SyncEntryData
     double  speed;
     int     state;
 } SyncEntryData;
+
+typedef struct PayloadData
+{
+    qint64    PayloadId = 0;
+    QString   Name;
+    QString   AgentType;
+    QString   Artifact;
+    QString   Arch;
+    QStringList Listeners;
+    qint64    Size = 0;
+    QString   Sha1;
+    QString   Sha256;
+    QString   Md5;
+    QString   Creator;
+    qint64    Created = 0;
+    bool      Hidden = false;
+    QString   Filename;
+    QString   BuildId;
+    QString   Watermark;
+    QString   ConfigJson;
+    QString   Description;
+    QString   Uid;
+    QString   Color;
+    bool      Missing = false;
+} PayloadData;
 
 typedef struct ScreenData
 {

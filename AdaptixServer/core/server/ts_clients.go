@@ -19,6 +19,7 @@ var InitialSyncCategories = []string{
 	SyncCategoryPivots,
 	SyncCategoryGroups,
 	SyncCategoryTunnels,
+	SyncCategoryPayloads,
 }
 
 func (ts *Teamserver) TsClientConnect(username string, socket adaptix.WebSocketConn, clientType uint8, consoleTeamMode bool, subscriptions []string) {

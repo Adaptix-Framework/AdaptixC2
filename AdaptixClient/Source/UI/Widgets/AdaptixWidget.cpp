@@ -15,6 +15,7 @@
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ChatWidget.h>
 #include <UI/Widgets/ListenersFeedWidget.h>
+#include <UI/Widgets/PayloadsFeedWidget.h>
 #include <UI/Widgets/FilesFeedWidget.h>
 #include <UI/Widgets/ScreenshotsFeedWidget.h>
 #include <UI/Widgets/CredentialsFeedWidget.h>
@@ -80,6 +81,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     LogsDock          = new LogsWidget(this);
     ChatDock          = new ChatWidget(this);
     ListenersDock     = new ListenersFeedWidget(this);
+    PayloadsDock      = new PayloadsFeedWidget(this);
     SessionsGraphDock = new SessionsGraph(this);
     if (GlobalClient && GlobalClient->settings && GlobalClient->settings->data.SessionsViewMode == 1)
         SessionsTableDock = new SessionsFeedWidget(this);
@@ -113,6 +115,11 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     connect( logsButton,          &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
     connect( chatButton,          &QPushButton::clicked, this, &AdaptixWidget::LoadChatUI);
     connect( listenersButton,     &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
+    listenersButton->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect( listenersButton,     &QPushButton::customContextMenuRequested, this, &AdaptixWidget::onListenersButtonContextMenu);
+    connect( payloadsButton,      &QPushButton::clicked, this, &AdaptixWidget::LoadPayloadsUI);
+    payloadsButton->setContextMenuPolicy(Qt::CustomContextMenu);
+    connect( payloadsButton,      &QPushButton::customContextMenuRequested, this, &AdaptixWidget::onPayloadsButtonContextMenu);
     connect( sessionsButton,      &QPushButton::clicked, this, &AdaptixWidget::SetSessionsTableUI);
     connect( graphButton,         &QPushButton::clicked, this, &AdaptixWidget::SetGraphUI);
     connect( tasksButton,         &QPushButton::clicked, this, &AdaptixWidget::SetTasksUI);
@@ -350,7 +357,8 @@ void AdaptixWidget::createUI()
     extDocksLayout->addWidget(extDocksEmptyLabel);
     extDocksContent->setMinimumWidth(220);
 
-    extDocksPopover = extDocksButton->popover();
+    extDocksPopover = new oclero::qlementine::Popover(extDocksButton);
+    extDocksPopover->setAnchorWidget(extDocksButton);
     extDocksPopover->setPreferredPosition(oclero::qlementine::Popover::Position::Bottom);
     extDocksPopover->setPreferredAlignment(oclero::qlementine::Popover::Alignment::Begin);
     auto* popQs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
@@ -368,14 +376,19 @@ void AdaptixWidget::createUI()
         extDocksListWidget->setStyleSheet(popupTextCss);
         extDocksEmptyLabel->setStyleSheet(popupTextCss);
     }
-    extDocksButton->setPopoverContentWidget(extDocksContent);
+    extDocksPopover->setContentWidget(extDocksContent);
 
+    connect(extDocksButton, &QPushButton::clicked, this, [this]() {
+        if (extDocksPopover)
+            extDocksPopover->openPopover();
+    });
     connect(extDocksListWidget, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
         QString id = item->data(Qt::UserRole).toString();
         if (extDocksMap.contains(id) && extDocksMap[id].showCallback) {
             extDocksMap[id].showCallback();
         }
-        extDocksButton->setPopoverOpened(false);
+        if (extDocksPopover)
+            extDocksPopover->setOpened(false);
     });
 
     const int pos = (GlobalClient && GlobalClient->settings) ? GlobalClient->settings->data.ToolbarPosition : 0;
@@ -406,6 +419,10 @@ void AdaptixWidget::createUI()
     this->setLayout(mainGridLayout);
 
     applyThemeColorsToToolbar();
+
+    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr)) {
+        connect(qs, &oclero::qlementine::QlementineStyle::themeChanged, this, &AdaptixWidget::applyThemeColorsToToolbar, Qt::UniqueConnection);
+    }
 
     connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
         if (!mainGridLayout || !toolbarWidget)
@@ -449,7 +466,8 @@ void AdaptixWidget::createButtons()
     graphButton    = mkIconBtn(":/icons/graph",       "Session graph");
     tasksButton    = mkIconBtn(":/icons/job",         "Jobs & Tasks");
 
-    listenersButton = mkIconBtn(":/icons/listeners", "Listeners & Sites");
+    listenersButton = mkIconBtn(":/icons/listeners", "Listeners & Sites (right-click: Create Listener)");
+    payloadsButton  = mkIconBtn(":/icons/kill",      "Payload Store (right-click: Generate)");
     tunnelButton    = mkIconBtn(":/icons/vpn",       "Tunnels table");
     logsButton      = mkIconBtn(":/icons/logs",      "Notifications");
 
@@ -462,13 +480,7 @@ void AdaptixWidget::createButtons()
 
     scriptManagerButton = mkIconBtn(":/icons/folder_code", "Scripts (right-click: Local / Teamserver / Events)");
     codeEditorButton    = mkIconBtn(":/icons/code",        "Code editor");
-
-    extDocksButton = new oclero::qlementine::PopoverButton("", QIcon(":/icons/extension"), this);
-    extDocksButton->setIconSize(QSize(24, 24));
-    extDocksButton->setFixedSize(37, 28);
-    extDocksButton->setToolTip("Extensions Docks");
-    extDocksButton->setShowArrowIndicator(false);
-    extDocksButton->setFocusPolicy(Qt::NoFocus);
+    extDocksButton      = mkIconBtn(":/icons/extension",   "Extensions Docks");
 
     settingsButton = mkIconBtn(":/icons/settings_account", "Settings");
 
@@ -524,8 +536,8 @@ void AdaptixWidget::buildSegmentedGroups(bool vertical)
 
     // View: Sessions / Graph | Tasks
     buildGroup(groupView, { sessionsButton, graphButton, tasksButton }, {2});
-    // Infra: Listeners / Logs / Chat | Tunnels
-    buildGroup(groupInfra, { listenersButton, logsButton, chatButton, tunnelButton }, {3});
+    // Infra: Listeners / Payload Store | Logs / Chat | Tunnels
+    buildGroup(groupInfra, { listenersButton, payloadsButton, logsButton, chatButton, tunnelButton }, {2, 4});
     // Data: Downloads / Targets / Creds / Screens / Keys
     buildGroup(groupData, { downloadsButton, targetsButton, credsButton, screensButton, keysButton }, {});
     // Dev: Script manager / Code editor | Extensions
@@ -538,11 +550,27 @@ void AdaptixWidget::applyThemeColorsToToolbar()
     const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
 
     if (toolbarWidget) {
+        const QColor rowBg = t.backgroundColorMain2.isValid() ? t.backgroundColorMain2
+                             : (t.backgroundColorTabBar.isValid() ? t.backgroundColorTabBar
+                                                                  : t.backgroundColorMain1);
         QPalette pal = toolbarWidget->palette();
-        pal.setColor(QPalette::Window, t.backgroundColorMain2);
+        for (auto g : {QPalette::Active, QPalette::Inactive, QPalette::Disabled}) {
+            pal.setColor(g, QPalette::Window, rowBg);
+            pal.setColor(g, QPalette::Base, rowBg);
+            pal.setColor(g, QPalette::Button, rowBg);
+        }
         toolbarWidget->setPalette(pal);
         toolbarWidget->setAutoFillBackground(true);
+        toolbarWidget->setStyleSheet(QStringLiteral(
+            "QWidget#ToolbarContainer {"
+            "  background-color: %1;"
+            "  border: none;"
+            "}"
+        ).arg(rowBg.name(QColor::HexRgb)));
     }
+
+    const QColor groupBg = t.neutralColor.isValid() ? t.neutralColor : t.backgroundColorMain3;
+    const QColor groupBrd = t.borderColor.isValid() ? t.borderColor : t.borderColorDisabled;
 
     struct GroupPainter : QObject {
         QColor bg, brd;
@@ -566,13 +594,26 @@ void AdaptixWidget::applyThemeColorsToToolbar()
         }
     };
     if (!m_groupPainter) {
-        m_groupPainter = new GroupPainter(t.neutralColor, t.borderColor, 5.0, this);
+        m_groupPainter = new GroupPainter(groupBg, groupBrd, 5.0, this);
         for (auto* f : { groupView, groupInfra, groupData, groupDev })
             if (f) f->installEventFilter(m_groupPainter);
     } else {
-        static_cast<GroupPainter*>(m_groupPainter)->setColors(t.neutralColor, t.borderColor);
+        static_cast<GroupPainter*>(m_groupPainter)->setColors(groupBg, groupBrd);
         for (auto* f : { groupView, groupInfra, groupData, groupDev })
             if (f) f->update();
+    }
+
+    if (extDocksPopover && qs) {
+        extDocksPopover->setBackgroundColor(t.backgroundColorMain2);
+        extDocksPopover->setBorderColor(t.borderColor);
+        if (extDocksListWidget && extDocksEmptyLabel) {
+            const QString popupTextCss = QStringLiteral(
+                "QListWidget { background: %1; color: palette(text); }"
+                "QLabel     { color: palette(text); }"
+            ).arg(t.backgroundColorMain1.name());
+            extDocksListWidget->setStyleSheet(popupTextCss);
+            extDocksEmptyLabel->setStyleSheet(popupTextCss);
+        }
     }
 }
 
@@ -800,6 +841,10 @@ void AdaptixWidget::Close()
     LogsDock->deleteLater();
     ChatDock->deleteLater();
     ListenersDock->deleteLater();
+    if (PayloadsDock) {
+        PayloadsDock->deleteLater();
+        PayloadsDock = nullptr;
+    }
     SessionsGraphDock->deleteLater();
     if (TasksDock) {
         TasksDock->deleteLater();
@@ -845,6 +890,8 @@ void AdaptixWidget::ClearAdaptix()
     ScreenshotsDock->Clear();
     TasksDock->Clear();
     ListenersDock->Clear();
+    if (PayloadsDock)
+        PayloadsDock->Clear();
     SessionsGraphDock->Clear();
     SessionsTableDock->Clear();
     TunnelsDock->Clear();
@@ -1833,6 +1880,12 @@ void AdaptixWidget::LoadChatUI() const {
 
 void AdaptixWidget::LoadListenersUI() const { this->PlaceDock(dockBottom, ListenersDock->dock() ); }
 
+void AdaptixWidget::LoadPayloadsUI() const
+{
+    if (PayloadsDock)
+        this->PlaceDock(dockBottom, PayloadsDock->dock());
+}
+
 void AdaptixWidget::LoadTunnelsUI() const { this->PlaceDock(dockBottom, TunnelsDock->dock() ); }
 
 void AdaptixWidget::LoadDownloadsUI() const { LoadFilesUI(0); }
@@ -1842,6 +1895,36 @@ void AdaptixWidget::LoadFilesUI(int segment) const
     if (DownloadsDock)
         DownloadsDock->setSegment(segment);
     this->PlaceDock(dockBottom, DownloadsDock->dock());
+}
+
+void AdaptixWidget::onListenersButtonContextMenu(const QPoint& pos)
+{
+    oclero::qlementine::Menu menu(this);
+
+    auto* actCreate = menu.addAction(QIcon(":/icons/plus"), "Create Listener");
+    connect(actCreate, &QAction::triggered, this, [this]() {
+        LoadListenersUI();
+        if (ListenersDock)
+            ListenersDock->onCreateListener();
+    });
+
+    if (listenersButton)
+        menu.exec(listenersButton->mapToGlobal(pos));
+}
+
+void AdaptixWidget::onPayloadsButtonContextMenu(const QPoint& pos)
+{
+    oclero::qlementine::Menu menu(this);
+
+    auto* actGenerate = menu.addAction(QIcon(":/icons/plus"), "Generate");
+    connect(actGenerate, &QAction::triggered, this, [this]() {
+        LoadPayloadsUI();
+        if (PayloadsDock)
+            PayloadsDock->onGenerateFromToolbar();
+    });
+
+    if (payloadsButton)
+        menu.exec(payloadsButton->mapToGlobal(pos));
 }
 
 void AdaptixWidget::onFilesButtonContextMenu(const QPoint& pos)
@@ -2023,12 +2106,12 @@ void AdaptixWidget::RemoveExtDock(const QString &id)
 
 void AdaptixWidget::ShowExtDocksPopup()
 {
-    if (!extDocksButton)
+    if (!extDocksButton || !extDocksPopover)
         return;
 
     bool empty = extDocksListWidget->count() == 0;
     extDocksListWidget->setVisible(!empty);
     extDocksEmptyLabel->setVisible(empty);
 
-    extDocksButton->setPopoverOpened(true);
+    extDocksPopover->openPopover();
 }

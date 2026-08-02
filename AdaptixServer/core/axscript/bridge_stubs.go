@@ -93,6 +93,7 @@ func registerFormStubs(engine *ScriptEngine) {
 	formObj.Set("create_selector_listeners", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_selector_targets", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_selector_downloads", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
+	formObj.Set("create_selector_payload_store", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 
 	// Extensions
 	formObj.Set("create_ext_dock", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
@@ -163,6 +164,7 @@ func registerMenuStubs(engine *ScriptEngine) {
 	// Targets & Credentials
 	menuObj.Set("add_targets", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
 	menuObj.Set("add_credentials", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	menuObj.Set("add_payload_store", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
 
 	rt.Set("menu", menuObj)
 }

@@ -30,12 +30,15 @@ const (
 	TYPE_LOG_BATCH           = 0x16
 
 	TYPE_CHAT_MESSAGE       = 0x18
-	TYPE_SERVICE_DATA       = 0x19
-	TYPE_CHAT_EDIT          = 0x1a
-	TYPE_CHAT_DELETE        = 0x1b
-	TYPE_CHAT_REACTION      = 0x1c
-	TYPE_CHAT_TODO          = 0x1d
-	TYPE_CHAT_SEARCH_RESULT = 0x1e
+	TYPE_CHAT_EDIT          = 0x19
+	TYPE_CHAT_DELETE        = 0x1a
+	TYPE_CHAT_REACTION      = 0x1b
+	TYPE_CHAT_TODO          = 0x1c
+	TYPE_CHAT_SEARCH_RESULT = 0x20
+
+	TYPE_PLUGIN_SERVICE_DATA  = 0x1d
+	TYPE_PLUGIN_AGENT_DATA    = 0x1e
+	TYPE_PLUGIN_LISTENER_DATA = 0x1f
 
 	TYPE_LISTENER_REG = 0x21
 	TYPE_AGENT_REG    = 0x22
@@ -104,6 +107,11 @@ const (
 	TYPE_GROUP_DELETE   = 0xa3
 	TYPE_GROUP_MEMBERS  = 0xa4
 	TYPE_GROUP_REPARENT = 0xa5
+
+	TYPE_PAYLOAD_CREATE = 0xb1
+	TYPE_PAYLOAD_UPDATE = 0xb2
+	TYPE_PAYLOAD_DELETE = 0xb3
+	TYPE_PAYLOAD_EDIT   = 0xb4
 )
 
 func CreateSpNotification(notifyType int, message string) SpNotification {
@@ -832,12 +840,30 @@ func CreateSpServiceReg(name string, ax string) SyncPackerServiceReg {
 	}
 }
 
-func CreateSpServiceData(service string, data string) SyncPackerServiceData {
-	return SyncPackerServiceData{
-		SpType: TYPE_SERVICE_DATA,
+func CreateSpPluginServiceData(service string, data string) SyncPackerPluginServiceData {
+	return SyncPackerPluginServiceData{
+		SpType: TYPE_PLUGIN_SERVICE_DATA,
 
 		Service: service,
 		Data:    data,
+	}
+}
+
+func CreateSpPluginAgentData(agentId int64, agentType string, data string) SyncPackerPluginAgentData {
+	return SyncPackerPluginAgentData{
+		SpType:    TYPE_PLUGIN_AGENT_DATA,
+		AgentId:   agentId,
+		AgentType: agentType,
+		Data:      data,
+	}
+}
+
+func CreateSpPluginListenerData(listenerName string, listenerType string, data string) SyncPackerPluginListenerData {
+	return SyncPackerPluginListenerData{
+		SpType:       TYPE_PLUGIN_LISTENER_DATA,
+		Listener:     listenerName,
+		ListenerType: listenerType,
+		Data:         data,
 	}
 }
 
@@ -932,5 +958,82 @@ func CreateSpAxScriptData(name string, content string, groups []AxCommandBatch) 
 		Name:    name,
 		Content: content,
 		Groups:  groups,
+	}
+}
+
+/// PAYLOADS
+
+func CreateSpPayloadCreate(p adaptix.PayloadData) SyncPackerPayloadCreate {
+	listeners := p.Listeners
+	if listeners == nil {
+		listeners = []string{}
+	}
+	return SyncPackerPayloadCreate{
+		SpType:    TYPE_PAYLOAD_CREATE,
+		PayloadId: p.PayloadId,
+		Name:      p.Name,
+		AgentType: p.AgentType,
+		Artifact:  p.Artifact,
+		Arch:      p.Arch,
+		Listeners: listeners,
+		Size:      p.Size,
+		Sha1:      p.Sha1,
+		Sha256:    p.Sha256,
+		Md5:       p.Md5,
+		Creator:   p.Creator,
+		Created:   p.Created,
+		Hidden:    p.Hidden,
+		Filename:  p.Filename,
+		BuildId:   p.BuildId,
+		Watermark: p.Watermark,
+		Notes:     p.Notes,
+		Uid:       p.Uid,
+		Color:     p.Color,
+		Missing:   p.Missing,
+	}
+}
+
+func CreateSpPayloadUpdate(ids []int64, hidden bool) SyncPackerPayloadUpdate {
+	return SyncPackerPayloadUpdate{
+		SpType:     TYPE_PAYLOAD_UPDATE,
+		PayloadIds: ids,
+		Hidden:     hidden,
+	}
+}
+
+func CreateSpPayloadDelete(ids []int64) SyncPackerPayloadDelete {
+	return SyncPackerPayloadDelete{
+		SpType:     TYPE_PAYLOAD_DELETE,
+		PayloadIds: ids,
+	}
+}
+
+func CreateSpPayloadEdit(p adaptix.PayloadData) SyncPackerPayloadEdit {
+	listeners := p.Listeners
+	if listeners == nil {
+		listeners = []string{}
+	}
+	return SyncPackerPayloadEdit{
+		SpType:    TYPE_PAYLOAD_EDIT,
+		PayloadId: p.PayloadId,
+		Name:      p.Name,
+		AgentType: p.AgentType,
+		Artifact:  p.Artifact,
+		Arch:      p.Arch,
+		Listeners: listeners,
+		Size:      p.Size,
+		Sha1:      p.Sha1,
+		Sha256:    p.Sha256,
+		Md5:       p.Md5,
+		Creator:   p.Creator,
+		Created:   p.Created,
+		Hidden:    p.Hidden,
+		Filename:  p.Filename,
+		BuildId:   p.BuildId,
+		Watermark: p.Watermark,
+		Notes:     p.Notes,
+		Uid:       p.Uid,
+		Color:     p.Color,
+		Missing:   p.Missing,
 	}
 }

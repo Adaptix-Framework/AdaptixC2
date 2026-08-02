@@ -239,6 +239,17 @@ QObject* BridgeForm::create_list()
     auto* btnAdd = new QPushButton("+");
     auto* btnRemove = new QPushButton("-");
 
+    const int rowH = qMax(20, list->fontMetrics().height() + 6);
+    const int visibleRows = 4;
+    const int listH = rowH * visibleRows + 6;
+    list->setFixedHeight(listH);
+    list->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    list->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    list->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+
+    btnAdd->setFixedSize(28, 28);
+    btnRemove->setFixedSize(28, 28);
+
     auto* btnLayout = new QVBoxLayout();
     btnLayout->setContentsMargins(0, 0, 0, 0);
     btnLayout->setSpacing(2);
@@ -249,8 +260,10 @@ QObject* BridgeForm::create_list()
     auto* mainLayout = new QHBoxLayout(container);
     mainLayout->setContentsMargins(0, 0, 0, 0);
     mainLayout->setSpacing(4);
-    mainLayout->addWidget(list);
+    mainLayout->addWidget(list, 1);
     mainLayout->addLayout(btnLayout);
+    container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    container->setFixedHeight(listH);
 
     auto* wrapper = new AxListWidgetWrapper(container, list, btnAdd, btnRemove, scriptEngine->engine(), this);
     scriptEngine->registerObject(wrapper);
@@ -388,6 +401,16 @@ QObject* BridgeForm::create_selector_targets(const QJSValue &headers) const
 QObject* BridgeForm::create_selector_downloads(const QJSValue &headers) const
 {
     auto* wrapper = new AxSelectorDownloads(headers, scriptEngine, scriptEngine);
+    if (scriptEngine && scriptEngine->engine())
+        QJSEngine::setObjectOwnership(wrapper, QJSEngine::CppOwnership);
+    if (scriptEngine)
+        scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_selector_payload_store(const QJSValue &headers) const
+{
+    auto* wrapper = new AxSelectorPayloads(headers, scriptEngine, scriptEngine);
     if (scriptEngine && scriptEngine->engine())
         QJSEngine::setObjectOwnership(wrapper, QJSEngine::CppOwnership);
     if (scriptEngine)

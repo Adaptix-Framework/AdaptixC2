@@ -1,9 +1,14 @@
 #include <main.h>
 #include <QTimeZone>
 #include <QJSValueIterator>
+#include <QEventLoop>
+#include <QUrlQuery>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <Agent/Agent.h>
 #include <Client/AuthProfile.h>
 #include <Client/Requestor.h>
+#include <Client/HttpRequestManager.h>
 #include <Client/AxScript/BridgeApp.h>
 #include <Client/AxScript/AxScriptEngine.h>
 #include <Client/AxScript/AxCommandWrappers.h>
@@ -1440,12 +1445,12 @@ QJSValue BridgeApp::screenshots()
     return this->scriptEngine->engine()->toScriptValue(list);
 }
 
-void BridgeApp::service_command(const QString &service, const QString &command, const QJSValue &args)
+void BridgeApp::plugin_service_command(const QString &service, const QString &command, const QJSValue &args)
 {
     QString argsStr;
     if (!args.isUndefined() && !args.isNull()) {
         if (!args.isObject()) {
-            Q_EMIT engineError("service_command expected object in args parameter!");
+            Q_EMIT engineError("plugin_service_command expected object in args parameter!");
             return;
         }
         QJsonObject argsObj = QJsonObject::fromVariantMap(args.toVariant().toMap());
@@ -1454,11 +1459,81 @@ void BridgeApp::service_command(const QString &service, const QString &command, 
 
     auto adaptix = scriptEngine->manager()->GetAdaptix();
     if (!adaptix || !adaptix->GetProfile()) {
-        Q_EMIT engineError("service_command: no active profile!");
+        Q_EMIT engineError("plugin_service_command: no active profile!");
         return;
     }
 
-    HttpReqServiceCallAsync(service, command, argsStr, *adaptix->GetProfile(), [](bool, const QString&, const QJsonObject&) {});
+    HttpReqPluginServiceCallAsync(service, command, argsStr, *adaptix->GetProfile(), [](bool, const QString&, const QJsonObject&) {});
+}
+
+void BridgeApp::plugin_agent_command(const QJSValue &agentIdVal, const QString &command, const QJSValue &args)
+{
+    if (command.isEmpty()) {
+        Q_EMIT engineError("plugin_agent_command: command is required");
+        return;
+    }
+
+    qint64 agentId = 0;
+    if (agentIdVal.isNumber())
+        agentId = static_cast<qint64>(agentIdVal.toNumber());
+    else if (agentIdVal.isString())
+        agentId = agentIdVal.toString().toLongLong();
+    else {
+        Q_EMIT engineError("plugin_agent_command: agentId must be a number");
+        return;
+    }
+    if (agentId <= 0) {
+        Q_EMIT engineError("plugin_agent_command: invalid agentId");
+        return;
+    }
+
+    QString argsStr;
+    if (!args.isUndefined() && !args.isNull()) {
+        if (!args.isObject()) {
+            Q_EMIT engineError("plugin_agent_command expected object in args parameter!");
+            return;
+        }
+        QJsonObject argsObj = QJsonObject::fromVariantMap(args.toVariant().toMap());
+        argsStr = QString::fromUtf8(QJsonDocument(argsObj).toJson(QJsonDocument::Compact));
+    }
+
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    if (!adaptix || !adaptix->GetProfile()) {
+        Q_EMIT engineError("plugin_agent_command: no active profile!");
+        return;
+    }
+
+    HttpReqPluginAgentCallAsync(agentId, command, argsStr, *adaptix->GetProfile(), [](bool, const QString&, const QJsonObject&) {});
+}
+
+void BridgeApp::plugin_listener_command(const QString &listenerName, const QString &command, const QJSValue &args)
+{
+    if (listenerName.isEmpty()) {
+        Q_EMIT engineError("plugin_listener_command: listener name is required");
+        return;
+    }
+    if (command.isEmpty()) {
+        Q_EMIT engineError("plugin_listener_command: command is required");
+        return;
+    }
+
+    QString argsStr;
+    if (!args.isUndefined() && !args.isNull()) {
+        if (!args.isObject()) {
+            Q_EMIT engineError("plugin_listener_command expected object in args parameter!");
+            return;
+        }
+        QJsonObject argsObj = QJsonObject::fromVariantMap(args.toVariant().toMap());
+        argsStr = QString::fromUtf8(QJsonDocument(argsObj).toJson(QJsonDocument::Compact));
+    }
+
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    if (!adaptix || !adaptix->GetProfile()) {
+        Q_EMIT engineError("plugin_listener_command: no active profile!");
+        return;
+    }
+
+    HttpReqPluginListenerCallAsync(listenerName, command, argsStr, *adaptix->GetProfile(), [](bool, const QString&, const QJsonObject&) {});
 }
 
 void BridgeApp::show_message(const QString &title, const QString &text) { QMessageBox::information(nullptr, title, text); }
@@ -1489,6 +1564,68 @@ QJSValue BridgeApp::targets() const
         list[QString::number(target.TargetId)] = map;
     }
 
+    return this->scriptEngine->engine()->toScriptValue(list);
+}
+
+QJSValue BridgeApp::payloads() const
+{
+    QVariantMap list;
+    if (!scriptEngine || !scriptEngine->manager() || !scriptEngine->manager()->GetAdaptix())
+        return this->scriptEngine->engine()->toScriptValue(list);
+
+    AuthProfile* profile = scriptEngine->manager()->GetAdaptix()->GetProfile();
+    if (!profile)
+        return this->scriptEngine->engine()->toScriptValue(list);
+
+    QEventLoop loop;
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("show_hidden"), QStringLiteral("1"));
+    query.addQueryItem(QStringLiteral("offset"), QStringLiteral("0"));
+    query.addQueryItem(QStringLiteral("limit"), QStringLiteral("10000"));
+    query.addQueryItem(QStringLiteral("sort"), QStringLiteral("Created"));
+    query.addQueryItem(QStringLiteral("order"), QStringLiteral("desc"));
+
+    HttpRequestManager::instance().getPage(
+        profile->GetURL(), QStringLiteral("/payload/list"), profile->GetAccessToken(), query,
+        [&](bool success, const QString&, const QJsonObject& response) {
+            if (success) {
+                const QJsonArray items = response.value(QStringLiteral("items")).toArray();
+                for (const QJsonValue& v : items) {
+                    if (!v.isObject())
+                        continue;
+                    const QJsonObject o = v.toObject();
+                    const qint64 id = static_cast<qint64>(o.value(QStringLiteral("p_id")).toDouble());
+                    if (id <= 0)
+                        continue;
+                    QVariantMap map;
+                    map[QStringLiteral("id")]          = QVariant::fromValue(id);
+                    map[QStringLiteral("name")]        = o.value(QStringLiteral("p_name")).toString();
+                    map[QStringLiteral("description")] = o.value(QStringLiteral("p_notes")).toString();
+                    map[QStringLiteral("type")]        = o.value(QStringLiteral("p_type")).toString();
+                    map[QStringLiteral("artifact")]    = o.value(QStringLiteral("p_artifact")).toString();
+                    map[QStringLiteral("arch")]        = o.value(QStringLiteral("p_arch")).toString();
+                    QStringList listeners;
+                    if (o.value(QStringLiteral("p_listeners")).isArray()) {
+                        for (const QJsonValue& lv : o.value(QStringLiteral("p_listeners")).toArray())
+                            listeners << lv.toString();
+                    }
+                    map[QStringLiteral("listeners")] = listeners;
+                    map[QStringLiteral("size")]      = QVariant::fromValue(static_cast<qint64>(o.value(QStringLiteral("p_size")).toDouble()));
+                    map[QStringLiteral("creator")]   = o.value(QStringLiteral("p_creator")).toString();
+                    map[QStringLiteral("created")]   = static_cast<qint64>(o.value(QStringLiteral("p_date")).toDouble());
+                    map[QStringLiteral("filename")]  = o.value(QStringLiteral("p_filename")).toString();
+                    map[QStringLiteral("md5")]       = o.value(QStringLiteral("p_md5")).toString();
+                    map[QStringLiteral("sha1")]      = o.value(QStringLiteral("p_sha1")).toString();
+                    map[QStringLiteral("sha256")]    = o.value(QStringLiteral("p_sha256")).toString();
+                    map[QStringLiteral("uid")]       = o.value(QStringLiteral("p_uid")).toString();
+                    map[QStringLiteral("hidden")]    = o.value(QStringLiteral("p_hidden")).toBool();
+                    map[QStringLiteral("missing")]   = o.value(QStringLiteral("p_missing")).toBool();
+                    list[QString::number(id)] = map;
+                }
+            }
+            loop.quit();
+        });
+    loop.exec();
     return this->scriptEngine->engine()->toScriptValue(list);
 }
 

@@ -9,7 +9,9 @@
 #include <oclero/qlementine/widgets/PopoverButton.hpp>
 #include <oclero/qlementine/widgets/Popover.hpp>
 #include <oclero/qlementine/widgets/Menu.hpp>
-#include <oclero/qlementine/widgets/Expander.hpp>
+
+#include <QButtonGroup>
+#include <QCheckBox>
 
 class AxContainerWrapper;
 class BuildWorker;
@@ -25,6 +27,8 @@ Q_OBJECT
     QPushButton*    btnMoveUp           = nullptr;
     QPushButton*    btnMoveDown         = nullptr;
     QWidget*        listenerChipsContainer  = nullptr;
+    QWidget*        listenerMultiField  = nullptr;
+    QComboBox*      listenerCombobox    = nullptr;
     QLabel*         agentLabel          = nullptr;
     QComboBox*      agentCombobox       = nullptr;
     QLabel*         profileLabel        = nullptr;
@@ -33,18 +37,22 @@ Q_OBJECT
     bool            profileNameManuallyEdited = false;
     QPushButton*    buildButton         = nullptr;
     QPushButton*    cancelButton        = nullptr;
+    QCheckBox*      storeCheck          = nullptr;
+    QLineEdit*      inputDescription    = nullptr;
     QGroupBox*      agentConfigGroupbox = nullptr;
     QStackedWidget* configStackWidget   = nullptr;
 
-    QWidget*        buildLogPanel       = nullptr;
-    QPushButton*    collapseButton      = nullptr;
-    oclero::qlementine::Expander* buildLogExpander = nullptr;
+    QPushButton*    configViewBtn       = nullptr;
+    QPushButton*    logViewBtn          = nullptr;
+    QButtonGroup*   viewButtonGroup     = nullptr;
+    QPushButton*    fileChipButton      = nullptr;
+    QStackedWidget* leftContentStack    = nullptr;
+    QWidget*        buildLogPage        = nullptr;
     QTextEdit*      buildLogOutput      = nullptr;
     QThread*        buildThread         = nullptr;
     BuildWorker*    buildWorker         = nullptr;
     QString         buildFileName;
     QByteArray      buildFileContent;
-    QPushButton*    fileLinkButton      = nullptr;
 
     QLabel*           label_Profiles    = nullptr;
     CardListWidget*   cardWidget        = nullptr;
@@ -65,7 +73,9 @@ Q_OBJECT
 
     void regenerateAgentUI(const QString &agentName, const QStringList &selectedListeners);
     void rebuildListenerChips();
-    void rebuildSingleListenerChip(const QString &name);
+    void packDialogSize(int scriptW, int scriptH);
+    void showConfigView();
+    void showBuildLogView();
 
     void createUI();
     void loadProfiles();
@@ -93,6 +103,7 @@ protected Q_SLOTS:
     void onProfileRename();
     void onProfileNameEdited(const QString &text);
     void onSaveProfileToggled(bool checked);
+    void onStoreCheckToggled(bool checked);
     void onButtonBuild();
     void onBuildConnected();
     void onBuildMessage(const QString &msg);
@@ -100,6 +111,7 @@ protected Q_SLOTS:
     void onSaveBuildFile();
     void stopBuild();
     void onListenerSelectionChanged(const QListWidgetItem *item);
+    void onListenerComboChanged(int index);
     void onMoveListenerUp();
     void onMoveListenerDown();
     void showListenerPopup();

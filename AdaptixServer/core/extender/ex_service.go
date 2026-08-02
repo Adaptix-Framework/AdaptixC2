@@ -91,11 +91,15 @@ func (ex *AdaptixExtender) ExServiceUnload(serviceName string) error {
 	return nil
 }
 
-func (ex *AdaptixExtender) ExServiceCall(serviceName string, operator string, function string, args string) {
+func (ex *AdaptixExtender) ExPluginServiceCall(serviceName string, operator string, function string, args string) {
 	module, err := ex.getServiceModule(serviceName)
 	if err == nil {
 		module.Call(operator, function, args)
 	}
+}
+
+func (ex *AdaptixExtender) ExPluginServiceCallWait(serviceName string, operator string, function string, args string, timeoutMs int) (string, error) {
+	return "", fmt.Errorf("service call wait timeout after %dms (service=%s operator=%s)", timeoutMs, serviceName, operator)
 }
 
 func (ex *AdaptixExtender) ExServiceList() []string {

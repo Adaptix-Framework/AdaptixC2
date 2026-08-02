@@ -233,6 +233,39 @@ func (dbms *DBMS) DatabaseInit() error {
 		return fmt.Errorf("create table failed: %w", err)
 	}
 
+	createTableQuery = `CREATE TABLE IF NOT EXISTS "Payloads" (
+    	"PayloadId" INTEGER NOT NULL UNIQUE,
+    	"Name" TEXT NOT NULL,
+    	"AgentType" TEXT NOT NULL,
+    	"Artifact" TEXT NOT NULL,
+    	"Arch" TEXT NOT NULL,
+    	"Listeners" TEXT NOT NULL,
+    	"Size" BIGINT NOT NULL,
+    	"Sha1" TEXT NOT NULL,
+    	"Sha256" TEXT NOT NULL,
+    	"Md5" TEXT NOT NULL,
+    	"Creator" TEXT NOT NULL,
+    	"Created" BIGINT NOT NULL,
+    	"Hidden" INTEGER NOT NULL DEFAULT 0,
+    	"LocalPath" TEXT NOT NULL,
+    	"ConfigJson" TEXT NOT NULL,
+    	"BuildId" TEXT,
+    	"Watermark" TEXT,
+    	"Filename" TEXT NOT NULL,
+    	"Notes" TEXT DEFAULT '',
+    	"Uid" TEXT DEFAULT '',
+    	"Color" TEXT DEFAULT ''
+    );`
+	_, err = dbms.database.Exec(createTableQuery)
+	if err != nil {
+		return fmt.Errorf("create table failed: %w", err)
+	}
+	_, _ = dbms.database.Exec(`ALTER TABLE "Payloads" ADD COLUMN "Uid" TEXT DEFAULT '';`)
+	_, _ = dbms.database.Exec(`ALTER TABLE "Payloads" ADD COLUMN "Color" TEXT DEFAULT '';`)
+	_, _ = dbms.database.Exec(`CREATE INDEX IF NOT EXISTS idx_payloads_created ON Payloads(Created);`)
+	_, _ = dbms.database.Exec(`CREATE INDEX IF NOT EXISTS idx_payloads_hidden ON Payloads(Hidden);`)
+	_, _ = dbms.database.Exec(`CREATE INDEX IF NOT EXISTS idx_payloads_sha256 ON Payloads(Sha256);`)
+
 	createTableQuery = `CREATE TABLE IF NOT EXISTS "Uploads" (
     	"FileId" INTEGER NOT NULL UNIQUE,
     	"AgentId" INTEGER NOT NULL,

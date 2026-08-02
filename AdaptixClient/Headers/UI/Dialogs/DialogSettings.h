@@ -135,6 +135,12 @@ Q_OBJECT
     int          filesCheckCount = 11;
     QCheckBox*   filesCheck[11];
 
+    QWidget*     payloadsWidget     = nullptr;
+    QGridLayout* payloadsLayout     = nullptr;
+    QGroupBox*   payloadsGroup      = nullptr;
+    int          payloadsCheckCount = 13;
+    QCheckBox*   payloadsCheck[13];
+
     QWidget*     tabblinkWidget          = nullptr;
     QGridLayout* tabblinkLayout          = nullptr;
     oclero::qlementine::Switch* tabblinkEnabledCheckbox = nullptr;

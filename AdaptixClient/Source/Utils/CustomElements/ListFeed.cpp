@@ -6,12 +6,38 @@
 #include <oclero/qlementine/style/Theme.hpp>
 #include <oclero/qlementine/style/QlementineStyle.hpp>
 #include <oclero/qlementine/utils/ImageUtils.hpp>
-#include <oclero/qlementine/widgets/Switch.hpp>
 
+#include <QApplication>
 #include <QPainter>
 #include <QHBoxLayout>
 #include <QVBoxLayout>
+#include <QToolButton>
+#include <QIcon>
 #include <functional>
+
+namespace {
+
+QToolButton* makeIconToggle(QWidget* parent, const QString& tooltip, const QString& iconChecked, const QString& iconUnchecked, bool checked)
+{
+    auto* btn = new QToolButton(parent);
+    btn->setCheckable(true);
+    btn->setChecked(checked);
+    btn->setAutoRaise(true);
+    btn->setCursor(Qt::PointingHandCursor);
+    btn->setToolTip(tooltip);
+    btn->setFocusPolicy(Qt::NoFocus);
+    const int h = FontManager::instance().typography().controlHeight;
+    btn->setFixedSize(h, h);
+    btn->setIconSize(QSize(qMax(14, h - 10), qMax(14, h - 10)));
+    auto applyIcon = [btn, iconChecked, iconUnchecked]() {
+        btn->setIcon(QIcon(btn->isChecked() ? iconChecked : iconUnchecked));
+    };
+    applyIcon();
+    QObject::connect(btn, &QToolButton::toggled, btn, [applyIcon](bool) { applyIcon(); });
+    return btn;
+}
+
+} // namespace
 
 static QColor ensureContrast(const QColor& c, bool dark, qreal minLightness = 0.35, qreal maxLightness = 0.75) {
     float h, s, l, a;
@@ -210,6 +236,59 @@ void paintFeedTableCellBackground(QPainter* p, const QRect& rect, bool selected,
     p->setBrush(acc);
     p->drawRoundedRect(stripR, 1.2, 1.2);
     p->restore();
+}
+
+void applyFeedWidgetSurface(QWidget* widget)
+{
+    if (!widget)
+        return;
+
+    const FeedColors fc = FeedColors::fromTheme();
+    QColor surface = fc.rowAltBg.isValid() ? fc.rowAltBg : QApplication::palette().color(QPalette::Window);
+    if (!surface.isValid())
+        surface = QColor(40, 40, 40);
+
+    QPalette pal = widget->palette();
+    pal.setColor(QPalette::Window, surface);
+    pal.setColor(QPalette::Base, surface);
+    pal.setColor(QPalette::AlternateBase, surface);
+    widget->setPalette(pal);
+    widget->setBackgroundRole(QPalette::Window);
+    widget->setAutoFillBackground(true);
+}
+
+void applyFeedTableViewChrome(QAbstractItemView* view)
+{
+    if (!view)
+        return;
+
+    view->setAlternatingRowColors(false);
+    view->setFrameShape(QFrame::NoFrame);
+    view->setAttribute(Qt::WA_StyledBackground, false);
+    view->setAutoFillBackground(false);
+
+    const FeedColors fc = FeedColors::fromTheme();
+    QColor surface = fc.rowAltBg.isValid() ? fc.rowAltBg : QApplication::palette().color(QPalette::Window);
+    if (!surface.isValid())
+        surface = QColor(40, 40, 40);
+
+    auto applyTransparentSurface = [&](QWidget* w) {
+        if (!w)
+            return;
+        QPalette pal = w->palette();
+        pal.setColor(QPalette::Base, surface);
+        pal.setColor(QPalette::AlternateBase, surface);
+        pal.setColor(QPalette::Window, surface);
+        w->setPalette(pal);
+        w->setBackgroundRole(QPalette::Window);
+        w->setAutoFillBackground(false);
+    };
+
+    applyTransparentSurface(view);
+    applyTransparentSurface(view->viewport());
+
+    if (QWidget* host = view->parentWidget())
+        applyFeedWidgetSurface(host);
 }
 
 
@@ -2406,7 +2485,7 @@ void ListFeedWidget::enableGroupCombo(bool enable)
         m_groupCombo->setVisible(enable);
 }
 
-void ListFeedWidget::enableActiveFilter(bool enable, const QString& label)
+void ListFeedWidget::enableActiveFilter(bool enable, const QString& tooltip, const QString& iconChecked, const QString& iconUnchecked)
 {
     if (!m_activeFilter && enable) {
         if (!m_searchWidget)
@@ -2415,13 +2494,20 @@ void ListFeedWidget::enableActiveFilter(bool enable, const QString& label)
         if (!layout)
             return;
 
-        m_activeFilter = new QCheckBox(label.isEmpty() ? QStringLiteral("active only") : label, m_searchWidget);
-        m_activeFilter->setChecked(false);
+        m_activeIconChecked = iconChecked.isEmpty() ? QStringLiteral(":/icons/visibility_off") : iconChecked;
+        m_activeIconUnchecked = iconUnchecked.isEmpty() ? QStringLiteral(":/icons/visibility") : iconUnchecked;
+        m_activeFilter = makeIconToggle(m_searchWidget, tooltip.isEmpty() ? QStringLiteral("Active only") : tooltip, m_activeIconChecked, m_activeIconUnchecked, false);
         layout->addWidget(m_activeFilter);
 
-        connect(m_activeFilter, &QCheckBox::checkStateChanged, this, &ListFeedWidget::onFilterChanged);
-    } else if (m_activeFilter && enable && !label.isEmpty()) {
-        m_activeFilter->setText(label);
+        connect(m_activeFilter, &QToolButton::toggled, this, [this](bool) { onFilterChanged(); });
+    } else if (m_activeFilter && enable) {
+        if (!tooltip.isEmpty())
+            m_activeFilter->setToolTip(tooltip);
+        if (!iconChecked.isEmpty())
+            m_activeIconChecked = iconChecked;
+        if (!iconUnchecked.isEmpty())
+            m_activeIconUnchecked = iconUnchecked;
+        m_activeFilter->setIcon(QIcon(m_activeFilter->isChecked() ? m_activeIconChecked : m_activeIconUnchecked));
     }
     if (m_activeFilter)
         m_activeFilter->setVisible(enable);
@@ -2590,36 +2676,42 @@ void ListFeedWidget::onGroupModeChanged(int index)
 
 void ListFeedWidget::enableCompactSwitch(bool enable)
 {
-    if (enable && !m_compactSwitch) {
-        m_compactSwitch = new oclero::qlementine::Switch(this);
-        m_compactSwitch->setFixedSize(36, 18);
-        m_compactSwitch->setToolTip("Compact mode (single-line rows)");
-        m_compactSwitch->setChecked(m_compactMode);
+    if (enable && !m_compactToggle) {
+        m_compactToggle = makeIconToggle(m_searchWidget ? m_searchWidget : this, QStringLiteral("Compact mode (single-line rows)"), QStringLiteral(":/icons/view_headline"), QStringLiteral(":/icons/view_agenda"), m_compactMode);
 
-        connect(m_compactSwitch, &oclero::qlementine::Switch::toggled, this, [this](bool checked) {
+        connect(m_compactToggle, &QToolButton::toggled, this, [this](bool checked) {
             setCompactMode(checked);
         });
 
-        if (m_searchWidget && m_searchInput) {
+        if (m_searchWidget) {
             if (auto* sLayout = qobject_cast<QHBoxLayout*>(m_searchWidget->layout())) {
-                int idx = sLayout->indexOf(m_searchInput);
-                if (idx >= 0) {
-                    sLayout->insertWidget(idx + 1, m_compactSwitch);
-                } else {
-                    sLayout->addWidget(m_compactSwitch);
+                int insertAt = -1;
+                if (m_activeFilter)
+                    insertAt = sLayout->indexOf(m_activeFilter);
+                if (insertAt < 0) {
+                    if (m_sortingCombo)
+                        insertAt = sLayout->indexOf(m_sortingCombo) + 1;
+                    else if (m_filterCombo)
+                        insertAt = sLayout->indexOf(m_filterCombo) + 1;
+                    else if (m_searchInput)
+                        insertAt = sLayout->indexOf(m_searchInput) + 1;
                 }
+                if (insertAt >= 0)
+                    sLayout->insertWidget(insertAt, m_compactToggle);
+                else
+                    sLayout->addWidget(m_compactToggle);
             }
         } else {
-            addToolbarWidgetAfter(m_compactSwitch);
+            addToolbarWidgetAfter(m_compactToggle);
         }
 
         if (auto* del = qobject_cast<ListFeedDelegate*>(m_treeView->itemDelegate())) {
             del->setIconSizes(m_storedNormalIcon, m_storedCompactIcon);
         }
-    } else if (!enable && m_compactSwitch) {
-        m_compactSwitch->setVisible(false);
-        m_compactSwitch->deleteLater();
-        m_compactSwitch = nullptr;
+    } else if (!enable && m_compactToggle) {
+        m_compactToggle->setVisible(false);
+        m_compactToggle->deleteLater();
+        m_compactToggle = nullptr;
     }
 }
 
@@ -2640,9 +2732,10 @@ void ListFeedWidget::setCompactMode(bool compact)
         del->setCompactMode(compact);
         del->setIconSizes(m_storedNormalIcon, m_storedCompactIcon);
     }
-    if (m_compactSwitch) {
-        QSignalBlocker blocker(m_compactSwitch);
-        m_compactSwitch->setChecked(compact);
+    if (m_compactToggle) {
+        QSignalBlocker blocker(m_compactToggle);
+        m_compactToggle->setChecked(compact);
+        m_compactToggle->setIcon(QIcon(compact ? QStringLiteral(":/icons/view_headline") : QStringLiteral(":/icons/view_agenda")));
     }
     m_treeView->doItemsLayout();
     m_treeView->viewport()->update();

@@ -951,6 +951,17 @@ TodoWidget::TodoWidget(QWidget* parent) : QWidget(parent), updating(false) {
         applyFonts();
         applyPanelStyle();
     });
+    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style())) {
+        connect(qs, &oclero::qlementine::QlementineStyle::themeChanged, this, &TodoWidget::refreshTheme,
+                Qt::UniqueConnection);
+    }
+    updateEmptyChrome();
+}
+
+void TodoWidget::refreshTheme()
+{
+    applyFonts();
+    applyPanelStyle();
     updateEmptyChrome();
 }
 
@@ -1311,7 +1322,7 @@ ChatWidget::ChatWidget(AdaptixWidget* w) : DockTab("Chat", w->GetProfile()->GetP
             adaptixWidget->ChatUnreadClear();
     });
 
-    connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
+    auto refreshChrome = [this]() {
         if (messageDelegate)
             messageDelegate->clearCache();
         if (messageView) {
@@ -1322,10 +1333,18 @@ ChatWidget::ChatWidget(AdaptixWidget* w) : DockTab("Chat", w->GetProfile()->GetP
             chatInput->setFont(FontManager::instance().appRegularFont());
             chatInput->setFixedHeight(chatLayout().inputH);
         }
+        if (todoWidget)
+            todoWidget->refreshTheme();
         applyChatChromeMetrics();
         applyChatChromeStyle();
         positionChatOverlays();
-    });
+    };
+
+    connect(&FontManager::instance(), &FontManager::typographyChanged, this, refreshChrome);
+
+    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style())) {
+        connect(qs, &oclero::qlementine::QlementineStyle::themeChanged, this, [this, refreshChrome]() { refreshChrome(); });
+    }
 
     this->dockWidget->setWidget(this);
 }
@@ -1786,7 +1805,7 @@ void ChatWidget::applyChatChromeStyle()
             "}"
             "QToolButton:hover { background-color: %5; }"
             "QToolButton#ChatClearBtn { color: %3; }"
-            "QToolButton#ChatClearBtn:hover { color: #e07070; background-color: %5; }"
+            "QToolButton#ChatClearBtn:hover { color: %9; background-color: %5; }"
             "QLineEdit {"
             "  min-height: %7px; max-height: %8px;"
             "  padding-top: 0px; padding-bottom: 0px;"
@@ -1799,7 +1818,19 @@ void ChatWidget::applyChatChromeStyle()
               t.backgroundColorMain4.name())
          .arg(fontPx)
          .arg(minH)
-         .arg(innerH));
+         .arg(innerH)
+         .arg(t.statusColorError.name()));
+    }
+
+    if (sendBtn) {
+        sendBtn->setStyleSheet(
+            QStringLiteral("QPushButton { background-color: %1; color: %2; "
+                           "border: none; border-radius: 4px; padding: 4px 14px; font-weight: 600; }"
+                           "QPushButton:hover { background-color: %3; }"
+                           "QPushButton:pressed { padding-top: 5px; padding-bottom: 3px; }")
+                .arg(t.primaryColor.name(),
+                     t.primaryColorForeground.name(),
+                     t.primaryColorHovered.name()));
     }
 
     if (historyBar) {

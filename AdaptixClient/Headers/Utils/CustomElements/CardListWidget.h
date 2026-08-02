@@ -27,6 +27,9 @@ public:
 
     explicit CardListWidget(QWidget *parent = nullptr);
 
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
+
     void addCard(const QString &title, const QString &text);
     void updateColorsFromPalette();
 

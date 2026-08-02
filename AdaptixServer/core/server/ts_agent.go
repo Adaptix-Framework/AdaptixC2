@@ -766,16 +766,6 @@ func (ts *Teamserver) TsAgentTerminate(agentId int64, terminateTaskId int64) err
 	return nil
 }
 
-func (ts *Teamserver) TsAgentConsoleRemove(agentId int64) error {
-	_, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return fmt.Errorf("agent '%v' does not exist", agentId)
-	}
-	_ = ts.DBMS.DbConsoleDelete(agentId)
-
-	return nil
-}
-
 func (ts *Teamserver) TsSetAgentDeliveryFunc(agentId int64, fn adaptix.DeliveryFunc) {
 	agent, ok := ts.Agents.Get(agentId)
 	if ok {

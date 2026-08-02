@@ -229,9 +229,16 @@ ConsoleThemeData ConsoleThemeManager::buildFromQlementine(const QString& themeNa
     if (name.isEmpty())
         name = t.meta.name;
 
-    QString resPath  = QString(":/qlementine-themes/%1.json").arg(name);
     QString userPath = QDir(QDir::homePath()).filePath(".adaptix/themes/app/" + name + ".json");
-    QString jsonPath = QFile::exists(userPath) ? userPath : (QFile::exists(resPath) ? resPath : QString());
+    QString resAlias = QStringLiteral(":/qlementine-themes/%1").arg(name);
+    QString resJson  = QStringLiteral(":/qlementine-themes/%1.json").arg(name);
+    QString jsonPath;
+    if (QFile::exists(userPath))
+        jsonPath = userPath;
+    else if (QFile::exists(resAlias))
+        jsonPath = resAlias;
+    else if (QFile::exists(resJson))
+        jsonPath = resJson;
 
     if (!jsonPath.isEmpty()) {
         QFile file(jsonPath);

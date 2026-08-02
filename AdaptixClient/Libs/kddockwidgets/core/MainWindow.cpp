@@ -581,7 +581,7 @@ void MainWindow::overlayOnSideBar(Core::DockWidget *dw)
     // We only support one overlay at a time, remove any existing overlay
     clearSideBarOverlay();
 
-    auto group = new Core::Group(nullptr, FrameOption_IsOverlayed);
+    auto group = new Core::Group(nullptr, FrameOption_IsOverlayed, dw->userType());
     group->setParentView(view());
     d->m_overlayedDockWidget = dw;
     group->addTab(dw);

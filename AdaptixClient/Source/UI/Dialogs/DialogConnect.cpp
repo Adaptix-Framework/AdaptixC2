@@ -272,14 +272,14 @@ void DialogConnect::createUI()
 
     label_Profiles = new QLabel(this);
     label_Profiles->setAlignment(Qt::AlignCenter);
-    label_Profiles->setText("Profiles");
+    label_Profiles->setText(QStringLiteral("PROFILES (client)"));
 
     cardWidget = new CardListWidget(this);
     cardWidget->setFixedWidth(240);
     cardWidget->setContextMenuPolicy(Qt::CustomContextMenu);
     cardWidget->addAction(menuContext->menuAction());
-    cardWidget->setSelectionMode(QAbstractItemView::SingleSelection);
-    cardWidget->setFocusPolicy(Qt::NoFocus);
+    cardWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    cardWidget->setFocusPolicy(Qt::ClickFocus);
 
     buttonNewProfile = new QPushButton(this);
     buttonNewProfile->setText("New Profile");
@@ -421,15 +421,18 @@ void DialogConnect::updateSubsDisplay()
 
 void DialogConnect::itemRemove()
 {
-    auto* item = cardWidget->currentItem();
-    if (!item)
+    const QList<QListWidgetItem*> selected = cardWidget->selectedItems();
+    if (selected.isEmpty())
         return;
 
-    QString project = item->data(CardListWidget::TitleRole).toString();
-    Storage::RemoveAllListenerProfiles(project);
-    Storage::RemoveAllAgentProfiles(project);
-    GlobalClient->storage->RemoveProject(project);
-    delete cardWidget->takeItem(cardWidget->row(item));
+    for (auto* item : selected) {
+        const QString project = item->data(CardListWidget::TitleRole).toString();
+        if (project.isEmpty())
+            continue;
+        Storage::RemoveAllListenerProfiles(project);
+        Storage::RemoveAllAgentProfiles(project);
+        GlobalClient->storage->RemoveProject(project);
+    }
     loadProjects();
 }
 
@@ -485,8 +488,13 @@ void DialogConnect::onProfileSelected()
 
 void DialogConnect::handleContextMenu(const QPoint &pos)
 {
-    QPoint globalPos = cardWidget->mapToGlobal( pos );
-    menuContext->exec( globalPos );
+    auto* item = cardWidget->itemAt(pos);
+    if (item && !item->isSelected()) {
+        cardWidget->clearSelection();
+        item->setSelected(true);
+        cardWidget->setCurrentItem(item);
+    }
+    menuContext->exec(cardWidget->mapToGlobal(pos));
 }
 
 bool DialogConnect::checkValidInput() const

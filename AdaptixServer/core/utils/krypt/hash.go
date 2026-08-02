@@ -2,6 +2,7 @@ package krypt
 
 import (
 	"crypto/md5"
+	"crypto/sha1"
 	"crypto/sha256"
 	"encoding/hex"
 	"hash/crc32"
@@ -9,6 +10,13 @@ import (
 
 func SHA256(data []byte) string {
 	hash := sha256.New()
+	hash.Write(data)
+	hashBytes := hash.Sum(nil)
+	return hex.EncodeToString(hashBytes)
+}
+
+func SHA1(data []byte) string {
+	hash := sha1.New()
 	hash.Write(data)
 	hashBytes := hash.Sum(nil)
 	return hex.EncodeToString(hashBytes)

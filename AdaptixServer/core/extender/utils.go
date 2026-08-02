@@ -3,6 +3,7 @@ package extender
 import (
 	"errors"
 	"io"
+	"net/http"
 
 	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/Adaptix-Framework/axsafe"
@@ -89,12 +90,20 @@ type Teamserver interface {
 	TsExtenderDataDeleteAll(extenderName string) error
 
 	TsEndpointRegister(method string, path string, handler func(username string, body []byte) (int, []byte)) error
+	TsEndpointRegisterRaw(method string, path string, handler func(w http.ResponseWriter, r *http.Request, username string)) error
 	TsEndpointUnregister(method string, path string) error
 	TsEndpointExists(method string, path string) bool
 
 	TsEndpointRegisterPublic(method string, path string, handler func(body []byte) (int, []byte)) error
+	TsEndpointRegisterPublicRaw(method string, path string, handler func(w http.ResponseWriter, r *http.Request)) error
 	TsEndpointUnregisterPublic(method string, path string) error
 	TsEndpointExistsPublic(method string, path string) bool
+
+	TsPluginAgentSendDataClient(operator string, agentId int64, data string)
+	TsPluginAgentSendDataAll(agentId int64, data string)
+
+	TsPluginListenerSendDataClient(operator string, listenerName string, data string)
+	TsPluginListenerSendDataAll(listenerName string, data string)
 }
 
 type AdaptixExtender struct {

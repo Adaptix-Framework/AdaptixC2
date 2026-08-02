@@ -245,6 +245,8 @@ SET( HEADERS
         Headers/Utils/CustomElements/ControlCard.h
         Headers/Utils/CustomElements/CardListWidget.h
         Headers/Client/AxScript/BridgeProcess.h
+        Headers/UI/Dialogs/DialogPayload.h
+        Headers/UI/Widgets/PayloadsFeedWidget.h
 )
 
 add_executable(AdaptixClient
@@ -362,6 +364,8 @@ add_executable(AdaptixClient
         Source/Utils/Import/TargetsImport.cpp
         Source/Utils/CustomElements/ControlCard.cpp
         Source/Client/AxScript/BridgeProcess.cpp
+        Source/UI/Dialogs/DialogPayload.cpp
+        Source/UI/Widgets/PayloadsFeedWidget.cpp
 )
 
 target_compile_definitions(

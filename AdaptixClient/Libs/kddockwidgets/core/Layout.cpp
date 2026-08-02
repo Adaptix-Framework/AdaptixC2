@@ -151,7 +151,7 @@ void Layout::dumpLayout() const
 void Layout::restorePlaceholder(Core::DockWidget *dw, Core::Item *item, int tabIndex)
 {
     if (item->isPlaceholder()) {
-        auto newGroup = new Core::Group(view());
+        auto newGroup = new Core::Group(view(), FrameOption_None, dw->userType());
         item->restore(newGroup->asLayoutingGuest());
     }
 

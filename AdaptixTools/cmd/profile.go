@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -16,21 +17,21 @@ var profileCmd = &cobra.Command{
 
 var profileShowCmd = &cobra.Command{
 	Use:   "show",
-	Short: "Show Teamserver scalar fields from the runtime profile",
+	Short: "Show all available Teamserver scalar fields and their values",
 	Args:  cobra.NoArgs,
 	RunE:  runProfileShow,
 }
 
 var profileGetCmd = &cobra.Command{
-	Use:   "get <key>",
-	Short: "Get one Teamserver field (interface, port, endpoint, …)",
+	Use:   "get <key|all>",
+	Short: "Get one Teamserver field, or all available parameters (get all)",
 	Args:  cobra.ExactArgs(1),
 	RunE:  runProfileGet,
 }
 
 var profileSetCmd = &cobra.Command{
 	Use:   "set <key=value> [key=value...]",
-	Short: "Set one or more Teamserver fields",
+	Short: "Set one or more Teamserver scalar fields",
 	Args:  cobra.MinimumNArgs(1),
 	RunE:  runProfileSet,
 }
@@ -53,35 +54,44 @@ func openRuntimeProfile() (*profile.Patcher, string, error) {
 	return p, path, nil
 }
 
+func printTeamserverScalars(out io.Writer, p *profile.Patcher, withPath string) {
+	if withPath != "" {
+		fmt.Fprintf(out, "profile: %s\n", withPath)
+	}
+	for _, kv := range p.ListTeamserverScalars() {
+		fmt.Fprintf(out, "  %s: %s\n", kv[0], kv[1])
+	}
+}
+
 func runProfileShow(c *cobra.Command, _ []string) error {
 	p, path, err := openRuntimeProfile()
 	if err != nil {
 		return err
 	}
-	out := colorOut(c.OutOrStdout())
-	fmt.Fprintf(out, "profile: %s\n", path)
-	pairs := p.ListTeamserverScalars()
-	if len(pairs) == 0 {
-		fmt.Fprintln(out, "(no known Teamserver scalars found)")
-		return nil
-	}
-	for _, kv := range pairs {
-		fmt.Fprintf(out, "  %s: %s\n", kv[0], kv[1])
-	}
+	printTeamserverScalars(colorOut(c.OutOrStdout()), p, path)
 	return nil
 }
 
 func runProfileGet(c *cobra.Command, args []string) error {
 	key := strings.TrimSpace(args[0])
-	p, _, err := openRuntimeProfile()
+	p, path, err := openRuntimeProfile()
 	if err != nil {
 		return err
 	}
+	out := colorOut(c.OutOrStdout())
+	if strings.EqualFold(key, "all") {
+		printTeamserverScalars(out, p, path)
+		return nil
+	}
+	if !profile.IsTeamserverScalar(key) {
+		return fmt.Errorf("unknown key %q (available: %s)", key, strings.Join(profile.TeamserverScalars, ", "))
+	}
 	v, ok := p.GetTeamserver(key)
 	if !ok {
-		return fmt.Errorf("key %q not found under Teamserver: (known: %s)", key, strings.Join(profile.TeamserverScalars, ", "))
+		fmt.Fprintln(out, "")
+		return nil
 	}
-	fmt.Fprintln(colorOut(c.OutOrStdout()), v)
+	fmt.Fprintln(out, v)
 	return nil
 }
 
@@ -98,6 +108,9 @@ func runProfileSet(c *cobra.Command, args []string) error {
 		}
 		k = strings.TrimSpace(k)
 		v = strings.TrimSpace(v)
+		if !profile.IsTeamserverScalar(k) {
+			return fmt.Errorf("unknown key %q (available: %s)", k, strings.Join(profile.TeamserverScalars, ", "))
+		}
 		if err := p.SetTeamserver(k, v); err != nil {
 			return fmt.Errorf("%s: %w", k, err)
 		}

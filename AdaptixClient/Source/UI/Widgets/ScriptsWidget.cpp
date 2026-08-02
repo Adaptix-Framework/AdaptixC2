@@ -345,7 +345,6 @@ static void styleTable(QTableView* tv)
 {
     tv->setSelectionBehavior(QAbstractItemView::SelectRows);
     tv->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    tv->setAlternatingRowColors(true);
     tv->setShowGrid(false);
     tv->setSortingEnabled(true);
     tv->setWordWrap(false);
@@ -357,15 +356,13 @@ static void styleTable(QTableView* tv)
     auto* hdr = new BoldHeaderView(Qt::Horizontal, tv);
     tv->setHorizontalHeader(hdr);
     tv->setItemDelegate(new ScriptsTableDelegate(tv));
-    {
-        QPalette vp = tv->viewport()->palette();
-        vp.setColor(QPalette::Window, vp.color(QPalette::Base));
-        tv->viewport()->setPalette(vp);
-    }
+    applyFeedTableViewChrome(tv);
 }
 
 ScriptsWidget::ScriptsWidget(AdaptixWidget* w) : DockTab("Scripts", w->GetProfile()->GetProject(), ":/icons/folder_code"), adaptixWidget(w)
 {
+    applyFeedWidgetSurface(this);
+
     setupScriptsTable();
     setupEventsTable();
 
@@ -373,6 +370,9 @@ ScriptsWidget::ScriptsWidget(AdaptixWidget* w) : DockTab("Scripts", w->GetProfil
     m_stack->addWidget(m_scriptsPanel);
     m_stack->addWidget(m_eventsPanel);
     m_stack->setCurrentIndex(0);
+    applyFeedWidgetSurface(m_stack);
+    applyFeedWidgetSurface(m_scriptsPanel);
+    applyFeedWidgetSurface(m_eventsPanel);
 
     auto* layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);

@@ -24,8 +24,7 @@ void ConsoleHighlighter::highlightBlock(const QString& text)
 }
 
 
-TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, bool autoScroll)
-    : QPlainTextEdit(parent), cachedCursor(this->textCursor()), prependCursor(this->textCursor()), maxLines(maxLines), autoScroll(autoScroll), noWrap(noWrap)
+TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, bool autoScroll) : QPlainTextEdit(parent), cachedCursor(this->textCursor()), prependCursor(this->textCursor()), maxLines(maxLines), autoScroll(autoScroll), noWrap(noWrap)
 {
     cachedCursor.movePosition(QTextCursor::End);
     prependCursor.movePosition(QTextCursor::Start);
@@ -83,7 +82,7 @@ void TextEditConsole::createContextMenu(const QPoint &pos) {
     connect(findAction, &QAction::triggered, this, [this]() { Q_EMIT ctx_find(); });
 
     QAction *clearAction = menu->addAction("Clear        (Ctrl + L)");
-    connect(clearAction, &QAction::triggered, this, [this]() { clear(); });
+    connect(clearAction, &QAction::triggered, this, [this]() { Q_EMIT ctx_clear(); });
 
     menu->addSeparator();
 

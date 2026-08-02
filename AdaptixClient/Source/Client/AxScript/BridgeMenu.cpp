@@ -114,3 +114,7 @@ void BridgeMenu::add_targets(AbstractAxMenuItem *item, const QString &position)
 void BridgeMenu::add_credentials(AbstractAxMenuItem *item) {
     this->scriptEngine->registerMenu("Creds", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
 }
+
+void BridgeMenu::add_payload_store(AbstractAxMenuItem *item) {
+    this->scriptEngine->registerMenu("PayloadStore", item, QSet<QString>(), QSet<QString>(), QSet<QString>());
+}

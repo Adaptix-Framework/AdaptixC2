@@ -3,6 +3,7 @@
 #include <CodeEditor.h>
 #include <EditorTabWidget.h>
 #include <SyntaxStyle.h>
+#include <StyleSyntaxHighlighter.h>
 #include <FileBrowser.h>
 #include <BuildPanel.h>
 #include <FindReplace.h>
@@ -261,22 +262,34 @@ void CodeEditorView::applyLanguage(const QString& language)
     if (!editor)
         return;
 
+    if (StyleSyntaxHighlighter* cur = editor->highlighter()) {
+        editor->setHighlighter(nullptr);
+        cur->deleteLater();
+    }
+    const auto axOrphans = editor->findChildren<AxScriptHighlighter*>();
+    for (AxScriptHighlighter* h : axOrphans) {
+        h->setDocument(nullptr);
+        h->deleteLater();
+    }
+    const auto cxOrphans = editor->findChildren<CXXHighlighter*>();
+    for (CXXHighlighter* h : cxOrphans) {
+        h->setDocument(nullptr);
+        h->deleteLater();
+    }
+
+    if (editor->isLargeDocument()) {
+        editor->setCodeFoldingEnabled(false);
+        return;
+    }
+
     const QString lang = language.toLower();
     const bool wantAx = (lang == QLatin1String("axscript") || lang == QLatin1String("js"));
     const bool wantCpp = (lang == QLatin1String("c") || lang == QLatin1String("cpp") || lang == QLatin1String("cxx") || lang.isEmpty());
-
-    if (auto* oldAx = editor->findChild<AxScriptHighlighter*>()) {
-        oldAx->setDocument(nullptr);
-        oldAx->deleteLater();
-    }
-    if (auto* oldCx = editor->findChild<CXXHighlighter*>()) {
-        oldCx->setDocument(nullptr);
-        oldCx->deleteLater();
-    }
-    editor->setHighlighter(nullptr);
+    const bool wantPlain = (lang == QLatin1String("plain"));
 
     if (wantAx) {
-        auto* ax = new AxScriptHighlighter(editor->document());
+        auto* ax = new AxScriptHighlighter(nullptr);
+        ax->setParent(editor);
         if (!editor->filePath().isEmpty())
             ax->setFilePath(editor->filePath());
         if (editor->syntaxStyle())
@@ -285,25 +298,27 @@ void CodeEditorView::applyLanguage(const QString& language)
         if (auto* oldC = editor->completer())
             oldC->deleteLater();
         editor->setCompleter(new AxScriptCompleter(editor));
-    } else if (wantCpp || lang == QLatin1String("plain")) {
-        if (lang != QLatin1String("plain")) {
-            auto* cx = new CXXHighlighter(editor->document());
-            if (!editor->filePath().isEmpty())
-                cx->setFilePath(editor->filePath());
-            if (editor->syntaxStyle())
-                cx->setSyntaxStyle(editor->syntaxStyle());
-            editor->setHighlighter(cx);
-        }
+    } else if (wantCpp && !wantPlain) {
+        auto* cx = new CXXHighlighter(nullptr);
+        cx->setParent(editor);
+        if (!editor->filePath().isEmpty())
+            cx->setFilePath(editor->filePath());
+        if (editor->syntaxStyle())
+            cx->setSyntaxStyle(editor->syntaxStyle());
+        editor->setHighlighter(cx);
+        cx->notifyDocumentLoaded();
         if (auto* oldC = qobject_cast<AxScriptCompleter*>(editor->completer())) {
             oldC->deleteLater();
             editor->setCompleter(new CXXCompleter(editor));
-        } else if (!editor->completer() && lang != QLatin1String("plain")) {
+        } else if (!editor->completer()) {
+            editor->setCompleter(new CXXCompleter(editor));
+        }
+    } else if (wantPlain) {
+        if (auto* oldC = qobject_cast<AxScriptCompleter*>(editor->completer())) {
+            oldC->deleteLater();
             editor->setCompleter(new CXXCompleter(editor));
         }
     }
-
-    if (editor->highlighter())
-        editor->highlighter()->rehighlight();
 }
 
 void CodeEditorView::setSyntaxStyle(SyntaxStyle* style)
@@ -387,8 +402,8 @@ CodeEditor* CodeEditorView::openContent(const QString& fileName, const QString& 
         if (!existing->isModified() && existing->toPlainText() != content) {
             existing->setPlainText(content);
             existing->markSaved();
-            if (existing->highlighter())
-                existing->highlighter()->rehighlight();
+            if (auto* cxx = existing->findChild<CXXHighlighter*>())
+                cxx->notifyDocumentLoaded();
         }
         if (m_tabWidget->tabText(i) != title)
             m_tabWidget->setTabText(i, title);
@@ -424,8 +439,8 @@ CodeEditor* CodeEditorView::openContent(const QString& fileName, const QString& 
     editor->setPlainText(content);
     if (editor->document())
         editor->document()->setModified(true);
-    if (editor->highlighter())
-        editor->highlighter()->rehighlight();
+    if (auto* cxx = editor->findChild<CXXHighlighter*>())
+        cxx->notifyDocumentLoaded();
 
     Q_EMIT fileOpened(key);
     Q_EMIT currentEditorChanged(editor);

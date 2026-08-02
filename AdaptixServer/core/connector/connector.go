@@ -279,7 +279,6 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		api_group.POST("/agent/command/file", connector.TcAgentCommandFile)
 		api_group.POST("/agent/command/execute", connector.TcAgentCommandExecute)
 		api_group.POST("/agent/command/raw", connector.TcAgentCommandRaw)
-		api_group.POST("/agent/console/remove", connector.TcAgentConsoleRemove)
 		api_group.POST("/agent/set/tag", connector.TcAgentSetTag)
 		api_group.POST("/agent/set/mark", connector.TcAgentSetMark)
 		api_group.POST("/agent/set/color", connector.TcAgentSetColor)
@@ -318,6 +317,16 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		api_group.POST("/download/delete", connector.TcGuiDownloadDelete)
 		api_group.POST("/download/set/tag", connector.TcDownloadSetTag)
 
+		api_group.GET("/payload/list", connector.TcPayloadList)
+		api_group.POST("/payload/get", connector.TcPayloadGet)
+		api_group.POST("/payload/download", connector.TcPayloadDownload)
+		api_group.POST("/payload/hide", connector.TcPayloadHide)
+		api_group.POST("/payload/update", connector.TcPayloadUpdate)
+		api_group.POST("/payload/set_color", connector.TcPayloadSetColor)
+		api_group.POST("/payload/remove", connector.TcPayloadRemove)
+		api_group.POST("/payload/import", connector.TcPayloadImport)
+		api_group.GET("/payload/sync", connector.TcPayloadSync)
+
 		api_group.GET("/upload/list", connector.TcUploadList)
 		api_group.POST("/upload/delete", connector.TcUploadDelete)
 
@@ -351,7 +360,9 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		api_group.GET("/service/list", connector.TcServiceList)
 		//api_group.POST("/service/load", connector.TcServiceLoad)
 		//api_group.POST("/service/unload", connector.TcServiceUnload)
-		api_group.POST("/service/call", connector.TcServiceCall)
+		api_group.POST("/plugin/service/call", connector.TcPluginServiceCall)
+		api_group.POST("/plugin/agent/call", connector.TcPluginAgentCall)
+		api_group.POST("/plugin/listener/call", connector.TcPluginListenerCall)
 
 		//api_group.POST("/axscript/list", connector.TcAxScriptList)
 		//api_group.POST("/axscript/commands", connector.TcAxScriptCommands)

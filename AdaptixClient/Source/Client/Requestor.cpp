@@ -185,10 +185,6 @@ void HttpReqAgentCommandFileAsync(const QByteArray &jsonData, AuthProfile& profi
     httpPostFF(profile, "/agent/command/file", jsonData);
 }
 
-void HttpReqConsoleRemoveAsync(const QList<qint64> &agentsId, AuthProfile& profile, const HttpCallback &callback) {
-    postIdArray(profile, "/agent/console/remove", "agent_id_array", agentsId, callback);
-}
-
 void HttpReqConsoleGetPageAsync(qint64 agentId, qint64 afterId, int limit, AuthProfile& profile, const HttpCallback &callback)
 {
     QUrlQuery params;
@@ -463,13 +459,31 @@ void HttpReqChatClearAsync(AuthProfile& profile, const HttpCallback &callback) {
     httpPost(profile, "/chat/clear", QJsonObject(), callback);
 }
 
-void HttpReqServiceCallAsync(const QString &service, const QString &command, const QString &args, AuthProfile& profile, const HttpCallback &callback)
+void HttpReqPluginServiceCallAsync(const QString &service, const QString &command, const QString &args, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
     dataJson["service"] = service;
     dataJson["command"] = command;
     dataJson["args"] = args;
-    httpPost(profile, "/service/call", dataJson, callback);
+    httpPost(profile, "/plugin/service/call", dataJson, callback);
+}
+
+void HttpReqPluginAgentCallAsync(qint64 agentId, const QString &command, const QString &args, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["agent_id"] = toJsonI64(agentId);
+    dataJson["command"] = command;
+    dataJson["args"] = args;
+    httpPost(profile, "/plugin/agent/call", dataJson, callback);
+}
+
+void HttpReqPluginListenerCallAsync(const QString &listenerName, const QString &command, const QString &args, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["listener"] = listenerName;
+    dataJson["command"] = command;
+    dataJson["args"] = args;
+    httpPost(profile, "/plugin/listener/call", dataJson, callback);
 }
 
 void HttpReqEventHandlerRegisterAsync(const QJsonObject &body, AuthProfile& profile, const HttpCallback &callback)
@@ -563,4 +577,82 @@ void HttpReqGroupReparentAsync(int64_t groupId, int64_t newParentId, AuthProfile
     dataJson["group_id"]      = toJsonI64(groupId);
     dataJson["new_parent_id"] = toJsonI64(newParentId);
     httpPost(profile, "/group/reparent", dataJson, callback);
+}
+
+
+void HttpReqPayloadListAsync(bool showHidden, AuthProfile& profile, const HttpCallback &callback)
+{
+    QUrlQuery params;
+    params.addQueryItem("show_hidden", showHidden ? "1" : "0");
+    httpGet(profile, "/payload/list", params, callback);
+}
+
+void HttpReqPayloadSyncAsync(AuthProfile& profile, const HttpCallback &callback)
+{
+    httpGet(profile, "/payload/sync", QUrlQuery(), callback);
+}
+
+void HttpReqPayloadGetAsync(qint64 payloadId, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["payload_id"] = toJsonI64(payloadId);
+    httpPost(profile, "/payload/get", dataJson, callback);
+}
+
+void HttpReqPayloadDownloadAsync(qint64 payloadId, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["payload_id"] = toJsonI64(payloadId);
+    httpPost(profile, "/payload/download", dataJson, callback, 60000);
+}
+
+void HttpReqPayloadHideAsync(const QList<qint64> &ids, bool hidden, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["id_array"] = i64Array(ids);
+    dataJson["hidden"] = hidden;
+    httpPost(profile, "/payload/hide", dataJson, callback);
+}
+
+void HttpReqPayloadSetColorAsync(const QList<qint64> &ids, const QString &background, const QString &foreground, const bool reset, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["id_array"] = i64Array(ids);
+    dataJson["background"] = background;
+    dataJson["foreground"] = foreground;
+    dataJson["reset"] = reset;
+    httpPost(profile, "/payload/set_color", dataJson, callback);
+}
+
+void HttpReqPayloadUpdateAsync(qint64 payloadId, const QString &name, const QString &notes, const QString &artifact, const QString &arch, bool hidden, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["payload_id"] = toJsonI64(payloadId);
+    dataJson["name"] = name;
+    dataJson["notes"] = notes;
+    dataJson["artifact"] = artifact;
+    dataJson["arch"] = arch;
+    dataJson["hidden"] = hidden;
+    httpPost(profile, "/payload/update", dataJson, callback);
+}
+
+void HttpReqPayloadRemoveAsync(const QList<qint64> &ids, bool hard, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["id_array"] = i64Array(ids);
+    dataJson["hard"] = hard;
+    httpPost(profile, "/payload/remove", dataJson, callback);
+}
+
+void HttpReqPayloadImportAsync(const QString &name, const QString &agentType, const QString &artifact, const QString &arch, const QStringList &listeners, const QByteArray &content, const QString &config, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["name"] = name;
+    dataJson["agent_type"] = agentType;
+    dataJson["artifact"] = artifact;
+    dataJson["arch"] = arch;
+    dataJson["listeners"] = toJsonArray(listeners);
+    dataJson["content"] = QString::fromLatin1(content.toBase64());
+    dataJson["config"] = config;
+    httpPost(profile, "/payload/import", dataJson, callback, 60000);
 }

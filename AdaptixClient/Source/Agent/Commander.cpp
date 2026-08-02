@@ -1,5 +1,8 @@
 #include <Agent/Commander.h>
+#include <main.h>
+
 #include <QJSEngine>
+#include <QRegularExpression>
 
 QString serializeParam(const QString &token)
 {
@@ -380,31 +383,45 @@ CommanderResult Commander::ProcessCommand(const Command &command, const QString 
                 jsonObj[commandArg.mark] = parsedArgsMap[commandArg.mark] == "true";
             }
             else if (commandArg.type == "FILE") {
-                QString path = parsedArgsMap[commandArg.name];
-                if (path.startsWith("~/"))
-                    path = QDir::home().filePath(path.mid(2));
+                QString path = parsedArgsMap[commandArg.name].trimmed();
 
-                QFileInfo fileInfo(path);
-                if (!fileInfo.exists() || !fileInfo.isFile()) {
-                    return CommanderResult{true, true, "File not found: " + path, {}, false, {}};
-                }
-
-                /// 3 Mb
-                if (fileInfo.size() < 3 * 1024 * 1024) {
-                    QFile file(path);
-                    if (file.open(QIODevice::ReadOnly)) {
-                        QByteArray fileData = file.readAll();
-                        jsonObj[commandArg.name] = QString::fromLatin1(fileData.toBase64());
-                        jsonObj[commandArg.name + "_path"] = path;
-                        file.close();
-                    } else {
-                        return CommanderResult{true, true, "Failed to open file: " + path, {}, false, {}};
-                    }
+                // Payload Store ref: __payload:#123 — resolved on teamserver (no client upload).
+                static const QRegularExpression payloadRe(QStringLiteral("^__payload:#(\\d+)$"), QRegularExpression::CaseInsensitiveOption);
+                const QRegularExpressionMatch pm = payloadRe.match(path);
+                if (pm.hasMatch()) {
+                    const qint64 payloadId = pm.captured(1).toLongLong();
+                    if (payloadId <= 0)
+                        return CommanderResult{true, true, "Invalid payload id: " + path, {}, false, {}};
+                    QJsonObject payloadRef;
+                    payloadRef[QStringLiteral("__payload_id")] = toJsonI64(payloadId);
+                    jsonObj[commandArg.name] = payloadRef;
+                    jsonObj[commandArg.name + QStringLiteral("_path")] = path;
                 } else {
-                    QJsonObject fileRef;
-                    fileRef["__file_path"] = path;
-                    fileRef["__file_size"] = fileInfo.size();
-                    jsonObj[commandArg.name] = fileRef;
+                    if (path.startsWith("~/"))
+                        path = QDir::home().filePath(path.mid(2));
+
+                    QFileInfo fileInfo(path);
+                    if (!fileInfo.exists() || !fileInfo.isFile()) {
+                        return CommanderResult{true, true, "File not found: " + path, {}, false, {}};
+                    }
+
+                    /// 3 Mb
+                    if (fileInfo.size() < 3 * 1024 * 1024) {
+                        QFile file(path);
+                        if (file.open(QIODevice::ReadOnly)) {
+                            QByteArray fileData = file.readAll();
+                            jsonObj[commandArg.name] = QString::fromLatin1(fileData.toBase64());
+                            jsonObj[commandArg.name + "_path"] = path;
+                            file.close();
+                        } else {
+                            return CommanderResult{true, true, "Failed to open file: " + path, {}, false, {}};
+                        }
+                    } else {
+                        QJsonObject fileRef;
+                        fileRef["__file_path"] = path;
+                        fileRef["__file_size"] = fileInfo.size();
+                        jsonObj[commandArg.name] = fileRef;
+                    }
                 }
             }
         } else if (commandArg.required) {

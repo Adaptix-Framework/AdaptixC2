@@ -5,7 +5,6 @@
 #include <UI/Models/GroupingProxyModel.h>
 
 #include <oclero/qlementine/widgets/LineEdit.hpp>
-#include <oclero/qlementine/widgets/Switch.hpp>
 
 #include <QListView>
 #include <QTreeView>
@@ -17,6 +16,7 @@
 #include <QComboBox>
 #include <QCheckBox>
 #include <QPushButton>
+#include <QToolButton>
 #include <QLabel>
 #include <QPainter>
 #include <QReadWriteLock>
@@ -38,6 +38,10 @@ struct FeedColors {
 };
 
 void paintFeedTableCellBackground(QPainter* p, const QRect& rect, bool selected, bool hovered, bool oddRow, bool firstColumn, const QColor& customBg = QColor());
+
+void applyFeedWidgetSurface(QWidget* widget);
+
+void applyFeedTableViewChrome(QAbstractItemView* view);
 
 struct FeedPaintContext {
     int maxIdTextWidth = 0;
@@ -462,7 +466,7 @@ public:
 
     void enableSearch(bool enable);
     void enableGroupCombo(bool enable);
-    void enableActiveFilter(bool enable, const QString& label = QStringLiteral("active only"));
+    void enableActiveFilter(bool enable, const QString& tooltip = QStringLiteral("Active only"), const QString& iconChecked = QString(), const QString& iconUnchecked = QString());
     void enablePagination(bool enable);
     void enableAutoCheck(bool enable);
     void enableFilterCombo(bool enable, const QString& placeholder = "All");
@@ -477,7 +481,7 @@ public:
     void enableCompactMode(bool enable) { setCompactMode(enable); }
 
     void enableCompactSwitch(bool enable);
-    oclero::qlementine::Switch* compactSwitch() const { return m_compactSwitch; }
+    QToolButton* compactSwitch() const { return m_compactToggle; }
 
     void setRowHeights(int normal, int compact);
     void setIconSizes(int normal, int compact);
@@ -490,7 +494,7 @@ public:
     oclero::qlementine::LineEdit* searchInput() const { return m_searchInput; }
     QAction* autoAction() const { return m_autoAction; }
     QComboBox* groupCombo() const { return m_groupCombo; }
-    QCheckBox* activeFilter() const { return m_activeFilter; }
+    QToolButton* activeFilter() const { return m_activeFilter; }
     QComboBox* filterCombo() const { return m_filterCombo; }
     QComboBox* sortingCombo() const { return m_sortingCombo; }
     QAction* sortOrderAction() const { return m_sortOrderAction; }
@@ -520,7 +524,7 @@ protected:
     QWidget*       m_searchWidget    = nullptr;
     QAction*       m_autoAction      = nullptr;
     QComboBox*     m_groupCombo      = nullptr;
-    QCheckBox*     m_activeFilter    = nullptr;
+    QToolButton*   m_activeFilter    = nullptr;
     QComboBox*     m_filterCombo     = nullptr;
     QComboBox*     m_sortingCombo    = nullptr;
     QAction*       m_sortOrderAction = nullptr;
@@ -528,7 +532,9 @@ protected:
     PaginationBar* m_paginationBar   = nullptr;
 
     bool m_compactMode = false;
-    oclero::qlementine::Switch* m_compactSwitch = nullptr;
+    QToolButton* m_compactToggle = nullptr;
+    QString m_activeIconChecked   = QStringLiteral(":/icons/visibility_off");
+    QString m_activeIconUnchecked = QStringLiteral(":/icons/visibility");
 
     int m_storedNormalRowH = 54;
     int m_storedCompactRowH = 30;

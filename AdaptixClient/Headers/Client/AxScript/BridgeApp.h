@@ -97,11 +97,14 @@ public Q_SLOTS:
     QString  script_dir();
     bool     event_handler_register(const QJSValue& meta);
     QJSValue screenshots();
-    void     service_command(const QString &service, const QString &command, const QJSValue &args = QJSValue());
+    void     plugin_service_command(const QString &service, const QString &command, const QJSValue &args = QJSValue());
+    void     plugin_agent_command(const QJSValue &agentId, const QString &command, const QJSValue &args = QJSValue());
+    void     plugin_listener_command(const QString &listenerName, const QString &command, const QJSValue &args = QJSValue());
     void     show_message(const QString &title, const QString &text);
     QJSValue targets() const;
     void     targets_add(const QString &computer, const QString &domain, const QString &address, const QString &os = "unknown", const QString &osDesc = "", const QString &tag = "", const QString &info = "", bool alive = true);
     void     targets_add_list(const QVariantList &array);
+    QJSValue payloads() const;
     int      ticks();
     QStringList tokenize(const QString &cmdline) const;
     QJSValue tunnels();

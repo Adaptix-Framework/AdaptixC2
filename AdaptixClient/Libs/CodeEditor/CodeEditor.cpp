@@ -6,6 +6,7 @@
 #include <CodeFolding.h>
 #include <ErrorIndicator.h>
 #include <Minimap.h>
+#include <CXXHighlighter.h>
 #include <Utils/FontManager.h>
 
 #include <QTextBlock>
@@ -127,9 +128,16 @@ void CodeEditor::performConnections()
 {
     connect( document(), &QTextDocument::blockCountChanged, this, &CodeEditor::updateLineNumberAreaWidth );
 
+    m_foldUpdateTimer = new QTimer(this);
+    m_foldUpdateTimer->setSingleShot(true);
+    m_foldUpdateTimer->setInterval(250);
+    connect(m_foldUpdateTimer, &QTimer::timeout, this, [this]() {
+        if (m_codeFolding && m_codeFolding->isVisible())
+            m_codeFolding->updateFoldingData();
+    });
+
     connect( document(), &QTextDocument::contentsChanged, this, [this]() {
-            if (m_codeFolding->isVisible())
-                m_codeFolding->updateFoldingData();
+            scheduleFoldingUpdate();
             m_hashDirty = true;
         }
     );
@@ -148,10 +156,34 @@ void CodeEditor::performConnections()
     );
 }
 
+bool CodeEditor::isLargeDocument() const
+{
+    auto* doc = document();
+    if (!doc)
+        return false;
+    return doc->characterCount() >= 256 * 1024 || doc->blockCount() >= 8000;
+}
+
 void CodeEditor::setHighlighter(StyleSyntaxHighlighter* highlighter)
 {
+    if (m_highlighter == highlighter) {
+        if (m_highlighter) {
+            m_highlighter->setSyntaxStyle(m_syntaxStyle);
+            if (m_highlighter->document() != document() && !isLargeDocument())
+                m_highlighter->setDocument(document());
+        }
+        return;
+    }
+
     if (m_highlighter)
         m_highlighter->setDocument(nullptr);
+
+    if (highlighter && isLargeDocument()) {
+        highlighter->setDocument(nullptr);
+        highlighter->deleteLater();
+        m_highlighter = nullptr;
+        return;
+    }
 
     m_highlighter = highlighter;
 
@@ -188,8 +220,11 @@ SyntaxStyle* CodeEditor::syntaxStyle() const
 
 void CodeEditor::updateStyle()
 {
-    if (m_highlighter)
+    if (auto* cxx = findChild<CXXHighlighter*>()) {
+        cxx->notifyDocumentLoaded();
+    } else if (m_highlighter) {
         m_highlighter->rehighlight();
+    }
 
     applyEditorPalette();
     updateExtraSelection();
@@ -542,20 +577,10 @@ void CodeEditor::paintEvent(QPaintEvent* e)
 
 int CodeEditor::getFirstVisibleBlock()
 {
-    QTextCursor curs = QTextCursor(document());
-    curs.movePosition(QTextCursor::Start);
-    for (int i = 0; i < document()->blockCount(); ++i) {
-        QTextBlock block = curs.block();
-
-        QRect r1 = viewport()->geometry();
-        QRect r2 = document()->documentLayout()->blockBoundingRect(block).translated( viewport()->geometry().x(), viewport()->geometry().y() - verticalScrollBar()->sliderPosition() ).toRect();
-
-        if (r1.intersects(r2))
-            return i;
-
-        curs.movePosition(QTextCursor::NextBlock);
-    }
-    return 0;
+    if (!document() || document()->isEmpty())
+        return 0;
+    const QTextCursor curs = cursorForPosition(QPoint(1, 1));
+    return qMax(0, curs.blockNumber());
 }
 
 bool CodeEditor::proceedCompleterBegin(QKeyEvent* e)
@@ -1088,11 +1113,21 @@ int CodeEditor::getIndentationSpaces()
     return indentationLevel;
 }
 
+void CodeEditor::scheduleFoldingUpdate()
+{
+    if (!m_codeFolding || !m_codeFolding->isVisible())
+        return;
+    if (document() && (document()->blockCount() >= 8000 || document()->characterCount() >= 256 * 1024))
+        return;
+    if (m_foldUpdateTimer)
+        m_foldUpdateTimer->start();
+}
+
 void CodeEditor::setCodeFoldingEnabled(bool enabled)
 {
     m_codeFolding->setVisible(enabled);
     if (enabled)
-        m_codeFolding->updateFoldingData();
+        scheduleFoldingUpdate();
     updateLineNumberAreaWidth(0);
     updateLineGeometry();
 }
@@ -1137,7 +1172,32 @@ void CodeEditor::markSaved()
 
 void CodeEditor::updateContentHash()
 {
-    m_currentHash = QCryptographicHash::hash( document()->toPlainText().toUtf8(), QCryptographicHash::Md5 );
+    auto* doc = document();
+    if (!doc) {
+        m_currentHash.clear();
+        m_hashDirty = false;
+        return;
+    }
+
+    if (doc->characterCount() >= 256 * 1024 || doc->blockCount() >= 8000) {
+        QCryptographicHash h(QCryptographicHash::Md5);
+        h.addData(QByteArray::number(doc->characterCount()));
+        h.addData("|");
+        h.addData(QByteArray::number(doc->blockCount()));
+        h.addData("|");
+        h.addData(QByteArray::number(doc->revision()));
+        const QTextBlock first = doc->firstBlock();
+        const QTextBlock last  = doc->lastBlock();
+        if (first.isValid())
+            h.addData(first.text().left(256).toUtf8());
+        if (last.isValid())
+            h.addData(last.text().right(256).toUtf8());
+        m_currentHash = h.result();
+        m_hashDirty = false;
+        return;
+    }
+
+    m_currentHash = QCryptographicHash::hash(doc->toPlainText().toUtf8(), QCryptographicHash::Md5);
     m_hashDirty = false;
 }
 

@@ -221,9 +221,20 @@ SessionsFeedWidget::SessionsFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), ad
     enableAutoCheck(true);
     enableFilterCombo(true, "All types");
     enableSortingCombo(true, {"No sorting", "Date", "Tag", "Status", "Agent ID", "Agent Type", "Listener", "User", "Computer", "Domain", "Internal IP", "Process"});
-    enableActiveFilter(true);
-    if (activeFilter() && GlobalClient && GlobalClient->settings)
-        activeFilter()->setChecked(GlobalClient->settings->data.SessionsAutoHideInactive);
+    enableActiveFilter(true, QStringLiteral("Active only (hide inactive)"));
+    if (activeFilter()) {
+        if (GlobalClient && GlobalClient->settings)
+            activeFilter()->setChecked(GlobalClient->settings->data.SessionsAutoHideInactive);
+        activeFilter()->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(activeFilter(), &QWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+            auto* btn = activeFilter();
+            if (!btn)
+                return;
+            oclero::qlementine::Menu menu(btn);
+            menu.addAction(QIcon(QStringLiteral(":/icons/visibility")), QStringLiteral("Show all hidden"), this, &SessionsFeedWidget::actionItemsShowAll);
+            menu.exec(btn->mapToGlobal(pos));
+        });
+    }
     enableGroupCombo(true);
     if (groupCombo()) {
         groupCombo()->blockSignals(true);
@@ -611,53 +622,55 @@ void SessionsFeedWidget::handleFeedMenu(const QPoint& pos)
         }
         if (agentIds.isEmpty()) return;
 
-        auto agentMenu = ctxMenu.addMenu(QIcon(":/icons/agent"), "Agent");
-        agentMenu->addAction(QIcon(":/icons/keyboard_command"), "Execute command", this, &SessionsFeedWidget::actionExecuteCommand);
-        agentMenu->addAction(QIcon(":/icons/job"), "Task manager", this, &SessionsFeedWidget::actionTasksOpen);
-        agentMenu->addSeparator();
-        int agentCount = adaptixWidget->ScriptManager->AddMenuSession(agentMenu, "SessionAgent", agentIds);
-        if (agentCount > 0)
-            agentMenu->addSeparator();
-        agentMenu->addAction(QIcon(":/icons/delete"), "Remove console data", this, &SessionsFeedWidget::actionConsoleDelete);
-        agentMenu->addAction(QIcon(":/icons/delete"), "Remove from server", this, &SessionsFeedWidget::actionAgentRemove);
-
-        auto sessionMenu = ctxMenu.addMenu(QIcon(":/icons/settings"), "Session");
-        sessionMenu->addAction(QIcon(":/icons/wifi_signal"), "Mark as Active", this, &SessionsFeedWidget::actionMarkActive);
-        sessionMenu->addAction(QIcon(":/icons/wifi_null"), "Mark as Inactive", this, &SessionsFeedWidget::actionMarkInactive);
-        sessionMenu->addSeparator();
-        if (agentIds.size() == 1)
-            sessionMenu->addAction(QIcon(":/icons/info"), "Set data", this, &SessionsFeedWidget::actionSetData);
-        sessionMenu->addAction(QIcon(":/icons/tag"), "Set tag", this, &SessionsFeedWidget::actionSetTag);
-        sessionMenu->addSeparator();
-        sessionMenu->addAction(QIcon(":/icons/color_fill"), "Set items color", this, &SessionsFeedWidget::actionItemColor);
-        sessionMenu->addAction(QIcon(":/icons/color_text"), "Set text color", this, &SessionsFeedWidget::actionTextColor);
-        sessionMenu->addAction(QIcon(":/icons/color_reset"), "Reset color", this, &SessionsFeedWidget::actionColorReset);
-        sessionMenu->addSeparator();
-        sessionMenu->addAction(QIcon(":/icons/visibility_off"), "Hide on client", this, &SessionsFeedWidget::actionHide);
-
-        ctxMenu.addAction(QIcon(":/icons/interact"), "Interact", this, &SessionsFeedWidget::actionConsoleOpen);
+        ctxMenu.addAction(QIcon(QStringLiteral(":/icons/interact")), QStringLiteral("Interact"), this, &SessionsFeedWidget::actionConsoleOpen);
         ctxMenu.addSeparator();
-        ctxMenu.addMenu(agentMenu);
 
-        auto browserMenu = ctxMenu.addMenu(QIcon(":/icons/open_folder"), "Browsers");
-        int browserCount = adaptixWidget->ScriptManager->AddMenuSession(browserMenu, "SessionBrowser", agentIds);
+        auto* exploreMenu = ctxMenu.addMenu(QIcon(QStringLiteral(":/icons/open_folder")), QStringLiteral("Explore"));
+        int browserCount = adaptixWidget->ScriptManager->AddMenuSession(exploreMenu, QStringLiteral("SessionBrowser"), agentIds);
         if (browserCount > 0)
-            ctxMenu.addMenu(browserMenu);
-        else ctxMenu.removeAction(browserMenu->menuAction());
+            ctxMenu.addMenu(exploreMenu);
+        else
+            ctxMenu.removeAction(exploreMenu->menuAction());
 
-        auto accessMenu = ctxMenu.addMenu(QIcon(":/icons/exchange"), "Access");
-        int accessCount = adaptixWidget->ScriptManager->AddMenuSession(accessMenu, "SessionAccess", agentIds);
+        auto* accessMenu = ctxMenu.addMenu(QIcon(QStringLiteral(":/icons/exchange")), QStringLiteral("Access"));
+        int accessCount = adaptixWidget->ScriptManager->AddMenuSession(accessMenu, QStringLiteral("SessionAccess"), agentIds);
         if (accessCount > 0)
             ctxMenu.addMenu(accessMenu);
-        else ctxMenu.removeAction(accessMenu->menuAction());
+        else
+            ctxMenu.removeAction(accessMenu->menuAction());
 
-        adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
+        auto* tasksMenu = ctxMenu.addMenu(QIcon(QStringLiteral(":/icons/job")), QStringLiteral("Tasks"));
+        tasksMenu->addAction(QIcon(QStringLiteral(":/icons/keyboard_command")), QStringLiteral("Execute command"), this, &SessionsFeedWidget::actionExecuteCommand);
+        tasksMenu->addAction(QIcon(QStringLiteral(":/icons/job")), QStringLiteral("Task manager"), this, &SessionsFeedWidget::actionTasksOpen);
+        adaptixWidget->ScriptManager->AddMenuSession(tasksMenu, QStringLiteral("SessionAgent"), agentIds);
+
+        auto* extMenu = ctxMenu.addMenu(QIcon(QStringLiteral(":/icons/extension")), QStringLiteral("Extensions"));
+        int mainCount = adaptixWidget->ScriptManager->AddMenuSession(extMenu, QStringLiteral("SessionMain"), agentIds);
+        if (mainCount > 0)
+            ctxMenu.addMenu(extMenu);
+        else
+            ctxMenu.removeAction(extMenu->menuAction());
 
         ctxMenu.addSeparator();
-        ctxMenu.addMenu(sessionMenu);
+
+        ctxMenu.addAction(QIcon(QStringLiteral(":/icons/wifi_signal")), QStringLiteral("Mark as Active"), this, &SessionsFeedWidget::actionMarkActive);
+        ctxMenu.addAction(QIcon(QStringLiteral(":/icons/wifi_null")), QStringLiteral("Mark as Inactive"), this, &SessionsFeedWidget::actionMarkInactive);
+        ctxMenu.addAction(QIcon(QStringLiteral(":/icons/visibility_off")), QStringLiteral("Hide on client"), this, &SessionsFeedWidget::actionHide);
+        ctxMenu.addSeparator();
+
+        ctxMenu.addAction(QIcon(QStringLiteral(":/icons/tag")), QStringLiteral("Set tag"), this, &SessionsFeedWidget::actionSetTag);
+        if (agentIds.size() == 1)
+            ctxMenu.addAction(QIcon(QStringLiteral(":/icons/info")), QStringLiteral("Session info…"), this, &SessionsFeedWidget::actionSetData);
+        auto* appearanceMenu = ctxMenu.addMenu(QIcon(QStringLiteral(":/icons/picture")), QStringLiteral("Appearance"));
+        appearanceMenu->addAction(QIcon(QStringLiteral(":/icons/color_fill")), QStringLiteral("Set items color"), this, &SessionsFeedWidget::actionItemColor);
+        appearanceMenu->addAction(QIcon(QStringLiteral(":/icons/color_text")), QStringLiteral("Set text color"), this, &SessionsFeedWidget::actionTextColor);
+        appearanceMenu->addAction(QIcon(QStringLiteral(":/icons/color_reset")), QStringLiteral("Reset color"), this, &SessionsFeedWidget::actionColorReset);
+
+        ctxMenu.addSeparator();
+        ctxMenu.addAction(QIcon(QStringLiteral(":/icons/delete")), QStringLiteral("Remove from server"), this, &SessionsFeedWidget::actionAgentRemove);
+
+        ctxMenu.exec(treeView()->viewport()->mapToGlobal(pos));
     }
-    ctxMenu.addAction(QIcon(":/icons/visibility"), "Show all items", this, &SessionsFeedWidget::actionItemsShowAll);
-    ctxMenu.exec(treeView()->viewport()->mapToGlobal(pos));
 }
 
 void SessionsFeedWidget::onItemDoubleClicked(const QModelIndex& index)
@@ -741,34 +754,6 @@ void SessionsFeedWidget::actionExecuteCommand()
         console->SetInput(cmd);
         console->processInput();
     }
-}
-
-void SessionsFeedWidget::actionConsoleDelete()
-{
-    QMessageBox::StandardButton reply = QMessageBox::question(this, "Clear Confirmation",
-        "Are you sure you want to delete all agent console data and history from server (tasks will not be deleted from TaskManager)?",
-        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-    if (reply != QMessageBox::Yes) return;
-
-    QList<qint64> listId;
-    QModelIndexList selected = treeView()->selectionModel()->selectedRows();
-    for (const QModelIndex& idx : selected) {
-        qint64 agentId = groupingProxy()->data(idx, Qt::UserRole).toLongLong();
-        if (agentId > 0) listId.append(agentId);
-    }
-    if (listId.empty()) return;
-
-    {
-        QReadLocker locker(&adaptixWidget->AgentsMapLock);
-        for (auto id : listId) {
-            if (adaptixWidget->AgentsMap.contains(id))
-                adaptixWidget->AgentsMap[id]->Console->Clear();
-        }
-    }
-
-    HttpReqConsoleRemoveAsync(listId, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-        if (!success) MessageError(message.isEmpty() ? "Response timeout" : message);
-    });
 }
 
 void SessionsFeedWidget::actionAgentRemove()

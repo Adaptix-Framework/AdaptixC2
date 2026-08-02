@@ -18,6 +18,35 @@ func (tc *TsConnector) TcListenerList(ctx *gin.Context) {
 	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonListeners))
 }
 
+func (tc *TsConnector) TcPluginListenerCall(ctx *gin.Context) {
+	var jsonData struct {
+		Listener string `json:"listener"`
+		Command  string `json:"command"`
+		Args     string `json:"args"`
+	}
+
+	username, ok := mustUsername(ctx)
+	if !ok {
+		return
+	}
+
+	if err := ctx.ShouldBindJSON(&jsonData); err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "error", "error": err.Error()})
+		return
+	}
+	if jsonData.Listener == "" {
+		ctx.JSON(http.StatusOK, gin.H{"message": "error", "error": "listener is required"})
+		return
+	}
+	if jsonData.Command == "" {
+		ctx.JSON(http.StatusOK, gin.H{"message": "error", "error": "command is required"})
+		return
+	}
+
+	go tc.teamserver.TsPluginListenerCall(jsonData.Listener, username, jsonData.Command, jsonData.Args)
+	ctx.JSON(http.StatusOK, gin.H{"message": "success", "result": "ok"})
+}
+
 type ListenerConfig struct {
 	ListenerName string `json:"name"`
 	ConfigType   string `json:"type"`

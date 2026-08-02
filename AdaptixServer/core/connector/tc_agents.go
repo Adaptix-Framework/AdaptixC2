@@ -13,6 +13,37 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func (tc *TsConnector) TcPluginAgentCall(ctx *gin.Context) {
+	var jsonData struct {
+		AgentId any    `json:"agent_id"`
+		Command string `json:"command"`
+		Args    string `json:"args"`
+	}
+
+	username, ok := mustUsername(ctx)
+	if !ok {
+		return
+	}
+
+	if err := ctx.ShouldBindJSON(&jsonData); err != nil {
+		ctx.JSON(http.StatusOK, gin.H{"message": "error", "error": err.Error()})
+		return
+	}
+
+	agentId, ok := toInt64(jsonData.AgentId)
+	if !ok || agentId <= 0 {
+		ctx.JSON(http.StatusOK, gin.H{"message": "error", "error": "agent_id is required"})
+		return
+	}
+	if jsonData.Command == "" {
+		ctx.JSON(http.StatusOK, gin.H{"message": "error", "error": "command is required"})
+		return
+	}
+
+	go tc.teamserver.TsPluginAgentCall(agentId, username, jsonData.Command, jsonData.Args)
+	ctx.JSON(http.StatusOK, gin.H{"message": "success", "result": "ok"})
+}
+
 func (tc *TsConnector) TcAgentList(ctx *gin.Context) {
 	jsonAgents, err := tc.teamserver.TsAgentList()
 	if err != nil {
@@ -27,6 +58,8 @@ type AgentConfig struct {
 	ListenerName []string `json:"listener_name"`
 	AgentName    string   `json:"agent"`
 	Config       string   `json:"config"`
+	SaveToStore  *bool    `json:"save_to_store,omitempty"`
+	Description  string   `json:"description,omitempty"`
 }
 
 func (tc *TsConnector) TcAgentGenerate(ctx *gin.Context) {
@@ -43,7 +76,15 @@ func (tc *TsConnector) TcAgentGenerate(ctx *gin.Context) {
 		return
 	}
 
-	fileContent, fileName, err = tc.teamserver.TsAgentBuildSyncOnce(agentConfig.AgentName, agentConfig.Config, agentConfig.ListenerName)
+	creator, ok := tc.extractUserContext(ctx)
+	if !ok {
+		return
+	}
+	saveToStore := true
+	if agentConfig.SaveToStore != nil {
+		saveToStore = *agentConfig.SaveToStore
+	}
+	fileContent, fileName, err = tc.teamserver.TsAgentBuildSyncOnce(agentConfig.AgentName, agentConfig.Config, agentConfig.ListenerName, creator, saveToStore, agentConfig.Description)
 	if err != nil {
 		respondError(ctx, http.StatusOK, err.Error())
 		return
@@ -83,6 +124,25 @@ func (tc *TsConnector) resolveFileRefs(args map[string]any) error {
 		if !ok {
 			continue
 		}
+
+		// Payload Store: {"__payload_id": 12}
+		if pid, ok := toInt64(m["__payload_id"]); ok && pid > 0 {
+			filename, data, err := tc.teamserver.TsPayloadDownload(pid)
+			if err != nil {
+				return fmt.Errorf("failed to resolve payload #%d for arg '%s': %w", pid, key, err)
+			}
+			args[key] = base64.StdEncoding.EncodeToString(data)
+			if path, ok := m["__file_path"].(string); ok && path != "" {
+				args[key+"_path"] = path
+			} else if filename != "" {
+				args[key+"_path"] = fmt.Sprintf("__payload:#%d (%s)", pid, filename)
+			} else {
+				args[key+"_path"] = fmt.Sprintf("__payload:#%d", pid)
+			}
+			continue
+		}
+
+		// Temp upload: {"__file_ref": <otp object id>}
 		ref, ok := toInt64(m["__file_ref"])
 		if !ok || ref == 0 {
 			continue
@@ -382,39 +442,6 @@ func (tc *TsConnector) TcAgentConsoleSearch(ctx *gin.Context) {
 
 type AgentRemove struct {
 	AgentIdArray []int64 `json:"agent_id_array"`
-}
-
-func (tc *TsConnector) TcAgentConsoleRemove(ctx *gin.Context) {
-	var (
-		agentRemove AgentRemove
-		err         error
-	)
-
-	err = ctx.ShouldBindJSON(&agentRemove)
-	if err != nil {
-		respondError(ctx, http.StatusOK, "invalid JSON data")
-		return
-	}
-
-	var errorsSlice []string
-	for _, agentId := range agentRemove.AgentIdArray {
-		err = tc.teamserver.TsAgentConsoleRemove(agentId)
-		if err != nil {
-			errorsSlice = append(errorsSlice, err.Error())
-		}
-	}
-
-	if len(errorsSlice) > 0 {
-		message := ""
-		for i, errorMessage := range errorsSlice {
-			message += fmt.Sprintf("%d. %s\n", i+1, errorMessage)
-		}
-
-		respondError(ctx, http.StatusOK, message)
-		return
-	}
-
-	respondOK(ctx)
 }
 
 func (tc *TsConnector) TcAgentRemove(ctx *gin.Context) {

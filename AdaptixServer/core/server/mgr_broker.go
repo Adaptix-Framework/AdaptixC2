@@ -66,6 +66,7 @@ const (
 	SyncCategoryTargetsRealtime     = "targets_realtime"
 	SyncCategoryNotifications       = "notifications"
 	SyncCategoryTunnels             = "tunnels"
+	SyncCategoryPayloads            = "payloads"
 )
 
 const (

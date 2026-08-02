@@ -456,7 +456,7 @@ public:
     void setUserType(int userType);
     int userType() const;
 
-#if defined(KDDW_FRONTEND_QT) && QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     /// @brief Sets user data that can be attached to this dock widget
     /// The user data is serialized when using LayoutSaver and can be retrieved with userData().
     /// KDDW does not read or care about the contents of this data.

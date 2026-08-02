@@ -1,0 +1,94 @@
+{
+  "background": {
+    "color": "#002B36"
+  },
+  "text": "#839496",
+  "console": {
+    "debug": {
+      "color": "#586E75",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "status": {
+      "success": "#859900",
+      "error": "#DC322F",
+      "info": "#268BD2"
+    },
+    "operator": {
+      "color": "#6C71C4",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "task": {
+      "color": "#586E75",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "agent": {
+      "color": "#2AA198",
+      "bold": false,
+      "italic": false,
+      "underline": true
+    },
+    "command": {
+      "color": "#93A1A1",
+      "bold": true,
+      "italic": false,
+      "underline": false
+    },
+    "input": {
+      "symbol": ">",
+      "color": "#CB4B16",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    }
+  },
+  "log": {
+    "debug": {
+      "color": "#586E75",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "operator_connect": {
+      "color": "#859900",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "operator_disconnect": {
+      "color": "#586E75",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "agent_new": {
+      "color": "#859900",
+      "bold": true,
+      "italic": false,
+      "underline": false
+    },
+    "tunnel": {
+      "color": "#859900",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "listener_start": {
+      "color": "#FFB86C",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "listener_stop": {
+      "color": "#DC322F",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    }
+  }
+}

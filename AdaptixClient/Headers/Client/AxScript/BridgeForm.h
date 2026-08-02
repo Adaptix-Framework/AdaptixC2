@@ -63,6 +63,7 @@ public Q_SLOTS:
     QObject* create_selector_listeners(const QJSValue &headers = QJSValue()) const;
     QObject* create_selector_targets(const QJSValue &headers = QJSValue()) const;
     QObject* create_selector_downloads(const QJSValue &headers = QJSValue()) const;
+    QObject* create_selector_payload_store(const QJSValue &headers = QJSValue()) const;
 
     QObject* create_ext_dock(const QString &id, const QString &title, const QString &location = "");
     QObject* create_ext_dialog(const QString &title);

@@ -98,6 +98,25 @@ inline const QMap<QString, QString> FIELD_MAP_DOWNLOADS = {
     {"date",       "Date"},
 };
 
+inline const QMap<QString, QString> FIELD_MAP_PAYLOADS = {
+    {"id",          "ID"},
+    {"name",        "Name"},
+    {"description", "Description"},
+    {"type",        "Type"},
+    {"artifact",    "Artifact"},
+    {"arch",        "Arch"},
+    {"listeners",   "Listener(s)"},
+    {"size",        "Size"},
+    {"creator",     "Creator"},
+    {"created",     "Created"},
+    {"filename",    "Filename"},
+    {"md5",         "MD5"},
+    {"sha1",        "SHA1"},
+    {"sha256",      "SHA256"},
+    {"uid",         "UID"},
+    {"hidden",      "Hidden"},
+};
+
 /// ABSTRACT
 
 class AbstractAxLayout {
@@ -1593,6 +1612,108 @@ Q_OBJECT
 public:
     explicit AxSelectorDownloads(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent = nullptr);
     ~AxSelectorDownloads() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
+
+    Q_INVOKABLE void     setSize(int w, int h) const;
+    Q_INVOKABLE QJSValue exec() const;
+    Q_INVOKABLE void     close() const;
+};
+
+
+
+/// SELECTOR PAYLOAD STORE
+
+class AxPayloadsTableModel : public QAbstractTableModel {
+Q_OBJECT
+    QVector<PayloadData> m_data;
+    QVector<QString> m_headers;
+    QVector<QString> m_fieldKeys;
+
+public:
+    explicit AxPayloadsTableModel(QObject* parent = nullptr) : QAbstractTableModel(parent) {}
+
+    void setHeaders(const QVector<QString>& headers, const QVector<QString>& fieldKeys) {
+        beginResetModel();
+        m_headers = headers;
+        m_fieldKeys = fieldKeys;
+        endResetModel();
+    }
+
+    void setData(const QVector<PayloadData>& data) {
+        beginResetModel();
+        m_data = data;
+        endResetModel();
+    }
+
+    int rowCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_data.size();
+    }
+
+    int columnCount(const QModelIndex& parent = QModelIndex()) const override {
+        return parent.isValid() ? 0 : m_headers.size();
+    }
+
+    QVariant data(const QModelIndex& index, int role = Qt::DisplayRole) const override;
+    QVariant headerData(int section, Qt::Orientation orientation, int role = Qt::DisplayRole) const override {
+        if (role == Qt::DisplayRole && orientation == Qt::Horizontal && section < m_headers.size())
+            return m_headers[section];
+        return QVariant();
+    }
+
+    QString fieldKey(int column) const {
+        if (column >= 0 && column < m_fieldKeys.size())
+            return m_fieldKeys[column];
+        return {};
+    }
+
+    PayloadData getPayload(int row) const {
+        if (row >= 0 && row < m_data.size())
+            return m_data[row];
+        return PayloadData();
+    }
+};
+
+class AxDialogPayloads : public QDialog {
+Q_OBJECT
+    QVBoxLayout*  mainLayout   = nullptr;
+    QTableView*   tableView    = nullptr;
+    QHBoxLayout*  bottomLayout = nullptr;
+    QPushButton*  chooseButton = nullptr;
+    QSpacerItem*  spacer_1     = nullptr;
+    QSpacerItem*  spacer_2     = nullptr;
+
+    PageNavBar*           pageNavBar = nullptr;
+    PagedTableHelper*     pageHelper = nullptr;
+    AxPayloadsTableModel* tableModel = nullptr;
+
+    int     m_offset    = 0;
+    QString m_sortCol   = QStringLiteral("Created");
+    QString m_sortOrder = QStringLiteral("desc");
+
+    QVector<PayloadData> selectedData;
+
+    void loadCurrentPage();
+
+public:
+    explicit AxDialogPayloads(const QJSValue &headers, AuthProfile* profile, QWidget* parent = nullptr);
+    ~AxDialogPayloads() override;
+
+    QVector<PayloadData> data();
+    void prepare();
+
+public Q_SLOTS:
+    void onClicked();
+    void onPageReady(const QJsonObject& response);
+    void onPageError(const QString& message);
+};
+
+class AxSelectorPayloads : public QObject {
+Q_OBJECT
+    AxDialogPayloads* dialog;
+    AxScriptEngine*   scriptEngine;
+
+public:
+    explicit AxSelectorPayloads(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent = nullptr);
+    ~AxSelectorPayloads() override { if (dialog) { dialog->close(); dialog->deleteLater(); } }
 
     Q_INVOKABLE void     setSize(int w, int h) const;
     Q_INVOKABLE QJSValue exec() const;

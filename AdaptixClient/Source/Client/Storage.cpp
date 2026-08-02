@@ -670,6 +670,38 @@ void Storage::UpdateSettingsFiles(const SettingsData &settingsData)
         LogError("SettingsFiles not updated in database: %s\n", query.lastError().text().toStdString().c_str());
 }
 
+void Storage::SelectSettingsPayloads(SettingsData* settingsData)
+{
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsPayloads' LIMIT 1;");
+    if (query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject   json = doc.object();
+
+        QJsonArray columns = json["columns"].toArray();
+        for (int i = 0; i < 13 && i < columns.size(); i++)
+            settingsData->PayloadsTableColumns[i] = columns[i].toBool();
+    }
+}
+
+void Storage::UpdateSettingsPayloads(const SettingsData &settingsData)
+{
+    QJsonArray columns;
+    for (int i = 0; i < 13; i++)
+        columns.append(settingsData.PayloadsTableColumns[i]);
+
+    QJsonObject json;
+    json["columns"] = columns;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsPayloads', :Data);");
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("SettingsPayloads not updated in database: %s\n", query.lastError().text().toStdString().c_str());
+}
+
 void Storage::SelectSettingsTabBlink(SettingsData* settingsData)
 {
     QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));

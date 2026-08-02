@@ -44,8 +44,8 @@ public Q_SLOTS:
     void add_tasks_job(AbstractAxMenuItem* item, const QJSValue &agents, const QJSValue &os = QJSValue(), const QJSValue &listeners = QJSValue());
 
     void add_targets(AbstractAxMenuItem* item, const QString &position = "center");
-
     void add_credentials(AbstractAxMenuItem* item);
+    void add_payload_store(AbstractAxMenuItem* item);
 };
 
 #endif

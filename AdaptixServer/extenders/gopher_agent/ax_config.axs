@@ -1,11 +1,11 @@
 /// Gopher agent
 
-let exit_action = menu.create_action("Exit", function(agents_id) { agents_id.forEach(id => ax.execute_command(id, "exit")) });
+let exit_action = menu.create_action("Exit", function(agents_id) { agents_id.forEach(id => ax.execute_command(id, "exit")) }, ":/icons/power");
 menu.add_session_agent(exit_action, ["gopher"])
 
-let file_browser_action     = menu.create_action("File Browser",    function(agents_id) { agents_id.forEach(id => ax.open_browser_files(id)) });
-let process_browser_action  = menu.create_action("Process Browser", function(agents_id) { agents_id.forEach(id => ax.open_browser_process(id)) });
-let terminal_browser_action = menu.create_action("Remote Terminal", function(agents_id) { agents_id.forEach(id => ax.open_remote_terminal(id)) });
+let file_browser_action     = menu.create_action("File Browser",    function(agents_id) { agents_id.forEach(id => ax.open_browser_files(id)) }, ":/icons/folder");
+let process_browser_action  = menu.create_action("Process Browser", function(agents_id) { agents_id.forEach(id => ax.open_browser_process(id)) }, ":/icons/format_list");
+let terminal_browser_action = menu.create_action("Remote Terminal", function(agents_id) { agents_id.forEach(id => ax.open_remote_terminal(id)) }, ":/icons/terminal");
 menu.add_session_browser(file_browser_action, ["gopher"])
 menu.add_session_browser(process_browser_action, ["gopher"])
 menu.add_session_browser(terminal_browser_action, ["gopher"])
@@ -38,9 +38,9 @@ let execute_action = menu.create_action("Execute", function(files_list) {
         let command = "run " + text_bin.text() + " " + text_args.text();
         ax.execute_command(file.agent_id, command);
     }
-});
-let download_action = menu.create_action("Download", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "download " + file.path + file.name) ) });
-let remove_action = menu.create_action("Remove", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "rm " + file.path + file.name) ) });
+}, ":/icons/start");
+let download_action = menu.create_action("Download", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "download " + file.path + file.name) ) }, ":/icons/downloads");
+let remove_action = menu.create_action("Remove", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "rm " + file.path + file.name) ) }, ":/icons/delete");
 menu.add_filebrowser(download_action, ["gopher"])
 menu.add_filebrowser(remove_action, ["gopher"])
 
@@ -51,12 +51,12 @@ let job_stop_action = menu.create_action("Stop job", function(tasks_list) {
             ax.execute_command(task.agent_id, "job kill " + task.task_id);
         }
     });
-});
+}, ":/icons/stop");
 menu.add_tasks_job(job_stop_action, ["gopher"])
 
 
 
-let cancel_action = menu.create_action("Cancel", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "job kill " + file.file_id) ) });
+let cancel_action = menu.create_action("Cancel", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "job kill " + file.file_id) ) }, ":/icons/close");
 menu.add_downloads_running(cancel_action, ["gopher"])
 
 

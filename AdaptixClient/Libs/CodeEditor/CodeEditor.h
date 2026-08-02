@@ -3,6 +3,7 @@
 #include <QTextEdit>
 
 class QCompleter;
+class QTimer;
 class SyntaxStyle;
 class StyleSyntaxHighlighter;
 class LineNumberArea;
@@ -33,9 +34,12 @@ Q_OBJECT
     QByteArray m_currentHash;
     bool m_hashDirty;
 
+    QTimer* m_foldUpdateTimer = nullptr;
+
     void initDocumentLayoutHandlers();
     void initFont();
     void performConnections();
+    void scheduleFoldingUpdate();
     void updateLineGeometry();
     void handleSelectionQuery(QTextCursor cursor);
     void highlightParenthesis(QList<QTextEdit::ExtraSelection>& extra);
@@ -89,6 +93,8 @@ public:
 
     QString filePath() const;
     void setFilePath(const QString& path);
+
+    bool isLargeDocument() const;
 
     bool isModified() const;
     void markSaved();

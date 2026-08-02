@@ -25,9 +25,7 @@
 
 #include <cmath>
 
-#ifdef KDDW_FRONTEND_QT
 #include <QPainter>
-#endif
 
 using namespace KDDockWidgets;
 using namespace KDDockWidgets::Core;
@@ -264,7 +262,6 @@ WindowBeingDraggedWayland::~WindowBeingDraggedWayland()
 
 Pixmap WindowBeingDraggedWayland::pixmap() const
 {
-#ifdef KDDW_FRONTEND_QT
     QPixmap pixmap(size());
     QPainter p(&pixmap);
     pixmap.fill(Qt::transparent);
@@ -279,10 +276,6 @@ Pixmap WindowBeingDraggedWayland::pixmap() const
     }
 
     return pixmap;
-#else
-    // Wayland not support on our flutter frontend yet
-    return {};
-#endif
 }
 
 Vector<QString> WindowBeingDraggedWayland::affinities() const

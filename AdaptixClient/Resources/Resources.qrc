@@ -43,12 +43,18 @@
         <file alias="Adaptix_Dark_Emerald">themes/adaptix_dark_emerald.json</file>
         <file alias="Adaptix_Light_Emerald">themes/adaptix_light_emerald.json</file>
         <file alias="Adaptix_Dracula">themes/adaptix_dracula.json</file>
+        <file alias="Black">themes/adaptix_black.json</file>
+        <file alias="Solarized">themes/adaptix_solarized.json</file>
+        <file alias="Monokai">themes/adaptix_monokai.json</file>
     </qresource>
 
     <qresource prefix="/console-themes">
         <file alias="console_adaptix_dark.json">themes/console/console_adaptix_dark.json</file>
         <file alias="console_adaptix_light.json">themes/console/console_adaptix_light.json</file>
         <file alias="console_adaptix_dracula.json">themes/console/console_adaptix_dracula.json</file>
+        <file alias="console_black.json">themes/console/console_black.json</file>
+        <file alias="console_solarized.json">themes/console/console_solarized.json</file>
+        <file alias="console_monokai.json">themes/console/console_monokai.json</file>
     </qresource>
 
     <qresource prefix="/icons">
@@ -104,6 +110,9 @@
 
         <file alias="visibility">icons/visibility_64dp.png</file>
         <file alias="visibility_off">icons/visibility_off_64dp.png</file>
+        <file alias="view_agenda">icons/view_agenda_64dp.png</file>
+        <file alias="timer">icons/timer_64dp.png</file>
+        <file alias="time_all">icons/time_all.png</file>
         <file alias="agent">icons/vacuum_64dp.png</file>
         <file alias="edit_note">icons/edit_note_64dp.png</file>
         <file alias="kill">icons/kill_64dp.png</file>

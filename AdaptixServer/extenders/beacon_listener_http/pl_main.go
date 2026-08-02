@@ -30,6 +30,13 @@ func InitPlugin(ts any, moduleDir string, listenerDir string) adaptix.PluginList
 	return &PluginListener{}
 }
 
+func (p *PluginListener) Call(operator string, listenerName string, function string, args string) {
+	_ = operator
+	_ = listenerName
+	_ = function
+	_ = args
+}
+
 func (p *PluginListener) Create(name string, config string, customData []byte) (adaptix.ExtenderListener, adaptix.ListenerData, []byte, error) {
 	var (
 		listener     *Listener

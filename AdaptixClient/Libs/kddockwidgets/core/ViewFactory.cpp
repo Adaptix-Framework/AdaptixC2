@@ -24,3 +24,28 @@ QString ViewFactory::classicIndicatorsPath() const
 {
     return QStringLiteral(":/img/classic_indicators");
 }
+
+View *ViewFactory::createGroup(Core::Group *controller, View *parent, int userType) const
+{
+    Q_UNUSED(userType);
+    return createGroup(controller, parent);
+}
+
+View *ViewFactory::createTitleBar(Core::TitleBar *controller, View *parent, int userType) const
+{
+    Q_UNUSED(userType);
+    return createTitleBar(controller, parent);
+}
+
+View *ViewFactory::createTabBar(Core::TabBar *tabBar, View *parent, int userType) const
+{
+    Q_UNUSED(userType);
+    return createTabBar(tabBar, parent);
+}
+
+View *ViewFactory::createFloatingWindow(Core::FloatingWindow *controller, Core::MainWindow *parent,
+                                        Qt::WindowFlags windowFlags, int userType) const
+{
+    Q_UNUSED(userType);
+    return createFloatingWindow(controller, parent, windowFlags);
+}

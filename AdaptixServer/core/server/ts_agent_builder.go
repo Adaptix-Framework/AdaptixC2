@@ -17,17 +17,20 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-func (ts *Teamserver) TsAgentBuildSyncOnce(agentName string, config string, listenersName []string) ([]byte, string, error) {
-
+func (ts *Teamserver) TsAgentBuildSyncOnce(agentName string, config string, listenersName []string, creator string, saveToStore bool, description string) ([]byte, string, error) {
 	conf := adaptix.BuildProfile{
 		BuilderId:   "",
 		AgentConfig: config,
 	}
 
+	var watermark string
 	for _, listener := range listenersName {
 		listenerWM, listenerProfile, err := ts.TsListenerGetProfile(listener)
 		if err != nil {
 			return nil, "", err
+		}
+		if watermark == "" {
+			watermark = listenerWM
 		}
 
 		transport := adaptix.TransportProfile{
@@ -38,15 +41,28 @@ func (ts *Teamserver) TsAgentBuildSyncOnce(agentName string, config string, list
 		conf.ListenerProfiles = append(conf.ListenerProfiles, transport)
 	}
 
-	return ts.Extender.ExAgentGenerate(agentName, conf)
+	fileContent, fileName, err := ts.Extender.ExAgentGenerate(agentName, conf)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if saveToStore && len(fileContent) > 0 {
+		if _, regErr := ts.TsPayloadRegister(agentName, fileName, fileContent, listenersName, config, creator, "", watermark, description); regErr != nil {
+			ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "payloads", "payload store register failed: %v", regErr)
+		}
+	}
+
+	return fileContent, fileName, nil
 }
 
 type BuildChannelData struct {
 	AgentName     string   `json:"agent_name"`
 	ListenersName []string `json:"listeners_name"`
+	SaveToStore   *bool    `json:"save_to_store,omitempty"`
+	Description   string   `json:"description,omitempty"`
 }
 
-func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn adaptix.WebSocketConn) error {
+func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn adaptix.WebSocketConn, creator string) error {
 	var bd BuildChannelData
 	if err := json.Unmarshal([]byte(buildData), &bd); err != nil {
 		if wsconn != nil {
@@ -88,7 +104,12 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn adaptix
 		fileContent []byte
 		fileName    string
 		conf        adaptix.BuildProfile
+		watermark   string
 	)
+	saveToStore := true
+	if bd.SaveToStore != nil {
+		saveToStore = *bd.SaveToStore
+	}
 
 	_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_INFO, "Building agent...")
 
@@ -117,10 +138,14 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn adaptix
 	}
 
 	for _, listener := range listenersName {
-		listenerWM, listenerProfile, err := ts.TsListenerGetProfile(listener)
-		if err != nil {
+		listenerWM, listenerProfile, lerr := ts.TsListenerGetProfile(listener)
+		if lerr != nil {
+			err = lerr
 			_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_ERROR, fmt.Sprintf("Error: invalid '%s' listener profile", listener))
 			goto RET
+		}
+		if watermark == "" {
+			watermark = listenerWM
 		}
 
 		_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Listener '%s' profile created", listener))
@@ -160,6 +185,15 @@ func (ts *Teamserver) TsAgentBuildCreateChannel(buildData string, wsconn adaptix
 	fileName = postEvent.FileName
 	fileContent = postEvent.FileContent
 	// -----------------
+
+	if saveToStore && len(fileContent) > 0 {
+		if p, regErr := ts.TsPayloadRegister(builder.Name, fileName, fileContent, builder.ListenersName, builder.Config, creator, builder.Id, watermark, bd.Description); regErr != nil {
+			ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "payloads", "payload store register failed: %v", regErr)
+		} else {
+			postEvent.PayloadId = p.PayloadId
+			_ = ts.TsAgentBuildLog(builder.Id, adaptix.BUILD_LOG_INFO, fmt.Sprintf("Registered in Payload Store (#%d)", p.PayloadId))
+		}
+	}
 
 	_ = ts.TsAgentBuildSendFile(builder.Id, fileName, fileContent)
 

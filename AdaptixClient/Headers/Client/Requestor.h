@@ -26,7 +26,6 @@ void HttpReqAgentUpdateDataAsync(qint64 agentId, const QJsonObject &updateData, 
 void HttpReqAgentCommandAsync(const QByteArray &jsonData, AuthProfile& profile);
 void HttpReqAgentCommandFileAsync(const QByteArray &jsonData, AuthProfile& profile);
 
-void HttpReqConsoleRemoveAsync(const QList<qint64> &agentsId, AuthProfile& profile, const HttpCallback &callback);
 void HttpReqConsoleGetPageAsync(qint64 agentId, qint64 afterId, int limit, AuthProfile& profile, const HttpCallback &callback);
 void HttpReqConsoleGetAroundAsync(qint64 agentId, qint64 aroundId, int limit, AuthProfile& profile, const HttpCallback &callback);
 void HttpReqConsoleSearchAsync(qint64 agentId, const QString &query, int limit, int offset, AuthProfile& profile, const HttpCallback &callback);
@@ -78,7 +77,9 @@ void HttpReqChatHistoryAsync(qint64 beforeId, int limit, AuthProfile& profile, c
 void HttpReqChatSearchAsync(const QString &query, qint64 beforeId, int limit, AuthProfile& profile, const HttpCallback &callback);
 void HttpReqChatClearAsync(AuthProfile& profile, const HttpCallback &callback);
 
-void HttpReqServiceCallAsync(const QString &service, const QString &command, const QString &args, AuthProfile& profile, const HttpCallback &callback);
+void HttpReqPluginServiceCallAsync(const QString &service, const QString &command, const QString &args, AuthProfile& profile, const HttpCallback &callback);
+void HttpReqPluginAgentCallAsync(qint64 agentId, const QString &command, const QString &args, AuthProfile& profile, const HttpCallback &callback);
+void HttpReqPluginListenerCallAsync(const QString &listenerName, const QString &command, const QString &args, AuthProfile& profile, const HttpCallback &callback);
 
 void HttpReqEventHandlerRegisterAsync(const QJsonObject &body, AuthProfile& profile, const HttpCallback &callback);
 void HttpReqEventHandlerGetAsync(const QString &id, AuthProfile& profile, const HttpCallback &callback);
@@ -94,5 +95,15 @@ void HttpReqGroupRenameAsync(int64_t groupId, const QString &name, AuthProfile& 
 void HttpReqGroupDeleteAsync(int64_t groupId, AuthProfile& profile, const HttpCallback &callback);
 void HttpReqGroupMoveMemberAsync(qint64 agentId, int64_t fromGroupId, int64_t toGroupId, AuthProfile& profile, const HttpCallback &callback);
 void HttpReqGroupReparentAsync(int64_t groupId, int64_t newParentId, AuthProfile& profile, const HttpCallback &callback);
+
+void HttpReqPayloadListAsync(bool showHidden, AuthProfile& profile, const HttpCallback &callback);
+void HttpReqPayloadSyncAsync(AuthProfile& profile, const HttpCallback &callback);
+void HttpReqPayloadGetAsync(qint64 payloadId, AuthProfile& profile, const HttpCallback &callback);
+void HttpReqPayloadDownloadAsync(qint64 payloadId, AuthProfile& profile, const HttpCallback &callback);
+void HttpReqPayloadHideAsync(const QList<qint64> &ids, bool hidden, AuthProfile& profile, const HttpCallback &callback);
+void HttpReqPayloadSetColorAsync(const QList<qint64> &ids, const QString &background, const QString &foreground, bool reset, AuthProfile& profile, const HttpCallback &callback);
+void HttpReqPayloadUpdateAsync(qint64 payloadId, const QString &name, const QString &notes, const QString &artifact, const QString &arch, bool hidden, AuthProfile& profile, const HttpCallback &callback);
+void HttpReqPayloadRemoveAsync(const QList<qint64> &ids, bool hard, AuthProfile& profile, const HttpCallback &callback);
+void HttpReqPayloadImportAsync(const QString &name, const QString &agentType, const QString &artifact, const QString &arch, const QStringList &listeners, const QByteArray &content, const QString &config, AuthProfile& profile, const HttpCallback &callback);
 
 #endif

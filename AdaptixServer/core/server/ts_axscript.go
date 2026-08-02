@@ -162,6 +162,37 @@ func (ts *Teamserver) AxGetTargets() []interface{} {
 }
 
 // /---
+func (ts *Teamserver) AxGetPayloads() []interface{} {
+	list, _, err := ts.DBMS.DbPayloadGetPage(0, 100000, true, "", "Created", "desc")
+	if err != nil || list == nil {
+		return []interface{}{}
+	}
+	out := make([]interface{}, 0, len(list))
+	for _, p := range list {
+		m := map[string]interface{}{
+			"id":          p.PayloadId,
+			"name":        p.Name,
+			"description": p.Notes,
+			"type":        p.AgentType,
+			"artifact":    p.Artifact,
+			"arch":        p.Arch,
+			"listeners":   p.Listeners,
+			"size":        p.Size,
+			"creator":     p.Creator,
+			"created":     p.Created,
+			"filename":    p.Filename,
+			"md5":         p.Md5,
+			"sha1":        p.Sha1,
+			"sha256":      p.Sha256,
+			"uid":         p.Uid,
+			"hidden":      p.Hidden,
+		}
+		out = append(out, m)
+	}
+	return out
+}
+
+// /---
 func (ts *Teamserver) TsAxScriptLoadUser(name string, script string) error {
 	if ts.ScriptManager == nil {
 		return fmt.Errorf("script manager not initialized")

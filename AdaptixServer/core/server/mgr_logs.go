@@ -22,8 +22,9 @@ const (
 	logBatchMaxItems = 100
 	logBatchInterval = 50 * time.Millisecond
 
-	logWriterFlushDelay = 200 * time.Millisecond
-	logWriterRatePerSec = 50
+	logSourcePadMin       = 24
+	logWriterFlushDelay   = 200 * time.Millisecond
+	logWriterRatePerSec   = 50
 	logWriterThrottleEmit = 5 * time.Second
 )
 
@@ -128,6 +129,14 @@ func (lm *LogManager) writeRing(entry adaptix.LogEntry) {
 	lm.mu.Unlock()
 }
 
+func padDotsAfter(key string, width int) string {
+	n := utf8.RuneCountInString(key)
+	if n >= width {
+		return ""
+	}
+	return strings.Repeat(".", width-n)
+}
+
 func (lm *LogManager) printStdout(entry adaptix.LogEntry) {
 	if entry.Status == adaptix.LogStatusDebug && !lm.debug {
 		return
@@ -149,15 +158,16 @@ func (lm *LogManager) printStdout(entry adaptix.LogEntry) {
 	}
 	indent := ""
 	for i := 0; i < entry.Level; i++ {
-		indent += "   "
+		indent += "  "
 	}
 	timestamp := tformat.SetBold(time.Unix(entry.Time, 0).Format("02/01 15:04:05"))
-	mark := tformat.SetColor(symbol, color)
+	mark := tformat.SetColor(color, symbol)
 	src := entry.LogSourceKey()
 	if src == "" {
 		src = "server"
 	}
-	fmt.Printf("%s%s %s [%s] (%s)\n", indent, mark, entry.Message, timestamp, src)
+	pad := padDotsAfter(src, logSourcePadMin)
+	fmt.Printf("[%s] %s [%s]%s %s%s\n", timestamp, mark, src, pad, indent, entry.Message)
 }
 
 func (lm *LogManager) queueWS(entry adaptix.LogEntry) {

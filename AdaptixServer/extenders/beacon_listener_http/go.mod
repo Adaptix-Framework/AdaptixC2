@@ -3,7 +3,7 @@ module adaptix_listener_beacon_http
 go 1.26.5
 
 require (
-	github.com/Adaptix-Framework/axc2/v2 v2.0.3
+	github.com/Adaptix-Framework/axc2/v2 v2.0.5
 	github.com/gin-gonic/gin v1.12.0
 )
 
@@ -11,7 +11,7 @@ require (
 	github.com/Adaptix-Framework/axsafe v0.0.0-20260712144531-7ba271ad9303 // indirect
 	github.com/bytedance/gopkg v0.1.4 // indirect
 	github.com/bytedance/sonic v1.15.2 // indirect
-	github.com/bytedance/sonic/loader v0.5.1 // indirect
+	github.com/bytedance/sonic/loader v0.5.2 // indirect
 	github.com/cloudwego/base64x v0.1.7 // indirect
 	github.com/gabriel-vasile/mimetype v1.4.15 // indirect
 	github.com/gin-contrib/sse v1.1.1 // indirect

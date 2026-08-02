@@ -20,6 +20,7 @@
 #include <QSortFilterProxyModel>
 #include <QTreeView>
 #include <QAbstractTableModel>
+#include <QToolButton>
 
 class Agent;
 class AdaptixWidget;
@@ -163,7 +164,7 @@ Q_OBJECT
     QCheckBox*      autoSearchCheck = nullptr;
     QComboBox*      comboAgentType  = nullptr;
     QComboBox*      comboGroupBy    = nullptr;
-    QCheckBox*      checkOnlyActive  = nullptr;
+    QToolButton*    checkOnlyActive  = nullptr;
     ClickableLabel* hideButton       = nullptr;
     QPushButton*    btnGroupManager  = nullptr;
     GroupManagerPopup* groupPopup    = nullptr;
@@ -224,7 +225,6 @@ public Q_SLOTS:
     void actionTextColor() const;
     void actionColorReset() const;
     void actionAgentRemove();
-    void actionConsoleDelete();
     void actionItemTag() const;
     void actionItemHide();
     void actionItemsShowAll();

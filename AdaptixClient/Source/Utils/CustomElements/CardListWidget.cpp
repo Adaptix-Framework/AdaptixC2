@@ -5,8 +5,20 @@ CardListWidget::CardListWidget(QWidget *parent) : QListWidget(parent)
     setMouseTracking(true);
     setSpacing(1);
     setItemDelegate(new CardListDelegate(this));
+    setMinimumHeight(0);
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
 
     updateColorsFromPalette();
+}
+
+QSize CardListWidget::sizeHint() const
+{
+    return QSize(200, 48);
+}
+
+QSize CardListWidget::minimumSizeHint() const
+{
+    return QSize(0, 0);
 }
 
 void CardListWidget::updateColorsFromPalette()

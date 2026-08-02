@@ -38,7 +38,8 @@ class DOCKS_EXPORT FloatingWindow : public Controller, public Draggable
 public:
     explicit FloatingWindow(
         Rect suggestedGeometry, MainWindow *parent = nullptr,
-        FloatingWindowFlags requestedFlags = FloatingWindowFlag::FromGlobalConfig);
+        FloatingWindowFlags requestedFlags = FloatingWindowFlag::FromGlobalConfig,
+        int userType = 0);
     explicit FloatingWindow(Core::Group *group, Rect suggestedGeometry,
                             MainWindow *parent = nullptr);
     virtual ~FloatingWindow() override;

@@ -6,7 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func (tc *TsConnector) TcServiceCall(ctx *gin.Context) {
+func (tc *TsConnector) TcPluginServiceCall(ctx *gin.Context) {
 	var jsonData struct {
 		ServiceName string `json:"service"`
 		Command     string `json:"command"`
@@ -29,7 +29,7 @@ func (tc *TsConnector) TcServiceCall(ctx *gin.Context) {
 		return
 	}
 
-	go tc.teamserver.TsServiceCall(jsonData.ServiceName, username, jsonData.Command, jsonData.Args)
+	go tc.teamserver.TsPluginServiceCall(jsonData.ServiceName, username, jsonData.Command, jsonData.Args)
 
 	ctx.JSON(http.StatusOK, gin.H{"message": "success", "result": "ok"})
 }

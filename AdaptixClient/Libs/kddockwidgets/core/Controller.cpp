@@ -150,12 +150,10 @@ void Controller::setParentView_impl(View *parent)
 
 void Controller::destroyLater()
 {
-#ifdef KDDW_FRONTEND_QT
     if (!usesQTBUG83030Workaround()) {
         QObject::deleteLater();
         return;
     }
-#endif
 
     // Path for Flutter and QTBUG-83030:
     Platform::instance()->runDelayed(0, new DelayedDelete(this));

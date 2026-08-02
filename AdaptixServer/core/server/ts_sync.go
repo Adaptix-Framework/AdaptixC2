@@ -55,6 +55,8 @@ func getPacketCategory(packet interface{}) string {
 		return SyncCategoryCredentialsHistory
 	case SyncPackerTargetsAdd:
 		return SyncCategoryTargetsHistory
+	case SyncPackerPayloadCreate, SyncPackerPayloadUpdate, SyncPackerPayloadDelete, SyncPackerPayloadEdit:
+		return SyncCategoryPayloads
 	case json.RawMessage:
 		return SyncCategoryConsoleHistory
 	default:
@@ -142,6 +144,11 @@ func (ts *Teamserver) TsSyncCategories(client *ClientHandler, categories []strin
 	if requested[SyncCategoryGroups] {
 		delete(requested, SyncCategoryGroups)
 		packets = append(packets, ts.TsPresyncGroups()...)
+	}
+
+	if requested[SyncCategoryPayloads] {
+		delete(requested, SyncCategoryPayloads)
+		packets = append(packets, ts.TsPresyncPayloads()...)
 	}
 
 	for category := range requested {

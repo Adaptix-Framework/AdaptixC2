@@ -124,6 +124,7 @@ type EventDataAgentGenerate struct {
 	Config        string   `json:"config"`
 	FileName      string   `json:"fileName"`
 	FileContent   []byte   `json:"fileContent,omitempty"`
+	PayloadId     int64    `json:"payloadId,omitempty"`
 }
 
 type EventDataAgentCheckin struct {

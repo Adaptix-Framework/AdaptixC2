@@ -2,7 +2,6 @@
 
 function ListenerUI(mode_create)
 {
-    let spacer1 = form.create_vspacer();
 
     let labelHost = form.create_label("Host & Port (Bind):");
     let comboHostBind = form.create_combo();
@@ -61,10 +60,7 @@ function ListenerUI(mode_create)
         }
     });
 
-    let spacer2 = form.create_vspacer();
-
     let layout = form.create_gridlayout();
-    layout.addWidget(spacer1,           0, 0, 1, 3);
     layout.addWidget(labelHost,         1, 0, 1, 1);
     layout.addWidget(comboHostBind,     1, 1, 1, 1);
     layout.addWidget(spinPortBind,      1, 2, 1, 1);
@@ -82,7 +78,6 @@ function ListenerUI(mode_create)
     layout.addWidget(spinBurstSleep,    7, 1, 1, 2);
     layout.addWidget(labelBurstJitter,  8, 0, 1, 1);
     layout.addWidget(spinBurstJitter,   8, 1, 1, 2);
-    layout.addWidget(spacer2,           9, 0, 1, 3);
 
     let container = form.create_container();
     container.put("host_bind",     comboHostBind);
@@ -101,7 +96,7 @@ function ListenerUI(mode_create)
     return {
         ui_panel: panel,
         ui_container: container,
-        ui_height: 420,
-        ui_width: 500
+        ui_height: 500,
+        ui_width: 820
     }
 }

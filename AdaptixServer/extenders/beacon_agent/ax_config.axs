@@ -1,22 +1,21 @@
 /// Beacon agent
 
-let exit_thread_action  = menu.create_action("Terminate thread",  function(value) { value.forEach(v => ax.execute_command(v, "terminate thread")) });
-let exit_process_action = menu.create_action("Terminate process", function(value) { value.forEach(v => ax.execute_command(v, "terminate process")) });
-let exit_menu = menu.create_menu("Exit");
+let exit_thread_action  = menu.create_action("Terminate thread",  function(value) { value.forEach(v => ax.execute_command(v, "terminate thread")) }, ":/icons/power");
+let exit_process_action = menu.create_action("Terminate process", function(value) { value.forEach(v => ax.execute_command(v, "terminate process")) }, ":/icons/power");
+let exit_menu = menu.create_menu("Exit", ":/icons/power");
 exit_menu.addItem(exit_thread_action)
 exit_menu.addItem(exit_process_action)
 menu.add_session_agent(exit_menu, ["beacon"])
 
 
-let file_browser_action    = menu.create_action("File Browser",    function(value) { value.forEach(v => ax.open_browser_files(v)) });
-let process_browser_action = menu.create_action("Process Browser", function(value) { value.forEach(v => ax.open_browser_process(v)) });
-let shell_browser_action   = menu.create_action("Remote Shell",    function(value) { value.forEach(v => ax.open_remote_shell(v)) });
+let file_browser_action    = menu.create_action("File Browser",    function(value) { value.forEach(v => ax.open_browser_files(v)) }, ":/icons/folder");
+let process_browser_action = menu.create_action("Process Browser", function(value) { value.forEach(v => ax.open_browser_process(v)) }, ":/icons/format_list");
+let shell_browser_action   = menu.create_action("Remote Shell",    function(value) { value.forEach(v => ax.open_remote_shell(v)) }, ":/icons/terminal");
 menu.add_session_browser(file_browser_action, ["beacon"])
 menu.add_session_browser(process_browser_action, ["beacon"])
 menu.add_session_browser(shell_browser_action, ["beacon"])
 
-
-let tunnel_access_action = menu.create_action("Create Tunnel", function(value) { ax.open_access_tunnel(value[0], true, true, true, true) });
+let tunnel_access_action = menu.create_action("Create Tunnel", function(value) { ax.open_access_tunnel(value[0], true, true, true, true) }, ":/icons/vpn");
 menu.add_session_access(tunnel_access_action, ["beacon"])
 
 
@@ -50,17 +49,17 @@ let execute_action = menu.create_action("Execute", function(files_list) {
 
         ax.execute_command(file.agent_id, command);
     }
-});
+}, ":/icons/start");
 let download_action = menu.create_action("Download", function(files_list) {
     files_list.forEach((file) => {
         if(file.type == "file") {
             ax.execute_command(file.agent_id, "download " + file.path + file.name);
         }
     });
-});
+}, ":/icons/downloads");
 let remove_action = menu.create_action("Remove", function(files_list) {
     files_list.forEach(file => ax.execute_command(file.agent_id, "rm " + file.path + file.name))
-});
+}, ":/icons/delete");
 menu.add_filebrowser(execute_action, ["beacon"])
 menu.add_filebrowser(download_action, ["beacon"])
 menu.add_filebrowser(remove_action, ["beacon"])
@@ -68,10 +67,10 @@ menu.add_filebrowser(remove_action, ["beacon"])
 
 
 
-let download_stop_action = menu.create_action("Pause", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil stop " + file.file_id) ) });
-let download_start_action = menu.create_action("Resume", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil start " + file.file_id) ) });
+let download_stop_action = menu.create_action("Pause", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil stop " + file.file_id) ) }, ":/icons/stop");
+let download_start_action = menu.create_action("Resume", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil start " + file.file_id) ) }, ":/icons/start");
 let download_separator1 = menu.create_separator()
-let download_cancel_action = menu.create_action("Cancel", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil cancel " + file.file_id) ) });
+let download_cancel_action = menu.create_action("Cancel", function(files_list) { files_list.forEach( file => ax.execute_command(file.agent_id, "exfil cancel " + file.file_id) ) }, ":/icons/close");
 menu.add_downloads_running(download_stop_action, ["beacon"])
 menu.add_downloads_running(download_start_action, ["beacon"])
 menu.add_downloads_running(download_separator1, ["beacon"])
@@ -84,7 +83,7 @@ let job_stop_action = menu.create_action("Stop job", function(tasks_list) {
             ax.execute_command(task.agent_id, "jobs kill " + task.task_id);
         }
     });
-});
+}, ":/icons/stop");
 menu.add_tasks_job(job_stop_action, ["beacon"])
 
 

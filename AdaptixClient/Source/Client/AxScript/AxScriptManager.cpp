@@ -203,7 +203,7 @@ QJSEngine* AxScriptManager::ServiceScriptEngine(const QString &name)
     return config_scripts[name].engine->engine();
 }
 
-void AxScriptManager::ServiceScriptDataHandler(const QString &name, const QString &data)
+void AxScriptManager::PluginServiceDataHandler(const QString &name, const QString &data)
 {
     if (!config_scripts.contains(name))
         return;
@@ -213,6 +213,45 @@ void AxScriptManager::ServiceScriptDataHandler(const QString &name, const QStrin
         return;
 
     func.call(QJSValueList() << QJSValue(data));
+}
+
+void AxScriptManager::PluginAgentDataHandler(qint64 agentId, const QString &agentType, const QString &data)
+{
+    QString type = agentType;
+    if (type.isEmpty() && adaptixWidget) {
+        QReadLocker locker(&adaptixWidget->AgentsMapLock);
+        if (Agent* agent = adaptixWidget->AgentsMap.value(agentId, nullptr))
+            type = agent->data.Name;
+    }
+    if (type.isEmpty() || !config_scripts.contains(type) || config_scripts[type].type != ConfigScriptType::Agent)
+        return;
+
+    QJSValue func = config_scripts[type].engine->engine()->globalObject().property("data_handler");
+    if (!func.isCallable())
+        return;
+
+    func.call(QJSValueList() << QJSValue(static_cast<double>(agentId)) << QJSValue(data));
+}
+
+void AxScriptManager::PluginListenerDataHandler(const QString &listenerName, const QString &listenerType, const QString &data)
+{
+    QString type = listenerType;
+    if (type.isEmpty() && adaptixWidget) {
+        for (const ListenerData &ld : adaptixWidget->Listeners) {
+            if (ld.Name == listenerName) {
+                type = ld.ListenerRegName;
+                break;
+            }
+        }
+    }
+    if (type.isEmpty() || !config_scripts.contains(type) || config_scripts[type].type != ConfigScriptType::Listener)
+        return;
+
+    QJSValue func = config_scripts[type].engine->engine()->globalObject().property("data_handler");
+    if (!func.isCallable())
+        return;
+
+    func.call(QJSValueList() << QJSValue(listenerName) << QJSValue(data));
 }
 
 QJSValue AxScriptManager::AgentScriptExecute(const QString &name, const QString &code)
@@ -783,6 +822,14 @@ int AxScriptManager::AddMenuCreds(QMenu *menu, const QString &menuType, const QS
     QVariantList context;
     for (const auto& credId: creds)
         context << credId;
+    return addMenuItemsToMenu(menu, collectMenuItems(menuType), context);
+}
+
+int AxScriptManager::AddMenuPayloads(QMenu *menu, const QString &menuType, const QList<qint64> &payloadIds)
+{
+    QVariantList context;
+    for (qint64 id : payloadIds)
+        context << QVariant::fromValue(id);
     return addMenuItemsToMenu(menu, collectMenuItems(menuType), context);
 }
 

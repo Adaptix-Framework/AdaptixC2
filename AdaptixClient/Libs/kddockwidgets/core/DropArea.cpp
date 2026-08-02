@@ -233,11 +233,11 @@ void DropArea::_addDockWidget(Core::DockWidget *dw, Location location,
             // the group instead
             group = oldGroup;
         } else {
-            group = new Core::Group();
+            group = new Core::Group(nullptr, FrameOption_None, dw->userType());
             group->addTab(dw);
         }
     } else {
-        group = new Core::Group();
+        group = new Core::Group(nullptr, FrameOption_None, dw->userType());
         group->addTab(dw);
     }
 
@@ -455,7 +455,7 @@ bool DropArea::drop(View *droppedWindow, KDDockWidgets::Location location,
         if (!validateAffinity(dock))
             return false;
 
-        auto group = new Core::Group();
+        auto group = new Core::Group(nullptr, FrameOption_None, dock->userType());
         group->addTab(dock);
         Item *relativeToItem = relativeTo ? relativeTo->layoutItem() : nullptr;
         addWidget(group->view(), location, relativeToItem, DefaultSizeMode::FairButFloor);
@@ -618,7 +618,7 @@ void DropArea::addWidget(View *w, Location location, Core::Item *relativeToItem,
         newItem->setGuest(group->asLayoutingGuest());
     } else if (dw) {
         newItem = new Core::Item(asLayoutingHost());
-        group = new Core::Group();
+        group = new Core::Group(nullptr, FrameOption_None, dw->userType());
         newItem->setGuest(group->asLayoutingGuest());
         group->addTab(dw, option);
     } else if (auto ms = w->asDropAreaController()) {

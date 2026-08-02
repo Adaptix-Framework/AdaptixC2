@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -26,6 +27,7 @@ type TeamserverBridge interface {
 	AxGetAgentIds() []int64
 	AxGetCredentials() []interface{}
 	AxGetTargets() []interface{}
+	AxGetPayloads() []interface{}
 
 	AxCredentialsAdd(creds []map[string]interface{}) error
 	AxTargetsAdd(targets []map[string]interface{}) error
@@ -37,6 +39,8 @@ type TeamserverBridge interface {
 
 	AxGetDownloads() []interface{}
 	AxGetScreenshots() []interface{}
+
+	TsPayloadDownload(id int64) (filename string, content []byte, err error)
 	AxGetTunnels() []interface{}
 	AxGetInterfaces() []string
 	AxGetAgentMark(agentId int64) string
@@ -375,6 +379,7 @@ func (sm *ScriptManager) UnloadUserScript(name string) error {
 	return nil
 }
 
+// /---
 func (sm *ScriptManager) ListScripts() []ScriptInfo {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
@@ -480,6 +485,21 @@ func (sm *ScriptManager) executePreHook(engine *ScriptEngine, fn goja.Callable, 
 	return err
 }
 
+func parsePayloadRef(path string) (int64, bool) {
+	s := strings.TrimSpace(path)
+	lower := strings.ToLower(s)
+	const prefix = "__payload:#"
+	if !strings.HasPrefix(lower, prefix) {
+		return 0, false
+	}
+	idStr := strings.TrimSpace(s[len(prefix):])
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil || id <= 0 {
+		return 0, false
+	}
+	return id, true
+}
+
 func (sm *ScriptManager) resolveFileArgs(engine *ScriptEngine, parsed *ParsedCommand) error {
 	if len(parsed.FileArgs) == 0 {
 		return nil
@@ -491,6 +511,25 @@ func (sm *ScriptManager) resolveFileArgs(engine *ScriptEngine, parsed *ParsedCom
 			}
 			continue
 		}
+
+		// Payload Store: __payload:#id
+		if pid, ok := parsePayloadRef(fa.OriginalPath); ok {
+			if sm.teamserver == nil {
+				return fmt.Errorf("cannot resolve payload for argument '%s': teamserver not available", fa.ArgName)
+			}
+			filename, data, err := sm.teamserver.TsPayloadDownload(pid)
+			if err != nil {
+				return fmt.Errorf("cannot resolve payload #%d for argument '%s': %w", pid, fa.ArgName, err)
+			}
+			parsed.Args[fa.ArgName] = base64.StdEncoding.EncodeToString(data)
+			if filename != "" {
+				parsed.Args[fa.ArgName+"_path"] = fmt.Sprintf("__payload:#%d (%s)", pid, filename)
+			} else {
+				parsed.Args[fa.ArgName+"_path"] = fa.OriginalPath
+			}
+			continue
+		}
+
 		data, err := sm.ReadFileSandboxed(engine, fa.OriginalPath)
 		if err != nil {
 			return fmt.Errorf("cannot read file for argument '%s': %w", fa.ArgName, err)
@@ -680,6 +719,14 @@ func (sm *ScriptManager) GetTargets() []interface{} {
 		return []interface{}{}
 	}
 	return sm.teamserver.AxGetTargets()
+}
+
+// /---
+func (sm *ScriptManager) GetPayloads() []interface{} {
+	if sm.teamserver == nil {
+		return []interface{}{}
+	}
+	return sm.teamserver.AxGetPayloads()
 }
 
 func (sm *ScriptManager) ConsoleMessage(agentId int64, client string, msgType int, message string, clearText string) {

@@ -264,6 +264,13 @@ func registerAxBridge(engine *ScriptEngine) {
 		return rt.ToValue(engine.manager.GetTargets())
 	})
 
+	axObj.Set("payloads", func(call goja.FunctionCall) goja.Value {
+		if engine.manager == nil {
+			return rt.ToValue([]interface{}{})
+		}
+		return rt.ToValue(engine.manager.GetPayloads())
+	})
+
 	axObj.Set("console_message", func(call goja.FunctionCall) goja.Value {
 		if engine.manager == nil || len(call.Arguments) < 2 {
 			return goja.Undefined()
@@ -969,8 +976,15 @@ func registerAxBridge(engine *ScriptEngine) {
 		return rt.ToValue(result)
 	})
 
-	axObj.Set("service_command", func(call goja.FunctionCall) goja.Value {
-		// Service calls are handled differently on server; no-op for now
+	axObj.Set("plugin_service_command", func(call goja.FunctionCall) goja.Value {
+		return goja.Undefined()
+	})
+
+	axObj.Set("plugin_agent_command", func(call goja.FunctionCall) goja.Value {
+		return goja.Undefined()
+	})
+
+	axObj.Set("plugin_listener_command", func(call goja.FunctionCall) goja.Value {
 		return goja.Undefined()
 	})
 

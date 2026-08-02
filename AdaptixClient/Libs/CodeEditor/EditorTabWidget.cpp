@@ -2,6 +2,7 @@
 #include <CodeEditor.h>
 #include <CodeFolding.h>
 #include <SyntaxStyle.h>
+#include <StyleSyntaxHighlighter.h>
 #include <CXXHighlighter.h>
 #include <CXXCompleter.h>
 #include <AxScriptCompleter.h>
@@ -14,6 +15,7 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QTimer>
+#include <algorithm>
 
 EditorTabWidget::EditorTabWidget(QWidget* parent) : QTabWidget(parent), m_syntaxStyle(nullptr)
 {
@@ -84,8 +86,8 @@ CodeEditor* EditorTabWidget::newTab(const QString& title)
     editor->markSaved();
     updateTabTitle(index);
 
-    if (editor->highlighter())
-        editor->highlighter()->rehighlight();
+    if (auto* cxx = editor->findChild<CXXHighlighter*>())
+        cxx->notifyDocumentLoaded();
 
     return editor;
 }
@@ -104,54 +106,73 @@ CodeEditor* EditorTabWidget::openFile(const QString& filePath)
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text))
         return nullptr;
 
-    QTextStream in(&file);
-    auto content = in.readAll();
+    const QByteArray raw = file.readAll();
     file.close();
+    const QString content = QString::fromUtf8(raw);
+
+    const int approxLines = int(std::count(raw.begin(), raw.end(), '\n')) + 1;
+    const bool largeDoc = raw.size() >= CXXHighlighter::kLargeFileChars || approxLines >= CXXHighlighter::kLargeFileBlocks;
 
     auto editor = createEditor();
-    editor->setPlainText(content);
     editor->setFilePath(filePath);
+    editor->setUpdatesEnabled(false);
+
+    if (auto* hl = editor->highlighter())
+        hl->setDocument(nullptr);
+
+    if (editor->document())
+        editor->document()->setUndoRedoEnabled(!largeDoc);
+
+    editor->setPlainText(content);
 
     QFileInfo info(filePath);
-    QString suffix = info.suffix().toLower();
-    if (suffix == "axs" || suffix == "js" || suffix == "javascript" || suffix == "mjs") {
-        auto oldHighlighter = editor->findChild<CXXHighlighter*>();
-        if (oldHighlighter) {
-            oldHighlighter->setDocument(nullptr);
-            oldHighlighter->deleteLater();
+    const QString suffix = info.suffix().toLower();
+    const bool wantAx = (suffix == QLatin1String("axs") || suffix == QLatin1String("js") || suffix == QLatin1String("javascript") || suffix == QLatin1String("mjs"));
+
+    if (largeDoc) {
+        if (auto* hl = editor->highlighter()) {
+            editor->setHighlighter(nullptr);
+            hl->deleteLater();
         }
-        auto axHighlighter = new AxScriptHighlighter(editor->document());
+        for (auto* h : editor->findChildren<CXXHighlighter*>()) {
+            h->setDocument(nullptr);
+            h->deleteLater();
+        }
+        editor->setCodeFoldingEnabled(false);
+    } else if (wantAx) {
+        if (auto* old = editor->findChild<CXXHighlighter*>()) {
+            old->setDocument(nullptr);
+            old->deleteLater();
+        }
+        auto* axHighlighter = new AxScriptHighlighter(editor->document());
         axHighlighter->setFilePath(filePath);
         if (editor->syntaxStyle())
             axHighlighter->setSyntaxStyle(editor->syntaxStyle());
         editor->setHighlighter(axHighlighter);
 
-        auto* oldCompleter = editor->completer();
-        if (oldCompleter) oldCompleter->deleteLater();
+        if (auto* oldCompleter = editor->completer())
+            oldCompleter->deleteLater();
         editor->setCompleter(new AxScriptCompleter(editor));
-    }
-    else {
-        auto highlighter = editor->findChild<CXXHighlighter*>();
-        if (highlighter)
-            highlighter->setFilePath(filePath);
+    } else if (auto* cxxHl = editor->findChild<CXXHighlighter*>()) {
+        cxxHl->setFilePath(filePath);
+        editor->setHighlighter(cxxHl);
+        cxxHl->notifyDocumentLoaded();
     }
 
     editor->markSaved();
+    editor->setUpdatesEnabled(true);
 
-    int index = addTab(editor, info.fileName());
-    setTabToolTip(index, filePath);
+    const int index = addTab(editor, largeDoc ? info.fileName() + QStringLiteral(" [plain]") : info.fileName());
+    setTabToolTip(index, largeDoc ? filePath + QStringLiteral("\n(Large file: syntax highlighting disabled for performance)") : filePath);
     setTabsClosable(true);
     setCurrentIndex(index);
 
-    QTimer::singleShot(0, editor, [editor]() {
-        editor->setUpdatesEnabled(false);
-        if (editor->highlighter())
-            editor->highlighter()->rehighlight();
-        if (editor->isCodeFoldingEnabled() && editor->codeFolding())
-            editor->codeFolding()->updateFoldingData();
-        editor->setUpdatesEnabled(true);
-        editor->update();
-    });
+    if (!largeDoc) {
+        QTimer::singleShot(100, editor, [editor]() {
+            if (editor->isCodeFoldingEnabled() && editor->codeFolding())
+                editor->codeFolding()->updateFoldingData();
+        });
+    }
 
     Q_EMIT fileOpened(filePath);
     return editor;

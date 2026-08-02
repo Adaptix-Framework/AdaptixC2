@@ -56,6 +56,9 @@ public:
     static void SelectSettingsFiles(SettingsData* settingsData);
     static void UpdateSettingsFiles(const SettingsData &settingsData);
 
+    static void SelectSettingsPayloads(SettingsData* settingsData);
+    static void UpdateSettingsPayloads(const SettingsData &settingsData);
+
     static void SelectSettingsTabBlink(SettingsData* settingsData);
     static void UpdateSettingsTabBlink(const SettingsData &settingsData);
 

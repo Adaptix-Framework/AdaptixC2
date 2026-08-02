@@ -40,6 +40,7 @@ type Paths struct {
 	DownloadPath   string
 	UploadPath     string
 	ScreenshotPath string
+	PayloadPath    string
 }
 
 func initPaths() (Paths, error) {
@@ -56,6 +57,7 @@ func initPaths() (Paths, error) {
 		DownloadPath:   cwd + "/data/download",
 		UploadPath:     cwd + "/data/tmp_upload",
 		ScreenshotPath: cwd + "/data/screenshot",
+		PayloadPath:    cwd + "/data/payloads",
 	}
 
 	if err := ensureDir(p.DataPath); err != nil {
@@ -74,6 +76,9 @@ func initPaths() (Paths, error) {
 	}
 
 	if err := ensureDir(p.ScreenshotPath); err != nil {
+		return Paths{}, err
+	}
+	if err := ensureDir(p.PayloadPath); err != nil {
 		return Paths{}, err
 	}
 	return p, nil
@@ -115,6 +120,8 @@ type Teamserver struct {
 	listener_configs axsafe.Map[string, extender.ListenerInfo] // listenerFullName
 	agent_configs    axsafe.Map[string, extender.AgentInfo]    // agentName
 	service_configs  axsafe.Map[string, extender.ServiceInfo]  // serviceName
+
+	serviceWaiters sync.Map
 
 	wm_agent_types axsafe.Map[string, string]   // agentMark string : agentName string
 	wm_listeners   axsafe.Map[string, []string] // watermark string : ListenerName string, ListenerType string
@@ -309,11 +316,27 @@ type SyncPackerServiceReg struct {
 	AX   string `json:"ax"`
 }
 
-type SyncPackerServiceData struct {
+type SyncPackerPluginServiceData struct {
 	SpType int `json:"type"`
 
 	Service string `json:"service"`
 	Data    string `json:"data"`
+}
+
+type SyncPackerPluginAgentData struct {
+	SpType int `json:"type"`
+
+	AgentId   int64  `json:"agent_id"`
+	AgentType string `json:"agent_type"`
+	Data      string `json:"data"`
+}
+
+type SyncPackerPluginListenerData struct {
+	SpType int `json:"type"`
+
+	Listener     string `json:"listener"`
+	ListenerType string `json:"listener_type"`
+	Data         string `json:"data"`
 }
 
 type SyncPackerAgentNew struct {
@@ -867,6 +890,71 @@ type AxCommandBatch struct {
 	Listener string `json:"listener"`
 	Os       int    `json:"os"`
 	Commands string `json:"commands"`
+}
+
+/// PAYLOADS
+
+type SyncPackerPayloadCreate struct {
+	SpType int `json:"type"`
+
+	PayloadId int64    `json:"p_id"`
+	Name      string   `json:"p_name"`
+	AgentType string   `json:"p_type"`
+	Artifact  string   `json:"p_artifact"`
+	Arch      string   `json:"p_arch"`
+	Listeners []string `json:"p_listeners"`
+	Size      int64    `json:"p_size"`
+	Sha1      string   `json:"p_sha1"`
+	Sha256    string   `json:"p_sha256"`
+	Md5       string   `json:"p_md5"`
+	Creator   string   `json:"p_creator"`
+	Created   int64    `json:"p_date"`
+	Hidden    bool     `json:"p_hidden"`
+	Filename  string   `json:"p_filename"`
+	BuildId   string   `json:"p_build_id,omitempty"`
+	Watermark string   `json:"p_watermark,omitempty"`
+	Notes     string   `json:"p_notes,omitempty"`
+	Uid       string   `json:"p_uid,omitempty"`
+	Color     string   `json:"p_color,omitempty"`
+	Missing   bool     `json:"p_missing,omitempty"`
+}
+
+type SyncPackerPayloadUpdate struct {
+	SpType int `json:"type"`
+
+	PayloadIds []int64 `json:"p_ids"`
+	Hidden     bool    `json:"p_hidden"`
+}
+
+type SyncPackerPayloadDelete struct {
+	SpType int `json:"type"`
+
+	PayloadIds []int64 `json:"p_ids"`
+}
+
+type SyncPackerPayloadEdit struct {
+	SpType int `json:"type"`
+
+	PayloadId int64    `json:"p_id"`
+	Name      string   `json:"p_name"`
+	AgentType string   `json:"p_type"`
+	Artifact  string   `json:"p_artifact"`
+	Arch      string   `json:"p_arch"`
+	Listeners []string `json:"p_listeners"`
+	Size      int64    `json:"p_size"`
+	Sha1      string   `json:"p_sha1"`
+	Sha256    string   `json:"p_sha256"`
+	Md5       string   `json:"p_md5"`
+	Creator   string   `json:"p_creator"`
+	Created   int64    `json:"p_date"`
+	Hidden    bool     `json:"p_hidden"`
+	Filename  string   `json:"p_filename"`
+	BuildId   string   `json:"p_build_id,omitempty"`
+	Watermark string   `json:"p_watermark,omitempty"`
+	Notes     string   `json:"p_notes,omitempty"`
+	Uid       string   `json:"p_uid,omitempty"`
+	Color     string   `json:"p_color,omitempty"`
+	Missing   bool     `json:"p_missing,omitempty"`
 }
 
 /// LOGS

@@ -7,6 +7,7 @@
 #include <UI/Widgets/BrowserProcessWidget.h>
 #include <UI/Widgets/SessionWidgetIface.h>
 #include <UI/Widgets/ListenersFeedWidget.h>
+#include <UI/Widgets/PayloadsFeedWidget.h>
 #include <UI/Widgets/TasksFeedWidget.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ChatWidget.h>
@@ -213,8 +214,16 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return checkField("service", isStr) &&
                checkField("ax", isStr);
 
-    case TYPE_SERVICE_DATA:
+    case TYPE_PLUGIN_SERVICE_DATA:
         return checkField("service", isStr) &&
+               checkField("data", isStr);
+
+    case TYPE_PLUGIN_AGENT_DATA:
+        return checkField("agent_id", isNum) &&
+               checkField("data", isStr);
+
+    case TYPE_PLUGIN_LISTENER_DATA:
+        return checkField("listener", isStr) &&
                checkField("data", isStr);
 
     case TYPE_REG_LISTENER:
@@ -585,6 +594,28 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     case TYPE_EVENT_HANDLERS:
         return checkField("items", isArr);
 
+    case TYPE_PAYLOAD_CREATE:
+    case TYPE_PAYLOAD_EDIT:
+        return checkField("p_id", isNum) &&
+               checkField("p_name", isStr) &&
+               checkField("p_type", isStr) &&
+               checkField("p_artifact", isStr) &&
+               checkField("p_arch", isStr) &&
+               checkField("p_size", isNum) &&
+               checkField("p_sha1", isStr) &&
+               checkField("p_sha256", isStr) &&
+               checkField("p_md5", isStr) &&
+               checkField("p_creator", isStr) &&
+               checkField("p_date", isNum) &&
+               checkField("p_filename", isStr);
+
+    case TYPE_PAYLOAD_UPDATE:
+        return checkField("p_ids", isArr) &&
+               checkField("p_hidden", isBl);
+
+    case TYPE_PAYLOAD_DELETE:
+        return checkField("p_ids", isArr);
+
     default:
         qWarning() << "[SyncPacket] Unknown packet type:" << spType;
         return false;
@@ -701,8 +732,16 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         this->RegisterServiceConfig( jsonObj["service"].toString(), jsonObj["ax"].toString() );
         break;
 
-    case TYPE_SERVICE_DATA:
-        ScriptManager->ServiceScriptDataHandler( jsonObj["service"].toString(), jsonObj["data"].toString() );
+    case TYPE_PLUGIN_SERVICE_DATA:
+        ScriptManager->PluginServiceDataHandler( jsonObj["service"].toString(), jsonObj["data"].toString() );
+        break;
+
+    case TYPE_PLUGIN_AGENT_DATA:
+        ScriptManager->PluginAgentDataHandler(parseI64(jsonObj, "agent_id"), jsonObj["agent_type"].toString(), jsonObj["data"].toString() );
+        break;
+
+    case TYPE_PLUGIN_LISTENER_DATA:
+        ScriptManager->PluginListenerDataHandler(jsonObj["listener"].toString(), jsonObj["listener_type"].toString(), jsonObj["data"].toString() );
         break;
 
     case TYPE_REG_LISTENER:
@@ -908,7 +947,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     case TYPE_AGENT_CONSOLE_OUT: {
         qint64 agentId = parseI64(jsonObj, "a_id");
         QReadLocker locker(&AgentsMapLock);
-        if (AgentsMap.contains(agentId)) {
+        if (AgentsMap.contains(agentId) && AgentsMap[agentId]->Console) {
             AgentsMap[agentId]->Console->ConsoleOutputMessage( static_cast<qint64>(jsonObj["time"].toDouble()), "", jsonObj["a_msg_type"].toDouble(), jsonObj["a_message"].toString(), jsonObj["a_text"].toString(), false );
         }
         break;
@@ -917,9 +956,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     case TYPE_AGENT_CONSOLE_LOCAL: {
         qint64 agentId = parseI64(jsonObj, "a_id");
         QReadLocker locker(&AgentsMapLock);
-        if (AgentsMap.contains(agentId)) {
-            AgentsMap[agentId]->Console->ConsoleOutputPrompt(0, "", "", jsonObj["a_cmdline"].toString());
-            AgentsMap[agentId]->Console->ConsoleOutputMessage( static_cast<qint64>(jsonObj["time"].toDouble()), "", CONSOLE_OUT_LOCAL_INFO, jsonObj["a_message"].toString(), jsonObj["a_text"].toString(), false );
+        if (AgentsMap.contains(agentId) && AgentsMap[agentId]->Console) {
+            const qint64 t = static_cast<qint64>(jsonObj["time"].toDouble());
+            AgentsMap[agentId]->Console->ConsoleOutputPrompt(t, "", "", jsonObj["a_cmdline"].toString());
+            AgentsMap[agentId]->Console->ConsoleOutputMessage(t, "", CONSOLE_OUT_LOCAL_INFO, jsonObj["a_message"].toString(), jsonObj["a_text"].toString(), false);
         }
         break;
     }
@@ -935,9 +975,10 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             this->PostHandlersJS.remove(jsonObj["ax_handler_id"].toString());
         }
         QReadLocker locker(&AgentsMapLock);
-        if (AgentsMap.contains(agentId)) {
-            AgentsMap[agentId]->Console->ConsoleOutputPrompt(0, "", "", jsonObj["a_cmdline"].toString());
-            AgentsMap[agentId]->Console->ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, jsonObj["a_message"].toString(), "", true);
+        if (AgentsMap.contains(agentId) && AgentsMap[agentId]->Console) {
+            const qint64 t = static_cast<qint64>(jsonObj["time"].toDouble());
+            AgentsMap[agentId]->Console->ConsoleOutputPrompt(t, "", "", jsonObj["a_cmdline"].toString());
+            AgentsMap[agentId]->Console->ConsoleOutputMessage(t, "", CONSOLE_OUT_LOCAL_ERROR, jsonObj["a_message"].toString(), "", true);
         }
         break;
     }
@@ -945,15 +986,12 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     case TYPE_AGENT_CONSOLE_TASK_SYNC: {
         qint64 agentId = parseI64(jsonObj, "a_id");
         QReadLocker locker(&AgentsMapLock);
-        if (AgentsMap.contains(agentId)) {
+        if (AgentsMap.contains(agentId) && AgentsMap[agentId]->Console) {
             qint64 startTime = jsonObj["a_start_time"].toDouble();
             qint64 finishTime = jsonObj["a_finish_time"].toDouble();
             bool completed = jsonObj["a_completed"].toBool();
             QString taskIdStr = QString::number(parseI64(jsonObj, "a_task_id"));
             AgentsMap[agentId]->Console->ConsoleOutputPrompt( startTime, taskIdStr, jsonObj["a_client"].toString(), jsonObj["a_cmdline"].toString() );
-            if (!this->synchronized) {
-                AgentsMap[agentId]->Console->AddToHistory(jsonObj["a_cmdline"].toString());
-            }
             AgentsMap[agentId]->Console->ConsoleOutputMessage( completed ? finishTime : startTime, taskIdStr, jsonObj["a_msg_type"].toDouble(), jsonObj["a_message"].toString(), jsonObj["a_text"].toString(), completed );
         }
         break;
@@ -962,7 +1000,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
     case TYPE_AGENT_CONSOLE_TASK_UPD: {
         qint64 agentId = parseI64(jsonObj, "a_id");
         QReadLocker locker(&AgentsMapLock);
-        if (AgentsMap.contains(agentId))
+        if (AgentsMap.contains(agentId) && AgentsMap[agentId]->Console)
             AgentsMap[agentId]->Console->ConsoleOutputMessage( jsonObj["a_finish_time"].toDouble(), QString::number(parseI64(jsonObj, "a_task_id")), jsonObj["a_msg_type"].toDouble(), jsonObj["a_message"].toString(), jsonObj["a_text"].toString(), jsonObj["a_completed"].toBool() );
         break;
     }
@@ -1225,6 +1263,65 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                 ids.append(static_cast<qint64>(val.toDouble()));
         }
         TargetsDock->TargetsSetTag(ids, jsonObj["t_tag"].toString());
+        break;
+    }
+
+    case TYPE_PAYLOAD_CREATE:
+    case TYPE_PAYLOAD_EDIT: {
+        if (!PayloadsDock)
+            break;
+        PayloadData p;
+        p.PayloadId = parseI64(jsonObj, "p_id");
+        p.Name = jsonObj["p_name"].toString();
+        p.AgentType = jsonObj["p_type"].toString();
+        p.Artifact = jsonObj["p_artifact"].toString();
+        p.Arch = jsonObj["p_arch"].toString();
+        if (jsonObj["p_listeners"].isArray()) {
+            for (const QJsonValue &lv : jsonObj["p_listeners"].toArray())
+                p.Listeners << lv.toString();
+        }
+        p.Size = parseI64(jsonObj, "p_size");
+        p.Sha1 = jsonObj["p_sha1"].toString();
+        p.Sha256 = jsonObj["p_sha256"].toString();
+        p.Md5 = jsonObj["p_md5"].toString();
+        p.Creator = jsonObj["p_creator"].toString();
+        p.Created = parseI64(jsonObj, "p_date");
+        p.Hidden = jsonObj["p_hidden"].toBool();
+        p.Filename = jsonObj["p_filename"].toString();
+        p.BuildId = jsonObj["p_build_id"].toString();
+        p.Watermark = jsonObj["p_watermark"].toString();
+        p.Description = jsonObj["p_notes"].toString();
+        p.Uid = jsonObj["p_uid"].toString();
+        p.Color = jsonObj["p_color"].toString();
+        p.Missing = jsonObj["p_missing"].toBool();
+        if (spType == TYPE_PAYLOAD_EDIT)
+            PayloadsDock->UpdatePayloadItem(p);
+        else
+            PayloadsDock->AddPayloadItem(p);
+        break;
+    }
+
+    case TYPE_PAYLOAD_UPDATE: {
+        if (!PayloadsDock)
+            break;
+        QList<qint64> ids;
+        for (const QJsonValue &val : jsonObj["p_ids"].toArray()) {
+            if (val.isDouble())
+                ids.append(static_cast<qint64>(val.toDouble()));
+        }
+        PayloadsDock->UpdatePayloadHidden(ids, jsonObj["p_hidden"].toBool());
+        break;
+    }
+
+    case TYPE_PAYLOAD_DELETE: {
+        if (!PayloadsDock)
+            break;
+        QList<qint64> ids;
+        for (const QJsonValue &val : jsonObj["p_ids"].toArray()) {
+            if (val.isDouble())
+                ids.append(static_cast<qint64>(val.toDouble()));
+        }
+        PayloadsDock->RemovePayloadItems(ids);
         break;
     }
 

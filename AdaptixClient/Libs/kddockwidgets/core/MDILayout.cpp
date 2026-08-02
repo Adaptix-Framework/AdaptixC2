@@ -52,7 +52,7 @@ void MDILayout::addDockWidget(Core::DockWidget *dw, Point localPt,
     if (group) {
         newItem->setGuest(group->asLayoutingGuest());
     } else {
-        group = new Core::Group();
+        group = new Core::Group(nullptr, FrameOption_None, dw->userType());
         group->addTab(dw, addingOption);
 
         newItem->setGuest(group->asLayoutingGuest());

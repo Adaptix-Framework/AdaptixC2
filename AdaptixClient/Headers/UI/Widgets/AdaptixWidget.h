@@ -8,7 +8,6 @@
 #include <kddockwidgets/qtwidgets/views/DockWidget.h>
 #include <kddockwidgets/qtwidgets/views/MainWindow.h>
 
-#include <oclero/qlementine/widgets/PopoverButton.hpp>
 #include <oclero/qlementine/widgets/Popover.hpp>
 #include <oclero/qlementine/widgets/NotificationBadge.hpp>
 
@@ -31,6 +30,7 @@ class CodeEditorWidget;
 class LogsWidget;
 class ChatWidget;
 class ListenersFeedWidget;
+class PayloadsFeedWidget;
 class FilesFeedWidget;
 class ScreenshotsFeedWidget;
 class CredentialWidgetIface;
@@ -97,6 +97,7 @@ Q_OBJECT
     QFrame*         groupData         = nullptr;
     QFrame*         groupDev          = nullptr;
     QPushButton*    listenersButton   = nullptr;
+    QPushButton*    payloadsButton    = nullptr;
     QPushButton*    logsButton        = nullptr;
     QPushButton*    chatButton        = nullptr;
     oclero::qlementine::NotificationBadge* chatBadge = nullptr;
@@ -118,7 +119,7 @@ Q_OBJECT
     QPushButton*    codeEditorButton    = nullptr;
     QPushButton*    settingsButton      = nullptr;
     ConnectionStatusWidget* connStatusWidget = nullptr;
-    oclero::qlementine::PopoverButton* extDocksButton = nullptr;
+    QPushButton*    extDocksButton      = nullptr;
 
     oclero::qlementine::Popover* extDocksPopover = nullptr;
     QListWidget*    extDocksListWidget = nullptr;
@@ -180,6 +181,7 @@ public:
     LogsWidget*            LogsDock          = nullptr;
     ChatWidget*            ChatDock          = nullptr;
     ListenersFeedWidget*   ListenersDock     = nullptr;
+    PayloadsFeedWidget*    PayloadsDock      = nullptr;
     SessionWidgetIface*    SessionsTableDock = nullptr;
     SessionsGraph*         SessionsGraphDock = nullptr;
     TunnelsFeedWidget*     TunnelsDock       = nullptr;
@@ -319,6 +321,7 @@ public Q_SLOTS:
     void LoadLogsUI() const;
     void LoadChatUI() const;
     void LoadListenersUI() const;
+    void LoadPayloadsUI() const;
     void LoadTunnelsUI() const;
     void LoadDownloadsUI() const;
     void LoadFilesUI(int segment = 0) const;
@@ -328,6 +331,8 @@ public Q_SLOTS:
     void OnReconnect();
 
 private Q_SLOTS:
+    void onListenersButtonContextMenu(const QPoint& pos);
+    void onPayloadsButtonContextMenu(const QPoint& pos);
     void onFilesButtonContextMenu(const QPoint& pos);
     void onScriptsButtonContextMenu(const QPoint& pos);
 };

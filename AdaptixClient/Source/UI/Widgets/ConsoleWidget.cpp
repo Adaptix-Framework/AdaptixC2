@@ -45,6 +45,7 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
     });
     connect(OutputTextEdit,   &TextEditConsole::ctx_find,                             searchPanel, &SearchPanel::toggle);
     connect(OutputTextEdit,   &TextEditConsole::ctx_history,                          this, &ConsoleWidget::handleShowHistory);
+    connect(OutputTextEdit,   &TextEditConsole::ctx_clear,                            this, &ConsoleWidget::Clear);
     connect(commander,        &Commander::commandsUpdated,                            this, &ConsoleWidget::upgradeCompleter);
 
     auto* shortcutFind = new QShortcut(QKeySequence("Ctrl+F"), this);
@@ -99,7 +100,7 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
     });
     connect(searchPanel, &SearchPanel::historySearchRequested, this, &ConsoleWidget::openHistorySearch);
     connect(OutputTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, [this](int value) {
-        if (!autoLoadEarlier || !hasMore || loadingPage || loadAllPending || !initialLoaded)
+        if (!autoLoadEarlier || !hasMore || loadingPage || loadAllPending || !initialLoaded || viewCleared)
             return;
         if (value <= 8)
             loadMorePage();
@@ -184,20 +185,34 @@ void ConsoleWidget::createUI()
     historyBar = new QFrame(consoleHost);
     historyBar->setObjectName(QStringLiteral("ConsoleHistoryBar"));
 
-    autoLoadSwitch = new oclero::qlementine::Switch(historyBar);
+    historyToggleBtn = new QToolButton(historyBar);
+    historyToggleBtn->setObjectName(QStringLiteral("HistBtnToggle"));
+    historyToggleBtn->setIcon(QIcon(QStringLiteral(":/icons/settings")));
+    historyToggleBtn->setToolTip(tr("History / pagination"));
+    historyToggleBtn->setAutoRaise(true);
+    historyToggleBtn->setCursor(Qt::PointingHandCursor);
+    historyToggleBtn->setFocusPolicy(Qt::NoFocus);
+    connect(historyToggleBtn, &QToolButton::clicked, this, [this]() {
+        setHistoryBarExpanded(!historyExpanded);
+    });
+
+    historyContent = new QWidget(historyBar);
+    historyContent->setObjectName(QStringLiteral("ConsoleHistoryContent"));
+
+    autoLoadSwitch = new oclero::qlementine::Switch(historyContent);
     autoLoadSwitch->setFixedSize(34, 16);
     autoLoadSwitch->setToolTip(tr("Auto-load older history when scrolling to the top"));
     autoLoadSwitch->setChecked(autoLoadEarlier);
 
-    historyStatusLabel = new QLabel(QStringLiteral("—"), historyBar);
+    historyStatusLabel = new QLabel(QStringLiteral("—"), historyContent);
     historyStatusLabel->setObjectName(QStringLiteral("ConsoleHistoryStatus"));
     historyStatusLabel->setToolTip(tr("Loaded history items / total on server"));
 
-    pageSizeLabel = new QLabel(tr("count"), historyBar);
+    pageSizeLabel = new QLabel(tr("count"), historyContent);
     pageSizeLabel->setObjectName(QStringLiteral("ConsoleHistoryMuted"));
     pageSizeLabel->setToolTip(tr("History page size"));
 
-    pageSizeSpin = new QSpinBox(historyBar);
+    pageSizeSpin = new QSpinBox(historyContent);
     pageSizeSpin->setRange(10, 2000);
     pageSizeSpin->setSingleStep(10);
     pageSizeSpin->setValue(pageSize);
@@ -206,7 +221,7 @@ void ConsoleWidget::createUI()
     pageSizeSpin->setButtonSymbols(QAbstractSpinBox::UpDownArrows);
 
     auto makeHistBtn = [this](const QString& objectName, const QString& iconPath, const QString& text, const QString& tip) {
-        auto* btn = new QToolButton(historyBar);
+        auto* btn = new QToolButton(historyContent);
         btn->setObjectName(objectName);
         if (!iconPath.isEmpty())
             btn->setIcon(QIcon(iconPath));
@@ -223,7 +238,7 @@ void ConsoleWidget::createUI()
     };
 
     auto makeSep = [this]() {
-        auto* sep = new QFrame(historyBar);
+        auto* sep = new QFrame(historyContent);
         sep->setObjectName(QStringLiteral("ConsoleHistorySep"));
         sep->setFrameShape(QFrame::VLine);
         sep->setFrameShadow(QFrame::Plain);
@@ -237,22 +252,29 @@ void ConsoleWidget::createUI()
     jumpLatestButton  = makeHistBtn(QStringLiteral("HistBtnJump"), QStringLiteral(":/icons/double_arrow_down"), QString(), tr("Jump to latest (scroll down)"));
     stopLoadButton->setVisible(false);
 
-    auto* histLayout = new QHBoxLayout(historyBar);
-    histLayout->setContentsMargins(8, 2, 8, 2);
-    histLayout->setSpacing(6);
-    histLayout->addWidget(autoLoadSwitch, 0);
-    histLayout->addWidget(historyStatusLabel, 0);
-    histLayout->addWidget(makeSep(), 0);
-    histLayout->addWidget(loadEarlierButton, 0);
-    histLayout->addWidget(makeSep(), 0);
-    histLayout->addWidget(loadAllButton, 0);
-    histLayout->addWidget(stopLoadButton, 0);
-    histLayout->addWidget(makeSep(), 0);
-    histLayout->addWidget(jumpLatestButton, 0);
-    histLayout->addWidget(makeSep(), 0);
-    histLayout->addWidget(pageSizeLabel, 0);
-    histLayout->addWidget(pageSizeSpin, 0);
+    auto* contentLayout = new QHBoxLayout(historyContent);
+    contentLayout->setContentsMargins(0, 0, 0, 0);
+    contentLayout->setSpacing(6);
+    contentLayout->addWidget(autoLoadSwitch, 0);
+    contentLayout->addWidget(historyStatusLabel, 0);
+    contentLayout->addWidget(makeSep(), 0);
+    contentLayout->addWidget(loadEarlierButton, 0);
+    contentLayout->addWidget(makeSep(), 0);
+    contentLayout->addWidget(loadAllButton, 0);
+    contentLayout->addWidget(stopLoadButton, 0);
+    contentLayout->addWidget(makeSep(), 0);
+    contentLayout->addWidget(jumpLatestButton, 0);
+    contentLayout->addWidget(makeSep(), 0);
+    contentLayout->addWidget(pageSizeLabel, 0);
+    contentLayout->addWidget(pageSizeSpin, 0);
 
+    auto* histLayout = new QHBoxLayout(historyBar);
+    histLayout->setContentsMargins(4, 2, 4, 2);
+    histLayout->setSpacing(6);
+    histLayout->addWidget(historyToggleBtn, 0);
+    histLayout->addWidget(historyContent, 0);
+
+    historyContent->setVisible(false);
     historyBar->setAttribute(Qt::WA_TransparentForMouseEvents, false);
     historyBar->raise();
 
@@ -301,20 +323,32 @@ void ConsoleWidget::AddToHistory(const QString &command) { kphInputLineEdit->Add
 
 void ConsoleWidget::SetInput(const QString &command) { InputLineEdit->setText(command); }
 
-void ConsoleWidget::Clear()
+void ConsoleWidget::resetViewState()
 {
-    stopLoadAll();
-    OutputTextEdit->clear();
-    OutputTextEdit->resetHistoryCount();
+    if (OutputTextEdit) {
+        OutputTextEdit->clear();
+        OutputTextEdit->resetHistoryCount();
+    }
     m_consoleTaskPrompted.clear();
     m_consoleTaskClosed.clear();
     m_consoleTaskMsgKeys.clear();
     loadedItemCount = 0;
-    totalKnown      = 0;
-    hasMore         = true;
-    initialLoaded   = false;
     oldestLoadedId  = 0;
-    searchPanel->clearSelections();
+    if (searchPanel)
+        searchPanel->clearSelections();
+}
+
+void ConsoleWidget::Clear()
+{
+    stopLoadAll();
+    ++loadGen;
+    loadingPage = false;
+
+    resetViewState();
+    hasMore       = true;
+    initialLoaded = true;
+    viewCleared   = true;
+    historyWindow = false;
     updateHistoryBar();
 }
 
@@ -388,10 +422,11 @@ void ConsoleWidget::ConsoleOutputMessage(const qint64 timestamp, const QString &
     if (!taskId.isEmpty() && completed && m_consoleTaskClosed.contains(taskId))
         return;
 
-    if (!taskId.isEmpty() && (!message.isEmpty() || !text.isEmpty() || completed)) {
-        const QString msgKey = QStringLiteral("%1|%2|%3|%4|%5").arg(taskId).arg(type).arg(message).arg(text).arg(completed ? 1 : 0);
+    if (!message.isEmpty() || !text.isEmpty() || completed) {
+        const QString idPart = !taskId.isEmpty() ? taskId : QStringLiteral("local|%1").arg(timestamp);
+        const QString msgKey = QStringLiteral("%1|%2|%3|%4|%5").arg(idPart).arg(type).arg(message).arg(text).arg(completed ? 1 : 0);
         if (m_consoleTaskMsgKeys.contains(msgKey)) {
-            if (completed)
+            if (!taskId.isEmpty() && completed)
                 m_consoleTaskClosed.insert(taskId);
             return;
         }
@@ -449,6 +484,11 @@ void ConsoleWidget::ConsoleOutputPrompt(const qint64 timestamp, const QString &t
         if (m_consoleTaskPrompted.contains(taskId))
             return;
         m_consoleTaskPrompted.insert(taskId);
+    } else if (!commandLine.isEmpty()) {
+        const QString localKey = QStringLiteral("local|%1|%2|%3").arg(timestamp).arg(user, commandLine);
+        if (m_consoleTaskPrompted.contains(localKey))
+            return;
+        m_consoleTaskPrompted.insert(localKey);
     }
 
     const auto theme = getActiveTheme();
@@ -489,8 +529,13 @@ void ConsoleWidget::applyHistoryBarMetrics()
     const qreal s    = ty.baseSize / 10.0;
     const int iconSm = qMax(10, qRound(12 * s));
     const int iconMd = qMax(12, qRound(14 * s));
+    const int toggleSz = qMax(24, btnH + 2);
 
     historyBar->setFixedHeight(barH);
+    if (historyToggleBtn) {
+        historyToggleBtn->setFixedSize(toggleSz, toggleSz);
+        historyToggleBtn->setIconSize(QSize(iconMd, iconMd));
+    }
     if (pageSizeSpin)
         pageSizeSpin->setFixedHeight(btnH);
     if (autoLoadSwitch)
@@ -513,6 +558,26 @@ void ConsoleWidget::applyHistoryBarMetrics()
     const auto seps = historyBar->findChildren<QFrame*>(QStringLiteral("ConsoleHistorySep"));
     for (QFrame* sep : seps)
         sep->setFixedHeight(sepH);
+
+    if (auto* lay = qobject_cast<QHBoxLayout*>(historyBar->layout())) {
+        if (historyExpanded)
+            lay->setContentsMargins(6, 2, 8, 2);
+        else
+            lay->setContentsMargins(3, 2, 3, 2);
+    }
+}
+
+void ConsoleWidget::setHistoryBarExpanded(bool on)
+{
+    historyExpanded = on;
+    if (historyContent)
+        historyContent->setVisible(on);
+    if (historyToggleBtn) {
+        historyToggleBtn->setToolTip(on ? tr("Collapse history controls") : tr("History / pagination"));
+    }
+    applyHistoryBarMetrics();
+    historyBar->adjustSize();
+    positionConsoleOverlays();
 }
 
 void ConsoleWidget::applyHistoryBarStyle()
@@ -561,6 +626,11 @@ void ConsoleWidget::applyHistoryBarStyle()
         "QToolButton#HistBtnStop { color: #E8A0A0; }"
         "QToolButton#HistBtnEarlier { padding-left: 3px; padding-right: 5px; }"
         "QToolButton#HistBtnJump { padding: 2px 4px; }"
+        "QToolButton#HistBtnToggle {"
+        "  padding: 2px;"
+        "  border-radius: 6px;"
+        "}"
+        "QToolButton#HistBtnToggle:hover { background-color: %7; }"
     ).arg(t.backgroundColorMain3.red())
      .arg(t.backgroundColorMain3.green())
      .arg(t.backgroundColorMain3.blue())
@@ -672,15 +742,19 @@ void ConsoleWidget::updateHistoryBar()
 {
     const bool busy = loadingPage || loadAllPending;
 
+    QString statusText = QStringLiteral("—");
     if (historyStatusLabel) {
         if (loadAllPending)
-            historyStatusLabel->setText(tr("Loading %1 / %2…").arg(loadedItemCount).arg(totalKnown > 0 ? totalKnown : loadedItemCount));
+            statusText = tr("Loading %1 / %2…").arg(loadedItemCount).arg(totalKnown > 0 ? totalKnown : loadedItemCount);
         else if (totalKnown > 0)
-            historyStatusLabel->setText(QStringLiteral("%1 / %2").arg(loadedItemCount).arg(totalKnown));
+            statusText = QStringLiteral("%1 / %2").arg(loadedItemCount).arg(totalKnown);
         else if (loadedItemCount > 0)
-            historyStatusLabel->setText(QString::number(loadedItemCount));
-        else
-            historyStatusLabel->setText(QStringLiteral("—"));
+            statusText = QString::number(loadedItemCount);
+        historyStatusLabel->setText(statusText);
+    }
+
+    if (historyToggleBtn && !historyExpanded) {
+        historyToggleBtn->setToolTip(tr("History: %1 — click to expand").arg(statusText));
     }
 
     if (loadEarlierButton)
@@ -720,7 +794,7 @@ void ConsoleWidget::finishBulkLoad()
     }
 }
 
-void ConsoleWidget::applyConsolePacket(const QJsonObject& obj)
+void ConsoleWidget::applyConsolePacket(const QJsonObject& obj, bool fromHistory)
 {
     int spType = obj["type"].toInt();
     if (spType == 0) spType = obj["SpType"].toInt();
@@ -729,14 +803,18 @@ void ConsoleWidget::applyConsolePacket(const QJsonObject& obj)
         case TYPE_AGENT_CONSOLE_OUT:
             ConsoleOutputMessage( static_cast<qint64>(obj["time"].toDouble()), "", obj["a_msg_type"].toInt(), obj["a_message"].toString(), obj["a_text"].toString(), false );
             break;
-        case TYPE_AGENT_CONSOLE_LOCAL:
-            ConsoleOutputPrompt(0, "", "", obj["a_cmdline"].toString());
-            ConsoleOutputMessage( static_cast<qint64>(obj["time"].toDouble()), "", CONSOLE_OUT_LOCAL_INFO, obj["a_message"].toString(), obj["a_text"].toString(), false );
+        case TYPE_AGENT_CONSOLE_LOCAL: {
+            const qint64 t = static_cast<qint64>(obj["time"].toDouble());
+            ConsoleOutputPrompt(t, "", "", obj["a_cmdline"].toString());
+            ConsoleOutputMessage(t, "", CONSOLE_OUT_LOCAL_INFO, obj["a_message"].toString(), obj["a_text"].toString(), false);
             break;
-        case TYPE_AGENT_CONSOLE_ERROR:
-            ConsoleOutputPrompt(0, "", "", obj["a_cmdline"].toString());
-            ConsoleOutputMessage(0, "", CONSOLE_OUT_LOCAL_ERROR, obj["a_message"].toString(), "", true);
+        }
+        case TYPE_AGENT_CONSOLE_ERROR: {
+            const qint64 t = static_cast<qint64>(obj["time"].toDouble());
+            ConsoleOutputPrompt(t, "", "", obj["a_cmdline"].toString());
+            ConsoleOutputMessage(t, "", CONSOLE_OUT_LOCAL_ERROR, obj["a_message"].toString(), "", true);
             break;
+        }
         case TYPE_AGENT_CONSOLE_TASK_SYNC: {
             qint64 startTime  = static_cast<qint64>(obj["a_start_time"].toDouble());
             qint64 finishTime = static_cast<qint64>(obj["a_finish_time"].toDouble());
@@ -746,8 +824,7 @@ void ConsoleWidget::applyConsolePacket(const QJsonObject& obj)
 
             ConsoleOutputPrompt(startTime, taskIdStr, obj["a_client"].toString(), cmdline);
             ConsoleOutputMessage( completed ? finishTime : startTime, taskIdStr, obj["a_msg_type"].toInt(), obj["a_message"].toString(), obj["a_text"].toString(), completed );
-            if (!cmdline.isEmpty())
-                this->AddToHistory(cmdline);
+            Q_UNUSED(fromHistory); // history path never seeds Up-arrow command history
             break;
         }
         case TYPE_AGENT_CONSOLE_TASK_UPD:
@@ -769,7 +846,7 @@ void ConsoleWidget::applyPageItems(const QJsonArray& items, bool prepend)
         try {
             for (const QJsonValue& v : items) {
                 if (v.isObject())
-                    applyConsolePacket(v.toObject());
+                    applyConsolePacket(v.toObject(), true);
             }
         } catch (...) {}
         OutputTextEdit->endPrepend();
@@ -780,7 +857,7 @@ void ConsoleWidget::applyPageItems(const QJsonArray& items, bool prepend)
         OutputTextEdit->setSyncMode(true);
         for (const QJsonValue& v : items) {
             if (v.isObject())
-                applyConsolePacket(v.toObject());
+                applyConsolePacket(v.toObject(), true);
         }
         OutputTextEdit->setSyncMode(false);
     }
@@ -794,10 +871,11 @@ void ConsoleWidget::loadInitialPage()
     loadingPage = true;
     updateHistoryBar();
 
+    const quint64 gen = loadGen;
     QPointer<ConsoleWidget> self = this;
     HttpReqConsoleGetPageAsync(agent->data.Id, 0, effectiveLoadLimit(), *adaptixWidget->GetProfile(),
-        [self](bool success, const QString&, const QJsonObject& response) {
-            if (!self)
+        [self, gen](bool success, const QString&, const QJsonObject& response) {
+            if (!self || self->loadGen != gen)
                 return;
             self->loadingPage = false;
             if (!success) {
@@ -812,6 +890,8 @@ void ConsoleWidget::loadInitialPage()
             self->applyPageItems(items, false);
 
             self->initialLoaded    = true;
+            self->viewCleared      = false;
+            self->historyWindow    = false;
             self->totalKnown       = total;
             self->loadedItemCount  = items.size();
             self->hasMore          = response["has_more"].toBool();
@@ -819,9 +899,14 @@ void ConsoleWidget::loadInitialPage()
                 self->oldestLoadedId = parseI64(response, "oldest_id");
             self->updateHistoryBar();
 
+            if (self->OutputTextEdit && !self->loadAllPending) {
+                auto* sb = self->OutputTextEdit->verticalScrollBar();
+                sb->setValue(sb->maximum());
+            }
+
             if (self->loadAllPending && self->hasMore) {
-                QTimer::singleShot(0, self, [self]() {
-                    if (self && self->loadAllPending)
+                QTimer::singleShot(0, self, [self, gen]() {
+                    if (self && self->loadGen == gen && self->loadAllPending)
                         self->loadMorePage();
                 });
             } else if (self->loadAllPending) {
@@ -845,13 +930,16 @@ void ConsoleWidget::loadMorePage()
         return;
     }
 
+    viewCleared = false;
+
     loadingPage = true;
     updateHistoryBar();
 
+    const quint64 gen = loadGen;
     QPointer<ConsoleWidget> self = this;
     HttpReqConsoleGetPageAsync(agent->data.Id, oldestLoadedId, effectiveLoadLimit(), *adaptixWidget->GetProfile(),
-        [self](bool success, const QString&, const QJsonObject& response) {
-            if (!self)
+        [self, gen](bool success, const QString&, const QJsonObject& response) {
+            if (!self || self->loadGen != gen)
                 return;
             self->loadingPage = false;
             if (!success) {
@@ -884,17 +972,17 @@ void ConsoleWidget::loadMorePage()
             self->updateHistoryBar();
 
             if (self->loadAllPending && self->hasMore) {
-                QTimer::singleShot(0, self, [self]() {
-                    if (self && self->loadAllPending)
+                QTimer::singleShot(0, self, [self, gen]() {
+                    if (self && self->loadGen == gen && self->loadAllPending)
                         self->loadMorePage();
                 });
             } else if (self->loadAllPending) {
                 self->loadAllPending = false;
                 self->finishBulkLoad();
                 self->updateHistoryBar();
-            } else if (self->autoLoadEarlier && self->hasMore && self->OutputTextEdit) {
-                QTimer::singleShot(50, self, [self]() {
-                    if (!self || !self->OutputTextEdit || self->loadingPage || !self->hasMore)
+            } else if (self->autoLoadEarlier && !self->viewCleared && self->hasMore && self->OutputTextEdit) {
+                QTimer::singleShot(50, self, [self, gen]() {
+                    if (!self || self->loadGen != gen || !self->OutputTextEdit || self->loadingPage || !self->hasMore || self->viewCleared)
                         return;
                     auto* bar = self->OutputTextEdit->verticalScrollBar();
                     if (bar && bar->value() <= 8)
@@ -911,6 +999,7 @@ void ConsoleWidget::loadAllPages()
     if (!hasMore)
         return;
 
+    viewCleared = false;
     loadAllPending = true;
     OutputTextEdit->setUpdatesEnabled(false);
     OutputTextEdit->setBulkInsertMode(true);
@@ -931,10 +1020,34 @@ void ConsoleWidget::stopLoadAll()
     updateHistoryBar();
 }
 
+void ConsoleWidget::reloadLatestPage()
+{
+    if (!agent || !adaptixWidget)
+        return;
+
+    stopLoadAll();
+    ++loadGen;
+    loadingPage = false;
+
+    resetViewState();
+    hasMore         = true;
+    initialLoaded   = false;
+    viewCleared     = false;
+    historyWindow   = false;
+    updateHistoryBar();
+    loadInitialPage();
+}
+
 void ConsoleWidget::jumpToLatest()
 {
     if (!OutputTextEdit)
         return;
+
+    if (historyWindow) {
+        reloadLatestPage();
+        return;
+    }
+
     auto* sb = OutputTextEdit->verticalScrollBar();
     sb->setValue(sb->maximum());
 }
@@ -964,14 +1077,18 @@ void ConsoleWidget::loadAroundHit(qint64 centerId, int limit)
         return;
 
     stopLoadAll();
-    loadingPage = true;
+    ++loadGen;
+    const quint64 gen = loadGen;
+    viewCleared   = false;
+    historyWindow = true;
+    loadingPage   = true;
     updateHistoryBar();
 
     const int lim = limit > 0 ? qBound(1, limit, 500) : pageSize;
     QPointer<ConsoleWidget> self = this;
     HttpReqConsoleGetAroundAsync(agent->data.Id, centerId, lim, *adaptixWidget->GetProfile(),
-        [self](bool success, const QString&, const QJsonObject& response) {
-            if (!self)
+        [self, gen](bool success, const QString&, const QJsonObject& response) {
+            if (!self || self->loadGen != gen)
                 return;
             self->loadingPage = false;
             if (!success) {
@@ -980,11 +1097,12 @@ void ConsoleWidget::loadAroundHit(qint64 centerId, int limit)
             }
 
             QJsonArray items = response["items"].toArray();
-            self->OutputTextEdit->clear();
-            self->OutputTextEdit->resetHistoryCount();
+            self->resetViewState();
             self->applyPageItems(items, false);
 
             self->initialLoaded   = true;
+            self->viewCleared     = false;
+            self->historyWindow   = true;
             self->totalKnown      = response["total"].toInt();
             self->loadedItemCount = items.size();
             self->hasMore         = response["has_more"].toBool();

@@ -120,6 +120,12 @@ func (l Layout) BuildClient(ctx context.Context, out io.Writer, opts BuildOption
 		}
 	}
 
+	qtVer, qtVia, err := RequireQtVersion(DefaultMinQt)
+	if err != nil {
+		return fmt.Errorf("client build: %w", err)
+	}
+	fmt.Fprintf(out, "[ok] Qt %s (%s) ≥ %s\n", qtVer, qtVia, DefaultMinQt)
+
 	prog := ui.NewProgress(out)
 	prog.Start(3)
 	defer prog.Stop()

@@ -372,22 +372,35 @@ void CodeEditorWidget::setupConnections()
         }
     });
 
+    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style())) {
+        connect(qs, &oclero::qlementine::QlementineStyle::themeChanged, this, &CodeEditorWidget::applyTheme, Qt::UniqueConnection);
+    }
+    applyTheme();
+
     connect(m_profileCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &CodeEditorWidget::onProfileChanged);
 
     if (m_editor) {
-        connect(m_editor, &CodeEditorView::currentEditorChanged, this, [this](CodeEditor*) {
+        connect(m_editor, &CodeEditorView::currentEditorChanged, this, [this](CodeEditor* ed) {
+            if (ed && !ed->filePath().isEmpty()) {
+                const QString suggested = BuildProfile::profileNameForFile(ed->filePath());
+                if (!suggested.isEmpty()) {
+                    setSessionProfile(suggested, /*persistGlobal=*/!isAgentBound());
+                    updateActionEnabled();
+                    return;
+                }
+            }
             if (const BuildProfile* p = sessionProfile())
                 m_editor->applyLanguage(p->language);
+            updateActionEnabled();
         });
     }
-    connect(m_editor, &CodeEditorView::currentEditorChanged, this, [this](CodeEditor*) {
-        updateActionEnabled();
-    });
 
     connect(m_editor, &CodeEditorView::fileOpened, this, [this](const QString& filePath) {
         const QString suggested = BuildProfile::profileNameForFile(filePath);
         if (!suggested.isEmpty())
             setSessionProfile(suggested, /*persistGlobal=*/!isAgentBound());
+        else if (const BuildProfile* p = sessionProfile())
+            m_editor->applyLanguage(p->language);
     });
 
     if (auto* tw = m_editor->tabWidget()) {
@@ -414,7 +427,12 @@ void CodeEditorWidget::connectConsoleSignals(AxScriptManager* sm)
         return;
 
     m_sm = sm;
+
     connect(sm, &AxScriptManager::consoleError, this, &CodeEditorWidget::onScriptConsoleError, Qt::UniqueConnection);
+
+    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style())) {
+        connect(qs, &oclero::qlementine::QlementineStyle::themeChanged, this, &CodeEditorWidget::applyTheme, Qt::UniqueConnection);
+    }
     applyTheme();
 }
 

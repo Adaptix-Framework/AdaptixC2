@@ -59,6 +59,13 @@ func (p *PluginAgent) AgentRestore(agentData adaptix.AgentData) adaptix.AgentFun
 	}
 }
 
+func (p *PluginAgent) Call(operator string, agentId int64, function string, args string) {
+	_ = operator
+	_ = agentId
+	_ = function
+	_ = args
+}
+
 /// TUNNEL
 
 func TunnelMessageConnectTCP(channelId int64, tunnelType int, addressType int, address string, port int) adaptix.TaskData {

@@ -36,6 +36,8 @@ class LogsWidget : public DockTab
     TextEditConsole* serverLogsTextEdit  = nullptr;
 
     QFrame*                     historyBar         = nullptr;
+    QWidget*                    historyContent     = nullptr;
+    QToolButton*                historyToggleBtn   = nullptr;
     QLabel*                     historyStatusLabel = nullptr;
     oclero::qlementine::Switch* autoLoadSwitch     = nullptr;
     QLabel*                     pageSizeLabel      = nullptr;
@@ -44,6 +46,7 @@ class LogsWidget : public DockTab
     QToolButton*                loadAllButton      = nullptr;
     QToolButton*                jumpLatestButton   = nullptr;
     QToolButton*                stopLoadButton     = nullptr;
+    bool                        historyExpanded    = false;
 
     int  serverPageSize    = 50;
     int  serverLoadedCount = 0;
@@ -52,6 +55,7 @@ class LogsWidget : public DockTab
     bool serverLoadingPage = false;
     bool serverLoadAllPending = false;
     bool autoLoadEarlier   = true;
+    bool serverViewCleared = false;
 
     bool                 serverLogsReady = false;
     int                  serverLogsEpoch = 0;
@@ -85,9 +89,12 @@ class LogsWidget : public DockTab
     void loadAllServerPages();
     void stopLoadAllServer();
     void jumpToLatestServer();
+    void reloadLatestServerPage();
+    void clearServerLogsView();
     void updateHistoryBar();
     void applyHistoryBarStyle();
     void applyHistoryBarMetrics();
+    void setHistoryBarExpanded(bool on);
     void positionHistoryBar();
     void positionSearchPanel();
     void positionServerOverlays();
@@ -114,7 +121,7 @@ public:
     void AddServerLogBatch(const QJsonArray& items);
     void ReloadServerLogs();
     void ResetServerLogs();
-    void Clear() const;
+    void Clear();
 };
 
 #endif

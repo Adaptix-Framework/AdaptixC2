@@ -1,0 +1,94 @@
+{
+  "background": {
+    "color": "#272822"
+  },
+  "text": "#F8F8F2",
+  "console": {
+    "debug": {
+      "color": "#A0A09A",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "status": {
+      "success": "#A6E22E",
+      "error": "#F92672",
+      "info": "#66D9EF"
+    },
+    "operator": {
+      "color": "#AE81FF",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "task": {
+      "color": "#A0A09A",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "agent": {
+      "color": "#A6E22E",
+      "bold": false,
+      "italic": false,
+      "underline": true
+    },
+    "command": {
+      "color": "#F8F8F2",
+      "bold": true,
+      "italic": false,
+      "underline": false
+    },
+    "input": {
+      "symbol": ">",
+      "color": "#F92672",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    }
+  },
+  "log": {
+    "debug": {
+      "color": "#A0A09A",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "operator_connect": {
+      "color": "#A6E22E",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "operator_disconnect": {
+      "color": "#A0A09A",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "agent_new": {
+      "color": "#A6E22E",
+      "bold": true,
+      "italic": false,
+      "underline": false
+    },
+    "tunnel": {
+      "color": "#A6E22E",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "listener_start": {
+      "color": "#FFB86C",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    },
+    "listener_stop": {
+      "color": "#F92672",
+      "bold": false,
+      "italic": false,
+      "underline": false
+    }
+  }
+}

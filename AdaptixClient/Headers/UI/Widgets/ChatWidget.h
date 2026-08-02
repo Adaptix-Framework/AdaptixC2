@@ -115,6 +115,8 @@ public:
     bool isEmpty() const;
     bool isEditMode() const { return editMode; }
 
+    void refreshTheme();
+
     QSize sizeHint() const override;
     QSize minimumSizeHint() const override;
 

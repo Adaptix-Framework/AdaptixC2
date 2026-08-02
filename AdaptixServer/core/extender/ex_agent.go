@@ -1,6 +1,22 @@
 package extender
 
-import "github.com/Adaptix-Framework/axc2/v2"
+import (
+	"fmt"
+
+	"github.com/Adaptix-Framework/axc2/v2"
+)
+
+func (ex *AdaptixExtender) ExPluginAgentCall(agentType string, operator string, agentId int64, function string, args string) {
+	module, err := ex.getAgentModule(agentType)
+	if err != nil {
+		if ex.ts != nil {
+			payload := fmt.Sprintf(`{"action":"error","success":false,"error":"agent plugin not loaded: %s","agent_id":%d}`, agentType, agentId)
+			ex.ts.TsPluginAgentSendDataClient(operator, agentId, payload)
+		}
+		return
+	}
+	module.Call(operator, agentId, function, args)
+}
 
 func (ex *AdaptixExtender) ExAgentGenerate(agentName string, generateConfig adaptix.BuildProfile) ([]byte, string, error) {
 	module, err := ex.getAgentModule(agentName)

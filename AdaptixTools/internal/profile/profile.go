@@ -256,12 +256,20 @@ var TeamserverScalars = []string{
 	"port",
 	"endpoint",
 	"password",
-	"manage_password",
 	"only_password",
 	"cert",
 	"key",
 	"access_token_live_hours",
 	"refresh_token_live_hours",
+}
+
+func IsTeamserverScalar(key string) bool {
+	for _, k := range TeamserverScalars {
+		if k == key {
+			return true
+		}
+	}
+	return false
 }
 
 func (p *Patcher) GetTeamserver(key string) (string, bool) {
@@ -312,11 +320,10 @@ func (p *Patcher) SetTeamserver(key, value string) error {
 }
 
 func (p *Patcher) ListTeamserverScalars() [][2]string {
-	var out [][2]string
+	out := make([][2]string, 0, len(TeamserverScalars))
 	for _, k := range TeamserverScalars {
-		if v, ok := p.GetTeamserver(k); ok {
-			out = append(out, [2]string{k, v})
-		}
+		v, _ := p.GetTeamserver(k)
+		out = append(out, [2]string{k, v})
 	}
 	return out
 }

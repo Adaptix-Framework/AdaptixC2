@@ -1,6 +1,27 @@
 package extender
 
-import "github.com/Adaptix-Framework/axc2/v2"
+import (
+	"encoding/json"
+
+	"github.com/Adaptix-Framework/axc2/v2"
+)
+
+func (ex *AdaptixExtender) ExPluginListenerCall(listenerType string, operator string, listenerName string, function string, args string) {
+	module, err := ex.getListenerModule(listenerType)
+	if err != nil {
+		if ex.ts != nil {
+			payload, _ := json.Marshal(map[string]any{
+				"action":   "error",
+				"success":  false,
+				"error":    "listener plugin not loaded: " + listenerType,
+				"listener": listenerName,
+			})
+			ex.ts.TsPluginListenerSendDataClient(operator, listenerName, string(payload))
+		}
+		return
+	}
+	module.Call(operator, listenerName, function, args)
+}
 
 func (ex *AdaptixExtender) ExListenerCreate(listenerName string, configType string, config string, listenerCustomData []byte) (adaptix.ListenerData, []byte, error) {
 	module, err := ex.getListenerModule(configType)

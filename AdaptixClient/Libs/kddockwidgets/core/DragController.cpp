@@ -27,13 +27,11 @@
 #include "core/DockWidget_p.h"
 #include "core/ScopedValueRollback_p.h"
 
-#ifdef KDDW_FRONTEND_QT
 #include "../qtcommon/DragControllerWayland_p.h"
 #ifdef KDDW_FRONTEND_QTWIDGETS
 #include "kddockwidgets/qtcommon/Platform.h"
 #include <QWidget>
 #include <QApplication>
-#endif
 #endif
 
 #include <algorithm>
@@ -595,11 +593,7 @@ namespace {
 
 StateDragging *createDraggingState(DragController *parent)
 {
-#ifdef KDDW_FRONTEND_QT
     return isWayland() ? new StateDraggingWayland(parent) : new StateDragging(parent);
-#else
-    return new StateDragging(parent);
-#endif
 }
 
 }

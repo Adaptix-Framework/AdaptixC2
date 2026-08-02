@@ -76,6 +76,85 @@ QString downloadFieldToSortKey(const QString& field)
     return {};
 }
 
+    QString payloadFieldToSortKey(const QString& field)
+{
+    if (field == QLatin1String("id") || field == QLatin1String("created"))
+        return QStringLiteral("Created");
+    if (field == QLatin1String("name"))     return QStringLiteral("Name");
+    if (field == QLatin1String("type"))     return QStringLiteral("Type");
+    if (field == QLatin1String("artifact")) return QStringLiteral("Artifact");
+    if (field == QLatin1String("arch"))     return QStringLiteral("Arch");
+    if (field == QLatin1String("size"))     return QStringLiteral("Size");
+    if (field == QLatin1String("creator"))  return QStringLiteral("Creator");
+    if (field == QLatin1String("filename")) return QStringLiteral("Filename");
+    return {};
+}
+
+QString formatPayloadSize(qint64 bytes)
+{
+    if (bytes < 1024)
+        return QStringLiteral("%1 B").arg(bytes);
+    if (bytes < 1024 * 1024)
+        return QStringLiteral("%1 KB").arg(bytes / 1024.0, 0, 'f', 1);
+    if (bytes < 1024LL * 1024 * 1024)
+        return QStringLiteral("%1 MB").arg(bytes / (1024.0 * 1024.0), 0, 'f', 1);
+    return QStringLiteral("%1 GB").arg(bytes / (1024.0 * 1024.0 * 1024.0), 0, 'f', 2);
+}
+
+PayloadData parsePayloadFromJson(const QJsonObject& o)
+{
+    PayloadData p;
+    p.PayloadId = static_cast<qint64>(o.value(QStringLiteral("p_id")).toDouble());
+    p.Name      = o.value(QStringLiteral("p_name")).toString();
+    p.AgentType = o.value(QStringLiteral("p_type")).toString();
+    p.Artifact  = o.value(QStringLiteral("p_artifact")).toString();
+    p.Arch      = o.value(QStringLiteral("p_arch")).toString();
+    if (o.value(QStringLiteral("p_listeners")).isArray()) {
+        for (const QJsonValue& lv : o.value(QStringLiteral("p_listeners")).toArray())
+            p.Listeners << lv.toString();
+    }
+    p.Size        = static_cast<qint64>(o.value(QStringLiteral("p_size")).toDouble());
+    p.Sha1        = o.value(QStringLiteral("p_sha1")).toString();
+    p.Sha256      = o.value(QStringLiteral("p_sha256")).toString();
+    p.Md5         = o.value(QStringLiteral("p_md5")).toString();
+    p.Creator     = o.value(QStringLiteral("p_creator")).toString();
+    p.Created     = static_cast<qint64>(o.value(QStringLiteral("p_date")).toDouble());
+    p.Hidden      = o.value(QStringLiteral("p_hidden")).toBool();
+    p.Filename    = o.value(QStringLiteral("p_filename")).toString();
+    p.BuildId     = o.value(QStringLiteral("p_build_id")).toString();
+    p.Watermark   = o.value(QStringLiteral("p_watermark")).toString();
+    p.Description = o.value(QStringLiteral("p_notes")).toString();
+    p.Uid         = o.value(QStringLiteral("p_uid")).toString();
+    p.Color       = o.value(QStringLiteral("p_color")).toString();
+    p.Missing     = o.value(QStringLiteral("p_missing")).toBool();
+    return p;
+}
+
+QVariantMap payloadToVariantMap(const PayloadData& p)
+{
+    QVariantMap map;
+    map[QStringLiteral("id")]          = QVariant::fromValue(p.PayloadId);
+    map[QStringLiteral("name")]        = p.Name;
+    map[QStringLiteral("description")] = p.Description;
+    map[QStringLiteral("type")]        = p.AgentType;
+    map[QStringLiteral("artifact")]    = p.Artifact;
+    map[QStringLiteral("arch")]        = p.Arch;
+    map[QStringLiteral("listeners")]   = p.Listeners;
+    map[QStringLiteral("size")]        = QVariant::fromValue(p.Size);
+    map[QStringLiteral("size_fmt")]    = formatPayloadSize(p.Size);
+    map[QStringLiteral("creator")]     = p.Creator;
+    map[QStringLiteral("created")]     = p.Created > 0 ? UnixTimestampGlobalToStringLocal(p.Created) : QString();
+    map[QStringLiteral("filename")]    = p.Filename;
+    map[QStringLiteral("md5")]         = p.Md5;
+    map[QStringLiteral("sha1")]        = p.Sha1;
+    map[QStringLiteral("sha256")]      = p.Sha256;
+    map[QStringLiteral("uid")]         = p.Uid;
+    map[QStringLiteral("color")]       = p.Color;
+    map[QStringLiteral("hidden")]      = p.Hidden;
+    map[QStringLiteral("missing")]     = p.Missing;
+    return map;
+}
+
 AuthProfile* profileFromEngine(AxScriptEngine* jsEngine)
 {
     if (!jsEngine || !jsEngine->manager())
@@ -845,13 +924,12 @@ AxListWidgetWrapper::AxListWidgetWrapper(QWidget* container, QListWidget* widget
     list->setObjectName("AxCompactList");
     list->setAlternatingRowColors(true);
     list->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    list->setEditTriggers(QAbstractItemView::DoubleClicked);
+    list->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed);
 
     list->setItemDelegate(new CompactListDelegate(list));
     list->setSpacing(0);
 
-    list->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(list, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
+    setMenuEnabled(true);
 
     connect(list, &QListWidget::currentTextChanged, this, &AxListWidgetWrapper::currentTextChanged);
     connect(list, &QListWidget::currentRowChanged,  this, &AxListWidgetWrapper::currentRowChanged);
@@ -983,28 +1061,36 @@ void AxListWidgetWrapper::setDragDropEnabled(const bool enabled)
 void AxListWidgetWrapper::setMenuEnabled(const bool enabled)
 {
     this->menuEnabled = enabled;
+
+    QWidget* vp = list->viewport();
     disconnect(list, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
+    disconnect(vp,   &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
+
     if (enabled) {
-        list->setContextMenuPolicy(Qt::CustomContextMenu);
-        connect(list, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
+        list->setContextMenuPolicy(Qt::NoContextMenu);
+        vp->setContextMenuPolicy(Qt::CustomContextMenu);
+        connect(vp, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
     } else {
         list->setContextMenuPolicy(Qt::DefaultContextMenu);
+        vp->setContextMenuPolicy(Qt::DefaultContextMenu);
     }
 }
 
 void AxListWidgetWrapper::showContextMenu(const QPoint &pos)
 {
+    if (!menuEnabled || !list)
+        return;
+
     oclero::qlementine::Menu menu(list);
 
-    QAction* addAction = menu.addAction("Add");
-    QAction* removeAction = menu.addAction("Remove");
+    QAction* addAction = menu.addAction(QStringLiteral("Add"));
+    QAction* removeAction = menu.addAction(QStringLiteral("Remove"));
+    removeAction->setEnabled(list->currentRow() >= 0 || !list->selectedItems().isEmpty());
 
-    QAction* selected = menu.exec(list->viewport()->mapToGlobal(pos));
-    if (selected == addAction) {
-        onAddClicked();
-    } else if (selected == removeAction) {
-        onRemoveClicked();
-    }
+    connect(addAction, &QAction::triggered, this, &AxListWidgetWrapper::onAddClicked);
+    connect(removeAction, &QAction::triggered, this, &AxListWidgetWrapper::onRemoveClicked);
+
+    menu.exec(list->viewport()->mapToGlobal(pos));
 }
 
 void AxListWidgetWrapper::setButtonsEnabled(const bool enabled)
@@ -1015,16 +1101,32 @@ void AxListWidgetWrapper::setButtonsEnabled(const bool enabled)
 
 void AxListWidgetWrapper::onAddClicked()
 {
-    addItem("");
-    list->setCurrentRow(list->count() - 1);
-    list->editItem(list->item(list->count() - 1));
+    if (readonly)
+        return;
+    addItem(QString());
+    const int row = list->count() - 1;
+    if (row < 0)
+        return;
+    list->setCurrentRow(row);
+    if (QListWidgetItem* item = list->item(row))
+        list->editItem(item);
 }
 
 void AxListWidgetWrapper::onRemoveClicked()
 {
+    if (readonly)
+        return;
+
     QList<QListWidgetItem*> selectedItems = list->selectedItems();
-    for (QListWidgetItem* item : selectedItems)
-        delete item;
+    if (selectedItems.isEmpty()) {
+        if (QListWidgetItem* cur = list->currentItem())
+            selectedItems.append(cur);
+    }
+    for (QListWidgetItem* item : selectedItems) {
+        const int row = list->row(item);
+        if (row >= 0)
+            delete list->takeItem(row);
+    }
 }
 
 /// BUTTON
@@ -2510,6 +2612,258 @@ QJSValue AxSelectorDownloads::exec() const
 }
 
 void AxSelectorDownloads::close() const
+{
+    if (dialog)
+        dialog->close();
+}
+
+
+
+/// SELECTOR PAYLOAD STORE
+
+QVariant AxPayloadsTableModel::data(const QModelIndex& index, int role) const
+{
+    if (!index.isValid() || index.row() >= m_data.size() || index.column() >= m_fieldKeys.size())
+        return QVariant();
+
+    if (role == Qt::DisplayRole || role == Qt::UserRole) {
+        const auto& p = m_data[index.row()];
+        const QString& key = m_fieldKeys[index.column()];
+
+        if (key == QLatin1String("id"))          return QVariant::fromValue(p.PayloadId);
+        if (key == QLatin1String("name"))        return p.Name;
+        if (key == QLatin1String("description")) return p.Description;
+        if (key == QLatin1String("type"))        return p.AgentType;
+        if (key == QLatin1String("artifact")) {
+            if (p.Arch.isEmpty() || p.Arch == QLatin1String("unknown"))
+                return p.Artifact;
+            return QStringLiteral("%1 (%2)").arg(p.Artifact, p.Arch);
+        }
+        if (key == QLatin1String("arch"))        return p.Arch;
+        if (key == QLatin1String("listeners"))   return p.Listeners.join(QStringLiteral(", "));
+        if (key == QLatin1String("size"))        return formatPayloadSize(p.Size);
+        if (key == QLatin1String("creator"))     return p.Creator;
+        if (key == QLatin1String("created"))     return p.Created > 0
+            ? UnixTimestampGlobalToStringLocal(p.Created) : QString();
+        if (key == QLatin1String("filename"))    return p.Filename;
+        if (key == QLatin1String("md5"))         return p.Md5;
+        if (key == QLatin1String("sha1"))        return p.Sha1;
+        if (key == QLatin1String("sha256"))      return p.Sha256;
+        if (key == QLatin1String("uid"))         return p.Uid;
+        if (key == QLatin1String("hidden"))      return p.Hidden ? QStringLiteral("yes") : QString();
+    }
+    return QVariant();
+}
+
+AxDialogPayloads::AxDialogPayloads(const QJSValue &headers, AuthProfile* profile, QWidget *parent) : QDialog(parent)
+{
+    this->setProperty("Main", "base");
+
+    tableView = new QTableView(this);
+    tableView->setAlternatingRowColors(true);
+    tableView->setShowGrid(false);
+    tableView->setSortingEnabled(false);
+    tableView->setWordWrap(true);
+    tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    tableView->verticalHeader()->setVisible(false);
+    tableView->setItemDelegate(new PaddingDelegate(tableView));
+    tableView->horizontalHeader()->setStretchLastSection(true);
+
+    tableModel = new AxPayloadsTableModel(this);
+    tableView->setModel(tableModel);
+
+    pageNavBar = new PageNavBar(this);
+    chooseButton = new QPushButton(QStringLiteral("Select"), this);
+    spacer_1 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
+    spacer_2 = new QSpacerItem(40, 20, QSizePolicy::Expanding, QSizePolicy::Maximum);
+
+    bottomLayout = new QHBoxLayout();
+    bottomLayout->addItem(spacer_1);
+    bottomLayout->addWidget(chooseButton);
+    bottomLayout->addItem(spacer_2);
+
+    mainLayout = new QVBoxLayout();
+    mainLayout->addWidget(pageNavBar);
+    mainLayout->addWidget(tableView);
+    mainLayout->addLayout(bottomLayout);
+    setLayout(mainLayout);
+
+    connect(chooseButton, &QPushButton::clicked, this, &AxDialogPayloads::onClicked);
+    connect(tableView, &QTableView::doubleClicked, this, &AxDialogPayloads::onClicked);
+    connect(this, &QDialog::finished, this, [this](int) {
+        if (pageHelper)
+            pageHelper->cancel();
+    });
+
+    QVector<QString> headerLabels;
+    QVector<QString> fieldKeys;
+    fillSelectorHeaders(headers, FIELD_MAP_PAYLOADS, {QStringLiteral("name"), QStringLiteral("type"), QStringLiteral("artifact"), QStringLiteral("size"), QStringLiteral("creator"), QStringLiteral("created")}, QStringLiteral("ID"), QStringLiteral("id"), headerLabels, fieldKeys);
+
+    tableModel->setHeaders(headerLabels, fieldKeys);
+    applySelectorTableColumns(tableView, headerLabels);
+
+    for (int i = 0; i < fieldKeys.size(); ++i) {
+        if (fieldKeys[i] == QLatin1String("created")) {
+            tableView->horizontalHeader()->setSortIndicator(i, Qt::DescendingOrder);
+            break;
+        }
+    }
+
+    if (profile) {
+        pageHelper = new PagedTableHelper(profile, QStringLiteral("/payload/list"), this);
+        configureSelectorPagination(pageNavBar, pageHelper);
+        pageHelper->setParam(QStringLiteral("show_hidden"), QStringLiteral("1"));
+
+        connect(pageHelper, &PagedTableHelper::pageReady,      this, &AxDialogPayloads::onPageReady);
+        connect(pageHelper, &PagedTableHelper::errorOccurred,  this, &AxDialogPayloads::onPageError);
+        connect(pageHelper, &PagedTableHelper::loadingChanged, this, [this](bool loading) {
+            pageNavBar->setLoading(loading);
+            tableView->setEnabled(!loading);
+            chooseButton->setEnabled(!loading);
+        });
+
+        connect(pageNavBar, &PageNavBar::prevClicked, this, [this]() {
+            m_offset = qMax(0, m_offset - pageNavBar->pageSize());
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::nextClicked, this, [this]() {
+            m_offset += pageNavBar->pageSize();
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::pageSizeChanged, this, [this](int size) {
+            pageHelper->setPageSize(size);
+            m_offset = 0;
+            loadCurrentPage();
+        });
+        connect(pageNavBar, &PageNavBar::filterChanged, this, [this]() {
+            m_offset = 0;
+            loadCurrentPage();
+        });
+
+        connect(tableView->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this, [this](int section, Qt::SortOrder order) {
+            const QString key = payloadFieldToSortKey(tableModel->fieldKey(section));
+            if (key.isEmpty())
+                return;
+            const QString newOrder = (order == Qt::AscendingOrder) ? QStringLiteral("asc") : QStringLiteral("desc");
+            if (key == m_sortCol && newOrder == m_sortOrder)
+                return;
+            m_sortCol = key;
+            m_sortOrder = newOrder;
+            m_offset = 0;
+            loadCurrentPage();
+        });
+    } else {
+        pageNavBar->setError(QStringLiteral("No auth profile"));
+        pageNavBar->setPrevEnabled(false);
+        pageNavBar->setNextEnabled(false);
+    }
+}
+
+AxDialogPayloads::~AxDialogPayloads()
+{
+    if (pageHelper)
+        pageHelper->cancel();
+}
+
+void AxDialogPayloads::prepare()
+{
+    selectedData.clear();
+    m_offset = 0;
+    if (pageHelper)
+        loadCurrentPage();
+}
+
+void AxDialogPayloads::loadCurrentPage()
+{
+    if (!pageHelper)
+        return;
+    pageHelper->setPageSize(pageNavBar->pageSize());
+    pageHelper->setParam(QStringLiteral("q"), pageNavBar->filterText());
+    pageHelper->setParam(QStringLiteral("sort"), m_sortCol);
+    pageHelper->setParam(QStringLiteral("order"), m_sortOrder);
+    pageHelper->setParam(QStringLiteral("show_hidden"), QStringLiteral("1"));
+    pageHelper->loadPage(m_offset);
+}
+
+void AxDialogPayloads::onPageReady(const QJsonObject& response)
+{
+    QJsonArray items = response.value(QStringLiteral("items")).toArray();
+    QVector<PayloadData> page;
+    page.reserve(items.size());
+    for (const QJsonValue& v : items) {
+        if (!v.isObject())
+            continue;
+        PayloadData p = parsePayloadFromJson(v.toObject());
+        if (p.PayloadId > 0)
+            page.append(p);
+    }
+    tableModel->setData(page);
+
+    const int total = response.value(QStringLiteral("total")).toInt();
+    const int shown = page.size();
+    const int from  = shown == 0 ? 0 : m_offset + 1;
+    const int to    = m_offset + shown;
+    pageNavBar->setInfo(from, to, total);
+    pageNavBar->setPrevEnabled(m_offset > 0);
+    pageNavBar->setNextEnabled(m_offset + shown < total);
+}
+
+void AxDialogPayloads::onPageError(const QString& message)
+{
+    if (message.contains(QStringLiteral("invalid filter"), Qt::CaseInsensitive) || message.startsWith(QStringLiteral("filter:"), Qt::CaseInsensitive))
+        return;
+
+    tableModel->setData({});
+    pageNavBar->setError(message);
+    pageNavBar->setPrevEnabled(false);
+    pageNavBar->setNextEnabled(false);
+}
+
+QVector<PayloadData> AxDialogPayloads::data() { return selectedData; }
+
+void AxDialogPayloads::onClicked()
+{
+    selectedData.clear();
+    const QModelIndexList selected = tableView->selectionModel()->selectedRows();
+    for (const auto& index : selected) {
+        if (index.isValid())
+            selectedData.append(tableModel->getPayload(index.row()));
+    }
+    this->accept();
+}
+
+AxSelectorPayloads::AxSelectorPayloads(const QJSValue &headers, AxScriptEngine* jsEngine, QObject* parent) : QObject(parent), scriptEngine(jsEngine)
+{
+    dialog = new AxDialogPayloads(headers, profileFromEngine(jsEngine), nullptr);
+    prepareSelectorDialog(dialog, QStringLiteral("Choose payload"), jsEngine);
+}
+
+void AxSelectorPayloads::setSize(const int w, const int h) const
+{
+    if (dialog)
+        dialog->resize(w, h);
+}
+
+QJSValue AxSelectorPayloads::exec() const
+{
+    if (!dialog || !scriptEngine || !scriptEngine->engine())
+        return emptyJsArray(scriptEngine);
+
+    prepareSelectorDialog(dialog, QStringLiteral("Choose payload"), scriptEngine);
+    dialog->prepare();
+
+    QVector<PayloadData> selected;
+    if (execSelectorDialog(dialog, scriptEngine) == QDialog::Accepted)
+        selected = dialog->data();
+
+    QVariantList list;
+    for (const auto& p : selected)
+        list.append(payloadToVariantMap(p));
+    return scriptEngine->engine()->toScriptValue(list);
+}
+
+void AxSelectorPayloads::close() const
 {
     if (dialog)
         dialog->close();

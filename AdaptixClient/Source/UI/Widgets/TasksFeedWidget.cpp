@@ -161,9 +161,8 @@ TasksFeedWidget::TasksFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), m_adapti
     enableSearch(true);
     enableAutoCheck(true);
     enableFilterCombo(true, "All agents");
-    enableActiveFilter(true, "in process");
+    enableActiveFilter(true, QStringLiteral("In process only (Hosted / Running)"), QStringLiteral(":/icons/timer"), QStringLiteral(":/icons/time_all"));
     if (activeFilter()) {
-        activeFilter()->setToolTip("Show only incomplete tasks (Hosted / Running)");
         if (GlobalClient && GlobalClient->settings)
             activeFilter()->setChecked(GlobalClient->settings->data.TasksInProcessOnly);
     }

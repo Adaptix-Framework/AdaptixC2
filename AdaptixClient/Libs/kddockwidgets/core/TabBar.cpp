@@ -32,7 +32,9 @@ using namespace KDDockWidgets;
 using namespace KDDockWidgets::Core;
 
 Core::TabBar::TabBar(Stack *stack)
-    : Controller(ViewType::TabBar, Config::self().viewFactory()->createTabBar(this, stack->view()))
+    : Controller(ViewType::TabBar,
+                 Config::self().viewFactory()->createTabBar(
+                     this, stack->view(), stack->group() ? stack->group()->userType() : 0))
     , Draggable(view())
     , d(new Private(stack))
 {

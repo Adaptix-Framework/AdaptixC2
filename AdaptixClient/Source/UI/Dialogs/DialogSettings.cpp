@@ -102,6 +102,9 @@ DialogSettings::DialogSettings(Settings* s)
     for ( int i = 0; i < filesCheckCount; i++)
         connect(filesCheck[i], &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
 
+    for ( int i = 0; i < payloadsCheckCount; i++)
+        connect(payloadsCheck[i], &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
+
     for (int i = 0; i < 4; ++i) {
         connect(toolbarPosBtn[i], &QPushButton::toggled, buttonApply, [this](bool){ buttonApply->setEnabled(true); });
     }
@@ -124,10 +127,63 @@ DialogSettings::DialogSettings(Settings* s)
     connect(buttonClose,  &QPushButton::clicked,           this, &DialogSettings::onClose);
 }
 
+namespace {
+
+constexpr int kSettingsLabelColW = 140;
+constexpr int kSettingsFieldMinW = 260;
+constexpr int kSettingsFieldMaxW = 420;
+
+void applySettingsFormGrid(QGridLayout* grid, int labelCol = 0, int fieldCol = 1)
+{
+    if (!grid)
+        return;
+    grid->setContentsMargins(12, 12, 12, 12);
+    grid->setHorizontalSpacing(12);
+    grid->setVerticalSpacing(10);
+    grid->setColumnMinimumWidth(labelCol, kSettingsLabelColW);
+    grid->setColumnStretch(labelCol, 0);
+    grid->setColumnStretch(fieldCol, 0);
+    if (grid->columnCount() <= fieldCol + 1)
+        grid->setColumnStretch(fieldCol + 1, 1);
+    else
+        grid->setColumnStretch(fieldCol + 1, 1);
+}
+
+void limitFieldWidth(QWidget* w, int minW = kSettingsFieldMinW, int maxW = kSettingsFieldMaxW)
+{
+    if (!w)
+        return;
+    w->setMinimumWidth(minW);
+    w->setMaximumWidth(maxW);
+    w->setSizePolicy(QSizePolicy::Preferred, w->sizePolicy().verticalPolicy());
+}
+
+void styleSettingsLabel(QLabel* lab)
+{
+    if (!lab)
+        return;
+    lab->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    lab->setMinimumWidth(kSettingsLabelColW);
+}
+
+const char* kSettingsCardCss =
+    "QGroupBox {"
+    "  font-weight: 600;"
+    "  margin-top: 10px;"
+    "  padding-top: 12px;"
+    "}"
+    "QGroupBox::title {"
+    "  subcontrol-origin: margin;"
+    "  left: 10px;"
+    "  padding: 0 4px;"
+    "}";
+
+} // namespace
+
 void DialogSettings::createUI()
 {
     this->setWindowTitle("Adaptix Settings");
-    this->resize(820, 520);
+    this->resize(900, 600);
     this->setProperty("Main", "base");
 
     appearanceWidget = new QWidget(this);
@@ -174,12 +230,11 @@ void DialogSettings::createUI()
     themeSwatchesLayout = new QHBoxLayout(themeSwatchesFrame);
     themeSwatchesLayout->setContentsMargins(0, 4, 0, 0);
     themeSwatchesLayout->setSpacing(6);
-    QStringList swatchLabels = {"Primary", "Secondary", "Success", "Error", "Border"};
-    QStringList swatchColors = {"#238636", "#404040", "#2bb5a0", "#e96b72", "#d3d3d3"};
+    QStringList swatchLabels = {"Background", "Primary", "Text", "Success", "Error"};
     for (int i = 0; i < 5; ++i) {
         auto* swatch = new QLabel(themeSwatchesFrame);
         swatch->setFixedSize(20, 20);
-        swatch->setStyleSheet(QString("background: %1; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);").arg(swatchColors[i]));
+        swatch->setStyleSheet(QStringLiteral("background: #555555; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15);"));
         swatch->setToolTip(swatchLabels[i]);
         themeSwatchesLayout->addWidget(swatch);
         themeSwatchLabels[i] = swatch;
@@ -413,28 +468,89 @@ void DialogSettings::createUI()
 
     auto* themeButtons = new QHBoxLayout();
     themeButtons->setContentsMargins(0, 0, 0, 0);
-    themeButtons->setSpacing(4);
+    themeButtons->setSpacing(6);
     themeButtons->addWidget(themeImportBtn);
     themeButtons->addWidget(themeDeleteBtn);
+    themeButtons->addStretch(1);
 
-    appearanceLayout->addWidget(themeLabel,         0, 0, 1, 1);
-    appearanceLayout->addWidget(themeCombo,         0, 1, 1, 1);
-    appearanceLayout->addLayout(themeButtons,       0, 2, 1, 1);
-    appearanceLayout->addWidget(themeSwatchesFrame, 1, 0, 1, 3);
-    appearanceLayout->addWidget(fontFamilyLabel,    2, 0, 1, 1);
-    appearanceLayout->addWidget(fontFamilyCombo,    2, 1, 1, 2);
-    appearanceLayout->addWidget(fontSizeLabel,      3, 0, 1, 1);
-    appearanceLayout->addWidget(fontSizeSpin,       3, 1, 1, 2);
-    appearanceLayout->addWidget(toolbarPosLabel,    4, 0, 1, 1);
-    appearanceLayout->addWidget(toolbarPosFrame,    4, 1, 1, 2, Qt::AlignLeft);
-    appearanceLayout->setRowStretch(5, 1);
+    auto* appearanceThemeGroup = new QGroupBox(QStringLiteral("Theme"), appearanceWidget);
+    appearanceThemeGroup->setStyleSheet(kSettingsCardCss);
+    auto* appearanceThemeLay = new QGridLayout(appearanceThemeGroup);
+    applySettingsFormGrid(appearanceThemeLay);
+    styleSettingsLabel(themeLabel);
+    limitFieldWidth(themeCombo, 220, 320);
+    auto* themeComboRow = new QWidget(appearanceThemeGroup);
+    auto* themeComboLay = new QHBoxLayout(themeComboRow);
+    themeComboLay->setContentsMargins(0, 0, 0, 0);
+    themeComboLay->setSpacing(8);
+    themeComboLay->addWidget(themeCombo, 0);
+    themeComboLay->addLayout(themeButtons, 1);
+    appearanceThemeLay->addWidget(themeLabel, 0, 0);
+    appearanceThemeLay->addWidget(themeComboRow, 0, 1);
+    appearanceThemeLay->addWidget(themeSwatchesFrame, 1, 0, 1, 2);
+    appearanceThemeLay->setColumnStretch(2, 1);
+
+    auto* appearanceTypeGroup = new QGroupBox(QStringLiteral("Typography & chrome"), appearanceWidget);
+    appearanceTypeGroup->setStyleSheet(kSettingsCardCss);
+    auto* appearanceTypeLay = new QGridLayout(appearanceTypeGroup);
+    applySettingsFormGrid(appearanceTypeLay);
+    styleSettingsLabel(fontFamilyLabel);
+    styleSettingsLabel(fontSizeLabel);
+    styleSettingsLabel(toolbarPosLabel);
+    limitFieldWidth(fontFamilyCombo, 220, 360);
+    limitFieldWidth(fontSizeSpin, 100, 140);
+    appearanceTypeLay->addWidget(fontFamilyLabel, 0, 0);
+    appearanceTypeLay->addWidget(fontFamilyCombo, 0, 1, Qt::AlignLeft);
+    appearanceTypeLay->addWidget(fontSizeLabel, 1, 0);
+    appearanceTypeLay->addWidget(fontSizeSpin, 1, 1, Qt::AlignLeft);
+    appearanceTypeLay->addWidget(toolbarPosLabel, 2, 0, Qt::AlignTop);
+    appearanceTypeLay->addWidget(toolbarPosFrame, 2, 1, Qt::AlignLeft);
+    appearanceTypeLay->setColumnStretch(2, 1);
+
+    appearanceLayout->setContentsMargins(0, 0, 0, 0);
+    appearanceLayout->setHorizontalSpacing(0);
+    appearanceLayout->setVerticalSpacing(12);
+    appearanceLayout->addWidget(appearanceThemeGroup, 0, 0);
+    appearanceLayout->addWidget(appearanceTypeGroup, 1, 0);
+    appearanceLayout->setRowStretch(2, 1);
+    appearanceLayout->setColumnStretch(0, 1);
     appearanceWidget->setLayout(appearanceLayout);
 
-    consolePageLayout->addWidget(consoleThemeGroup,    0, 0, 1, 3);
-    consolePageLayout->addWidget(consoleBehaviorGroup, 1, 0, 1, 3);
-    consolePageLayout->addWidget(terminalSizeLabel,    2, 0, 1, 1);
-    consolePageLayout->addWidget(terminalSizeSpin,     2, 1, 1, 2);
+    applySettingsFormGrid(consoleThemeGroupLayout);
+    styleSettingsLabel(consoleThemeLabel);
+    styleSettingsLabel(consoleBgImageLabel);
+    styleSettingsLabel(consoleBgDimmingLabel);
+    limitFieldWidth(consoleThemeCombo, 200, 300);
+    limitFieldWidth(consoleBgImagePathEdit, 220, 400);
+    consoleThemeGroup->setStyleSheet(kSettingsCardCss);
+    consoleThemeGroupLayout->setColumnStretch(2, 0);
+    consoleThemeGroupLayout->setColumnStretch(3, 1);
+
+    applySettingsFormGrid(consoleBehaviorGroupLayout);
+    styleSettingsLabel(consoleSizeLabel);
+    styleSettingsLabel(consolePageSizeLabel);
+    limitFieldWidth(consoleSizeSpin, 120, 180);
+    limitFieldWidth(consolePageSizeSpin, 120, 180);
+    consoleBehaviorGroup->setStyleSheet(kSettingsCardCss);
+    consoleBehaviorGroupLayout->setColumnStretch(2, 1);
+
+    consolePageLayout->setContentsMargins(0, 0, 0, 0);
+    consolePageLayout->setVerticalSpacing(12);
+    consolePageLayout->addWidget(consoleThemeGroup,    0, 0, 1, 1);
+    consolePageLayout->addWidget(consoleBehaviorGroup, 1, 0, 1, 1);
+
+    auto* terminalGroup = new QGroupBox(QStringLiteral("Remote Terminal"), consolePageWidget);
+    terminalGroup->setStyleSheet(kSettingsCardCss);
+    auto* terminalLay = new QGridLayout(terminalGroup);
+    applySettingsFormGrid(terminalLay);
+    styleSettingsLabel(terminalSizeLabel);
+    limitFieldWidth(terminalSizeSpin, 120, 180);
+    terminalLay->addWidget(terminalSizeLabel, 0, 0);
+    terminalLay->addWidget(terminalSizeSpin, 0, 1, Qt::AlignLeft);
+    terminalLay->setColumnStretch(2, 1);
+    consolePageLayout->addWidget(terminalGroup, 2, 0, 1, 1);
     consolePageLayout->setRowStretch(3, 1);
+    consolePageLayout->setColumnStretch(0, 1);
     consolePageWidget->setLayout(consolePageLayout);
 
     codeEditorWidget = new QWidget(this);
@@ -1287,19 +1403,28 @@ void DialogSettings::createUI()
     sessionsDeadShiftSpin->setDecimals(2);
     sessionsDeadShiftSpin->setToolTip("Lightness shift for inactive rows. Light: darker, Dark: lighter.");
 
-    healthGroupLayout->addWidget(sessionsHealthCheck,      0, 0, 1, 6);
+    healthGroupLayout->setContentsMargins(12, 12, 12, 12);
+    healthGroupLayout->setHorizontalSpacing(12);
+    healthGroupLayout->setVerticalSpacing(10);
+    healthGroupLayout->addWidget(sessionsHealthCheck,      0, 0, 1, 4);
     healthGroupLayout->addWidget(sessionsLabel1,           1, 0, 1, 1);
-    healthGroupLayout->addWidget(sessionsCoafSpin,        1, 1, 1, 1);
+    healthGroupLayout->addWidget(sessionsCoafSpin,        1, 1, 1, 1, Qt::AlignLeft);
     healthGroupLayout->addWidget(sessionsLabel2,          1, 2, 1, 1, Qt::AlignCenter);
-    healthGroupLayout->addWidget(sessionsOffsetSpin,      1, 3, 1, 1);
+    healthGroupLayout->addWidget(sessionsOffsetSpin,      1, 3, 1, 1, Qt::AlignLeft);
     healthGroupLayout->addWidget(sessionsDeadShiftLabel,  2, 0, 1, 1);
-    healthGroupLayout->addWidget(sessionsDeadShiftSpin,   2, 1, 1, 1);
+    healthGroupLayout->addWidget(sessionsDeadShiftSpin,   2, 1, 1, 1, Qt::AlignLeft);
+    healthGroupLayout->setColumnStretch(4, 1);
     healthGroup->setLayout(healthGroupLayout);
+    healthGroup->setStyleSheet(kSettingsCardCss);
 
     auto* graphGroup = new QGroupBox("Session Graph", sessionsWidget);
+    graphGroup->setStyleSheet(kSettingsCardCss);
     auto* graphGroupLayout = new QGridLayout(graphGroup);
+    applySettingsFormGrid(graphGroupLayout);
+    styleSettingsLabel(graphLabel1);
+    limitFieldWidth(graphCombo1, 200, 320);
     graphGroupLayout->addWidget(graphLabel1, 0, 0, 1, 1);
-    graphGroupLayout->addWidget(graphCombo1, 0, 1, 1, 1);
+    graphGroupLayout->addWidget(graphCombo1, 0, 1, 1, 1, Qt::AlignLeft);
 
     graphAutoHideInactiveSwitch = new oclero::qlementine::Switch(graphGroup);
     graphAutoHideInactiveSwitch->setText("Auto hide inactive");
@@ -1607,6 +1732,60 @@ void DialogSettings::createUI()
     filesLayout->setRowStretch(2, 1);
     filesWidget->setLayout(filesLayout);
 
+    payloadsWidget = new QWidget(this);
+    payloadsLayout = new QGridLayout(payloadsWidget);
+    payloadsGroup = new QGroupBox("Visible columns", payloadsWidget);
+    payloadsGroup->setToolTip("Columns shown in the Payload Store table.");
+
+    QStringList payloadsCheckboxLabels = {
+        "ID", "Name", "Description", "Type", "Artifact", "Listener(s)",
+        "Size", "Creator", "Created", "UID", "MD5", "SHA1", "SHA256"
+    };
+    for (int i = 0; i < payloadsCheckCount; ++i)
+        payloadsCheck[i] = new QCheckBox(payloadsCheckboxLabels[i], payloadsGroup);
+
+    auto* payloadsGroupLayout = new QVBoxLayout(payloadsGroup);
+    payloadsGroupLayout->setSpacing(8);
+    auto* payloadsTopRow = new QHBoxLayout();
+    payloadsTopRow->setSpacing(8);
+
+    auto* payloadsIdentityGroup = new QGroupBox("Identity", payloadsGroup);
+    auto* payloadsIdentityLayout = new QVBoxLayout(payloadsIdentityGroup);
+    payloadsIdentityLayout->setContentsMargins(8, 8, 8, 8);
+    payloadsIdentityLayout->addWidget(payloadsCheck[0]);  // ID
+    payloadsIdentityLayout->addWidget(payloadsCheck[1]);  // Name
+    payloadsIdentityLayout->addWidget(payloadsCheck[2]);  // Description
+    payloadsIdentityLayout->addWidget(payloadsCheck[9]);  // UID (hidden by default)
+    payloadsIdentityLayout->addStretch();
+    payloadsTopRow->addWidget(payloadsIdentityGroup);
+
+    auto* payloadsMainGroup = new QGroupBox("Payload", payloadsGroup);
+    auto* payloadsMainLayout = new QVBoxLayout(payloadsMainGroup);
+    payloadsMainLayout->setContentsMargins(8, 8, 8, 8);
+    payloadsMainLayout->addWidget(payloadsCheck[3]);  // Type
+    payloadsMainLayout->addWidget(payloadsCheck[4]);  // Artifact
+    payloadsMainLayout->addWidget(payloadsCheck[5]);  // Listener(s)
+    payloadsMainLayout->addWidget(payloadsCheck[6]);  // Size
+    payloadsMainLayout->addWidget(payloadsCheck[7]);  // Creator
+    payloadsMainLayout->addWidget(payloadsCheck[8]);  // Created
+    payloadsMainLayout->addStretch();
+    payloadsTopRow->addWidget(payloadsMainGroup);
+
+    auto* payloadsHashGroup = new QGroupBox("Hashes", payloadsGroup);
+    auto* payloadsHashLayout = new QVBoxLayout(payloadsHashGroup);
+    payloadsHashLayout->setContentsMargins(8, 8, 8, 8);
+    payloadsHashLayout->addWidget(payloadsCheck[10]); // MD5
+    payloadsHashLayout->addWidget(payloadsCheck[11]); // SHA1
+    payloadsHashLayout->addWidget(payloadsCheck[12]); // SHA256
+    payloadsHashLayout->addStretch();
+    payloadsTopRow->addWidget(payloadsHashGroup);
+
+    payloadsGroupLayout->addLayout(payloadsTopRow);
+    payloadsGroup->setLayout(payloadsGroupLayout);
+    payloadsLayout->addWidget(payloadsGroup, 0, 0, 1, 1);
+    payloadsLayout->setRowStretch(1, 1);
+    payloadsWidget->setLayout(payloadsLayout);
+
     tabblinkWidget = new QWidget(this);
     tabblinkEnabledCheckbox = new oclero::qlementine::Switch(tabblinkWidget);
     tabblinkEnabledCheckbox->setText("Enable tab blink");
@@ -1778,16 +1957,21 @@ void DialogSettings::createUI()
         &scriptActionRead, &scriptActionWrite, &scriptActionProcess, &scriptActionSandbox, true));
 
     auto* sandBox = new QGroupBox(QStringLiteral("Sandbox directory"), scriptSecWidget);
-    auto* sandLay = new QHBoxLayout(sandBox);
+    sandBox->setStyleSheet(kSettingsCardCss);
+    auto* sandLay = new QGridLayout(sandBox);
+    applySettingsFormGrid(sandLay);
     auto* sandLabel = new QLabel(QStringLiteral("Root:"), sandBox);
+    styleSettingsLabel(sandLabel);
     scriptSandboxDirEdit = new QLineEdit(sandBox);
     scriptSandboxDirEdit->setPlaceholderText(QStringLiteral("~/.adaptix/script_sandbox"));
     scriptSandboxDirEdit->setToolTip(QStringLiteral(
         "Absolute path or ~/… / ~\\… (home expansion works on Windows too).\n"
         "Relative file paths are mapped under this root.\n"
         "Local scripts may also read/write their own script directory when sandbox is on."));
-    sandLay->addWidget(sandLabel);
-    sandLay->addWidget(scriptSandboxDirEdit, 1);
+    limitFieldWidth(scriptSandboxDirEdit, 280, 480);
+    sandLay->addWidget(sandLabel, 0, 0);
+    sandLay->addWidget(scriptSandboxDirEdit, 0, 1, Qt::AlignLeft);
+    sandLay->setColumnStretch(2, 1);
     scriptSecLayout->addWidget(sandBox);
 
     auto* note = new QLabel(
@@ -1842,6 +2026,7 @@ void DialogSettings::createUI()
     addNavItem("Targets");
     addNavItem("Credentials");
     addNavItem("Files");
+    addNavItem("Payloads");
     addSectionHeader("NOTIFICATIONS");
     addNavItem("Tab Blinking");
     addSectionHeader("REFERENCE");
@@ -1899,6 +2084,7 @@ void DialogSettings::createUI()
     stackSettings->addWidget(targetsWidget);
     stackSettings->addWidget(credsWidget);
     stackSettings->addWidget(filesWidget);
+    stackSettings->addWidget(payloadsWidget);
     stackSettings->addWidget(tabblinkWidget);
     stackSettings->addWidget(shortcutsWidget);
 
@@ -2728,6 +2914,16 @@ void DialogSettings::onApply() const
 
     settings->data.FilesCompactMode = filesCompactSwitch->isChecked();
 
+    updateTable = false;
+    for (int i = 0; i < payloadsCheckCount; i++) {
+        if (settings->data.PayloadsTableColumns[i] != payloadsCheck[i]->isChecked()) {
+            settings->data.PayloadsTableColumns[i] = payloadsCheck[i]->isChecked();
+            updateTable = true;
+        }
+    }
+    if (updateTable)
+        settings->getMainAdaptix()->mainUI->UpdatePayloadsColumns();
+
     for (auto it = m_tabblinkChecks.begin(); it != m_tabblinkChecks.end(); ++it)
         settings->data.BlinkWidgets[it.key()] = it.value()->isChecked();
 
@@ -2763,9 +2959,16 @@ void DialogSettings::updateThemeSwatches()
     if (name.isEmpty())
         return;
 
-    QString userPath = userAppThemeDir() + "/" + name + ".json";
-    QString resPath  = QString(":/qlementine-themes/%1.json").arg(name);
-    QString jsonPath = QFile::exists(userPath) ? userPath : (QFile::exists(resPath) ? resPath : QString());
+    const QString userPath = userAppThemeDir() + "/" + name + ".json";
+    const QString resAlias = QStringLiteral(":/qlementine-themes/%1").arg(name);
+    const QString resJson  = QStringLiteral(":/qlementine-themes/%1.json").arg(name);
+    QString jsonPath;
+    if (QFile::exists(userPath))
+        jsonPath = userPath;
+    else if (QFile::exists(resAlias))
+        jsonPath = resAlias;
+    else if (QFile::exists(resJson))
+        jsonPath = resJson;
     if (jsonPath.isEmpty())
         return;
 
@@ -2781,15 +2984,18 @@ void DialogSettings::updateThemeSwatches()
         return root.contains(key) ? QColor(root[key].toString()) : QColor(fallback);
     };
 
-    QColor primary   = readColor("primaryColor", "#1890ff");
-    QColor secondary = readColor("secondaryColor", "#404040");
-    QColor success   = readColor("statusColorSuccess", "#2bb5a0");
-    QColor error     = readColor("statusColorError", "#e96b72");
-    QColor border    = readColor("borderColor", "#d3d3d3");
+    QColor bg       = readColor(QStringLiteral("backgroundColorMain1"), QStringLiteral("#1E2220"));
+    QColor primary  = readColor(QStringLiteral("primaryColor"),         QStringLiteral("#1890ff"));
+    QColor text     = readColor(QStringLiteral("secondaryColor"),       QStringLiteral("#BEBEBE"));
+    QColor success  = readColor(QStringLiteral("statusColorSuccess"),   QStringLiteral("#2bb5a0"));
+    QColor error    = readColor(QStringLiteral("statusColorError"),     QStringLiteral("#e96b72"));
 
-    QColor colors[5] = {primary, secondary, success, error, border};
+    QColor colors[5] = {bg, primary, text, success, error};
     for (int i = 0; i < 5; ++i) {
-        themeSwatchLabels[i]->setStyleSheet( QString("background: %1; border-radius: 10px; border: 1px solid rgba(255,255,255,0.1);").arg(colors[i].name()));
+        if (!themeSwatchLabels[i])
+            continue;
+        themeSwatchLabels[i]->setStyleSheet(QStringLiteral("background: %1; border-radius: 10px; border: 1px solid rgba(255,255,255,0.18);").arg(colors[i].name(QColor::HexRgb)));
+        themeSwatchLabels[i]->setToolTip( QStringList{QStringLiteral("Background"), QStringLiteral("Primary"), QStringLiteral("Text"), QStringLiteral("Success"), QStringLiteral("Error")}[i] + QStringLiteral(": ") + colors[i].name(QColor::HexRgb));
     }
 }
 
@@ -2883,6 +3089,9 @@ void DialogSettings::loadSettings()
         filesCheck[i]->setChecked(settings->data.FilesTableColumns[i]);
     filesCompactSwitch->setChecked(settings->data.FilesCompactMode);
 
+    for (int i = 0; i < payloadsCheckCount; i++)
+        payloadsCheck[i]->setChecked(settings->data.PayloadsTableColumns[i]);
+
     tabblinkEnabledCheckbox->setChecked(settings->data.TabBlinkEnabled);
 
     for (auto it = m_tabblinkChecks.begin(); it != m_tabblinkChecks.end(); ++it) {
@@ -2951,7 +3160,14 @@ void DialogSettings::refreshAppThemeCombo()
     QString current = themeCombo->currentText();
     themeCombo->clear();
 
-    QStringList builtIn = { "Adaptix_Dark_Emerald", "Adaptix_Light_Emerald", "Adaptix_Dracula" };
+    QStringList builtIn = {
+        QStringLiteral("Adaptix_Dark_Emerald"),
+        QStringLiteral("Adaptix_Light_Emerald"),
+        QStringLiteral("Adaptix_Dracula"),
+        QStringLiteral("Black"),
+        QStringLiteral("Solarized"),
+        QStringLiteral("Monokai"),
+    };
     themeCombo->addItems(builtIn);
 
     QDir userDir(userAppThemeDir());

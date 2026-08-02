@@ -105,7 +105,9 @@ public:
     QStringList ServiceScriptList();
     void        ServiceScriptAdd(const QString &name, const QString &ax_script);
     QJSEngine*  ServiceScriptEngine(const QString &name);
-    void        ServiceScriptDataHandler(const QString &name, const QString &data);
+    void        PluginServiceDataHandler(const QString &name, const QString &data);
+    void        PluginAgentDataHandler(qint64 agentId, const QString &agentType, const QString &data);
+    void        PluginListenerDataHandler(const QString &listenerName, const QString &listenerType, const QString &data);
 
     QStringList ScriptList();
     bool        ScriptAdd(ExtensionFile* ext);
@@ -154,6 +156,7 @@ public:
     int AddMenuTask(QMenu* menu, const QString &menuType, const QList<qint64> &tasks);
     int AddMenuTargets(QMenu* menu, const QString &menuType, const QStringList &targets);
     int AddMenuCreds(QMenu* menu, const QString &menuType, const QStringList &creds);
+    int AddMenuPayloads(QMenu* menu, const QString &menuType, const QList<qint64> &payloadIds);
 
 Q_SIGNALS:
     void consoleMessage(const QString& message);

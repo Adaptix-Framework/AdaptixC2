@@ -29,9 +29,7 @@
 #include "MDILayout.h"
 #include "Stack.h"
 
-#ifdef KDDW_FRONTEND_QT
 #include <QTimer>
-#endif
 
 #include <utility>
 
@@ -40,9 +38,9 @@ using namespace KDDockWidgets::Core;
 
 
 TitleBar::TitleBar(Group *parent)
-    : Controller(
-          ViewType::TitleBar,
-          Config::self().viewFactory()->createTitleBar(this, parent ? parent->view() : nullptr))
+    : Controller(ViewType::TitleBar,
+                 Config::self().viewFactory()->createTitleBar(
+                     this, parent ? parent->view() : nullptr, parent ? parent->userType() : 0))
     , Draggable(view())
     , d(new Private())
     , m_group(parent)
@@ -65,10 +63,10 @@ TitleBar::TitleBar(Group *parent)
     });
 }
 
-TitleBar::TitleBar(FloatingWindow *parent)
-    : Controller(
-          ViewType::TitleBar,
-          Config::self().viewFactory()->createTitleBar(this, parent ? parent->view() : nullptr))
+TitleBar::TitleBar(FloatingWindow *parent, int userType)
+    : Controller(ViewType::TitleBar,
+                 Config::self().viewFactory()->createTitleBar(
+                     this, parent ? parent->view() : nullptr, userType))
     , Draggable(view())
     , d(new Private())
     , m_group(nullptr)
@@ -106,11 +104,9 @@ void TitleBar::init()
 
     updateButtons();
 
-#ifdef KDDW_FRONTEND_QT
     // Auto-hide not supported in flutter yet
     QTimer::singleShot(0, this, &TitleBar::updateAutoHideButton); // have to wait after the group is
                                                                   // constructed
-#endif
 }
 
 TitleBar::~TitleBar()

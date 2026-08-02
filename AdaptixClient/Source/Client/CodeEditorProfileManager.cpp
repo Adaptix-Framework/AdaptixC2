@@ -474,9 +474,9 @@ BuildProfile BuildProfile::eventHandlerProfile()
 QString BuildProfile::profileNameForFile(const QString& filePath)
 {
     const QString suffix = QFileInfo(filePath).suffix().toLower();
-    if (suffix == "axs")
+    if (suffix == QLatin1String("axs") || suffix == QLatin1String("js") || suffix == QLatin1String("mjs"))
         return QStringLiteral("AxScript");
-    if (suffix == "c" || suffix == "cpp" || suffix == "cc" || suffix == "cxx")
+    if (suffix == QLatin1String("c") || suffix == QLatin1String("cc") || suffix == QLatin1String("cpp") || suffix == QLatin1String("cxx") || suffix == QLatin1String("h") || suffix == QLatin1String("hh") || suffix == QLatin1String("hpp") || suffix == QLatin1String("hxx") || suffix == QLatin1String("h++") || suffix == QLatin1String("inl"))
         return QStringLiteral("BOF");
     return QString();
 }

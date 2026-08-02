@@ -10,6 +10,7 @@
 #include <UI/Widgets/TargetsFeedWidget.h>
 #include <UI/Widgets/CredentialsFeedWidget.h>
 #include <UI/Widgets/FilesFeedWidget.h>
+#include <UI/Widgets/PayloadsFeedWidget.h>
 #include <Utils/CustomElements/ListFeed.h>
 #include <UI/Graph/SessionsGraph.h>
 #include <UI/Dialogs/DialogSettings.h>
@@ -151,6 +152,14 @@ MainUI::MainUI()
         if (isTerminalFocused()) return;
         auto* w = getCurrentAdaptixWidget();
         if (w) w->LoadListenersUI();
+    });
+
+    auto shortcutPayloads = new QShortcut(QKeySequence("Ctrl+Shift+A"), this);
+    shortcutPayloads->setContext(Qt::ApplicationShortcut);
+    connect(shortcutPayloads, &QShortcut::activated, this, [=]() {
+        if (isTerminalFocused()) return;
+        auto* w = getCurrentAdaptixWidget();
+        if (w) w->LoadPayloadsUI();
     });
 
     auto shortcutLogs = new QShortcut(QKeySequence("Ctrl+Shift+N"), this);
@@ -380,6 +389,14 @@ void MainUI::UpdateFilesColumns()
     for (auto adaptixWidget : AdaptixProjects) {
         if (adaptixWidget && adaptixWidget->DownloadsDock)
             adaptixWidget->DownloadsDock->UpdateColumnsVisible();
+    }
+}
+
+void MainUI::UpdatePayloadsColumns()
+{
+    for (auto adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget && adaptixWidget->PayloadsDock)
+            adaptixWidget->PayloadsDock->UpdateColumnsVisible();
     }
 }
 

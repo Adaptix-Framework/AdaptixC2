@@ -3,6 +3,7 @@
 #include <UI/Graph/GraphScene.h>
 #include <UI/Graph/GraphItem.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/SessionWidgetIface.h>
 #include <UI/Widgets/TasksFeedWidget.h>
 #include <UI/Widgets/ConsoleWidget.h>
 #include <Client/Requestor.h>
@@ -66,8 +67,28 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 
     oclero::qlementine::Menu ctxMenu;
 
-    auto agentMenu = ctxMenu.addMenu(QIcon(":/icons/agent"), "Agent");
-    agentMenu->addAction(QIcon(":/icons/keyboard_command"), "Execute command", this, [graphics_items]() {
+    ctxMenu.addAction(QIcon(QStringLiteral(":/icons/interact")), QStringLiteral("Interact"), this, [adaptixWidget, agentIds]() {
+        for (qint64 agentId : agentIds)
+            adaptixWidget->LoadConsoleUI(agentId);
+    });
+    ctxMenu.addSeparator();
+
+    auto* exploreMenu = ctxMenu.addMenu(QIcon(QStringLiteral(":/icons/open_folder")), QStringLiteral("Explore"));
+    int browserCount = adaptixWidget->ScriptManager->AddMenuSession(exploreMenu, QStringLiteral("SessionBrowser"), agentIds);
+    if (browserCount > 0)
+        ctxMenu.addMenu(exploreMenu);
+    else
+        ctxMenu.removeAction(exploreMenu->menuAction());
+
+    auto* accessMenu = ctxMenu.addMenu(QIcon(QStringLiteral(":/icons/exchange")), QStringLiteral("Access"));
+    int accessCount = adaptixWidget->ScriptManager->AddMenuSession(accessMenu, QStringLiteral("SessionAccess"), agentIds);
+    if (accessCount > 0)
+        ctxMenu.addMenu(accessMenu);
+    else
+        ctxMenu.removeAction(accessMenu->menuAction());
+
+    auto* tasksMenu = ctxMenu.addMenu(QIcon(QStringLiteral(":/icons/job")), QStringLiteral("Tasks"));
+    tasksMenu->addAction(QIcon(QStringLiteral(":/icons/keyboard_command")), QStringLiteral("Execute command"), this, [graphics_items]() {
         bool ok = false;
         QString cmd = QInputDialog::getText(nullptr, "Execute Command", "Command", QLineEdit::Normal, "", &ok);
         if (!ok)
@@ -78,39 +99,81 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
             item->agent->Console->processInput();
         }
     });
-    agentMenu->addAction(QIcon(":/icons/job"), "Task manager", this, [adaptixWidget, agentIds]() {
+    tasksMenu->addAction(QIcon(QStringLiteral(":/icons/job")), QStringLiteral("Task manager"), this, [adaptixWidget, agentIds]() {
         for (qint64 agentId : agentIds) {
             adaptixWidget->TasksDock->SetAgentFilter(agentId);
             adaptixWidget->SetTasksUI();
         }
     });
-    agentMenu->addSeparator();
+    adaptixWidget->ScriptManager->AddMenuSession(tasksMenu, QStringLiteral("SessionAgent"), agentIds);
 
-    int agentCount = adaptixWidget->ScriptManager->AddMenuSession(agentMenu, "SessionAgent", agentIds);
-    if (agentCount > 0)
-        agentMenu->addSeparator();
+    auto* extMenu = ctxMenu.addMenu(QIcon(QStringLiteral(":/icons/extension")), QStringLiteral("Extensions"));
+    int mainCount = adaptixWidget->ScriptManager->AddMenuSession(extMenu, QStringLiteral("SessionMain"), agentIds);
+    if (mainCount > 0)
+        ctxMenu.addMenu(extMenu);
+    else
+        ctxMenu.removeAction(extMenu->menuAction());
 
-    agentMenu->addAction(QIcon(":/icons/delete"), "Remove console data", this, [adaptixWidget, agentIds]() {
-        QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "Clear Confirmation",
-                                          "Are you sure you want to delete all agent console data and history from server (tasks will not be deleted from TaskManager)?\n\n"
-                                          "If you want to temporarily hide the contents of the agent console, do so through the agent console menu.",
-                                          QMessageBox::Yes | QMessageBox::No,
-                                          QMessageBox::No);
-        if (reply != QMessageBox::Yes)
-            return;
+    ctxMenu.addSeparator();
 
-        for (const auto& id : agentIds)
-            adaptixWidget->AgentsMap[id]->Console->Clear();
-
-        HttpReqConsoleRemoveAsync(agentIds, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+    ctxMenu.addAction(QIcon(QStringLiteral(":/icons/wifi_signal")), QStringLiteral("Mark as Active"), this, [adaptixWidget, agentIds]() {
+        HttpReqAgentSetMarkAsync(agentIds, "", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? "Response timeout" : message);
         });
     });
-    agentMenu->addAction(QIcon(":/icons/delete"), "Remove from server", this, [adaptixWidget, agentIds]() {
+    ctxMenu.addAction(QIcon(QStringLiteral(":/icons/wifi_null")), QStringLiteral("Mark as Inactive"), this, [adaptixWidget, agentIds]() {
+        HttpReqAgentSetMarkAsync(agentIds, "Inactive", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Response timeout" : message);
+        });
+    });
+    ctxMenu.addAction(QIcon(QStringLiteral(":/icons/visibility_off")), QStringLiteral("Hide on client"), this, [adaptixWidget, agentIds]() {
+        {
+            QReadLocker locker(&adaptixWidget->AgentsMapLock);
+            for (qint64 id : agentIds) {
+                if (Agent* a = adaptixWidget->AgentsMap.value(id, nullptr))
+                    a->show = false;
+            }
+        }
+        if (adaptixWidget->SessionsTableDock)
+            adaptixWidget->SessionsTableDock->UpdateData();
+        if (adaptixWidget->SessionsGraphDock)
+            adaptixWidget->SessionsGraphDock->ApplyFiltersAndLayout();
+    });
+    ctxMenu.addSeparator();
+
+    ctxMenu.addAction(QIcon(QStringLiteral(":/icons/tag")), QStringLiteral("Set tag"), this, [adaptixWidget, agentIds]() {
+        bool inputOk = false;
+        QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal, "", &inputOk);
+        if (inputOk) {
+            HttpReqAgentSetTagAsync(agentIds, newTag, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+                if (!success)
+                    MessageError(message.isEmpty() ? "Response timeout" : message);
+            });
+        }
+    });
+    if (agentIds.size() == 1) {
+        ctxMenu.addAction(QIcon(QStringLiteral(":/icons/info")), QStringLiteral("Session info…"), this, [adaptixWidget, agentIds]() {
+            qint64 agentId = agentIds.first();
+            if (!adaptixWidget->AgentsMap.contains(agentId))
+                return;
+            Agent* agent = adaptixWidget->AgentsMap.value(agentId, nullptr);
+            if (!agent)
+                return;
+            auto* dialog = new DialogAgentData(adaptixWidget);
+            dialog->setAttribute(Qt::WA_DeleteOnClose);
+            dialog->SetProfile(*(adaptixWidget->GetProfile()));
+            dialog->SetAgentData(agent->data);
+            dialog->Start();
+        });
+    }
+
+    ctxMenu.addSeparator();
+    ctxMenu.addAction(QIcon(QStringLiteral(":/icons/delete")), QStringLiteral("Remove from server"), this, [adaptixWidget, agentIds]() {
         QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "Delete Confirmation",
                                           "Are you sure you want to delete all information about the selected agents from the server?\n\n"
-                                          "If you want to hide the record, simply choose: 'Item -> Hide on Client'.",
+                                          "If you want to hide the record, simply choose: 'Hide on client'.",
                                           QMessageBox::Yes | QMessageBox::No,
                                           QMessageBox::No);
         if (reply != QMessageBox::Yes)
@@ -121,75 +184,6 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
                 MessageError(message.isEmpty() ? "Response timeout" : message);
         });
     });
-
-    auto sessionMenu = ctxMenu.addMenu(QIcon(":/icons/settings"), "Session");
-    sessionMenu->addAction(QIcon(":/icons/wifi_signal"), "Mark as Active", this, [adaptixWidget, agentIds]() {
-        HttpReqAgentSetMarkAsync(agentIds, "", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-            if (!success)
-                MessageError(message.isEmpty() ? "Response timeout" : message);
-        });
-    });
-    sessionMenu->addAction(QIcon(":/icons/wifi_null"), "Mark as Inactive", this, [adaptixWidget, agentIds]() {
-        HttpReqAgentSetMarkAsync(agentIds, "Inactive", *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-            if (!success)
-                MessageError(message.isEmpty() ? "Response timeout" : message);
-        });
-    });
-    sessionMenu->addSeparator();
-    sessionMenu->addAction(QIcon(":/icons/tag"), "Set tag", this, [adaptixWidget, agentIds]() {
-        bool inputOk;
-        QString newTag = QInputDialog::getText(nullptr, "Set tags", "New tag", QLineEdit::Normal, "", &inputOk);
-        if (inputOk) {
-            HttpReqAgentSetTagAsync(agentIds, newTag, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-                if (!success)
-                    MessageError(message.isEmpty() ? "Response timeout" : message);
-            });
-        }
-    });
-    if (agentIds.size() == 1) {
-        sessionMenu->addAction(QIcon(":/icons/info"), "Set data", this, [adaptixWidget, agentIds]() {
-            qint64 agentId = agentIds.first();
-            if (!adaptixWidget->AgentsMap.contains(agentId))
-                return;
-
-            Agent* agent = adaptixWidget->AgentsMap.value(agentId, nullptr);
-            if (!agent)
-                return;
-
-            auto* dialog = new DialogAgentData(adaptixWidget);
-            dialog->setAttribute(Qt::WA_DeleteOnClose);
-            dialog->SetProfile(*(adaptixWidget->GetProfile()));
-            dialog->SetAgentData(agent->data);
-            dialog->Start();
-        });
-    }
-
-    ctxMenu.addAction(QIcon(":/icons/interact"), "Interact", this, [adaptixWidget, agentIds]() {
-        for (qint64 agentId : agentIds) {
-            adaptixWidget->LoadConsoleUI(agentId);
-        }
-    });
-    ctxMenu.addSeparator();
-    ctxMenu.addMenu(agentMenu);
-
-    auto browserMenu = ctxMenu.addMenu(QIcon(":/icons/open_folder"), "Browsers");
-    int browserCount = adaptixWidget->ScriptManager->AddMenuSession(browserMenu, "SessionBrowser", agentIds);
-    if (browserCount > 0)
-        ctxMenu.addMenu(browserMenu);
-    else
-        ctxMenu.removeAction(browserMenu->menuAction());
-
-    auto accessMenu = ctxMenu.addMenu(QIcon(":/icons/exchange"), "Access");
-    int accessCount = adaptixWidget->ScriptManager->AddMenuSession(accessMenu, "SessionAccess", agentIds);
-    if (accessCount > 0)
-        ctxMenu.addMenu(accessMenu);
-    else
-        ctxMenu.removeAction(accessMenu->menuAction());
-
-    adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, "SessionMain", agentIds);
-
-    ctxMenu.addSeparator();
-    ctxMenu.addMenu(sessionMenu);
 
     ctxMenu.exec(event->screenPos());
     event->accept();

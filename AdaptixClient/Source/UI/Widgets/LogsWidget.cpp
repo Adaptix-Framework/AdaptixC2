@@ -31,6 +31,7 @@ LogsWidget::LogsWidget(const AdaptixWidget* w) : DockTab("Logs", w->GetProfile()
     this->createUI();
 
     connect(logsConsoleTextEdit, &TextEditConsole::ctx_find, searchPanel, &SearchPanel::toggle);
+    connect(logsConsoleTextEdit, &TextEditConsole::ctx_clear, logsConsoleTextEdit, &QPlainTextEdit::clear);
 
     auto* shortcutFind = new QShortcut(QKeySequence("Ctrl+F"), logsConsoleTextEdit);
     shortcutFind->setContext(Qt::WidgetShortcut);
@@ -45,6 +46,7 @@ LogsWidget::LogsWidget(const AdaptixWidget* w) : DockTab("Logs", w->GetProfile()
     connect(shortcutSelectAll, &QShortcut::activated, logsConsoleTextEdit, &QPlainTextEdit::selectAll);
 
     connect(serverLogsTextEdit, &TextEditConsole::ctx_find, serverSearchPanel, &SearchPanel::toggle);
+    connect(serverLogsTextEdit, &TextEditConsole::ctx_clear, this, &LogsWidget::clearServerLogsView);
     connect(loadEarlierButton,  &QToolButton::clicked, this, &LogsWidget::loadMoreServerPage);
     connect(loadAllButton,      &QToolButton::clicked, this, &LogsWidget::loadAllServerPages);
     connect(stopLoadButton,     &QToolButton::clicked, this, &LogsWidget::stopLoadAllServer);
@@ -56,7 +58,7 @@ LogsWidget::LogsWidget(const AdaptixWidget* w) : DockTab("Logs", w->GetProfile()
         serverPageSize = qBound(10, v, 2000);
     });
     connect(serverLogsTextEdit->verticalScrollBar(), &QScrollBar::valueChanged, this, [this](int value) {
-        if (!autoLoadEarlier || !serverHasMore || serverLoadingPage || serverLoadAllPending)
+        if (!autoLoadEarlier || !serverHasMore || serverLoadingPage || serverLoadAllPending || serverViewCleared)
             return;
         if (value <= 8)
             loadMoreServerPage();
@@ -83,7 +85,7 @@ LogsWidget::LogsWidget(const AdaptixWidget* w) : DockTab("Logs", w->GetProfile()
 
     auto* serverShortcutClear = new QShortcut(QKeySequence("Ctrl+L"), serverLogsTextEdit);
     serverShortcutClear->setContext(Qt::WidgetShortcut);
-    connect(serverShortcutClear, &QShortcut::activated, serverLogsTextEdit, &QPlainTextEdit::clear);
+    connect(serverShortcutClear, &QShortcut::activated, this, &LogsWidget::clearServerLogsView);
 
     auto* serverShortcutSelectAll = new QShortcut(QKeySequence("Ctrl+A"), serverLogsTextEdit);
     serverShortcutSelectAll->setContext(Qt::WidgetShortcut);
@@ -151,20 +153,34 @@ void LogsWidget::createUI()
     historyBar = new QFrame(serverLogsHost);
     historyBar->setObjectName(QStringLiteral("ConsoleHistoryBar"));
 
-    autoLoadSwitch = new oclero::qlementine::Switch(historyBar);
+    historyToggleBtn = new QToolButton(historyBar);
+    historyToggleBtn->setObjectName(QStringLiteral("HistBtnToggle"));
+    historyToggleBtn->setIcon(QIcon(QStringLiteral(":/icons/settings")));
+    historyToggleBtn->setToolTip(tr("History / pagination"));
+    historyToggleBtn->setAutoRaise(true);
+    historyToggleBtn->setCursor(Qt::PointingHandCursor);
+    historyToggleBtn->setFocusPolicy(Qt::NoFocus);
+    connect(historyToggleBtn, &QToolButton::clicked, this, [this]() {
+        setHistoryBarExpanded(!historyExpanded);
+    });
+
+    historyContent = new QWidget(historyBar);
+    historyContent->setObjectName(QStringLiteral("ConsoleHistoryContent"));
+
+    autoLoadSwitch = new oclero::qlementine::Switch(historyContent);
     autoLoadSwitch->setFixedSize(34, 16);
     autoLoadSwitch->setToolTip(tr("Auto-load older logs when scrolling to the top"));
     autoLoadSwitch->setChecked(autoLoadEarlier);
 
-    historyStatusLabel = new QLabel(QStringLiteral("—"), historyBar);
+    historyStatusLabel = new QLabel(QStringLiteral("—"), historyContent);
     historyStatusLabel->setObjectName(QStringLiteral("ConsoleHistoryStatus"));
     historyStatusLabel->setToolTip(tr("Loaded log items / total on server"));
 
-    pageSizeLabel = new QLabel(tr("count"), historyBar);
+    pageSizeLabel = new QLabel(tr("count"), historyContent);
     pageSizeLabel->setObjectName(QStringLiteral("ConsoleHistoryMuted"));
     pageSizeLabel->setToolTip(tr("Log page size"));
 
-    pageSizeSpin = new QSpinBox(historyBar);
+    pageSizeSpin = new QSpinBox(historyContent);
     pageSizeSpin->setRange(10, 2000);
     pageSizeSpin->setSingleStep(10);
     pageSizeSpin->setValue(serverPageSize);
@@ -173,7 +189,7 @@ void LogsWidget::createUI()
     pageSizeSpin->setButtonSymbols(QAbstractSpinBox::UpDownArrows);
 
     auto makeHistBtn = [this](const QString& objectName, const QString& iconPath, const QString& text, const QString& tip) {
-        auto* btn = new QToolButton(historyBar);
+        auto* btn = new QToolButton(historyContent);
         btn->setObjectName(objectName);
         if (!iconPath.isEmpty())
             btn->setIcon(QIcon(iconPath));
@@ -190,7 +206,7 @@ void LogsWidget::createUI()
     };
 
     auto makeSep = [this]() {
-        auto* sep = new QFrame(historyBar);
+        auto* sep = new QFrame(historyContent);
         sep->setObjectName(QStringLiteral("ConsoleHistorySep"));
         sep->setFrameShape(QFrame::VLine);
         sep->setFrameShadow(QFrame::Plain);
@@ -204,22 +220,29 @@ void LogsWidget::createUI()
     jumpLatestButton  = makeHistBtn(QStringLiteral("HistBtnJump"), QStringLiteral(":/icons/double_arrow_down"), QString(), tr("Jump to latest (scroll down)"));
     stopLoadButton->setVisible(false);
 
-    auto* histLayout = new QHBoxLayout(historyBar);
-    histLayout->setContentsMargins(8, 2, 8, 2);
-    histLayout->setSpacing(6);
-    histLayout->addWidget(autoLoadSwitch, 0);
-    histLayout->addWidget(historyStatusLabel, 0);
-    histLayout->addWidget(makeSep(), 0);
-    histLayout->addWidget(loadEarlierButton, 0);
-    histLayout->addWidget(makeSep(), 0);
-    histLayout->addWidget(loadAllButton, 0);
-    histLayout->addWidget(stopLoadButton, 0);
-    histLayout->addWidget(makeSep(), 0);
-    histLayout->addWidget(jumpLatestButton, 0);
-    histLayout->addWidget(makeSep(), 0);
-    histLayout->addWidget(pageSizeLabel, 0);
-    histLayout->addWidget(pageSizeSpin, 0);
+    auto* contentLayout = new QHBoxLayout(historyContent);
+    contentLayout->setContentsMargins(0, 0, 0, 0);
+    contentLayout->setSpacing(6);
+    contentLayout->addWidget(autoLoadSwitch, 0);
+    contentLayout->addWidget(historyStatusLabel, 0);
+    contentLayout->addWidget(makeSep(), 0);
+    contentLayout->addWidget(loadEarlierButton, 0);
+    contentLayout->addWidget(makeSep(), 0);
+    contentLayout->addWidget(loadAllButton, 0);
+    contentLayout->addWidget(stopLoadButton, 0);
+    contentLayout->addWidget(makeSep(), 0);
+    contentLayout->addWidget(jumpLatestButton, 0);
+    contentLayout->addWidget(makeSep(), 0);
+    contentLayout->addWidget(pageSizeLabel, 0);
+    contentLayout->addWidget(pageSizeSpin, 0);
 
+    auto* histLayout = new QHBoxLayout(historyBar);
+    histLayout->setContentsMargins(4, 2, 4, 2);
+    histLayout->setSpacing(6);
+    histLayout->addWidget(historyToggleBtn, 0);
+    histLayout->addWidget(historyContent, 0);
+
+    historyContent->setVisible(false);
     historyBar->setAttribute(Qt::WA_TransparentForMouseEvents, false);
     historyBar->raise();
 
@@ -295,8 +318,13 @@ void LogsWidget::applyHistoryBarMetrics()
     const qreal s    = ty.baseSize / 10.0;
     const int iconSm = qMax(10, qRound(12 * s));
     const int iconMd = qMax(12, qRound(14 * s));
+    const int toggleSz = qMax(24, btnH + 2);
 
     historyBar->setFixedHeight(barH);
+    if (historyToggleBtn) {
+        historyToggleBtn->setFixedSize(toggleSz, toggleSz);
+        historyToggleBtn->setIconSize(QSize(iconMd, iconMd));
+    }
     if (pageSizeSpin)
         pageSizeSpin->setFixedHeight(btnH);
     if (autoLoadSwitch)
@@ -319,6 +347,26 @@ void LogsWidget::applyHistoryBarMetrics()
     const auto seps = historyBar->findChildren<QFrame*>(QStringLiteral("ConsoleHistorySep"));
     for (QFrame* sep : seps)
         sep->setFixedHeight(sepH);
+
+    if (auto* lay = qobject_cast<QHBoxLayout*>(historyBar->layout())) {
+        if (historyExpanded)
+            lay->setContentsMargins(6, 2, 8, 2);
+        else
+            lay->setContentsMargins(3, 2, 3, 2);
+    }
+}
+
+void LogsWidget::setHistoryBarExpanded(bool on)
+{
+    historyExpanded = on;
+    if (historyContent)
+        historyContent->setVisible(on);
+    if (historyToggleBtn) {
+        historyToggleBtn->setToolTip(on ? tr("Collapse history controls") : tr("History / pagination"));
+    }
+    applyHistoryBarMetrics();
+    historyBar->adjustSize();
+    positionServerOverlays();
 }
 
 void LogsWidget::applyHistoryBarStyle()
@@ -367,6 +415,11 @@ void LogsWidget::applyHistoryBarStyle()
         "QToolButton#HistBtnStop { color: #E8A0A0; }"
         "QToolButton#HistBtnEarlier { padding-left: 3px; padding-right: 5px; }"
         "QToolButton#HistBtnJump { padding: 2px 4px; }"
+        "QToolButton#HistBtnToggle {"
+        "  padding: 2px;"
+        "  border-radius: 6px;"
+        "}"
+        "QToolButton#HistBtnToggle:hover { background-color: %7; }"
     ).arg(t.backgroundColorMain3.red())
      .arg(t.backgroundColorMain3.green())
      .arg(t.backgroundColorMain3.blue())
@@ -468,19 +521,25 @@ void LogsWidget::updateHistoryBar()
 {
     const bool busy = serverLoadingPage || serverLoadAllPending;
 
+    QString statusText = QStringLiteral("—");
     if (historyStatusLabel) {
         if (serverLoadAllPending)
-            historyStatusLabel->setText(tr("Loading %1 / %2…").arg(serverLoadedCount).arg(serverTotalKnown > 0 ? serverTotalKnown : serverLoadedCount));
+            statusText = tr("Loading %1 / %2…").arg(serverLoadedCount).arg(serverTotalKnown > 0 ? serverTotalKnown : serverLoadedCount);
         else if (serverTotalKnown > 0)
-            historyStatusLabel->setText(QStringLiteral("%1 / %2").arg(serverLoadedCount).arg(serverTotalKnown));
+            statusText = QStringLiteral("%1 / %2").arg(serverLoadedCount).arg(serverTotalKnown);
         else if (serverLoadedCount > 0)
-            historyStatusLabel->setText(QString::number(serverLoadedCount));
-        else
-            historyStatusLabel->setText(QStringLiteral("—"));
+            statusText = QString::number(serverLoadedCount);
+        historyStatusLabel->setText(statusText);
     }
 
-    if (loadEarlierButton)
-        loadEarlierButton->setEnabled(serverHasMore && !busy && oldestLoadedId > 0);
+    if (historyToggleBtn && !historyExpanded) {
+        historyToggleBtn->setToolTip(tr("History: %1 — click to expand").arg(statusText));
+    }
+
+    if (loadEarlierButton) {
+        const bool canEarlier = serverHasMore && !busy && (oldestLoadedId > 0 || serverViewCleared || !serverLogsReady);
+        loadEarlierButton->setEnabled(canEarlier);
+    }
     if (loadAllButton) {
         loadAllButton->setEnabled(serverHasMore && !busy);
         loadAllButton->setVisible(!serverLoadAllPending);
@@ -584,12 +643,34 @@ void LogsWidget::applyTheme()
     positionServerOverlays();
 }
 
-void LogsWidget::Clear() const
+void LogsWidget::Clear()
 {
-    logsConsoleTextEdit->clear();
+    if (logsConsoleTextEdit)
+        logsConsoleTextEdit->clear();
+    clearServerLogsView();
+}
+
+void LogsWidget::clearServerLogsView()
+{
+    stopLoadAllServer();
+    ++serverLogsEpoch;
+    serverLoadingPage = false;
+
     if (serverLogsTextEdit) {
         serverLogsTextEdit->clear();
+        serverLogsTextEdit->resetHistoryCount();
     }
+    if (serverSearchPanel)
+        serverSearchPanel->clearSelections();
+
+    pendingServerLogs.clear();
+    seenLogIds.clear();
+    oldestLoadedId    = 0;
+    serverLoadedCount = 0;
+    serverHasMore     = true;
+    serverLogsReady   = true;
+    serverViewCleared = true;
+    updateHistoryBar();
 }
 
 QString LogsWidget::displaySource(const QString& source, const QString& category)
@@ -797,11 +878,18 @@ void LogsWidget::appendServerLogEntry(qint64 id, qint64 time, int status, int le
     }
     serverLogsTextEdit->appendFormatted(tag, [&](QTextCharFormat& fmt){ fmt.setForeground(tagColor); fmt.setFontWeight(QFont::Bold); });
 
-    const QString key = displaySource(source, category);
-    if (!key.isEmpty()) {
-        QString src = QString("[%1] ").arg(key);
-        serverLogsTextEdit->appendFormatted(src, [&](QTextCharFormat& fmt){ fmt.setForeground(QColor("#888888")); });
-    }
+    constexpr int kLogSourcePadMin = 24;
+    QString key = displaySource(source, category);
+    if (key.isEmpty())
+        key = QStringLiteral("server");
+    const QString srcTag = QStringLiteral("[%1]").arg(key);
+    QString pad;
+    if (key.size() < kLogSourcePadMin)
+        pad = QString(kLogSourcePadMin - key.size(), QLatin1Char('.'));
+    serverLogsTextEdit->appendFormatted(srcTag, [&](QTextCharFormat& fmt){ fmt.setForeground(QColor("#888888")); });
+    if (!pad.isEmpty())
+        serverLogsTextEdit->appendFormatted(pad, [&](QTextCharFormat& fmt){ fmt.setForeground(QColor("#555555")); });
+    serverLogsTextEdit->appendFormatted(QStringLiteral(" "), [&](QTextCharFormat&){});
 
     QString indent;
     for (int i = 0; i < level; ++i)
@@ -870,6 +958,7 @@ void LogsWidget::ResetServerLogs()
     serverHasMore         = true;
     serverLoadingPage     = false;
     serverLoadAllPending  = false;
+    serverViewCleared     = false;
     finishBulkLoad();
     updateHistoryBar();
     ++serverLogsEpoch;
@@ -893,6 +982,7 @@ void LogsWidget::loadInitialServerPage()
         serverSearchPanel->clearSelections();
 
     serverLogsReady   = false;
+    serverViewCleared = false;
     serverLoadingPage = true;
     serverLoadedCount = 0;
     serverTotalKnown  = 0;
@@ -913,11 +1003,8 @@ void LogsWidget::loadInitialServerPage()
         Q_UNUSED(message);
         if (!self)
             return;
-        if (epoch != self->serverLogsEpoch) {
-            if (self->serverLoadingPage)
-                self->serverLoadingPage = false;
+        if (epoch != self->serverLogsEpoch)
             return;
-        }
         if (!self->serverLogsTextEdit)
             return;
 
@@ -935,6 +1022,7 @@ void LogsWidget::loadInitialServerPage()
 
         if (items.isEmpty()) {
             self->serverLogsReady = true;
+            self->serverViewCleared = false;
             if (!self->pendingServerLogs.isEmpty()) {
                 QJsonArray pending;
                 for (const auto& o : self->pendingServerLogs)
@@ -991,6 +1079,7 @@ void LogsWidget::loadInitialServerPage()
             self->oldestLoadedId = minId;
 
         self->serverLogsReady = true;
+        self->serverViewCleared = false;
         if (!self->pendingServerLogs.isEmpty()) {
             QJsonArray pending;
             for (const auto& o : self->pendingServerLogs)
@@ -1015,18 +1104,24 @@ void LogsWidget::loadInitialServerPage()
 
         self->updateHistoryBar();
 
+        if (self->serverLogsTextEdit && !self->serverLoadAllPending) {
+            auto* sb = self->serverLogsTextEdit->verticalScrollBar();
+            if (sb)
+                sb->setValue(sb->maximum());
+        }
+
         if (self->serverLoadAllPending && self->serverHasMore) {
-            QTimer::singleShot(0, self, [self]() {
-                if (self && self->serverLoadAllPending)
+            QTimer::singleShot(0, self, [self, epoch]() {
+                if (self && self->serverLogsEpoch == epoch && self->serverLoadAllPending)
                     self->loadMoreServerPage();
             });
         } else if (self->serverLoadAllPending) {
             self->serverLoadAllPending = false;
             self->finishBulkLoad();
             self->updateHistoryBar();
-        } else if (self->autoLoadEarlier && self->serverHasMore && self->serverLogsTextEdit) {
-            QTimer::singleShot(50, self, [self]() {
-                if (!self || !self->serverLogsTextEdit || self->serverLoadingPage || !self->serverHasMore)
+        } else if (self->autoLoadEarlier && !self->serverViewCleared && self->serverHasMore && self->serverLogsTextEdit) {
+            QTimer::singleShot(50, self, [self, epoch]() {
+                if (!self || self->serverLogsEpoch != epoch || !self->serverLogsTextEdit || self->serverLoadingPage || !self->serverHasMore || self->serverViewCleared)
                     return;
                 auto* bar = self->serverLogsTextEdit->verticalScrollBar();
                 if (bar && (bar->maximum() <= 0 || bar->value() <= 8))
@@ -1040,7 +1135,19 @@ void LogsWidget::loadMoreServerPage()
 {
     if (!adaptixWidget || !adaptixWidget->GetProfile() || serverLoadingPage)
         return;
-    if (!serverHasMore || oldestLoadedId <= 0) {
+
+    serverViewCleared = false;
+
+    if (oldestLoadedId <= 0) {
+        if (!serverHasMore && !serverLoadAllPending) {
+            updateHistoryBar();
+            return;
+        }
+        loadInitialServerPage();
+        return;
+    }
+
+    if (!serverHasMore) {
         if (serverLoadAllPending) {
             serverLoadAllPending = false;
             finishBulkLoad();
@@ -1166,17 +1273,17 @@ void LogsWidget::loadMoreServerPage()
         self->updateHistoryBar();
 
         if (self->serverLoadAllPending && self->serverHasMore) {
-            QTimer::singleShot(0, self, [self]() {
-                if (self && self->serverLoadAllPending)
+            QTimer::singleShot(0, self, [self, epoch]() {
+                if (self && self->serverLogsEpoch == epoch && self->serverLoadAllPending)
                     self->loadMoreServerPage();
             });
         } else if (self->serverLoadAllPending) {
             self->serverLoadAllPending = false;
             self->finishBulkLoad();
             self->updateHistoryBar();
-        } else if (self->autoLoadEarlier && self->serverHasMore && self->serverLogsTextEdit) {
-            QTimer::singleShot(50, self, [self]() {
-                if (!self || !self->serverLogsTextEdit || self->serverLoadingPage || !self->serverHasMore)
+        } else if (self->autoLoadEarlier && !self->serverViewCleared && self->serverHasMore && self->serverLogsTextEdit) {
+            QTimer::singleShot(50, self, [self, epoch]() {
+                if (!self || self->serverLogsEpoch != epoch || !self->serverLogsTextEdit || self->serverLoadingPage || !self->serverHasMore || self->serverViewCleared)
                     return;
                 auto* bar = self->serverLogsTextEdit->verticalScrollBar();
                 if (bar && (bar->maximum() <= 0 || bar->value() <= 8))
@@ -1193,6 +1300,7 @@ void LogsWidget::loadAllServerPages()
     if (!serverHasMore)
         return;
 
+    serverViewCleared = false;
     serverLoadAllPending = true;
     if (serverLogsTextEdit) {
         serverLogsTextEdit->setUpdatesEnabled(false);
@@ -1213,10 +1321,25 @@ void LogsWidget::stopLoadAllServer()
     updateHistoryBar();
 }
 
+void LogsWidget::reloadLatestServerPage()
+{
+    if (!adaptixWidget || !adaptixWidget->GetProfile())
+        return;
+    stopLoadAllServer();
+    serverViewCleared = false;
+    loadInitialServerPage();
+}
+
 void LogsWidget::jumpToLatestServer()
 {
     if (!serverLogsTextEdit)
         return;
+
+    if (serverViewCleared && seenLogIds.isEmpty()) {
+        reloadLatestServerPage();
+        return;
+    }
+
     auto* sb = serverLogsTextEdit->verticalScrollBar();
     if (sb)
         sb->setValue(sb->maximum());

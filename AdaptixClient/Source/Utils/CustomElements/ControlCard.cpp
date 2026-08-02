@@ -114,23 +114,29 @@ static void styleOutlineButton(QPushButton* btn, const QColor& borderColor, cons
 {
     if (!btn)
         return;
-    btn->setFlat(true);
+    btn->setFlat(false);
     btn->setAutoDefault(false);
     btn->setDefault(false);
+    btn->setAttribute(Qt::WA_StyledBackground, true);
+    btn->setAutoFillBackground(false);
 
     QColor border = borderColor;
     if (!border.isValid())
         border = textColor;
-    if (border.alpha() > 140)
-        border.setAlpha(140);
+    if (border.alpha() < 160)
+        border.setAlpha(160);
+    if (border.alpha() > 220)
+        border.setAlpha(200);
 
     QColor text = textColor;
     if (!text.isValid())
         text = QColor(220, 220, 220);
 
     QColor hi = hoverBorder.isValid() ? hoverBorder : border;
-    if (hi.alpha() > 200)
-        hi.setAlpha(200);
+    if (hi.alpha() < 180)
+        hi.setAlpha(180);
+    if (hi.alpha() > 230)
+        hi.setAlpha(220);
     QColor press = pressBg;
     if (!press.isValid()) {
         press = border;
@@ -142,18 +148,24 @@ static void styleOutlineButton(QPushButton* btn, const QColor& borderColor, cons
     QColor dis = text;
     dis.setAlpha(100);
     QColor disBorder = border;
-    disBorder.setAlpha(55);
+    disBorder.setAlpha(90);
+
+    const QString name = btn->objectName().isEmpty() ? QStringLiteral("ControlCardBtn") : btn->objectName();
+    if (btn->objectName().isEmpty())
+        btn->setObjectName(name);
 
     btn->setStyleSheet(QStringLiteral(
-        "QPushButton {"
+        "QPushButton#%5 {"
         "  background-color: transparent; color: %1;"
-        "  border: 1px solid %2; border-radius: 4px; padding: 2px 10px;"
+        "  border: 1px solid %2; border-radius: 4px;"
+        "  padding: 2px 10px;"
+        "  min-height: 0;"
         "}"
-        "QPushButton:hover { color: %1; border-color: %3; background-color: transparent; }"
-        "QPushButton:pressed { color: %1; border-color: %3; background-color: %4; }"
-        "QPushButton:disabled { color: %5; border-color: %6; }"
+        "QPushButton#%5:hover { color: %1; border-color: %3; background-color: transparent; }"
+        "QPushButton#%5:pressed { color: %1; border-color: %3; background-color: %4; }"
+        "QPushButton#%5:disabled { color: %6; border-color: %7; }"
     ).arg(cssColor(text), cssColor(border), cssColor(hi), cssColor(press),
-          cssColor(dis), cssColor(disBorder)));
+          name, cssColor(dis), cssColor(disBorder)));
 }
 
 ControlFieldTile::ControlFieldTile(QWidget* parent) : QFrame(parent)
@@ -350,6 +362,7 @@ ControlCard::ControlCard(QWidget* parent) : QWidget(parent)
     m_trafficChip->setVisible(false);
 
     m_generateBtn = new QPushButton(QStringLiteral("Agent"), m_bottomZone);
+    m_generateBtn->setObjectName(QStringLiteral("ControlCardBtnAgent"));
     m_generateBtn->setCursor(Qt::PointingHandCursor);
     m_generateBtn->setFocusPolicy(Qt::NoFocus);
     m_generateBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -362,11 +375,11 @@ ControlCard::ControlCard(QWidget* parent) : QWidget(parent)
     m_actionSep = new QFrame(m_bottomZone);
     m_actionSep->setObjectName(QStringLiteral("actionSep"));
     m_actionSep->setFrameShape(QFrame::NoFrame);
-    m_actionSep->setFixedWidth(18);
-    m_actionSep->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
     m_actionSep->setVisible(false);
+    m_actionSep->hide();
 
     m_primaryBtn = new QPushButton(m_bottomZone);
+    m_primaryBtn->setObjectName(QStringLiteral("ControlCardBtnPrimary"));
     m_primaryBtn->setCursor(Qt::PointingHandCursor);
     m_primaryBtn->setFocusPolicy(Qt::NoFocus);
     m_primaryBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -375,6 +388,7 @@ ControlCard::ControlCard(QWidget* parent) : QWidget(parent)
     });
 
     m_deleteBtn = new QPushButton(QStringLiteral("Remove"), m_bottomZone);
+    m_deleteBtn->setObjectName(QStringLiteral("ControlCardBtnRemove"));
     m_deleteBtn->setCursor(Qt::PointingHandCursor);
     m_deleteBtn->setFocusPolicy(Qt::NoFocus);
     m_deleteBtn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
@@ -388,7 +402,6 @@ ControlCard::ControlCard(QWidget* parent) : QWidget(parent)
     m_bottomLayout->addWidget(m_metaValue, 1);
     m_bottomLayout->addWidget(m_trafficChip, 0);
     m_bottomLayout->addWidget(m_generateBtn, 0);
-    m_bottomLayout->addWidget(m_actionSep, 0);
     m_bottomLayout->addWidget(m_primaryBtn, 0);
     m_bottomLayout->addWidget(m_deleteBtn, 0);
 
@@ -595,39 +608,24 @@ void ControlCard::applyButtonStyles()
 
     QColor accent = styleAccent();
     QColor text = m_dimmed ? th.textDead() : th.text();
-    QColor primaryBorder = accent.isValid() ? accent : th.primary();
-    QColor removeBorder = th.border().isValid() ? th.border() : primaryBorder;
+    QColor outline = accent.isValid() ? accent : (th.primary().isValid() ? th.primary() : th.border());
     if (m_dimmed) {
-        primaryBorder.setAlpha(100);
-        removeBorder.setAlpha(85);
+        outline.setAlpha(120);
         text = th.textDead();
     } else {
-        primaryBorder.setAlpha(th.dark ? 150 : 140);
-        removeBorder.setAlpha(th.dark ? 130 : 120);
+        outline.setAlpha(th.dark ? 180 : 160);
     }
 
     QColor hover = th.primary().isValid() ? th.primary() : accent;
     QColor press = th.primary().isValid() ? th.primary() : accent;
     press.setAlpha(th.dark ? 45 : 35);
 
-    styleOutlineButton(m_generateBtn, primaryBorder, text, hover, press);
-    styleOutlineButton(m_primaryBtn, primaryBorder, text, hover, press);
-    styleOutlineButton(m_deleteBtn, removeBorder, text, hover, press);
-    if (m_actionSep) {
-        QColor line = th.border().isValid() ? th.border() : primaryBorder;
-        line.setAlpha(th.dark ? 90 : 80);
-        m_actionSep->setStyleSheet(QStringLiteral(
-            "QFrame#actionSep {"
-            "  background: transparent;"
-            "  border: none;"
-            "  border-left: 1px solid %1;"
-            "  margin: 5px 0 5px 8px;"
-            "  padding: 0;"
-            "  min-width: 9px;"
-            "  max-width: 18px;"
-            "}"
-        ).arg(line.name(QColor::HexArgb)));
-    }
+    styleOutlineButton(m_generateBtn, outline, text, hover, press);
+    styleOutlineButton(m_primaryBtn, outline, text, hover, press);
+    styleOutlineButton(m_deleteBtn, outline, text, hover, press);
+
+    if (m_actionSep)
+        m_actionSep->setVisible(false);
 }
 
 void ControlCard::applyZoneChrome()
@@ -737,18 +735,25 @@ void ControlCard::applyTypography()
     applyContentStyle();
 
     const int btnH = qMax(20, ty.controlInnerH - 1);
-    if (m_generateBtn) {
-        m_generateBtn->setFixedHeight(btnH);
-        m_generateBtn->setMinimumWidth(qMax(52, ty.controlHeight + 12));
+    QFont btnFont = ty.regular;
+    if (btnFont.pointSize() <= 0 && ty.chromeFontPx > 0)
+        btnFont.setPixelSize(ty.chromeFontPx);
+    QFontMetrics fm(btnFont);
+    int btnW = qMax(56, ty.controlHeight + 12);
+    for (QPushButton* b : { m_generateBtn, m_primaryBtn, m_deleteBtn }) {
+        if (!b)
+            continue;
+        const QString label = b->text().isEmpty() ? QStringLiteral("Resume") : b->text();
+        btnW = qMax(btnW, fm.horizontalAdvance(label) + 24);
     }
-    m_primaryBtn->setFixedHeight(btnH);
-    m_deleteBtn->setFixedHeight(btnH);
-    m_primaryBtn->setMinimumWidth(qMax(52, ty.controlHeight + 12));
-    m_deleteBtn->setMinimumWidth(qMax(52, ty.controlHeight + 12));
-    if (m_actionSep) {
-        m_actionSep->setFixedWidth(18);
-        m_actionSep->setFixedHeight(btnH);
+    for (QPushButton* b : { m_generateBtn, m_primaryBtn, m_deleteBtn }) {
+        if (!b)
+            continue;
+        b->setFixedHeight(btnH);
+        b->setFixedWidth(btnW);
     }
+    if (m_actionSep)
+        m_actionSep->setVisible(false);
     applyButtonStyles();
 
     if (m_trafficChip)
@@ -946,7 +951,6 @@ void ControlCard::updateElidedTexts()
         addVis(m_metaCaption);
         addVis(m_trafficChip);
         addVis(m_generateBtn);
-        addVis(m_actionSep);
         addVis(m_primaryBtn);
         addVis(m_deleteBtn);
         int margins = 0;
@@ -998,6 +1002,7 @@ void ControlCard::setPrimaryAction(PrimaryAction action, const QString& label)
 {
     if (action == ActionNone) {
         m_primaryBtn->setVisible(false);
+        applyTypography();
         return;
     }
     m_primaryBtn->setVisible(true);
@@ -1008,12 +1013,13 @@ void ControlCard::setPrimaryAction(PrimaryAction action, const QString& label)
     else
         m_primaryBtn->setText(QStringLiteral("Stop"));
     m_primaryBtn->setToolTip(m_primaryBtn->text());
-    applyButtonStyles();
+    applyTypography();
 }
 
 void ControlCard::setDeleteVisible(bool visible)
 {
     m_deleteBtn->setVisible(visible);
+    applyTypography();
 }
 
 void ControlCard::setDeleteLabel(const QString& label)
@@ -1021,6 +1027,7 @@ void ControlCard::setDeleteLabel(const QString& label)
     if (!label.isEmpty())
         m_deleteBtn->setText(label);
     m_deleteBtn->setToolTip(m_deleteBtn->text());
+    applyTypography();
 }
 
 void ControlCard::setGenerateVisible(bool visible)
@@ -1028,7 +1035,8 @@ void ControlCard::setGenerateVisible(bool visible)
     if (m_generateBtn)
         m_generateBtn->setVisible(visible);
     if (m_actionSep)
-        m_actionSep->setVisible(visible);
+        m_actionSep->setVisible(false);
+    applyTypography();
     applyBodyVisibility();
 }
 

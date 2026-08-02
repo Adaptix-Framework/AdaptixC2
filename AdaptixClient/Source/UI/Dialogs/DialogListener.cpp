@@ -5,6 +5,10 @@
 #include <Client/Storage.h>
 #include <Client/AxScript/AxElementWrappers.h>
 
+#include <QScreen>
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+
 DialogListener::DialogListener(QWidget *parent) : QDialog(parent)
 {
     this->createUI();
@@ -46,39 +50,48 @@ void DialogListener::createUI()
     inputListenerTag->setPlaceholderText("tag…");
 
     configStackWidget = new QStackedWidget(this);
+    configStackWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
 
-    stackGridLayout = new QGridLayout(this);
+    stackGridLayout = new QGridLayout();
     stackGridLayout->setHorizontalSpacing(0);
-    stackGridLayout->setContentsMargins(0, 0, 0, 0);
-    stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1);
+    stackGridLayout->setVerticalSpacing(0);
+    stackGridLayout->setContentsMargins(8, 8, 8, 8);
+    stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1, Qt::AlignTop);
+    stackGridLayout->setRowStretch(0, 0);
+    stackGridLayout->setColumnStretch(0, 1);
 
     listenerConfigGroupbox = new QGroupBox("Listener Configuration", this);
+    listenerConfigGroupbox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     listenerConfigGroupbox->setLayout(stackGridLayout);
 
-    auto leftPanelLayout = new QGridLayout();
-    leftPanelLayout->setVerticalSpacing(8);
-    leftPanelLayout->setHorizontalSpacing(8);
+    for (QLabel* lab : {listenerTypeLabel, listenerNameLabel, listenerLabel, listenerTagLabel})
+        lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+    auto* headerGrid = new QGridLayout();
+    headerGrid->setContentsMargins(0, 0, 0, 0);
+    headerGrid->setHorizontalSpacing(8);
+    headerGrid->setVerticalSpacing(8);
+    headerGrid->addWidget(listenerTypeLabel,    0, 0);
+    headerGrid->addWidget(listenerTypeCombobox, 0, 1);
+    headerGrid->addWidget(listenerLabel,        0, 3);
+    headerGrid->addWidget(listenerCombobox,     0, 4);
+    headerGrid->addWidget(listenerNameLabel,    1, 0);
+    headerGrid->addWidget(inputListenerName,    1, 1);
+    headerGrid->addWidget(listenerTagLabel,     1, 3);
+    headerGrid->addWidget(inputListenerTag,     1, 4);
+    headerGrid->setColumnStretch(0, 0);
+    headerGrid->setColumnStretch(1, 1);
+    headerGrid->setColumnStretch(2, 0);
+    headerGrid->setColumnStretch(3, 0);
+    headerGrid->setColumnStretch(4, 1);
+    headerGrid->setColumnMinimumWidth(2, 8); // gap between left/right halves
+
+    auto leftPanelLayout = new QVBoxLayout();
+    leftPanelLayout->setSpacing(8);
     leftPanelLayout->setContentsMargins(5, 5, 5, 5);
-
-    leftPanelLayout->addWidget(listenerTypeLabel,      0, 0);
-    leftPanelLayout->addWidget(listenerTypeCombobox,   0, 1);
-    leftPanelLayout->addWidget(listenerLabel,          0, 2);
-    leftPanelLayout->addWidget(listenerCombobox,       0, 3);
-
-    leftPanelLayout->addWidget(listenerNameLabel,      1, 0);
-    leftPanelLayout->addWidget(inputListenerName,      1, 1);
-    leftPanelLayout->addWidget(listenerTagLabel,       1, 2);
-    leftPanelLayout->addWidget(inputListenerTag,       1, 3);
-
-    leftPanelLayout->addWidget(listenerConfigGroupbox, 2, 0, 1, 4);
-
-    leftPanelLayout->setRowStretch(0, 0);
-    leftPanelLayout->setRowStretch(1, 0);
-    leftPanelLayout->setRowStretch(2, 1);
-    leftPanelLayout->setColumnStretch(0, 0);
-    leftPanelLayout->setColumnStretch(1, 2);
-    leftPanelLayout->setColumnStretch(2, 0);
-    leftPanelLayout->setColumnStretch(3, 1);
+    leftPanelLayout->addLayout(headerGrid, 0);
+    leftPanelLayout->addWidget(listenerConfigGroupbox, 0);
+    leftPanelLayout->addStretch(1);
 
     auto formLayout = new QVBoxLayout();
     formLayout->setContentsMargins(10, 10, 10, 10);
@@ -96,10 +109,10 @@ void DialogListener::createUI()
     menuContext->addAction(QIcon(":/icons/edit_note"), "Rename", this, &DialogListener::onProfileRename);
     menuContext->addAction(QIcon(":/icons/delete"), "Remove", this, &DialogListener::onProfileRemove);
 
-    label_Profiles = new QLabel("Profiles", this);
+    label_Profiles = new QLabel(QStringLiteral("PROFILES (client)"), this);
     label_Profiles->setObjectName("ProfilesHeader");
     label_Profiles->setStyleSheet(QStringLiteral(
-        "QLabel#ProfilesHeader { color: palette(placeholderText); font-size: %1px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }"
+        "QLabel#ProfilesHeader { color: palette(placeholderText); font-size: %1px; font-weight: 700; letter-spacing: 0.5px; }"
     ).arg(FontManager::instance().typography().captionFontPx));
 
     inputProfileName = new QLineEdit(this);
@@ -116,8 +129,9 @@ void DialogListener::createUI()
     cardWidget = new CardListWidget(this);
     cardWidget->setContextMenuPolicy(Qt::CustomContextMenu);
     cardWidget->addAction(menuContext->menuAction());
-    cardWidget->setSelectionMode(QAbstractItemView::SingleSelection);
-    cardWidget->setFocusPolicy(Qt::NoFocus);
+    cardWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    cardWidget->setFocusPolicy(Qt::ClickFocus);
+    cardWidget->setMinimumHeight(0);
 
     auto profileSeparator = new QFrame(this);
     profileSeparator->setFrameShape(QFrame::HLine);
@@ -158,6 +172,7 @@ void DialogListener::createUI()
 
     cancelButton = new QPushButton("Cancel", this);
     cancelButton->setFixedHeight(30);
+    cancelButton->setFixedWidth(120);
 
     buttonCreate = new QPushButton("Create", this);
     buttonCreate->setDefault(true);
@@ -198,6 +213,8 @@ void DialogListener::Start()
 {
     this->setModal(true);
     this->show();
+    if (listenerCombobox && !listenerCombobox->currentText().isEmpty())
+        changeConfig(listenerCombobox->currentText());
 }
 
 void DialogListener::AddExListeners(const QList<RegListenerConfig> &listeners, const QMap<QString, AxUI> &uis)
@@ -218,6 +235,8 @@ void DialogListener::AddExListeners(const QList<RegListenerConfig> &listeners, c
         ax_ui->container->setParent(nullptr);
         ax_ui->container->setParent(this);
 
+        ax_ui->widget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+        ax_ui->widget->setMinimumSize(0, 0);
         configStackWidget->addWidget(ax_ui->widget);
         listenerCombobox->addItem(listener.name);
         QString type = listener.type + " | " + listener.protocol;
@@ -259,12 +278,65 @@ void DialogListener::SetEditMode(const QString &name, const QString &tags)
 
 void DialogListener::changeConfig(const QString &fn)
 {
-    if (ax_uis.contains(fn)) {
-        auto ax_ui = &ax_uis[fn];
-        if (ax_ui)
-            configStackWidget->setCurrentWidget(ax_ui->widget);
-        this->resize(ax_ui->width, ax_ui->height);
+    if (!ax_uis.contains(fn))
+        return;
+
+    auto* ax_ui = &ax_uis[fn];
+    if (!ax_ui || !ax_ui->widget || !configStackWidget)
+        return;
+
+    for (int i = 0; i < configStackWidget->count(); ++i) {
+        QWidget* page = configStackWidget->widget(i);
+        if (!page)
+            continue;
+        if (page == ax_ui->widget) {
+            page->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+            page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+        } else {
+            page->setMaximumSize(0, 0);
+        }
     }
+
+    configStackWidget->setCurrentWidget(ax_ui->widget);
+    ax_ui->widget->adjustSize();
+    configStackWidget->updateGeometry();
+    if (listenerConfigGroupbox)
+        listenerConfigGroupbox->updateGeometry();
+    this->updateGeometry();
+
+    const int scriptW = ax_ui->width  > 0 ? ax_ui->width  : 650;
+    const int scriptH = ax_ui->height > 0 ? ax_ui->height : 650;
+
+    const int chromeH = 48 + 72 + 52 + 28;
+    const int formH   = qMax(ax_ui->widget->sizeHint().height(), ax_ui->widget->minimumSizeHint().height());
+    const int packedH = formH + chromeH;
+    const int slack   = 40;
+
+    int w = qMax(800, scriptW);
+    int h = scriptH;
+    if (scriptH > packedH + slack)
+        h = packedH + 12;
+    else
+        h = qMax(scriptH, packedH);
+    h = qMax(220, h);
+
+    if (const QScreen* scr = this->screen()) {
+        const QRect avail = scr->availableGeometry();
+        w = qMin(w, int(avail.width()  * 0.92));
+        h = qMin(h, int(avail.height() * 0.90));
+    }
+
+    if (mainGridLayout)
+        mainGridLayout->setSizeConstraint(QLayout::SetNoConstraint);
+
+    this->setMinimumSize(0, 0);
+    this->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+    this->resize(w, h);
+    this->setMinimumWidth(800);
+    this->setMinimumHeight(h);
+    this->setMaximumHeight(h);
+    this->resize(w, h);
+    this->setMaximumHeight(QWIDGETSIZE_MAX);
 }
 
 void DialogListener::changeType(const QString &type)
@@ -526,30 +598,36 @@ void DialogListener::onProfileSelected()
 
 void DialogListener::handleProfileContextMenu(const QPoint &pos)
 {
-    QPoint globalPos = cardWidget->mapToGlobal(pos);
-    menuContext->exec(globalPos);
+    auto* item = cardWidget->itemAt(pos);
+    if (item && !item->isSelected()) {
+        cardWidget->clearSelection();
+        item->setSelected(true);
+        cardWidget->setCurrentItem(item);
+    }
+    menuContext->exec(cardWidget->mapToGlobal(pos));
 }
 
 void DialogListener::onProfileRemove()
 {
-    auto* item = cardWidget->currentItem();
-    if (!item)
+    const QList<QListWidgetItem*> selected = cardWidget->selectedItems();
+    if (selected.isEmpty())
         return;
 
-    QString profileName = item->data(CardListWidget::TitleRole).toString();
-    if (!profileName.isEmpty()) {
-        QString project = authProfile.GetProject();
-        if (!project.isEmpty()) {
+    const QString project = authProfile.GetProject();
+    for (auto* item : selected) {
+        const QString profileName = item->data(CardListWidget::TitleRole).toString();
+        if (!profileName.isEmpty() && !project.isEmpty())
             Storage::RemoveListenerProfile(project, profileName);
-        }
     }
-
-    delete cardWidget->takeItem(cardWidget->row(item));
     loadProfiles();
 }
 
 void DialogListener::onProfileRename()
 {
+    if (cardWidget->selectedItems().size() > 1) {
+        MessageError(QStringLiteral("Select a single profile to rename"));
+        return;
+    }
     auto* item = cardWidget->currentItem();
     if (!item)
         return;
@@ -563,7 +641,7 @@ void DialogListener::onProfileRename()
         return;
 
     bool ok;
-    QString newName = QInputDialog::getText(this, "Rename Profile", "New profile name:", 
+    QString newName = QInputDialog::getText(this, "Rename Profile", "New profile name:",
                                              QLineEdit::Normal, oldName, &ok);
     if (!ok || newName.trimmed().isEmpty() || newName == oldName)
         return;
