@@ -3,6 +3,7 @@
 #include "utils.h"
 #include "Packer.h"
 #include "Crypt.h"
+#include "Commander.h"
 
 void* Agent::operator new(size_t sz) 
 {

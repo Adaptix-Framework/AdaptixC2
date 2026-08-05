@@ -7,7 +7,6 @@
 #include "MemorySaver.h"
 #include "Proxyfire.h"
 #include "Pivotter.h"
-#include "Commander.h"
 #include "Boffer.h"
 
 class Commander;
