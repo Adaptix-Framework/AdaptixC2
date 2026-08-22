@@ -116,7 +116,7 @@ void SearchPanel::applyMetrics()
 
 void SearchPanel::applyChromeStyle()
 {
-    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
     const AppTypography& ty = FontManager::instance().typography();
     const int fontPx = ty.chromeFontPx;

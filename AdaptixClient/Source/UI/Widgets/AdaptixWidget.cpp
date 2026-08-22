@@ -33,6 +33,10 @@
 #include <Client/TunnelEndpoint.h>
 #include <Client/AxScript/AxScriptManager.h>
 #include <Client/AxScript/AxCommandWrappers.h>
+#include <Client/DockLayoutEngine.h>
+#include <Client/Settings.h>
+#include <Client/Storage.h>
+#include <MainAdaptix.h>
 #include <Utils/FontManager.h>
 #include <kddockwidgets/core/DockRegistry.h>
 #include <kddockwidgets/core/DockWidget.h>
@@ -100,10 +104,16 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     else
         TargetsDock = new TargetsFeedWidget(this);
 
-    dockTop->toggleAction()->trigger();
-    this->PlaceDock( dockTop, SessionsTableDock->dock() );
-    dockBottom->toggleAction()->trigger();
-    this->PlaceDock( dockBottom, LogsDock->dock() );
+    {
+        DockLayoutSettings dockSettings = (GlobalClient && GlobalClient->settings) ? GlobalClient->settings->data.DockLayout : DockLayoutEngine::defaultsForLayout(QStringLiteral("main_right"));
+        DockLayoutEngine::ensureValid(dockSettings);
+        if (GlobalClient && GlobalClient->settings)
+            GlobalClient->settings->data.DockLayout = dockSettings;
+
+        layoutEngine.openStartup(this, dockSettings);
+    }
+
+    wireUnreadDocks();
 
     TickThread = new QThread;
     TickWorker = new LastTickWorker( this );
@@ -398,15 +408,13 @@ void AdaptixWidget::createUI()
 
     buildToolbarLayout(pos);
 
-    dockTop = new KDDockWidgets::QtWidgets::DockWidget(this->profile->GetProject()+"-Dock-Top", KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
-    dockTop->setWidget(new QWidget());
-
-    dockBottom = new KDDockWidgets::QtWidgets::DockWidget(this->profile->GetProject()+"-Dock-Bottom", KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
-    dockBottom->setWidget(new QWidget());
-
     mainDockWidget = new KDDockWidgets::QtWidgets::MainWindow(this->profile->GetProject()+"-MainDock", KDDockWidgets::MainWindowOption_None);
-    mainDockWidget->addDockWidget(dockTop, KDDockWidgets::Location_OnTop);
-    mainDockWidget->addDockWidget(dockBottom, KDDockWidgets::Location_OnBottom);
+    layoutEngine.attach(mainDockWidget, this->profile->GetProject());
+    {
+        DockLayoutSettings dockSettings = (GlobalClient && GlobalClient->settings) ? GlobalClient->settings->data.DockLayout : DockLayoutEngine::defaultsForLayout(QStringLiteral("split_v2"));
+        DockLayoutEngine::ensureValid(dockSettings);
+        layoutEngine.build(dockSettings);
+    }
 
     mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins(0, 0, 0, 0);
@@ -423,6 +431,7 @@ void AdaptixWidget::createUI()
     if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr)) {
         connect(qs, &oclero::qlementine::QlementineStyle::themeChanged, this, &AdaptixWidget::applyThemeColorsToToolbar, Qt::UniqueConnection);
     }
+    QTimer::singleShot(0, this, [this]() { applyThemeColorsToToolbar(); });
 
     connect(&FontManager::instance(), &FontManager::typographyChanged, this, [this]() {
         if (!mainGridLayout || !toolbarWidget)
@@ -746,42 +755,57 @@ AuthProfile* AdaptixWidget::GetProfile() const { return this->profile; }
 
 void AdaptixWidget::PlaceDock(KDDockWidgets::QtWidgets::DockWidget* parentDock, KDDockWidgets::QtWidgets::DockWidget* dock) const
 {
+    if (!parentDock || !dock)
+        return;
+
     if (dock->isOpen()) {
         dock->setAsCurrentTab();
         return;
     }
 
     QString previousFocusedName;
-    QString dockBeingAddedName = dock->uniqueName();
-    KDDockWidgets::Core::Group* parentDockGroup = parentDock->group();
+    const QString dockBeingAddedName = dock->uniqueName();
 
-    if (KDDockWidgets::DockRegistry::self() && parentDockGroup) {
-        auto* previousFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget();
-        if (previousFocused)
+    if (KDDockWidgets::DockRegistry::self()) {
+        if (auto* previousFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget())
             previousFocusedName = previousFocused->uniqueName();
     }
 
-    parentDock->toggleAction()->trigger();
-    parentDock->addDockWidgetAsTab(dock);
-    parentDock->toggleAction()->trigger();
+    if (!parentDock->isOpen())
+        parentDock->open();
 
-    if (!previousFocusedName.isEmpty() && previousFocusedName != dockBeingAddedName && parentDockGroup) {
+    if (!parentDock->group())
+        parentDock->open();
+
+    if (parentDock->group()) {
+        parentDock->addDockWidgetAsTab(dock);
+        const bool parentIsZoneHost = parentDock->uniqueName().contains(QLatin1String("-Zone-"));
+        if (parentIsZoneHost && parentDock->group() && parentDock->group()->dockWidgets().size() > 1)
+            parentDock->close();
+    } else {
+        dock->open();
+    }
+
+    if (!previousFocusedName.isEmpty() && previousFocusedName != dockBeingAddedName) {
         QTimer::singleShot(100, [previousFocusedName, dockBeingAddedName]() {
-            if (KDDockWidgets::DockRegistry::self()) {
-                auto* currentFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget();
-
-                if (currentFocused && currentFocused->uniqueName() == dockBeingAddedName)
-                    return;
-
-                if (currentFocused && currentFocused->uniqueName() != previousFocusedName && currentFocused->uniqueName() != dockBeingAddedName)
-                    return;
-
-                auto* coreDw = KDDockWidgets::DockRegistry::self()->dockByName(previousFocusedName);
-                if (coreDw && !coreDw->isCurrentTab())
-                    coreDw->setAsCurrentTab();
-            }
+            if (!KDDockWidgets::DockRegistry::self())
+                return;
+            auto* currentFocused = KDDockWidgets::DockRegistry::self()->focusedDockWidget();
+            if (currentFocused && currentFocused->uniqueName() == dockBeingAddedName)
+                return;
+            if (currentFocused && currentFocused->uniqueName() != previousFocusedName
+                && currentFocused->uniqueName() != dockBeingAddedName)
+                return;
+            auto* coreDw = KDDockWidgets::DockRegistry::self()->dockByName(previousFocusedName);
+            if (coreDw && !coreDw->isCurrentTab())
+                coreDw->setAsCurrentTab();
         });
     }
+}
+
+void AdaptixWidget::PlaceWidget(const QString& widgetId, KDDockWidgets::QtWidgets::DockWidget* dock, const QString& zoneOverride) const
+{
+    layoutEngine.placeWidget(widgetId, dock, const_cast<AdaptixWidget*>(this), zoneOverride);
 }
 
 bool AdaptixWidget::AddExtension(ExtensionFile* ext)
@@ -809,7 +833,7 @@ void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
     return ScriptManager->ScriptRemove(ext);
 }
 
-bool AdaptixWidget::IsSynchronized() { return this->synchronized; }
+bool AdaptixWidget::IsSynchronized() const { return this->synchronized; }
 
 void AdaptixWidget::Close()
 {
@@ -869,9 +893,13 @@ void AdaptixWidget::Close()
         SessionsTableDock = nullptr;
     }
 
-    dockTop->deleteLater();
-    dockBottom->deleteLater();
-    mainDockWidget->deleteLater();
+    for (auto* host : layoutEngine.allHosts()) {
+        if (host)
+            host->deleteLater();
+    }
+    layoutEngine.clear();
+    if (mainDockWidget)
+        mainDockWidget->deleteLater();
 
     delete dialogSyncPacket;
     dialogSyncPacket = nullptr;
@@ -883,6 +911,7 @@ void AdaptixWidget::Close()
 void AdaptixWidget::ClearAdaptix()
 {
     synchronized = false;
+    clearAllDockUnread();
 
     LogsDock->Clear();
     ChatDock->Clear();
@@ -976,53 +1005,151 @@ static void setToolbarBadgeCount(oclero::qlementine::NotificationBadge* badge, i
     });
 }
 
+static bool dockIsViewed(KDDockWidgets::QtWidgets::DockWidget* dock)
+{
+    if (!dock)
+        return false;
+    auto* core = dock->dockWidget();
+    return core && core->isOpen() && core->isCurrentTab();
+}
+
+void AdaptixWidget::setUnreadCount(UnreadKind kind, int count)
+{
+    const int idx = static_cast<int>(kind);
+    if (idx < 0 || idx >= static_cast<int>(UnreadKind::Count))
+        return;
+    if (count < 0)
+        count = 0;
+    m_unreadCounts[idx] = count;
+
+    oclero::qlementine::NotificationBadge** slot = nullptr;
+    QPushButton* button = nullptr;
+    switch (kind) {
+        case UnreadKind::Sessions:  slot = &sessionsBadge;  button = sessionsButton;  break;
+        case UnreadKind::Listeners: slot = &listenersBadge; button = listenersButton; break;
+        case UnreadKind::Logs:      slot = &logsBadge;      button = logsButton;      break;
+        case UnreadKind::Chat:      slot = &chatBadge;      button = chatButton;      break;
+        case UnreadKind::Downloads: slot = &downloadsBadge; button = downloadsButton; break;
+        case UnreadKind::Creds:     slot = &credsBadge;     button = credsButton;     break;
+        case UnreadKind::Targets:   slot = &targetsBadge;   button = targetsButton;   break;
+        case UnreadKind::Screens:   slot = &screensBadge;   button = screensButton;   break;
+        case UnreadKind::Count:     break;
+    }
+    if (!slot)
+        return;
+    if (count > 0)
+        ensureToolbarBadge(*slot, button);
+    setToolbarBadgeCount(*slot, count);
+}
+
+bool AdaptixWidget::isUnreadDockViewed(UnreadKind kind) const
+{
+    switch (kind) {
+        case UnreadKind::Sessions:
+            return SessionsTableDock && dockIsViewed(SessionsTableDock->dock());
+        case UnreadKind::Listeners:
+            return ListenersDock && dockIsViewed(ListenersDock->dock());
+        case UnreadKind::Logs:
+            return LogsDock && dockIsViewed(LogsDock->dock());
+        case UnreadKind::Chat:
+            return ChatDock && dockIsViewed(ChatDock->dock());
+        case UnreadKind::Downloads:
+            return DownloadsDock && dockIsViewed(DownloadsDock->dock()) && DownloadsDock->currentSegment() == 0;
+        case UnreadKind::Creds:
+            return CredentialsDock && dockIsViewed(CredentialsDock->dock());
+        case UnreadKind::Targets:
+            return TargetsDock && dockIsViewed(TargetsDock->dock());
+        case UnreadKind::Screens:
+            return ScreenshotsDock && dockIsViewed(ScreenshotsDock->dock());
+        case UnreadKind::Count:
+            break;
+    }
+    return false;
+}
+
+void AdaptixWidget::notifyDockUnread(UnreadKind kind, int count)
+{
+    if (!synchronized || count <= 0)
+        return;
+    if (isUnreadDockViewed(kind))
+        return;
+    const int idx = static_cast<int>(kind);
+    if (idx < 0 || idx >= static_cast<int>(UnreadKind::Count))
+        return;
+    setUnreadCount(kind, m_unreadCounts[idx] + count);
+}
+
+void AdaptixWidget::clearDockUnread(UnreadKind kind)
+{
+    setUnreadCount(kind, 0);
+}
+
+void AdaptixWidget::clearAllDockUnread()
+{
+    for (int i = 0; i < static_cast<int>(UnreadKind::Count); ++i)
+        setUnreadCount(static_cast<UnreadKind>(i), 0);
+}
+
+void AdaptixWidget::wireUnreadDocks()
+{
+    auto wire = [this](KDDockWidgets::QtWidgets::DockWidget* dock, UnreadKind kind) {
+        if (!dock)
+            return;
+        connect(dock, &KDDockWidgets::QtWidgets::DockWidget::isCurrentTabChanged, this, [this, kind](bool current) {
+            if (!current)
+                return;
+            if (kind == UnreadKind::Downloads && DownloadsDock && DownloadsDock->currentSegment() != 0)
+                return;
+            clearDockUnread(kind);
+        });
+        connect(dock, &KDDockWidgets::QtWidgets::DockWidget::isOpenChanged, this, [this, dock, kind](bool open) {
+            if (!open)
+                return;
+            auto* core = dock->dockWidget();
+            if (!core || !core->isCurrentTab())
+                return;
+            if (kind == UnreadKind::Downloads && DownloadsDock && DownloadsDock->currentSegment() != 0)
+                return;
+            clearDockUnread(kind);
+        });
+    };
+
+    if (SessionsTableDock)
+        wire(SessionsTableDock->dock(), UnreadKind::Sessions);
+    if (ListenersDock)
+        wire(ListenersDock->dock(), UnreadKind::Listeners);
+    if (LogsDock)
+        wire(LogsDock->dock(), UnreadKind::Logs);
+    if (ChatDock)
+        wire(ChatDock->dock(), UnreadKind::Chat);
+    if (DownloadsDock)
+        wire(DownloadsDock->dock(), UnreadKind::Downloads);
+    if (CredentialsDock)
+        wire(CredentialsDock->dock(), UnreadKind::Creds);
+    if (TargetsDock)
+        wire(TargetsDock->dock(), UnreadKind::Targets);
+    if (ScreenshotsDock)
+        wire(ScreenshotsDock->dock(), UnreadKind::Screens);
+}
+
 void AdaptixWidget::ChatUnreadIncrement()
 {
-    ensureToolbarBadge(chatBadge, chatButton);
-    ++m_chatUnreadCount;
-    setToolbarBadgeCount(chatBadge, m_chatUnreadCount);
+    notifyDockUnread(UnreadKind::Chat);
 }
 
 void AdaptixWidget::ChatUnreadClear()
 {
-    m_chatUnreadCount = 0;
-    setToolbarBadgeCount(chatBadge, 0);
+    clearDockUnread(UnreadKind::Chat);
 }
 
 void AdaptixWidget::LogsUnreadIncrement()
 {
-    ensureToolbarBadge(logsBadge, logsButton);
-    ++m_logsUnreadCount;
-    setToolbarBadgeCount(logsBadge, m_logsUnreadCount);
+    notifyDockUnread(UnreadKind::Logs);
 }
 
 void AdaptixWidget::LogsUnreadClear()
 {
-    m_logsUnreadCount = 0;
-    setToolbarBadgeCount(logsBadge, 0);
-}
-
-void AdaptixWidget::UpdateDownloadsBadge()
-{
-    int running = 0;
-    {
-        QReadLocker locker(&DownloadsLock);
-        for (auto it = Downloads.constBegin(); it != Downloads.constEnd(); ++it) {
-            if (it.value().State == TRANSFER_STATE_RUNNING)
-                ++running;
-        }
-    }
-    if (running > 0)
-        ensureToolbarBadge(downloadsBadge, downloadsButton);
-    setToolbarBadgeCount(downloadsBadge, running);
-}
-
-void AdaptixWidget::UpdateExtDocksBadge()
-{
-    const int n = extDocksMap.size();
-    if (n > 0)
-        ensureToolbarBadge(extDocksBadge, extDocksButton);
-    setToolbarBadgeCount(extDocksBadge, n);
+    clearDockUnread(UnreadKind::Logs);
 }
 
 void AdaptixWidget::ClearConsoleStreams()
@@ -1147,8 +1274,17 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
 
             QJsonObject cgObj = cgVal.toObject();
             QString groupName = cgObj["groupName"].toString();
+            if (groupName.isEmpty())
+                groupName = cgObj["group_name"].toString();
             QString groupDesc = cgObj["groupDescription"].toString();
+            if (groupDesc.isEmpty())
+                groupDesc = cgObj["group_description"].toString();
             QJsonArray cmdsArray = cgObj["commands"].toArray();
+            bool defaultEnabled = true;
+            if (cgObj.contains(QStringLiteral("default_enabled")))
+                defaultEnabled = cgObj["default_enabled"].toBool(true);
+            else if (cgObj.contains(QStringLiteral("defaultEnabled")))
+                defaultEnabled = cgObj["defaultEnabled"].toBool(true);
 
             if (groupName.isEmpty())
                 groupName = agentName;
@@ -1164,7 +1300,20 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
                     continue;
                 bool listenerMatch = gListener.isEmpty() || regAgent.listenerType.isEmpty() || regAgent.listenerType == gListener;
                 if (listenerMatch) {
-                    regAgent.commander->SetMainCommands(cg);
+                    regAgent.commander->AddMainGroup(cg, groupDesc, defaultEnabled);
+                }
+            }
+
+            {
+                QReadLocker locker(&AgentsMapLock);
+                for (auto* agent : AgentsMap) {
+                    if (!agent || !agent->commander)
+                        continue;
+                    if (agent->data.Name != gAgent || agent->data.Os != gOs)
+                        continue;
+                    bool lMatch = gListener.isEmpty() || agent->listenerType.isEmpty() || agent->listenerType == gListener;
+                    if (lMatch)
+                        agent->commander->AddMainGroup(cg, groupDesc, defaultEnabled);
                 }
             }
         }
@@ -1185,7 +1334,16 @@ void AdaptixWidget::registerServerCommandGroups(const QString &scriptName, const
 
             QJsonObject groupObj = groupVal.toObject();
             QString groupName = groupObj["groupName"].toString();
+            if (groupName.isEmpty())
+                groupName = groupObj["group_name"].toString();
             QString groupDesc = groupObj["groupDescription"].toString();
+            if (groupDesc.isEmpty())
+                groupDesc = groupObj["group_description"].toString();
+            bool defaultEnabled = true;
+            if (groupObj.contains(QStringLiteral("default_enabled")))
+                defaultEnabled = groupObj["default_enabled"].toBool(true);
+            else if (groupObj.contains(QStringLiteral("defaultEnabled")))
+                defaultEnabled = groupObj["defaultEnabled"].toBool(true);
 
             if (groupName.isEmpty())
                 groupName = scriptName;
@@ -1201,7 +1359,7 @@ void AdaptixWidget::registerServerCommandGroups(const QString &scriptName, const
                     continue;
                 bool listenerMatch = group.listenerType.isEmpty() || regAgent.listenerType.isEmpty() || regAgent.listenerType == group.listenerType;
                 if (listenerMatch)
-                    regAgent.commander->AddServerGroup(groupName, groupDesc, cg);
+                    regAgent.commander->AddServerGroup(groupName, groupDesc, cg, defaultEnabled);
             }
 
             QReadLocker locker(&AgentsMapLock);
@@ -1209,8 +1367,8 @@ void AdaptixWidget::registerServerCommandGroups(const QString &scriptName, const
                 if (agent->data.Name != group.agentName || agent->data.Os != group.os)
                     continue;
                 bool lMatch = group.listenerType.isEmpty() || agent->listenerType.isEmpty() || agent->listenerType == group.listenerType;
-                if (lMatch)
-                    agent->commander->AddServerGroup(groupName, groupDesc, cg);
+                if (lMatch && agent->commander)
+                    agent->commander->AddServerGroup(groupName, groupDesc, cg, defaultEnabled);
             }
         }
     }
@@ -1554,7 +1712,7 @@ void AdaptixWidget::LoadConsoleUI(qint64 AgentId)
     auto agent = AgentsMap[AgentId];
     if (agent && agent->Console) {
         locker.unlock();
-        this->PlaceDock(dockBottom, agent->Console->dock() );
+        this->PlaceWidget(QStringLiteral("console"), agent->Console->dock());
         agent->Console->LoadInitialPage();
         agent->Console->InputFocus();
     }
@@ -1577,16 +1735,16 @@ void AdaptixWidget::LoadTasksOutput() const
         return;
     }
 
-    if (tasksDock->isOpen()) {
+    if (tasksDock->isOpen() && mainDockWidget) {
         mainDockWidget->addDockWidget(outputDock, KDDockWidgets::Location_OnBottom, tasksDock);
         TasksOutputDockPlaced = true;
     } else {
-        mainDockWidget->addDockWidget(outputDock, KDDockWidgets::Location_OnRight);
+        this->PlaceWidget(QStringLiteral("tasks_output"), outputDock);
         TasksOutputDockPlaced = true;
     }
 }
 
-void AdaptixWidget::LoadFileBrowserUI(qint64 AgentId)
+void AdaptixWidget::LoadFileBrowserUI(qint64 AgentId, const QString& zoneOverride)
 {
     QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
@@ -1595,10 +1753,10 @@ void AdaptixWidget::LoadFileBrowserUI(qint64 AgentId)
     auto agent = AgentsMap[AgentId];
     locker.unlock();
     if (agent)
-        this->PlaceDock(dockBottom, agent->GetFileBrowser()->dock() );
+        this->PlaceWidget(QStringLiteral("files"), agent->GetFileBrowser()->dock(), zoneOverride);
 }
 
-void AdaptixWidget::LoadProcessBrowserUI(qint64 AgentId)
+void AdaptixWidget::LoadProcessBrowserUI(qint64 AgentId, const QString& zoneOverride)
 {
     QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
@@ -1607,10 +1765,10 @@ void AdaptixWidget::LoadProcessBrowserUI(qint64 AgentId)
     auto agent = AgentsMap[AgentId];
     locker.unlock();
     if (agent)
-        this->PlaceDock(dockBottom, agent->GetProcessBrowser()->dock() );
+        this->PlaceWidget(QStringLiteral("processes"), agent->GetProcessBrowser()->dock(), zoneOverride);
 }
 
-void AdaptixWidget::LoadTerminalUI(qint64 AgentId)
+void AdaptixWidget::LoadTerminalUI(qint64 AgentId, const QString& zoneOverride)
 {
     QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
@@ -1619,7 +1777,7 @@ void AdaptixWidget::LoadTerminalUI(qint64 AgentId)
     auto agent = AgentsMap[AgentId];
     locker.unlock();
     if (agent)
-        this->PlaceDock(dockBottom, agent->GetTerminal()->dock() );
+        this->PlaceWidget(QStringLiteral("terminal"), agent->GetTerminal()->dock(), zoneOverride);
 }
 
 static void applyCodeEditorOpenPayload(CodeEditorWidget* editor, const CodeEditorOpenOptions& opts)
@@ -1672,10 +1830,10 @@ void AdaptixWidget::LoadAgentCodeEditorUI(qint64 AgentId, const CodeEditorOpenOp
         return;
 
     applyCodeEditorOpenPayload(editor, opts);
-    this->PlaceDock(dockBottom, editor->dock());
+    this->PlaceWidget(QStringLiteral("code_editor"), editor->dock(), opts.zone);
 }
 
-void AdaptixWidget::LoadShellUI(qint64 AgentId)
+void AdaptixWidget::LoadShellUI(qint64 AgentId, const QString& zoneOverride)
 {
     QReadLocker locker(&AgentsMapLock);
     if( !AgentsMap.contains(AgentId) )
@@ -1684,7 +1842,7 @@ void AdaptixWidget::LoadShellUI(qint64 AgentId)
     auto agent = AgentsMap[AgentId];
     locker.unlock();
     if (agent)
-        this->PlaceDock(dockBottom, agent->GetShell()->dock() );
+        this->PlaceWidget(QStringLiteral("shell"), agent->GetShell()->dock(), zoneOverride);
 }
 
 void AdaptixWidget::ShowTunnelCreator(qint64 AgentId, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd)
@@ -1802,13 +1960,22 @@ void AdaptixWidget::OnSynced()
     });
 }
 
-void AdaptixWidget::SetSessionsTableUI() const { this->PlaceDock(dockTop, SessionsTableDock->dock() ); }
+void AdaptixWidget::SetSessionsTableUI() const
+{
+    if (SessionsTableDock)
+        this->PlaceWidget(QStringLiteral("sessions"), SessionsTableDock->dock());
+    const_cast<AdaptixWidget*>(this)->clearDockUnread(UnreadKind::Sessions);
+}
 
-void AdaptixWidget::SetGraphUI() const { this->PlaceDock(dockTop, SessionsGraphDock->dock() ); }
+void AdaptixWidget::SetGraphUI() const
+{
+    if (SessionsGraphDock)
+        this->PlaceWidget(QStringLiteral("graph"), SessionsGraphDock->dock());
+}
 
 void AdaptixWidget::SetTasksUI() const
 {
-    if (!mainDockWidget || !TasksDock)
+    if (!TasksDock)
         return;
 
     auto* tasksDock = TasksDock->dockTasks();
@@ -1824,13 +1991,12 @@ void AdaptixWidget::SetTasksUI() const
     if (codeDock && codeDock->isOpen()) {
         codeDock->addDockWidgetAsTab(tasksDock);
         TasksDockPlaced = true;
-    } else if (!TasksDockPlaced) {
-        mainDockWidget->addDockWidget(tasksDock, KDDockWidgets::Location_OnRight);
-        TasksDockPlaced = true;
-    } else {
-        tasksDock->open();
+        tasksDock->setAsCurrentTab();
+        return;
     }
 
+    this->PlaceWidget(QStringLiteral("tasks"), tasksDock);
+    TasksDockPlaced = true;
     tasksDock->setAsCurrentTab();
 }
 
@@ -1839,7 +2005,7 @@ void AdaptixWidget::LoadScriptsUI(int segment, const QString& originFilter) cons
     if (ScriptsDock)
         ScriptsDock->setSegment(segment, originFilter, /*applyOriginFilter=*/true);
     if (ScriptsDock)
-        this->PlaceDock(dockBottom, ScriptsDock->dock());
+        this->PlaceWidget(QStringLiteral("scripts"), ScriptsDock->dock());
 }
 
 void AdaptixWidget::LoadCodeEditorUI(const CodeEditorOpenOptions& opts) const
@@ -1853,11 +2019,15 @@ void AdaptixWidget::LoadCodeEditorUI(const CodeEditorOpenOptions& opts) const
 
     if (!CodeEditorDockPlaced) {
         CodeEditorDockPlaced = true;
-        auto* tasksDock = (TasksDock && TasksDockPlaced) ? TasksDock->dockTasks() : nullptr;
-        if (tasksDock && tasksDock->isOpen())
-            tasksDock->addDockWidgetAsTab(dock);
-        else
-            mainDockWidget->addDockWidget(dock, KDDockWidgets::Location_OnRight);
+        if (opts.zone.isEmpty()) {
+            auto* tasksDock = (TasksDock && TasksDockPlaced) ? TasksDock->dockTasks() : nullptr;
+            if (tasksDock && tasksDock->isOpen()) {
+                tasksDock->addDockWidgetAsTab(dock);
+                dock->setAsCurrentTab();
+                return;
+            }
+        }
+        this->PlaceWidget(QStringLiteral("code_editor"), dock, opts.zone);
         dock->setAsCurrentTab();
         return;
     }
@@ -1869,24 +2039,35 @@ void AdaptixWidget::LoadCodeEditorUI(const CodeEditorOpenOptions& opts) const
 
 void AdaptixWidget::LoadLogsUI() const
 {
-    this->PlaceDock(dockBottom, LogsDock->dock());
+    if (LogsDock)
+        this->PlaceWidget(QStringLiteral("logs"), LogsDock->dock());
     const_cast<AdaptixWidget*>(this)->LogsUnreadClear();
 }
 
 void AdaptixWidget::LoadChatUI() const {
-    this->PlaceDock(dockBottom, ChatDock->dock());
+    if (ChatDock)
+        this->PlaceWidget(QStringLiteral("chat"), ChatDock->dock());
     const_cast<AdaptixWidget*>(this)->ChatUnreadClear();
 }
 
-void AdaptixWidget::LoadListenersUI() const { this->PlaceDock(dockBottom, ListenersDock->dock() ); }
+void AdaptixWidget::LoadListenersUI() const
+{
+    if (ListenersDock)
+        this->PlaceWidget(QStringLiteral("listeners"), ListenersDock->dock());
+    const_cast<AdaptixWidget*>(this)->clearDockUnread(UnreadKind::Listeners);
+}
 
 void AdaptixWidget::LoadPayloadsUI() const
 {
     if (PayloadsDock)
-        this->PlaceDock(dockBottom, PayloadsDock->dock());
+        this->PlaceWidget(QStringLiteral("payloads"), PayloadsDock->dock());
 }
 
-void AdaptixWidget::LoadTunnelsUI() const { this->PlaceDock(dockBottom, TunnelsDock->dock() ); }
+void AdaptixWidget::LoadTunnelsUI() const
+{
+    if (TunnelsDock)
+        this->PlaceWidget(QStringLiteral("tunnels"), TunnelsDock->dock());
+}
 
 void AdaptixWidget::LoadDownloadsUI() const { LoadFilesUI(0); }
 
@@ -1894,7 +2075,10 @@ void AdaptixWidget::LoadFilesUI(int segment) const
 {
     if (DownloadsDock)
         DownloadsDock->setSegment(segment);
-    this->PlaceDock(dockBottom, DownloadsDock->dock());
+    if (DownloadsDock)
+        this->PlaceWidget(QStringLiteral("downloads"), DownloadsDock->dock());
+    if (segment == 0)
+        const_cast<AdaptixWidget*>(this)->clearDockUnread(UnreadKind::Downloads);
 }
 
 void AdaptixWidget::onListenersButtonContextMenu(const QPoint& pos)
@@ -1967,11 +2151,26 @@ void AdaptixWidget::onScriptsButtonContextMenu(const QPoint& pos)
         menu.exec(scriptManagerButton->mapToGlobal(pos));
 }
 
-void AdaptixWidget::LoadScreenshotsUI() const { this->PlaceDock(dockBottom, ScreenshotsDock->dock() ); }
+void AdaptixWidget::LoadScreenshotsUI() const
+{
+    if (ScreenshotsDock)
+        this->PlaceWidget(QStringLiteral("screenshots"), ScreenshotsDock->dock());
+    const_cast<AdaptixWidget*>(this)->clearDockUnread(UnreadKind::Screens);
+}
 
-void AdaptixWidget::LoadCredentialsUI() const { this->PlaceDock(dockBottom, CredentialsDock->dock() ); }
+void AdaptixWidget::LoadCredentialsUI() const
+{
+    if (CredentialsDock)
+        this->PlaceWidget(QStringLiteral("credentials"), CredentialsDock->dock());
+    const_cast<AdaptixWidget*>(this)->clearDockUnread(UnreadKind::Creds);
+}
 
-void AdaptixWidget::LoadTargetsUI() const { this->PlaceDock(dockBottom, TargetsDock->dock() ); }
+void AdaptixWidget::LoadTargetsUI() const
+{
+    if (TargetsDock)
+        this->PlaceWidget(QStringLiteral("targets"), TargetsDock->dock());
+    const_cast<AdaptixWidget*>(this)->clearDockUnread(UnreadKind::Targets);
+}
 
 void AdaptixWidget::OnReconnect()
 {
@@ -2080,7 +2279,17 @@ void AdaptixWidget::AddExtDock(const QString &id, const QString &title, const st
 
     extDocksListWidget->setVisible(true);
     extDocksEmptyLabel->setVisible(false);
-    UpdateExtDocksBadge();
+}
+
+void AdaptixWidget::SetExtDockIcon(const QString &id, const QIcon &icon)
+{
+    for (int i = 0; i < extDocksListWidget->count(); ++i) {
+        auto* item = extDocksListWidget->item(i);
+        if (item && item->data(Qt::UserRole).toString() == id) {
+            item->setIcon(icon);
+            break;
+        }
+    }
 }
 
 void AdaptixWidget::RemoveExtDock(const QString &id)
@@ -2101,7 +2310,6 @@ void AdaptixWidget::RemoveExtDock(const QString &id)
     bool empty = extDocksListWidget->count() == 0;
     extDocksListWidget->setVisible(!empty);
     extDocksEmptyLabel->setVisible(empty);
-    UpdateExtDocksBadge();
 }
 
 void AdaptixWidget::ShowExtDocksPopup()

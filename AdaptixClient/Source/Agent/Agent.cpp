@@ -66,9 +66,17 @@ Agent::Agent(QJsonObject jsonObjAgentData, AdaptixWidget* w)
     auto regAgent = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
 
     if (regAgent.commander)
-        this->commander = regAgent.commander;
+        this->commander = regAgent.commander->Clone();
     else
         this->commander = new Commander();
+
+    if (jsonObjAgentData.contains(QStringLiteral("a_cmd_groups")) && jsonObjAgentData[QStringLiteral("a_cmd_groups")].isObject()) {
+        QMap<QString, bool> overrides;
+        const QJsonObject g = jsonObjAgentData[QStringLiteral("a_cmd_groups")].toObject();
+        for (auto it = g.begin(); it != g.end(); ++it)
+            overrides[it.key()] = it.value().toBool();
+        this->commander->ApplyGroupEnabledMap(overrides);
+    }
 
     this->Console        = new ConsoleWidget(adaptixWidget, this, this->commander);
     this->Console->SetUpdatesEnabled(adaptixWidget->IsSynchronized());
@@ -102,6 +110,8 @@ Agent::~Agent()
     delete terminal;
     delete shell;
     delete codeEditor;
+    delete commander;
+    commander = nullptr;
 }
 
 void Agent::Update(const QJsonObject &jsonObjAgentData)
@@ -134,6 +144,15 @@ void Agent::Update(const QJsonObject &jsonObjAgentData)
     val = jsonObjAgentData.value("a_tags");
     if (val.isString())
         this->data.Tags = val.toString();
+
+    val = jsonObjAgentData.value("a_cmd_groups");
+    if (val.isObject() && commander) {
+        QMap<QString, bool> overrides;
+        const QJsonObject g = val.toObject();
+        for (auto it = g.begin(); it != g.end(); ++it)
+            overrides[it.key()] = it.value().toBool();
+        commander->ApplyGroupEnabledMap(overrides);
+    }
 
     val = jsonObjAgentData.value("a_color");
     if (val.isString())
@@ -225,9 +244,11 @@ void Agent::Update(const QJsonObject &jsonObjAgentData)
 
         auto regAgent = this->adaptixWidget->GetRegAgent(data.Name, data.Listener, data.Os);
         if (regAgent.commander && regAgent.commander != this->commander) {
-            this->commander = regAgent.commander;
+            Commander* old = this->commander;
+            this->commander = regAgent.commander->Clone();
             if (this->Console)
                 this->Console->SetCommander(this->commander);
+            delete old;
         }
 
         if (this->graphItem)

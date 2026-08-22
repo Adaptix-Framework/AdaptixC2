@@ -36,6 +36,11 @@ private:
     QMap<QString, WidgetInfo> m_widgets;
 };
 
+inline bool isDockContentBlinkAllowed(const QString& className)
+{
+    return className == QLatin1String("SessionsTableWidget") || className == QLatin1String("LogsWidget") || className == QLatin1String("ChatWidget") || className == QLatin1String("CredentialsWidget") || className == QLatin1String("TargetsWidget");
+}
+
 /**
  * @brief Macro to register a dock widget in the registry.
  *

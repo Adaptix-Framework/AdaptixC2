@@ -175,6 +175,22 @@ void HttpReqAgentUpdateDataAsync(qint64 agentId, const QJsonObject &updateData, 
     httpPost(profile, "/agent/update/data", dataJson, callback);
 }
 
+void HttpReqAgentCommandGroupSetAsync(qint64 agentId, const QString &group, bool enabled, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["agent_id"] = agentId;
+    dataJson["group"] = group;
+    dataJson["enabled"] = enabled;
+    httpPost(profile, "/agent/command_group/set", dataJson, callback);
+}
+
+void HttpReqAgentCommandGroupListAsync(qint64 agentId, AuthProfile& profile, const HttpCallback &callback)
+{
+    QUrlQuery params;
+    params.addQueryItem(QStringLiteral("agent_id"), QString::number(agentId));
+    HttpRequestManager::instance().getPage(profile.GetURL(), QStringLiteral("/agent/command_group/list"), profile.GetAccessToken(), params, callback);
+}
+
 void HttpReqAgentCommandAsync(const QByteArray &jsonData, AuthProfile& profile)
 {
     httpPostFF(profile, "/agent/command/execute", jsonData);
@@ -402,6 +418,14 @@ void HttpReqTunnelSetInfoAsync(qint64 tunnelId, const QString &info, AuthProfile
     httpPost(profile, "/tunnel/set/info", dataJson, callback);
 }
 
+void HttpReqTunnelChannelNackAsync(qint64 tunnelId, qint64 channelId, AuthProfile& profile, const HttpCallback &callback)
+{
+    QJsonObject dataJson;
+    dataJson["p_tunnel_id"] = toJsonI64(tunnelId);
+    dataJson["p_channel_id"] = toJsonI64(channelId);
+    httpPost(profile, "/tunnel/channel/nack", dataJson, callback);
+}
+
 void HttpReqChatSendMessageAsync(const QString &text, qint64 replyToId, const QString &replyToName, AuthProfile& profile, const HttpCallback &callback)
 {
     QJsonObject dataJson;
@@ -466,6 +490,19 @@ void HttpReqPluginServiceCallAsync(const QString &service, const QString &comman
     dataJson["command"] = command;
     dataJson["args"] = args;
     httpPost(profile, "/plugin/service/call", dataJson, callback);
+}
+
+QJsonObject HttpReqPluginServiceCallWait(const QString &service, const QString &command, const QString &args, int timeoutMs, AuthProfile& profile)
+{
+    if (timeoutMs <= 0)
+        timeoutMs = 30000;
+    QJsonObject dataJson;
+    dataJson["service"] = service;
+    dataJson["command"] = command;
+    dataJson["args"] = args;
+    dataJson["timeout_ms"] = timeoutMs;
+    const int httpTimeout = timeoutMs + 5000;
+    return HttpReq(profile.GetURL() + "/plugin/service/call_wait", QJsonDocument(dataJson).toJson(), profile.GetAccessToken(), httpTimeout);
 }
 
 void HttpReqPluginAgentCallAsync(qint64 agentId, const QString &command, const QString &args, AuthProfile& profile, const HttpCallback &callback)
@@ -622,6 +659,11 @@ void HttpReqPayloadSetColorAsync(const QList<qint64> &ids, const QString &backgr
     dataJson["foreground"] = foreground;
     dataJson["reset"] = reset;
     httpPost(profile, "/payload/set_color", dataJson, callback);
+}
+
+void HttpReqPayloadSetTagAsync(const QList<qint64> &ids, const QString &tag, AuthProfile& profile, const HttpCallback &callback)
+{
+    postIdArrayTag(profile, "/payload/set/tag", "id_array", ids, tag, callback);
 }
 
 void HttpReqPayloadUpdateAsync(qint64 payloadId, const QString &name, const QString &notes, const QString &artifact, const QString &arch, bool hidden, AuthProfile& profile, const HttpCallback &callback)

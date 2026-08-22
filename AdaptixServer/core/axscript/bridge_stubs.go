@@ -1,6 +1,7 @@
 package axscript
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -16,6 +17,22 @@ func newStubWidget(rt *goja.Runtime) *goja.Object {
 	obj.Set("setValue", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
 	obj.Set("setChecked", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
 	obj.Set("setLayout", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("setExpanding", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("setButtonsEnabled", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("setMenuEnabled", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("setReadOnly", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("setFixedSize", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("addStretch", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("setContentsMargins", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("setSpacing", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("setSizes", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("hide", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("show", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("clear", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("setAutoScroll", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("append", func(goja.FunctionCall) goja.Value { return rt.ToValue("b0") })
+	obj.Set("appendDelta", func(goja.FunctionCall) goja.Value { return rt.ToValue(true) })
+	obj.Set("endBlock", func(goja.FunctionCall) goja.Value { return rt.ToValue(true) })
 	obj.Set("setPanel", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
 	obj.Set("setSize", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
 	obj.Set("addWidget", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
@@ -27,6 +44,8 @@ func newStubWidget(rt *goja.Runtime) *goja.Object {
 	obj.Set("setItemText", func(goja.FunctionCall) goja.Value { return rt.ToValue("") })
 	obj.Set("itemText", func(goja.FunctionCall) goja.Value { return rt.ToValue("") })
 	obj.Set("setText", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("setIcon", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
+	obj.Set("setIconSize", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
 	obj.Set("value", func(goja.FunctionCall) goja.Value { return rt.ToValue(0) })
 	obj.Set("count", func(goja.FunctionCall) goja.Value { return rt.ToValue(0) })
 	obj.Set("isChecked", func(goja.FunctionCall) goja.Value { return rt.ToValue(false) })
@@ -58,6 +77,7 @@ func registerFormStubs(engine *ScriptEngine) {
 
 	// Basic widgets
 	formObj.Set("create_label", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
+	formObj.Set("create_icon", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_textline", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_combo", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_checkbox", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
@@ -69,6 +89,19 @@ func registerFormStubs(engine *ScriptEngine) {
 	formObj.Set("create_timeline", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_button", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_textmulti", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
+	formObj.Set("create_logview", func(call goja.FunctionCall) goja.Value {
+		obj := newStubWidget(rt)
+		seq := 0
+		obj.Set("append", func(call goja.FunctionCall) goja.Value {
+			seq++
+			return rt.ToValue(fmt.Sprintf("b%d", seq))
+		})
+		obj.Set("appendDelta", func(call goja.FunctionCall) goja.Value { return rt.ToValue(true) })
+		obj.Set("endBlock", func(call goja.FunctionCall) goja.Value { return rt.ToValue(true) })
+		obj.Set("clear", func(call goja.FunctionCall) goja.Value { return goja.Undefined() })
+		obj.Set("setAutoScroll", func(call goja.FunctionCall) goja.Value { return goja.Undefined() })
+		return obj
+	})
 	formObj.Set("create_textarea", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_input", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
 	formObj.Set("create_input_number", func(call goja.FunctionCall) goja.Value { return newStubWidget(rt) })
@@ -188,6 +221,41 @@ func registerEventStubs(engine *ScriptEngine) {
 	eventObj.Set("list", func(goja.FunctionCall) goja.Value { return rt.ToValue([]interface{}{}) })
 	eventObj.Set("remove", func(goja.FunctionCall) goja.Value { return goja.Undefined() })
 
+	eventObj.Set("emit", func(call goja.FunctionCall) goja.Value {
+		if engine == nil || engine.manager == nil || engine.manager.teamserver == nil {
+			panic(rt.NewGoError(fmt.Errorf("event.emit: teamserver not available")))
+		}
+		if len(call.Arguments) < 1 {
+			panic(rt.NewGoError(fmt.Errorf("event.emit(type, text) requires event type")))
+		}
+		eventType := strings.TrimSpace(call.Argument(0).String())
+		text := ""
+		if len(call.Arguments) > 1 && !goja.IsUndefined(call.Argument(1)) && !goja.IsNull(call.Argument(1)) {
+			arg := call.Argument(1)
+			exported := arg.Export()
+			switch t := exported.(type) {
+			case string:
+				text = t
+			case map[string]any:
+				if s, ok := t["text"].(string); ok {
+					text = s
+				} else if x, ok := t["text"]; ok && x != nil {
+					text = fmt.Sprint(x)
+				}
+			default:
+				text = arg.String()
+			}
+		}
+		source := "axscript"
+		if strings.HasPrefix(engine.name, "handler:") {
+			source = "handler"
+		}
+		if err := engine.manager.teamserver.TsEventEmitFrom(eventType, source, text); err != nil {
+			panic(rt.NewGoError(err))
+		}
+		return rt.ToValue(true)
+	})
+
 	rt.Set("event", eventObj)
 }
 
@@ -200,6 +268,7 @@ func RegisterHandlerBridges(engine *ScriptEngine) {
 	registerEventStubs(engine)
 	registerAxBridge(engine)
 }
+
 func fileBasename(p string) string {
 	return filepath.Base(filepath.Clean(strings.ReplaceAll(p, `\`, `/`)))
 }

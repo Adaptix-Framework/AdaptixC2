@@ -3,6 +3,7 @@
 
 #include <QJSEngine>
 #include <QRegularExpression>
+#include <QTextStream>
 
 QString serializeParam(const QString &token)
 {
@@ -34,35 +35,27 @@ QStringList unserializeParams(const QString &commandline)
             continue;
         }
 
-        /* If we encounter a double quote */
         if (c == '"') {
             inQuotes = !inQuotes;
             ++i;
             continue;
         }
 
-        /* If we encounter a backslash, handle escape sequences */
         if (c == '\\') {
             int numBS = 0;
-            /*Count the number of consecutive backslashes*/
             while (i < len && commandline[i] == '\\') {
                 ++numBS;
                 ++i;
             }
-            /*Check if the next character is a double quote*/
             if (i < len && commandline[i] == '"') {
-                /*Append half the number of backslashes (integer division)*/
                 token.append(QString(numBS / 2, '\\'));
                 if (numBS % 2 == 0) {
-                    /*Even number of backslashes: the quote is not escaped, so it toggles the quote state*/
                     inQuotes = !inQuotes;
                 } else {
-                    /*Odd number of backslashes: the quote is escaped, add it to the token*/
                     token.append('"');
                 }
                 ++i;
             } else {
-                /*No double quote after backslashes: all backslashes are literal*/
                 token.append(QString(numBS, '\\'));
             }
             continue;
@@ -78,27 +71,68 @@ QStringList unserializeParams(const QString &commandline)
     return tokens;
 }
 
-
+static QString inactiveLine(const QString &line)
+{
+    return QString(kHelpInactiveMarker) + line;
+}
 
 Commander::Commander()
 {
-    mainCommandsGroup = {};
-    serverGroups      = {};
-    clientGroups      = {};
+    mainGroups   = {};
+    serverGroups = {};
+    clientGroups = {};
 }
 
 Commander::~Commander() = default;
 
 void Commander::SetAgentType(const QString &type) { agentType = type; }
 
-void Commander::SetMainCommands(const CommandsGroup &group) { mainCommandsGroup = group; }
+void Commander::ClearMainGroups()
+{
+    mainGroups.clear();
+    Q_EMIT commandsUpdated();
+}
 
-void Commander::AddServerGroup(const QString &scriptName, const QString &description, const CommandsGroup &group)
+void Commander::SetMainCommands(const CommandsGroup &group)
+{
+    mainGroups.clear();
+    if (!group.commands.isEmpty() || !group.groupName.isEmpty())
+        AddMainGroup(group);
+    else
+        Q_EMIT commandsUpdated();
+}
+
+void Commander::AddMainGroup(const CommandsGroup &group, const QString &description, bool defaultEnabled)
+{
+    const QString id = group.groupName.isEmpty() ? agentType : group.groupName;
+    for (int i = 0; i < mainGroups.size(); ++i) {
+        if (mainGroups[i].groupId == id) {
+            mainGroups[i].group = group;
+            mainGroups[i].group.groupName = id;
+            mainGroups[i].description = description;
+            mainGroups[i].defaultEnabled = defaultEnabled;
+            Q_EMIT commandsUpdated();
+            return;
+        }
+    }
+    MainCommandsGroup mg;
+    mg.groupId = id;
+    mg.description = description;
+    mg.enabled = defaultEnabled;
+    mg.defaultEnabled = defaultEnabled;
+    mg.group = group;
+    mg.group.groupName = id;
+    mainGroups.append(mg);
+    Q_EMIT commandsUpdated();
+}
+
+void Commander::AddServerGroup(const QString &scriptName, const QString &description, const CommandsGroup &group, bool defaultEnabled)
 {
     ServerCommandsGroup sg;
     sg.scriptName  = scriptName;
     sg.description = description;
-    sg.enabled     = true;
+    sg.enabled     = defaultEnabled;
+    sg.defaultEnabled = defaultEnabled;
     sg.group       = group;
     serverGroups[scriptName] = sg;
     Q_EMIT commandsUpdated();
@@ -112,12 +146,7 @@ void Commander::RemoveServerGroup(const QString &scriptName)
 
 void Commander::SetServerGroupEnabled(const QString &scriptName, bool enabled)
 {
-    if (!serverGroups.contains(scriptName))
-        return;
-    if (serverGroups[scriptName].enabled == enabled)
-        return;
-    serverGroups[scriptName].enabled = enabled;
-    Q_EMIT commandsUpdated();
+    SetGroupEnabled(scriptName, enabled);
 }
 
 void Commander::SetServerGroupEngine(const QString &scriptName, QJSEngine* engine)
@@ -140,9 +169,7 @@ void Commander::SetServerGroupEngine(const QString &scriptName, QJSEngine* engin
 
 bool Commander::IsServerGroupEnabled(const QString &scriptName) const
 {
-    if (!serverGroups.contains(scriptName))
-        return false;
-    return serverGroups[scriptName].enabled;
+    return IsGroupEnabled(scriptName);
 }
 
 QStringList Commander::GetServerGroupNames() const
@@ -174,6 +201,112 @@ void Commander::RemoveClientGroup(const QString &filepath)
         }
     }
     Q_EMIT commandsUpdated();
+}
+
+void Commander::SetGroupEnabled(const QString &groupId, bool enabled)
+{
+    if (groupId.isEmpty())
+        return;
+
+    bool changed = false;
+    for (auto &mg : mainGroups) {
+        if (mg.groupId == groupId || mg.group.groupName == groupId) {
+            if (mg.enabled != enabled) {
+                mg.enabled = enabled;
+                changed = true;
+            }
+        }
+    }
+    if (serverGroups.contains(groupId)) {
+        if (serverGroups[groupId].enabled != enabled) {
+            serverGroups[groupId].enabled = enabled;
+            changed = true;
+        }
+    } else {
+        for (auto it = serverGroups.begin(); it != serverGroups.end(); ++it) {
+            if (it->group.groupName == groupId) {
+                if (it->enabled != enabled) {
+                    it->enabled = enabled;
+                    changed = true;
+                }
+            }
+        }
+    }
+    if (changed)
+        Q_EMIT commandsUpdated();
+}
+
+bool Commander::IsGroupEnabled(const QString &groupId) const
+{
+    for (const auto &mg : mainGroups) {
+        if (mg.groupId == groupId || mg.group.groupName == groupId)
+            return mg.enabled;
+    }
+    if (serverGroups.contains(groupId))
+        return serverGroups[groupId].enabled;
+    for (const auto &sg : serverGroups) {
+        if (sg.group.groupName == groupId)
+            return sg.enabled;
+    }
+    return true;
+}
+
+void Commander::ApplyGroupEnabledMap(const QMap<QString, bool> &overrides)
+{
+    for (auto &mg : mainGroups)
+        mg.enabled = mg.defaultEnabled;
+    for (auto it = serverGroups.begin(); it != serverGroups.end(); ++it)
+        it->enabled = it->defaultEnabled;
+
+    for (auto it = overrides.begin(); it != overrides.end(); ++it)
+        SetGroupEnabled(it.key(), it.value());
+}
+
+QMap<QString, bool> Commander::GetGroupEnabledOverrides() const
+{
+    QMap<QString, bool> m;
+    for (const auto &mg : mainGroups) {
+        if (mg.enabled != mg.defaultEnabled)
+            m[mg.groupId] = mg.enabled;
+    }
+    for (auto it = serverGroups.begin(); it != serverGroups.end(); ++it) {
+        if (it->enabled != it->defaultEnabled)
+            m[it.key()] = it->enabled;
+    }
+    return m;
+}
+
+QStringList Commander::GetGroupIds() const
+{
+    QStringList ids;
+    for (const auto &mg : mainGroups)
+        ids << mg.groupId;
+    for (const auto &k : serverGroups.keys())
+        ids << k;
+    return ids;
+}
+
+QList<QPair<QString, bool>> Commander::GetGroupsStatus() const
+{
+    QList<QPair<QString, bool>> out;
+    for (const auto &mg : mainGroups)
+        out.append({mg.groupId, mg.enabled});
+    for (auto it = serverGroups.begin(); it != serverGroups.end(); ++it)
+        out.append({it.key(), it->enabled});
+    return out;
+}
+
+Commander* Commander::Clone(QObject *parent) const
+{
+    auto *c = new Commander();
+    if (parent)
+        c->setParent(parent);
+    c->agentType = agentType;
+    c->listenerType = listenerType;
+    c->mainGroups = mainGroups;
+    c->serverGroups = serverGroups;
+    c->clientGroups = clientGroups;
+    return c;
 }
 
 CommanderResult Commander::ProcessInputForGroup(const CommandsGroup &group, const QString &commandName, QStringList args, qint64 agentId, const QString &cmdline)
@@ -245,6 +378,14 @@ CommanderResult Commander::ProcessInput(qint64 agentId, QString cmdline)
     if (commandName == "help")
         return this->ProcessHelp(parts);
 
+    {
+        QString groupId;
+        bool enabled = true;
+        Command found;
+        if (findCommand(commandName, &found, &groupId, &enabled) && !enabled)
+            return CommanderResult{true, true, QStringLiteral("Command group '%1' is disabled for this session").arg(groupId), {}, false, {}};
+    }
+
     for (const auto &client_group : clientGroups) {
         auto result = ProcessInputForGroup(client_group, commandName, parts, agentId, cmdline);
         if (result.message != "__not_found__")
@@ -259,9 +400,13 @@ CommanderResult Commander::ProcessInput(qint64 agentId, QString cmdline)
             return result;
     }
 
-    auto result = ProcessInputForGroup(mainCommandsGroup, commandName, parts, agentId, cmdline);
-    if (result.message != "__not_found__")
-        return result;
+    for (const auto &mg : mainGroups) {
+        if (!mg.enabled)
+            continue;
+        auto result = ProcessInputForGroup(mg.group, commandName, parts, agentId, cmdline);
+        if (result.message != "__not_found__")
+            return result;
+    }
 
     return CommanderResult{true, true, "Command not found", {}, false, {}};
 }
@@ -385,7 +530,6 @@ CommanderResult Commander::ProcessCommand(const Command &command, const QString 
             else if (commandArg.type == "FILE") {
                 QString path = parsedArgsMap[commandArg.name].trimmed();
 
-                // Payload Store ref: __payload:#123 — resolved on teamserver (no client upload).
                 static const QRegularExpression payloadRe(QStringLiteral("^__payload:#(\\d+)$"), QRegularExpression::CaseInsensitiveOption);
                 const QRegularExpressionMatch pm = payloadRe.match(path);
                 if (pm.hasMatch()) {
@@ -405,7 +549,6 @@ CommanderResult Commander::ProcessCommand(const Command &command, const QString 
                         return CommanderResult{true, true, "File not found: " + path, {}, false, {}};
                     }
 
-                    /// 3 Mb
                     if (fileInfo.size() < 3 * 1024 * 1024) {
                         QFile file(path);
                         if (file.open(QIODevice::ReadOnly)) {
@@ -458,132 +601,149 @@ CommanderResult Commander::ProcessCommand(const Command &command, const QString 
 
 QString Commander::GetError() { return error; }
 
+void Commander::appendHelpCommandLines(QTextStream &output, const QList<Command> &commands, int totalWidth, bool inactive) const
+{
+    auto emitLine = [&](const QString &line) {
+        if (inactive)
+            output << inactiveLine(line) << "\n";
+        else
+            output << line << "\n";
+    };
+
+    for (const auto &command : commands) {
+        QString commandName = command.name;
+        if (command.subcommands.isEmpty()) {
+            QString tab = QString(totalWidth - commandName.size(), ' ');
+            emitLine("  " + commandName + tab + "      " + command.description);
+        } else {
+            if (inactive) {
+                QString nameStar = commandName + "*";
+                QString tab = QString(totalWidth - nameStar.size(), ' ');
+                emitLine("  " + nameStar + tab + "      " + command.description);
+            }
+            for (const auto &subcmd : command.subcommands) {
+                QString subcmdName = commandName + " " + subcmd.name;
+                QString tab = QString(totalWidth - subcmdName.size(), ' ');
+                emitLine("  " + subcmdName + tab + "      " + subcmd.description);
+            }
+        }
+    }
+}
+
+bool Commander::findCommand(const QString &commandName, Command *out, QString *groupIdOut, bool *enabledOut) const
+{
+    for (const auto &mg : mainGroups) {
+        for (const Command &cmd : mg.group.commands) {
+            if (cmd.name == commandName) {
+                if (out) *out = cmd;
+                if (groupIdOut) *groupIdOut = mg.groupId;
+                if (enabledOut) *enabledOut = mg.enabled;
+                return true;
+            }
+        }
+    }
+    for (auto it = serverGroups.begin(); it != serverGroups.end(); ++it) {
+        for (const Command &cmd : it->group.commands) {
+            if (cmd.name == commandName) {
+                if (out) *out = cmd;
+                if (groupIdOut) *groupIdOut = it.key();
+                if (enabledOut) *enabledOut = it->enabled;
+                return true;
+            }
+        }
+    }
+    for (const auto &cg : clientGroups) {
+        for (const Command &cmd : cg.commands) {
+            if (cmd.name == commandName) {
+                if (out) *out = cmd;
+                if (groupIdOut) *groupIdOut = cg.groupName;
+                if (enabledOut) *enabledOut = true;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 CommanderResult Commander::ProcessHelp(QStringList commandParts)
 {
     QString result;
     QTextStream output(&result);
     if (commandParts.isEmpty()) {
-        int TotalWidth = 24;
+        const int TotalWidth = 24;
+        bool anyInactive = false;
         output << QString("\n");
         output << QString("  Command                       Description\n");
         output << QString("  -------                       -----------\n");
 
-        for (auto command : mainCommandsGroup.commands) {
-            QString commandName = command.name;
-            if (!command.subcommands.isEmpty())
-                commandName += '*';
-
-            QString tab = QString(TotalWidth - commandName.size(), ' ');
-            output << "  " + commandName + tab + "      " + command.description + "\n";
+        for (const auto &mg : mainGroups) {
+            if (mg.groupId == agentType || mg.group.groupName == agentType) {
+                if (!mg.enabled)
+                    anyInactive = true;
+                appendHelpCommandLines(output, mg.group.commands, TotalWidth, !mg.enabled);
+            }
         }
 
         for (const auto &server_group : serverGroups) {
-            if (!server_group.enabled)
-                continue;
             if (server_group.group.groupName != agentType)
                 continue;
+            if (!server_group.enabled)
+                anyInactive = true;
+            appendHelpCommandLines(output, server_group.group.commands, TotalWidth, !server_group.enabled);
+        }
 
-            for (const auto &command : server_group.group.commands) {
-                QString commandName = command.name;
-                if (command.subcommands.isEmpty()) {
-                    QString tab = QString(TotalWidth - commandName.size(), ' ');
-                    output << "  " + commandName + tab + "      " + command.description + "\n";
-                } else {
-                    for (const auto &subcmd : command.subcommands) {
-                        QString subcmdName = commandName + " " + subcmd.name;
-                        QString tab = QString(TotalWidth - subcmdName.size(), ' ');
-                        output << "  " + subcmdName + tab + "      " + subcmd.description + "\n";
-                    }
-                }
-            }
+        for (const auto &mg : mainGroups) {
+            if (mg.groupId == agentType || mg.group.groupName == agentType)
+                continue;
+            if (!mg.enabled)
+                anyInactive = true;
+            output << QString("\n");
+            QString header = mg.enabled ? QStringLiteral("[%1]").arg(mg.groupId) : QStringLiteral("[%1 · off]").arg(mg.groupId);
+            if (!mg.enabled)
+                output << inactiveLine(header) << "\n";
+            else
+                output << header << "\n";
+            appendHelpCommandLines(output, mg.group.commands, TotalWidth, !mg.enabled);
         }
 
         for (const auto &server_group : serverGroups) {
-            if (!server_group.enabled)
-                continue;
             if (server_group.group.groupName == agentType)
                 continue;
-
+            if (!server_group.enabled)
+                anyInactive = true;
             output << QString("\n");
-            output << QString("  Group - " + server_group.group.groupName + "\n");
-            output << QString("  =====================================\n");
-
-            for (const auto &command : server_group.group.commands) {
-                QString commandName = command.name;
-                if (command.subcommands.isEmpty()) {
-                    QString tab = QString(TotalWidth - commandName.size(), ' ');
-                    output << "  " + commandName + tab + "      " + command.description + "\n";
-                } else {
-                    for (const auto &subcmd : command.subcommands) {
-                        QString subcmdName = commandName + " " + subcmd.name;
-                        QString tab = QString(TotalWidth - subcmdName.size(), ' ');
-                        output << "  " + subcmdName + tab + "      " + subcmd.description + "\n";
-                    }
-                }
-            }
+            QString header = server_group.enabled
+                ? QStringLiteral("Group - %1").arg(server_group.group.groupName)
+                : QStringLiteral("Group - %1 · off").arg(server_group.group.groupName);
+            if (!server_group.enabled)
+                output << inactiveLine(header) << "\n" << inactiveLine("=====================================") << "\n";
+            else
+                output << header << "\n" << "=====================================\n";
+            appendHelpCommandLines(output, server_group.group.commands, TotalWidth, !server_group.enabled);
         }
 
         for (const auto &client_group : clientGroups) {
             output << QString("\n");
-            output << QString("  Group - " + client_group.groupName + " (client)\n");
-            output << QString("  =====================================\n");
-
-            for (const auto &command : client_group.commands) {
-                QString commandName = command.name;
-                if (command.subcommands.isEmpty()) {
-                    QString tab = QString(TotalWidth - commandName.size(), ' ');
-                    output << "  " + commandName + tab + "      " + command.description + "\n";
-                } else {
-                    for (const auto &subcmd : command.subcommands) {
-                        QString subcmdName = commandName + " " + subcmd.name;
-                        QString tab = QString(TotalWidth - subcmdName.size(), ' ');
-                        output << "  " + subcmdName + tab + "      " + subcmd.description + "\n";
-                    }
-                }
-            }
+            output << QString("Group - " + client_group.groupName + " (client)\n");
+            output << QString("=====================================\n");
+            appendHelpCommandLines(output, client_group.commands, TotalWidth, false);
         }
 
-        return CommanderResult{false, true, result, {}, false, {}};
+        CommanderResult r{false, true, result, {}, false, {}};
+        r.styledHelp = anyInactive || result.contains(kHelpInactiveMarker);
+        return r;
     }
     else {
         Command foundCommand;
         QString commandName = commandParts[0];
+        QString groupId;
+        bool enabled = true;
 
-        for (Command cmd : mainCommandsGroup.commands) {
-            if (cmd.name == commandName) {
-                foundCommand = cmd;
-                break;
-            }
-        }
-
-        for (const auto &server_group : serverGroups) {
-            if ( !foundCommand.name.isEmpty() )
-                break;
-            if (!server_group.enabled)
-                continue;
-
-            for (Command cmd : server_group.group.commands) {
-                if (cmd.name == commandName) {
-                    foundCommand = cmd;
-                    break;
-                }
-            }
-        }
-
-        for (const auto &client_group : clientGroups) {
-            if ( !foundCommand.name.isEmpty() )
-                break;
-
-            for (Command cmd : client_group.commands) {
-                if (cmd.name == commandName) {
-                    foundCommand = cmd;
-                    break;
-                }
-            }
-        }
-
-        if ( foundCommand.name.isEmpty() )
+        if (!findCommand(commandName, &foundCommand, &groupId, &enabled))
             return CommanderResult{true, true, "Unknown command: " + commandName, {}, false, {}};
+
+        if (!enabled)
+            return CommanderResult{true, true, QStringLiteral("Command group '%1' is disabled for this session").arg(groupId), {}, false, {}};
 
         if (commandParts.size() == 1) {
             output << QString("\n");
@@ -695,7 +855,10 @@ QStringList Commander::GetCommands()
     QStringList commandList;
     QStringList helpCommandList;
 
-    collectCommandsFromGroup(mainCommandsGroup.commands, commandList, helpCommandList);
+    for (const auto &mg : mainGroups) {
+        if (mg.enabled)
+            collectCommandsFromGroup(mg.group.commands, commandList, helpCommandList);
+    }
 
     for (const auto &server_group : serverGroups) {
         if (server_group.enabled)

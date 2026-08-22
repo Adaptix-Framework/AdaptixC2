@@ -25,7 +25,9 @@
 #include <QAbstractTableModel>
 #include <QSortFilterProxyModel>
 
-namespace oclero::qlementine { class Switch; class SegmentedControl; }
+namespace oclero::qlementine { class Switch; class IconWidget; }
+class SegmentControl;
+class LogView;
 
 class AxScriptEngine;
 class AdaptixWidget;
@@ -113,6 +115,7 @@ inline const QMap<QString, QString> FIELD_MAP_PAYLOADS = {
     {"md5",         "MD5"},
     {"sha1",        "SHA1"},
     {"sha256",      "SHA256"},
+    {"tag",         "Tag"},
     {"uid",         "UID"},
     {"hidden",      "Hidden"},
 };
@@ -264,6 +267,12 @@ public:
     QGridLayout* layout() const override;
 
     Q_INVOKABLE void addWidget(QObject* widgetWrapper, int row, int col, int rowSpan = 1, int colSpan = 1) const;
+    Q_INVOKABLE void setContentsMargins(int left, int top, int right, int bottom) const;
+    Q_INVOKABLE void setSpacing(int spacing) const;
+    Q_INVOKABLE void setHorizontalSpacing(int spacing) const;
+    Q_INVOKABLE void setVerticalSpacing(int spacing) const;
+    Q_INVOKABLE void setColumnStretch(int column, int stretch) const;
+    Q_INVOKABLE void setRowStretch(int row, int stretch) const;
 };
 
 
@@ -355,8 +364,10 @@ public:
     Q_INVOKABLE void    setItems(const QJSValue& array) const;
     Q_INVOKABLE void    clear() const;
     Q_INVOKABLE QString currentText() const;
+    Q_INVOKABLE void    setCurrentText(const QString& text) const;
     Q_INVOKABLE void    setCurrentIndex(int index) const;
     Q_INVOKABLE int     currentIndex() const;
+    Q_INVOKABLE void    setEditable(bool editable) const;
 
 Q_SIGNALS:
     void currentTextChanged(const QString &text);
@@ -468,6 +479,31 @@ public:
 
 
 
+/// LOGVIEW (read-only chat)
+
+class AxLogViewWrapper : public QObject, public AbstractAxVisualElement {
+Q_OBJECT
+    LogView* logview;
+
+public:
+    explicit AxLogViewWrapper(LogView* view, QObject* parent = nullptr);
+
+    QWidget* widget() const override;
+    Q_INVOKABLE void setEnabled(const bool enable) const override { widget()->setEnabled(enable); }
+    Q_INVOKABLE void setVisible(const bool enable) const override { widget()->setVisible(enable); }
+    Q_INVOKABLE bool getEnabled() const override { return widget()->isEnabled(); }
+    Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
+
+    /// Append a block. role: system|user|assistant|tool|error. Returns blockId.
+    Q_INVOKABLE QString append(const QString& role, const QString& text) const;
+    Q_INVOKABLE bool    appendDelta(const QString& blockId, const QString& text) const;
+    Q_INVOKABLE bool    endBlock(const QString& blockId) const;
+    Q_INVOKABLE void    clear() const;
+    Q_INVOKABLE void    setAutoScroll(bool enabled) const;
+};
+
+
+
 /// CHECK
 
 class AxCheckBoxWrapper : public QObject, public AbstractAxElement, public AbstractAxVisualElement {
@@ -528,10 +564,10 @@ Q_SIGNALS:
 
 class AxSegmentedControlWrapper : public QObject, public AbstractAxElement, public AbstractAxVisualElement {
 Q_OBJECT
-    oclero::qlementine::SegmentedControl* segControl;
+    SegmentControl* segControl;
 
 public:
-    explicit AxSegmentedControlWrapper(oclero::qlementine::SegmentedControl* sc, QObject* parent = nullptr);
+    explicit AxSegmentedControlWrapper(SegmentControl* sc, QObject* parent = nullptr);
 
     QVariant jsonMarshal() const override;
     void jsonUnmarshal(const QVariant& value) override;
@@ -562,7 +598,11 @@ Q_SIGNALS:
 
 class AxLabelWrapper : public QObject, public AbstractAxVisualElement {
 Q_OBJECT
-    QLabel* label;
+    QLabel* label = nullptr;
+    QIcon   m_icon;
+    QSize   m_iconSize {16, 16};
+
+    void applyIcon() const;
 
 public:
     explicit AxLabelWrapper(QLabel* label, QObject* parent = nullptr);
@@ -575,6 +615,10 @@ public:
 
     Q_INVOKABLE void setText(const QString& text) const;
     Q_INVOKABLE QString text() const;
+    Q_INVOKABLE void setWordWrap(bool on) const;
+    Q_INVOKABLE void setIcon(const QString& resourcePath);
+    Q_INVOKABLE void setIconSize(int size);
+    Q_INVOKABLE void setIconSize(int width, int height);
 };
 
 
@@ -603,6 +647,9 @@ public:
 
 class AxTableWidgetWrapper : public QObject, public AbstractAxElement, public AbstractAxVisualElement {
 Q_OBJECT
+    bool menuEnabled = false;
+    bool readonly    = false;
+
 public:
     QTableView*         table;
     QStandardItemModel* model;
@@ -638,6 +685,14 @@ public:
     Q_INVOKABLE void     setColumnAlign(int column, const QString &align);
     Q_INVOKABLE void     clear();
     Q_INVOKABLE QJSValue selectedRows();
+    Q_INVOKABLE void     setMenuEnabled(bool enabled);
+    Q_INVOKABLE void     removeRow(int row);
+    Q_INVOKABLE void     setExpanding(bool enabled);
+
+private Q_SLOTS:
+    void showContextMenu(const QPoint &pos);
+    void onMenuAddRow();
+    void onMenuRemoveRow();
 
 Q_SIGNALS:
     void cellChanged(int row, int column);
@@ -687,6 +742,7 @@ public:
     Q_INVOKABLE void     setDragDropEnabled(bool enabled);
     Q_INVOKABLE void     setMenuEnabled(bool enabled);
     Q_INVOKABLE void     setButtonsEnabled(bool enabled);
+    Q_INVOKABLE void     setExpanding(bool enabled);
 
 private Q_SLOTS:
     void showContextMenu(const QPoint &pos);
@@ -698,6 +754,8 @@ Q_SIGNALS:
     void currentRowChanged(int currentRow);
     void itemClickedText(const QString& text);
     void itemDoubleClickedText(const QString& text);
+    void addClicked();
+    void removeClicked();
 };
 
 
@@ -706,7 +764,7 @@ Q_SIGNALS:
 
 class AxButtonWrapper : public QObject, public AbstractAxVisualElement {
 Q_OBJECT
-    QPushButton* button;
+    QPushButton* button = nullptr;
 
 public:
     explicit AxButtonWrapper(QPushButton* btn, QObject* parent = nullptr);
@@ -716,9 +774,34 @@ public:
     Q_INVOKABLE void setVisible(const bool enable) const override { widget()->setVisible(enable); }
     Q_INVOKABLE bool getEnabled() const override { return widget()->isEnabled(); }
     Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
+    Q_INVOKABLE void setText(const QString& text) const;
+    Q_INVOKABLE QString text() const;
+    Q_INVOKABLE void setIcon(const QString& resourcePath) const;
+    Q_INVOKABLE void setIconSize(int size) const;
+    Q_INVOKABLE void setIconSize(int width, int height) const;
+    Q_INVOKABLE void setFixedSize(int width, int height) const;
 
 Q_SIGNALS:
     void clicked();
+};
+
+
+
+class AxIconWrapper : public QObject, public AbstractAxVisualElement {
+Q_OBJECT
+    oclero::qlementine::IconWidget* iconWidget = nullptr;
+
+public:
+    explicit AxIconWrapper(oclero::qlementine::IconWidget* widget, QObject* parent = nullptr);
+
+    QWidget* widget() const override;
+    Q_INVOKABLE void setEnabled(const bool enable) const override { widget()->setEnabled(enable); }
+    Q_INVOKABLE void setVisible(const bool enable) const override { widget()->setVisible(enable); }
+    Q_INVOKABLE bool getEnabled() const override { return widget()->isEnabled(); }
+    Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
+    Q_INVOKABLE void setIcon(const QString& resourcePath) const;
+    Q_INVOKABLE void setIconSize(int size) const;
+    Q_INVOKABLE void setIconSize(int width, int height) const;
 };
 
 
@@ -843,6 +926,7 @@ public:
     Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
 
     Q_INVOKABLE void setLayout(QObject* layoutWrapper) const;
+    Q_INVOKABLE void setExpanding(bool enabled) const;
 };
 
 
@@ -919,7 +1003,7 @@ public:
 class AxSelectorFile : public QObject, public AbstractAxElement, public AbstractAxVisualElement {
 Q_OBJECT
     QLineEdit* lineEdit;
-    QString    content;
+    QString    fileContent;
 
 public:
     explicit AxSelectorFile(QLineEdit* edit, QObject* parent = nullptr);
@@ -934,6 +1018,8 @@ public:
     Q_INVOKABLE bool getVisible() const override { return widget()->isVisible(); }
 
     Q_INVOKABLE void setPlaceholder(const QString& text) const;
+    Q_INVOKABLE QString content() const;
+    Q_INVOKABLE void setContent(const QString& value);
 
 private Q_SLOTS:
     void onSelectFile();
@@ -1730,6 +1816,7 @@ class AxDockWrapper : public DockTab {
 Q_OBJECT
     QString dockId;
     QString dockTitle;
+    QString dockLocation;
     QWidget* contentWidget = nullptr;
     AdaptixWidget* adaptixWidget = nullptr;
 
@@ -1746,6 +1833,7 @@ public:
     Q_INVOKABLE void close();
     Q_INVOKABLE bool isVisible() const;
     Q_INVOKABLE void setTitle(const QString& title);
+    Q_INVOKABLE void setIcon(const QString& resourcePath);
 
 Q_SIGNALS:
     void closed();

@@ -4,6 +4,7 @@
 #include <UI/Widgets/CodeEditorWidget.h>
 #include <MainAdaptix.h>
 #include <Client/Settings.h>
+#include <Client/DockLayoutEngine.h>
 #include <Client/ConsoleTheme.h>
 #include <Client/CodeEditorProfileManager.h>
 #include <Utils/TitleBarStyle.h>
@@ -38,6 +39,11 @@
 #include <QRegularExpression>
 #include <QAbstractItemView>
 #include <QTabWidget>
+#include <QButtonGroup>
+#include <QAbstractButton>
+#include <QPainter>
+#include <QPainterPath>
+#include <QListWidget>
 #include <QTabBar>
 #include <QStackedWidget>
 #include <QSizePolicy>
@@ -105,10 +111,6 @@ DialogSettings::DialogSettings(Settings* s)
     for ( int i = 0; i < payloadsCheckCount; i++)
         connect(payloadsCheck[i], &QCheckBox::checkStateChanged, buttonApply, [this](int){buttonApply->setEnabled(true);} );
 
-    for (int i = 0; i < 4; ++i) {
-        connect(toolbarPosBtn[i], &QPushButton::toggled, buttonApply, [this](bool){ buttonApply->setEnabled(true); });
-    }
-
     connect(sessionsViewCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int){buttonApply->setEnabled(true);});
     connect(sessionsAutoHideInactiveSwitch, &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);});
     connect(sessionsCompactSwitch,          &oclero::qlementine::Switch::toggled, buttonApply, [this](bool){buttonApply->setEnabled(true);});
@@ -125,6 +127,10 @@ DialogSettings::DialogSettings(Settings* s)
     connect(listSettings, &QListWidget::currentRowChanged, this, &DialogSettings::onStackChange);
     connect(buttonApply,  &QPushButton::clicked,           this, &DialogSettings::onApply);
     connect(buttonClose,  &QPushButton::clicked,           this, &DialogSettings::onClose);
+
+    if (toolbarPosCombo) {
+        connect(toolbarPosCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), this, [this](int) { if (buttonApply) buttonApply->setEnabled(true); });
+    }
 }
 
 namespace {
@@ -132,6 +138,90 @@ namespace {
 constexpr int kSettingsLabelColW = 140;
 constexpr int kSettingsFieldMinW = 260;
 constexpr int kSettingsFieldMaxW = 420;
+
+class LayoutSchemeCard : public QAbstractButton
+{
+public:
+    explicit LayoutSchemeCard(const QString& layoutId, const QString& title, QWidget* parent = nullptr) : QAbstractButton(parent), m_layoutId(layoutId), m_title(title)
+    {
+        setCheckable(true);
+        setAutoExclusive(true);
+        setCursor(Qt::PointingHandCursor);
+        setFixedSize(128, 108);
+        setToolTip(title);
+    }
+
+    QString layoutId() const { return m_layoutId; }
+
+protected:
+    void paintEvent(QPaintEvent*) override
+    {
+        QPainter p(this);
+        p.setRenderHint(QPainter::Antialiasing, true);
+
+        const QPalette pal = palette();
+        const QColor bg = isChecked() ? pal.color(QPalette::Highlight).darker(160) : pal.color(QPalette::Base);
+        const QColor border = isChecked() ? pal.color(QPalette::Highlight) : pal.color(QPalette::Mid);
+        const QColor zoneFill = isChecked() ? pal.color(QPalette::Highlight).lighter(130) : pal.color(QPalette::Window);
+        const QColor zoneLine = isChecked() ? pal.color(QPalette::HighlightedText).darker(120) : pal.color(QPalette::Mid);
+        const QColor textCol = pal.color(QPalette::WindowText);
+
+        QRectF outer = QRectF(rect()).adjusted(1.5, 1.5, -1.5, -1.5);
+        p.setPen(QPen(border, isChecked() ? 2.0 : 1.0));
+        p.setBrush(bg);
+        p.drawRoundedRect(outer, 8, 8);
+
+        QRectF diagram(14, 12, width() - 28, 58);
+        p.setPen(QPen(zoneLine, 1.0));
+        p.setBrush(zoneFill);
+
+        auto drawZone = [&](const QRectF& r) {
+            p.drawRoundedRect(r.adjusted(0.5, 0.5, -0.5, -0.5), 3, 3);
+        };
+
+        if (m_layoutId == QLatin1String("split_v2")) {
+            const qreal gap = 3;
+            const qreal h1 = diagram.height() * 0.55;
+            drawZone(QRectF(diagram.left(), diagram.top(), diagram.width(), h1));
+            drawZone(QRectF(diagram.left(), diagram.top() + h1 + gap, diagram.width(), diagram.height() - h1 - gap));
+        } else if (m_layoutId == QLatin1String("main_left")) {
+            const qreal gap = 3;
+            const qreal hTop = diagram.height() * 0.52;
+            const qreal wL = (diagram.width() - gap) / 2.0;
+            drawZone(QRectF(diagram.left(), diagram.top(), wL, hTop));
+            drawZone(QRectF(diagram.left() + wL + gap, diagram.top(), wL, hTop));
+            drawZone(QRectF(diagram.left(), diagram.top() + hTop + gap, diagram.width(), diagram.height() - hTop - gap));
+        } else if (m_layoutId == QLatin1String("main_right")) {
+            const qreal gap = 3;
+            const qreal wR = diagram.width() * 0.48;
+            const qreal xR = diagram.right() - wR;
+            drawZone(QRectF(xR, diagram.top(), wR, diagram.height()));
+            const qreal wL = xR - diagram.left() - gap;
+            const qreal h1 = diagram.height() * 0.48;
+            drawZone(QRectF(diagram.left(), diagram.top(), wL, h1));
+            drawZone(QRectF(diagram.left(), diagram.top() + h1 + gap, wL, diagram.height() - h1 - gap));
+        } else { // quad
+            const qreal gap = 3;
+            const qreal w = (diagram.width() - gap) / 2.0;
+            const qreal h = (diagram.height() - gap) / 2.0;
+            drawZone(QRectF(diagram.left(), diagram.top(), w, h));
+            drawZone(QRectF(diagram.left() + w + gap, diagram.top(), w, h));
+            drawZone(QRectF(diagram.left(), diagram.top() + h + gap, w, h));
+            drawZone(QRectF(diagram.left() + w + gap, diagram.top() + h + gap, w, h));
+        }
+
+        p.setPen(textCol);
+        QFont f = font();
+        f.setPointSize(qMax(9, f.pointSize() - 1));
+        f.setBold(isChecked());
+        p.setFont(f);
+        p.drawText(QRect(6, height() - 28, width() - 12, 22), Qt::AlignHCenter | Qt::AlignVCenter | Qt::TextWordWrap, m_title);
+    }
+
+private:
+    QString m_layoutId;
+    QString m_title;
+};
 
 void applySettingsFormGrid(QGridLayout* grid, int labelCol = 0, int fieldCol = 1)
 {
@@ -269,37 +359,12 @@ void DialogSettings::createUI()
     terminalSizeSpin->setMaximum(100000);
 
     toolbarPosLabel = new QLabel("Toolbar position:", appearanceWidget);
-    toolbarPosFrame = new QFrame(appearanceWidget);
-    toolbarPosFrame->setStyleSheet(QStringLiteral(
-        "QFrame#ToolbarPosFrame { background: palette(mid); border: 1px solid palette(mid); border-radius: 4px; }"
-        "QPushButton {"
-        "  border: 1px solid palette(mid);"
-        "  border-radius: 3px;"
-        "  background: palette(window);"
-        "  padding: 14px;"
-        "}"
-        "QPushButton:hover { background: palette(dark); }"
-        "QPushButton:checked {"
-        "  background: palette(highlight);"
-        "  border-color: palette(highlight);"
-        "}"
-    ));
-    toolbarPosFrame->setObjectName("ToolbarPosFrame");
-    toolbarPosGrid = new QGridLayout(toolbarPosFrame);
-    toolbarPosGrid->setContentsMargins(4, 4, 4, 4);
-    toolbarPosGrid->setSpacing(3);
-    const QStringList posLabels = { QStringLiteral("Top"), QStringLiteral("Bottom"), QStringLiteral("Left"), QStringLiteral("Right") };
-    for (int i = 0; i < 4; ++i) {
-        toolbarPosBtn[i] = new QPushButton(posLabels[i], toolbarPosFrame);
-        toolbarPosBtn[i]->setCheckable(true);
-        toolbarPosBtn[i]->setAutoExclusive(true);
-        toolbarPosBtn[i]->setMinimumWidth(70);
-        toolbarPosBtn[i]->setToolTip(QStringLiteral("Place the toolbar on the %1 edge. Takes effect on next project open.").arg(posLabels[i].toLower()));
-    }
-    toolbarPosGrid->addWidget(toolbarPosBtn[0], 0, 1);
-    toolbarPosGrid->addWidget(toolbarPosBtn[1], 2, 1);
-    toolbarPosGrid->addWidget(toolbarPosBtn[2], 1, 0);
-    toolbarPosGrid->addWidget(toolbarPosBtn[3], 1, 2);
+    toolbarPosCombo = new QComboBox(appearanceWidget);
+    toolbarPosCombo->addItem(QStringLiteral("Top"), 0);
+    toolbarPosCombo->addItem(QStringLiteral("Bottom"), 1);
+    toolbarPosCombo->addItem(QStringLiteral("Left"), 2);
+    toolbarPosCombo->addItem(QStringLiteral("Right"), 3);
+    toolbarPosCombo->setToolTip(QStringLiteral("Place the toolbar on the selected edge. Takes effect on next project open."));
 
     consoleThemeGroup = new QGroupBox("Console Theme", consolePageWidget);
 
@@ -490,29 +555,105 @@ void DialogSettings::createUI()
     appearanceThemeLay->addWidget(themeSwatchesFrame, 1, 0, 1, 2);
     appearanceThemeLay->setColumnStretch(2, 1);
 
-    auto* appearanceTypeGroup = new QGroupBox(QStringLiteral("Typography & chrome"), appearanceWidget);
+    auto* appearanceTypeGroup = new QGroupBox(QStringLiteral("Font"), appearanceWidget);
     appearanceTypeGroup->setStyleSheet(kSettingsCardCss);
     auto* appearanceTypeLay = new QGridLayout(appearanceTypeGroup);
     applySettingsFormGrid(appearanceTypeLay);
     styleSettingsLabel(fontFamilyLabel);
     styleSettingsLabel(fontSizeLabel);
-    styleSettingsLabel(toolbarPosLabel);
     limitFieldWidth(fontFamilyCombo, 220, 360);
     limitFieldWidth(fontSizeSpin, 100, 140);
     appearanceTypeLay->addWidget(fontFamilyLabel, 0, 0);
     appearanceTypeLay->addWidget(fontFamilyCombo, 0, 1, Qt::AlignLeft);
     appearanceTypeLay->addWidget(fontSizeLabel, 1, 0);
     appearanceTypeLay->addWidget(fontSizeSpin, 1, 1, Qt::AlignLeft);
-    appearanceTypeLay->addWidget(toolbarPosLabel, 2, 0, Qt::AlignTop);
-    appearanceTypeLay->addWidget(toolbarPosFrame, 2, 1, Qt::AlignLeft);
     appearanceTypeLay->setColumnStretch(2, 1);
+
+    auto* dockPresetGroup = new QGroupBox(QStringLiteral("Dock layout"), appearanceWidget);
+    dockPresetGroup->setStyleSheet(kSettingsCardCss);
+    auto* dockPresetLay = new QVBoxLayout(dockPresetGroup);
+    dockPresetLay->setContentsMargins(12, 12, 12, 12);
+    dockPresetLay->setSpacing(10);
+
+    auto* toolbarRow = new QWidget(dockPresetGroup);
+    auto* toolbarRowLay = new QHBoxLayout(toolbarRow);
+    toolbarRowLay->setContentsMargins(0, 0, 0, 0);
+    toolbarRowLay->setSpacing(12);
+    styleSettingsLabel(toolbarPosLabel);
+    limitFieldWidth(toolbarPosCombo, 140, 200);
+    toolbarRowLay->addWidget(toolbarPosLabel, 0);
+    toolbarRowLay->addWidget(toolbarPosCombo, 0);
+    toolbarRowLay->addStretch(1);
+
+    dockLayoutHint = new QLabel(QStringLiteral("Choose a zone scheme, then drag widgets into columns. Takes effect on next project open."), dockPresetGroup);
+    dockLayoutHint->setWordWrap(true);
+    dockLayoutHint->setStyleSheet(QStringLiteral("color: palette(placeholderText); font-size: 11px;"));
+
+    dockLayoutSchemes = new QWidget(dockPresetGroup);
+    auto* schemesLay = new QHBoxLayout(dockLayoutSchemes);
+    schemesLay->setContentsMargins(0, 0, 0, 0);
+    schemesLay->setSpacing(10);
+
+    dockLayoutGroup = new QButtonGroup(this);
+    dockLayoutGroup->setExclusive(true);
+
+    struct SchemeSpec { const char* id; const char* shortTitle; };
+    const SchemeSpec schemes[] = {
+        { "main_right", "Big right" },
+        { "main_left",  "Top split" },
+        { "split_v2",   "2 zones" },
+        { "quad",       "4 zones" },
+    };
+    for (const auto& s : schemes) {
+        auto* card = new LayoutSchemeCard(QString::fromLatin1(s.id), QString::fromLatin1(s.shortTitle), dockLayoutSchemes);
+        card->setProperty("layoutId", QString::fromLatin1(s.id));
+        dockLayoutGroup->addButton(card);
+        schemesLay->addWidget(card, 0, Qt::AlignLeft);
+    }
+    schemesLay->addStretch(1);
+
+    connect(dockLayoutGroup, &QButtonGroup::buttonClicked, this, [this](QAbstractButton*) {
+        refreshDockZoneColumns();
+        if (buttonApply)
+            buttonApply->setEnabled(true);
+    });
+
+    auto* dockMapLabel = new QLabel(QStringLiteral("Drag widgets between zones. Check ☐ to open at project start."), dockPresetGroup);
+    dockMapLabel->setStyleSheet(QStringLiteral("font-weight: 600;"));
+    dockMapLabel->setWordWrap(true);
+
+    dockZoneColumnsHost = new QWidget(dockPresetGroup);
+    auto* zoneColsLay = new QHBoxLayout(dockZoneColumnsHost);
+    zoneColsLay->setContentsMargins(0, 0, 0, 0);
+    zoneColsLay->setSpacing(8);
+    dockZoneColumnsHost->setMinimumHeight(280);
+
+    dockPresetLay->addWidget(toolbarRow);
+    dockPresetLay->addWidget(dockLayoutHint);
+    dockPresetLay->addWidget(dockLayoutSchemes);
+    dockPresetLay->addWidget(dockMapLabel);
+    dockPresetLay->addWidget(dockZoneColumnsHost, 1);
+
+    auto* appearanceInner = new QWidget(appearanceWidget);
+    auto* appearanceInnerLay = new QVBoxLayout(appearanceInner);
+    appearanceInnerLay->setContentsMargins(0, 0, 0, 0);
+    appearanceInnerLay->setSpacing(12);
+    appearanceInnerLay->addWidget(appearanceThemeGroup);
+    appearanceInnerLay->addWidget(appearanceTypeGroup);
+    appearanceInnerLay->addWidget(dockPresetGroup);
+    appearanceInnerLay->addStretch(1);
+
+    auto* appearanceScroll = new QScrollArea(appearanceWidget);
+    appearanceScroll->setWidgetResizable(true);
+    appearanceScroll->setFrameShape(QFrame::NoFrame);
+    appearanceScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    appearanceScroll->setWidget(appearanceInner);
 
     appearanceLayout->setContentsMargins(0, 0, 0, 0);
     appearanceLayout->setHorizontalSpacing(0);
-    appearanceLayout->setVerticalSpacing(12);
-    appearanceLayout->addWidget(appearanceThemeGroup, 0, 0);
-    appearanceLayout->addWidget(appearanceTypeGroup, 1, 0);
-    appearanceLayout->setRowStretch(2, 1);
+    appearanceLayout->setVerticalSpacing(0);
+    appearanceLayout->addWidget(appearanceScroll, 0, 0);
+    appearanceLayout->setRowStretch(0, 1);
     appearanceLayout->setColumnStretch(0, 1);
     appearanceWidget->setLayout(appearanceLayout);
 
@@ -1739,7 +1880,7 @@ void DialogSettings::createUI()
 
     QStringList payloadsCheckboxLabels = {
         "ID", "Name", "Description", "Type", "Artifact", "Listener(s)",
-        "Size", "Creator", "Created", "UID", "MD5", "SHA1", "SHA256"
+        "Size", "Creator", "Created", "UID", "Tag", "MD5", "SHA1", "SHA256"
     };
     for (int i = 0; i < payloadsCheckCount; ++i)
         payloadsCheck[i] = new QCheckBox(payloadsCheckboxLabels[i], payloadsGroup);
@@ -1755,6 +1896,7 @@ void DialogSettings::createUI()
     payloadsIdentityLayout->addWidget(payloadsCheck[0]);  // ID
     payloadsIdentityLayout->addWidget(payloadsCheck[1]);  // Name
     payloadsIdentityLayout->addWidget(payloadsCheck[2]);  // Description
+    payloadsIdentityLayout->addWidget(payloadsCheck[10]); // Tag
     payloadsIdentityLayout->addWidget(payloadsCheck[9]);  // UID (hidden by default)
     payloadsIdentityLayout->addStretch();
     payloadsTopRow->addWidget(payloadsIdentityGroup);
@@ -1774,9 +1916,9 @@ void DialogSettings::createUI()
     auto* payloadsHashGroup = new QGroupBox("Hashes", payloadsGroup);
     auto* payloadsHashLayout = new QVBoxLayout(payloadsHashGroup);
     payloadsHashLayout->setContentsMargins(8, 8, 8, 8);
-    payloadsHashLayout->addWidget(payloadsCheck[10]); // MD5
-    payloadsHashLayout->addWidget(payloadsCheck[11]); // SHA1
-    payloadsHashLayout->addWidget(payloadsCheck[12]); // SHA256
+    payloadsHashLayout->addWidget(payloadsCheck[11]); // MD5
+    payloadsHashLayout->addWidget(payloadsCheck[12]); // SHA1
+    payloadsHashLayout->addWidget(payloadsCheck[13]); // SHA256
     payloadsHashLayout->addStretch();
     payloadsTopRow->addWidget(payloadsHashGroup);
 
@@ -1801,6 +1943,8 @@ void DialogSettings::createUI()
 
     int row = 0, col = 0;
     for (const auto& info : widgetsList) {
+        if (!isDockContentBlinkAllowed(info.className))
+            continue;
         auto* check = new QCheckBox(info.displayName, tabblinkGroup);
         check->setChecked(info.defaultState);
         tabblinkGroupLayout->addWidget(check, row, col);
@@ -2772,7 +2916,7 @@ void DialogSettings::onApply() const
     bool themeChanged = settings->data.MainTheme != themeCombo->currentText();
     bool fontChanged  = settings->data.FontSize != fontSizeSpin->value() || settings->data.FontFamily != fontFamilyCombo->currentText();
 
-    if(themeChanged) {
+    if (themeChanged) {
         settings->data.MainTheme = themeCombo->currentText();
 
         if (auto* style = settings->getMainAdaptix()->qlementineStyle) {
@@ -2787,12 +2931,12 @@ void DialogSettings::onApply() const
             Q_EMIT ConsoleThemeManager::instance().themeChanged();
     }
 
-    if(fontChanged) {
+    if (fontChanged) {
         settings->data.FontSize   = fontSizeSpin->value();
         settings->data.FontFamily = fontFamilyCombo->currentText();
     }
 
-    if(themeChanged || fontChanged) {
+    if (themeChanged || fontChanged) {
         settings->getMainAdaptix()->ApplyApplicationFont();
     }
 
@@ -2806,14 +2950,18 @@ void DialogSettings::onApply() const
     settings->data.RemoteTerminalBufferSize = terminalSizeSpin->value();
 
     const int prevToolbarPos = settings->data.ToolbarPosition;
-    for (int i = 0; i < 4; ++i) {
-        if (toolbarPosBtn[i]->isChecked()) {
-            settings->data.ToolbarPosition = i;
-            break;
-        }
-    }
+    settings->data.ToolbarPosition = toolbarPosCombo->currentData().toInt();
     if (settings->data.ToolbarPosition != prevToolbarPos) {
         settings->getMainAdaptix()->mainUI->RebuildToolbars();
+    }
+
+    {
+        DockLayoutSettings dock;
+        dock.layout = currentDockLayoutId();
+        dock.openIn = collectDockOpenIn();
+        dock.startup = collectDockStartup();
+        DockLayoutEngine::ensureValid(dock);
+        settings->data.DockLayout = dock;
     }
 
     settings->data.ConsoleBufferSize = consoleSizeSpin->value();
@@ -2999,6 +3147,193 @@ void DialogSettings::updateThemeSwatches()
     }
 }
 
+QString DialogSettings::currentDockLayoutId() const
+{
+    if (!dockLayoutGroup)
+        return QStringLiteral("split_v2");
+    if (auto* b = dockLayoutGroup->checkedButton()) {
+        const QString id = b->property("layoutId").toString();
+        if (!id.isEmpty())
+            return id;
+    }
+    return QStringLiteral("split_v2");
+}
+
+void DialogSettings::setDockLayoutId(const QString& layoutId)
+{
+    if (!dockLayoutGroup)
+        return;
+    const QList<QAbstractButton*> buttons = dockLayoutGroup->buttons();
+    for (QAbstractButton* b : buttons) {
+        if (b->property("layoutId").toString() == layoutId) {
+            b->setChecked(true);
+            return;
+        }
+    }
+    if (!buttons.isEmpty())
+        buttons.first()->setChecked(true);
+}
+
+QMap<QString, QString> DialogSettings::collectDockOpenIn() const
+{
+    QMap<QString, QString> openIn;
+    if (!dockZoneColumnsHost)
+        return openIn;
+    const auto lists = dockZoneColumnsHost->findChildren<QListWidget*>();
+    for (QListWidget* list : lists) {
+        const QString zoneId = list->property("zoneId").toString();
+        if (zoneId.isEmpty())
+            continue;
+        for (int i = 0; i < list->count(); ++i) {
+            QListWidgetItem* item = list->item(i);
+            if (!item)
+                continue;
+            const QString wid = item->data(Qt::UserRole).toString();
+            if (!wid.isEmpty())
+                openIn.insert(wid, zoneId);
+        }
+    }
+    return openIn;
+}
+
+QStringList DialogSettings::collectDockStartup() const
+{
+    QStringList startup;
+    if (!dockZoneColumnsHost)
+        return startup;
+    const QStringList candidates = DockLayoutEngine::startupCandidateIds();
+    for (QListWidget* list : dockZoneColumnsHost->findChildren<QListWidget*>()) {
+        for (int i = 0; i < list->count(); ++i) {
+            QListWidgetItem* item = list->item(i);
+            if (!item || !(item->flags() & Qt::ItemIsUserCheckable))
+                continue;
+            if (item->checkState() != Qt::Checked)
+                continue;
+            const QString wid = item->data(Qt::UserRole).toString();
+            if (!wid.isEmpty() && candidates.contains(wid) && !startup.contains(wid))
+                startup.append(wid);
+        }
+    }
+    return startup;
+}
+
+void DialogSettings::refreshDockZoneColumns(const QMap<QString, QString>* preferredOpenIn, const QStringList* preferredStartup)
+{
+    if (!dockZoneColumnsHost)
+        return;
+
+    const QMap<QString, QString> prev = preferredOpenIn ? *preferredOpenIn : collectDockOpenIn();
+    const QStringList prevStartup = preferredStartup ? *preferredStartup : collectDockStartup();
+
+    if (auto* lay = qobject_cast<QHBoxLayout*>(dockZoneColumnsHost->layout())) {
+        while (QLayoutItem* child = lay->takeAt(0)) {
+            if (child->widget())
+                child->widget()->deleteLater();
+            delete child;
+        }
+    } else {
+        auto* layNew = new QHBoxLayout(dockZoneColumnsHost);
+        layNew->setContentsMargins(0, 0, 0, 0);
+        layNew->setSpacing(8);
+    }
+
+    auto* lay = qobject_cast<QHBoxLayout*>(dockZoneColumnsHost->layout());
+    if (!lay)
+        return;
+
+    const QString layoutId = currentDockLayoutId();
+    const QStringList zones = DockLayoutEngine::zoneIdsForLayout(layoutId);
+    const DockLayoutSettings defs = DockLayoutEngine::defaultsForLayout(layoutId);
+    const QStringList startupOk = DockLayoutEngine::startupCandidateIds();
+
+    QMap<QString, QListWidget*> zoneLists;
+    for (const QString& zoneId : zones) {
+        auto* col = new QWidget(dockZoneColumnsHost);
+        auto* colLay = new QVBoxLayout(col);
+        colLay->setContentsMargins(0, 0, 0, 0);
+        colLay->setSpacing(4);
+
+        auto* header = new QLabel(DockLayoutEngine::zoneLabel(zoneId), col);
+        header->setAlignment(Qt::AlignCenter);
+        header->setStyleSheet(QStringLiteral(
+            "font-weight: 600; padding: 4px 6px;"
+            "background: palette(mid); border-radius: 4px;"));
+
+        auto* list = new QListWidget(col);
+        list->setProperty("zoneId", zoneId);
+        list->setDragEnabled(true);
+        list->setAcceptDrops(true);
+        list->setDropIndicatorShown(true);
+        list->setDefaultDropAction(Qt::MoveAction);
+        list->setDragDropMode(QAbstractItemView::DragDrop);
+        list->setSelectionMode(QAbstractItemView::SingleSelection);
+        list->setIconSize(QSize(18, 18));
+        list->setMinimumWidth(150);
+        list->setMinimumHeight(220);
+        list->setSpacing(2);
+        list->setStyleSheet(QStringLiteral(
+            "QListWidget { border: 1px solid palette(mid); border-radius: 4px; padding: 2px; }"
+            "QListWidget::item { padding: 3px 4px; }"
+            "QListWidget::item:selected { background: palette(highlight); color: palette(highlighted-text); }"));
+
+        colLay->addWidget(header);
+        colLay->addWidget(list, 1);
+        lay->addWidget(col, 1);
+        zoneLists.insert(zoneId, list);
+
+        auto markDirty = [this]() {
+            if (buttonApply)
+                buttonApply->setEnabled(true);
+        };
+        connect(list->model(), &QAbstractItemModel::rowsInserted, this, [markDirty]() { markDirty(); });
+        connect(list->model(), &QAbstractItemModel::rowsRemoved, this, [markDirty]() { markDirty(); });
+        connect(list->model(), &QAbstractItemModel::dataChanged, this, [this](const QModelIndex&, const QModelIndex&, const QList<int>& roles) {
+                    if (!buttonApply)
+                        return;
+                    if (roles.isEmpty() || roles.contains(Qt::CheckStateRole))
+                        buttonApply->setEnabled(true);
+                });
+        connect(list, &QListWidget::itemChanged, this, [this](QListWidgetItem*) {
+            if (buttonApply)
+                buttonApply->setEnabled(true);
+        });
+    }
+
+    const QString fallbackZone = zones.value(0);
+    for (const QString& wid : DockLayoutEngine::widgetIds()) {
+        QString zone = prev.value(wid);
+        if (zone.isEmpty() || !zoneLists.contains(zone))
+            zone = defs.openIn.value(wid, fallbackZone);
+        if (!zoneLists.contains(zone))
+            zone = fallbackZone;
+        QListWidget* list = zoneLists.value(zone);
+        if (!list)
+            continue;
+
+        {
+            const QSignalBlocker listBlocker(list);
+
+            auto* item = new QListWidgetItem(DockLayoutEngine::widgetLabel(wid));
+            item->setData(Qt::UserRole, wid);
+            const QString iconPath = DockLayoutEngine::widgetIconPath(wid);
+            if (!iconPath.isEmpty())
+                item->setIcon(QIcon(iconPath));
+
+            Qt::ItemFlags flags = Qt::ItemIsEnabled | Qt::ItemIsSelectable | Qt::ItemIsDragEnabled;
+            if (startupOk.contains(wid)) {
+                flags |= Qt::ItemIsUserCheckable;
+                item->setFlags(flags);
+                item->setCheckState(prevStartup.contains(wid) ? Qt::Checked : Qt::Unchecked);
+                item->setToolTip(QStringLiteral("Drag to change zone. Check to open at project start."));
+            } else {
+                item->setFlags(flags);
+                item->setToolTip(QStringLiteral("Drag to change zone. (Agent panels open on demand.)"));
+            }
+            list->addItem(item);
+        }
+    }
+}
+
 void DialogSettings::loadSettings()
 {
     refreshCodeEditorProfilesList();
@@ -3012,9 +3347,18 @@ void DialogSettings::loadSettings()
     graphAutoHideNoChildsSwitch->setChecked(settings->data.GraphAutoHideNoChilds);
     terminalSizeSpin->setValue(settings->data.RemoteTerminalBufferSize);
 
-    int tbPos = qBound(0, settings->data.ToolbarPosition, 3);
-    for (int i = 0; i < 4; ++i)
-        toolbarPosBtn[i]->setChecked(i == tbPos);
+    {
+        const int tbPos = qBound(0, settings->data.ToolbarPosition, 3);
+        const int idx = toolbarPosCombo->findData(tbPos);
+        toolbarPosCombo->setCurrentIndex(idx >= 0 ? idx : 0);
+    }
+
+    {
+        DockLayoutSettings dock = settings->data.DockLayout;
+        DockLayoutEngine::ensureValid(dock);
+        setDockLayoutId(dock.layout);
+        refreshDockZoneColumns(&dock.openIn, &dock.startup);
+    }
 
     consoleSizeSpin->setValue(settings->data.ConsoleBufferSize);
     consoleTimeCheckbox->setChecked(settings->data.ConsoleTime);

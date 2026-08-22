@@ -8,6 +8,8 @@
 #include <QDir>
 #include <QJsonObject>
 #include <QJSValue>
+#include <QMap>
+#include <QVector>
 
 struct Argument
 {
@@ -35,6 +37,7 @@ struct Command
     QJSValue        post_hook;
     bool            is_handler;
     QJSValue        handler;
+    bool            destructive;
 };
 
 struct CommandsGroup
@@ -42,7 +45,16 @@ struct CommandsGroup
     QString        groupName;
     QString        filepath;
     QList<Command> commands;
-    QJSEngine*     engine;
+    QJSEngine*     engine = nullptr;
+};
+
+struct MainCommandsGroup
+{
+    QString       groupId;
+    QString       description;
+    bool          enabled = true;
+    bool          defaultEnabled = true;
+    CommandsGroup group;
 };
 
 struct ServerCommandsGroup
@@ -50,6 +62,7 @@ struct ServerCommandsGroup
     QString       scriptName;
     QString       description;
     bool          enabled = true;
+    bool          defaultEnabled = true;
     CommandsGroup group;
 };
 
@@ -69,9 +82,10 @@ struct CommanderResult
     bool        is_pre_hook;
     AxExecutor  post_hook;
     AxExecutor  handler;
+    bool        styledHelp = false;
 };
 
-
+inline constexpr QChar kHelpInactiveMarker = QChar(0x1e);
 
 class Commander : public QObject
 {
@@ -81,7 +95,7 @@ Q_OBJECT
     QString listenerType;
     QString error;
 
-    CommandsGroup                       mainCommandsGroup;
+    QVector<MainCommandsGroup>          mainGroups;
     QMap<QString, ServerCommandsGroup>  serverGroups;
     QVector<CommandsGroup>              clientGroups;
 
@@ -91,14 +105,21 @@ Q_OBJECT
     CommanderResult ProcessHelp(QStringList commandParts);
     QString         GenerateCommandHelp(const Command &command, const QString &parentCommand = "");
 
+    void appendHelpCommandLines(QTextStream &output, const QList<Command> &commands, int totalWidth, bool inactive) const;
+    bool findCommand(const QString &commandName, Command *out, QString *groupIdOut = nullptr, bool *enabledOut = nullptr) const;
+
 public:
     explicit Commander();
     ~Commander() override;
 
     void SetAgentType(const QString &type);
-    void SetMainCommands(const CommandsGroup &group);
+    QString AgentType() const { return agentType; }
 
-    void AddServerGroup(const QString &scriptName, const QString &description, const CommandsGroup &group);
+    void SetMainCommands(const CommandsGroup &group);
+    void ClearMainGroups();
+    void AddMainGroup(const CommandsGroup &group, const QString &description = QString(), bool defaultEnabled = true);
+
+    void AddServerGroup(const QString &scriptName, const QString &description, const CommandsGroup &group, bool defaultEnabled = true);
     void RemoveServerGroup(const QString &scriptName);
     void SetServerGroupEnabled(const QString &scriptName, bool enabled);
     void SetServerGroupEngine(const QString &scriptName, QJSEngine* engine);
@@ -108,6 +129,15 @@ public:
 
     void AddClientGroup(const CommandsGroup &group);
     void RemoveClientGroup(const QString &filepath);
+
+    void SetGroupEnabled(const QString &groupId, bool enabled);
+    bool IsGroupEnabled(const QString &groupId) const;
+    void ApplyGroupEnabledMap(const QMap<QString, bool> &overrides);
+    QMap<QString, bool> GetGroupEnabledOverrides() const;
+    QStringList GetGroupIds() const;
+    QList<QPair<QString, bool>> GetGroupsStatus() const; // id → enabled
+
+    Commander* Clone(QObject *parent = nullptr) const;
 
     QString GetError();
     QStringList GetCommands();

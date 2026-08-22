@@ -107,12 +107,7 @@ void GraphScene::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
     });
     adaptixWidget->ScriptManager->AddMenuSession(tasksMenu, QStringLiteral("SessionAgent"), agentIds);
 
-    auto* extMenu = ctxMenu.addMenu(QIcon(QStringLiteral(":/icons/extension")), QStringLiteral("Extensions"));
-    int mainCount = adaptixWidget->ScriptManager->AddMenuSession(extMenu, QStringLiteral("SessionMain"), agentIds);
-    if (mainCount > 0)
-        ctxMenu.addMenu(extMenu);
-    else
-        ctxMenu.removeAction(extMenu->menuAction());
+    adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, QStringLiteral("SessionMain"), agentIds);
 
     ctxMenu.addSeparator();
 

@@ -5,6 +5,7 @@
 #include <Client/AuthProfile.h>
 #include <Client/Settings.h>
 #include <Utils/CustomElements/ListFeed.h>
+#include <Utils/CustomElements/SegmentControl.h>
 #include <Utils/NonBlockingDialogs.h>
 #include <UI/Dialogs/DialogDownloader.h>
 #include <Utils/FontManager.h>
@@ -12,13 +13,13 @@
 #include <MainAdaptix.h>
 
 #include <oclero/qlementine/widgets/Menu.hpp>
-#include <oclero/qlementine/widgets/SegmentedControl.hpp>
 
 #include <QDesktopServices>
 #include <QProcess>
 #include <QUrl>
 #include <QClipboard>
 #include <QFileInfo>
+#include <QSignalBlocker>
 
 #include <algorithm>
 
@@ -280,32 +281,27 @@ FilesFeedWidget::FilesFeedWidget(AdaptixWidget* w) : QWidget(w), m_adaptixWidget
     mainLayout->setSpacing(0);
     mainLayout->addWidget(m_stack, 1);
 
-    auto makeSegment = [this](ListFeedWidget* feed, int idx) {
-        auto* seg = new oclero::qlementine::SegmentedControl(feed);
-        seg->addItem("Downloads");
-        seg->addItem("Uploads");
-        seg->addItem("Sync");
-        seg->setCurrentIndex(idx);
-        seg->setFixedHeight(FontManager::instance().typography().segmentHeight);
-        feed->addToolbarWidgetBefore(seg);
-        return seg;
-    };
+    m_segDl   = createModeSegment(dlFeed, 0);
+    m_segUl   = createModeSegment(ulFeed, 1);
+    m_segSync = createModeSegment(syncFeed, 2);
 
-    m_segDl   = makeSegment(dlFeed, 0);
-    m_segUl   = makeSegment(ulFeed, 1);
-    m_segSync = makeSegment(syncFeed, 2);
+    if (dlFeed && m_segDl)
+        dlFeed->addToolbarWidgetBefore(m_segDl);
+    if (ulFeed && m_segUl)
+        ulFeed->addToolbarWidgetBefore(m_segUl);
+    if (syncFeed && m_segSync)
+        syncFeed->addToolbarWidgetBefore(m_segSync);
 
-    auto onSegmentChanged = [this](int idx) {
-        m_currentSegment = idx;
-        m_stack->setCurrentIndex(idx);
-        if (m_segDl)   { m_segDl->blockSignals(true);   m_segDl->setCurrentIndex(idx);   m_segDl->blockSignals(false); }
-        if (m_segUl)   { m_segUl->blockSignals(true);   m_segUl->setCurrentIndex(idx);   m_segUl->blockSignals(false); }
-        if (m_segSync) { m_segSync->blockSignals(true); m_segSync->setCurrentIndex(idx); m_segSync->blockSignals(false); }
-        loadCurrentPage();
+    auto wireSeg = [this](SegmentControl* seg) {
+        if (!seg)
+            return;
+        connect(seg, &SegmentControl::currentIndexChanged, this, [this, seg]() {
+            setSegment(seg->currentIndex());
+        });
     };
-    connect(m_segDl, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this, onSegmentChanged]() { onSegmentChanged(m_segDl->currentIndex()); });
-    connect(m_segUl, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this, onSegmentChanged]() { onSegmentChanged(m_segUl->currentIndex()); });
-    connect(m_segSync, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this, onSegmentChanged]() { onSegmentChanged(m_segSync->currentIndex()); });
+    wireSeg(m_segDl);
+    wireSeg(m_segUl);
+    wireSeg(m_segSync);
 
     m_dockWidget = new KDDockWidgets::QtWidgets::DockWidget( "FilesFeed:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
     m_dockWidget->setTitle("Files");
@@ -415,6 +411,19 @@ FilesFeedWidget::~FilesFeedWidget() = default;
 
 KDDockWidgets::QtWidgets::DockWidget* FilesFeedWidget::dock() { return m_dockWidget; }
 
+SegmentControl* FilesFeedWidget::createModeSegment(QWidget* parent, int selectedIdx)
+{
+    auto* seg = new SegmentControl(parent);
+    seg->addItem(QStringLiteral("Downloads"));
+    seg->addItem(QStringLiteral("Uploads"));
+    seg->addItem(QStringLiteral("Sync"));
+    {
+        QSignalBlocker b(seg);
+        seg->setCurrentIndex(selectedIdx);
+    }
+    return seg;
+}
+
 void FilesFeedWidget::setSegment(int index)
 {
     if (index < 0 || index > 2)
@@ -424,11 +433,18 @@ void FilesFeedWidget::setSegment(int index)
     m_currentSegment = index;
     if (m_stack)
         m_stack->setCurrentIndex(index);
-    if (m_segDl)   { m_segDl->blockSignals(true);   m_segDl->setCurrentIndex(index);   m_segDl->blockSignals(false); }
-    if (m_segUl)   { m_segUl->blockSignals(true);   m_segUl->setCurrentIndex(index);   m_segUl->blockSignals(false); }
-    if (m_segSync) { m_segSync->blockSignals(true); m_segSync->setCurrentIndex(index); m_segSync->blockSignals(false); }
-    loadCurrentPage();
-}
+    auto sync = [index](SegmentControl* seg) {
+        if (!seg)
+            return;
+        QSignalBlocker b(seg);
+        seg->setCurrentIndex(index);
+    };
+    sync(m_segDl);
+    sync(m_segUl);
+    sync(m_segSync);
+    if (index == 0 && m_adaptixWidget)
+        m_adaptixWidget->clearDockUnread(AdaptixWidget::UnreadKind::Downloads);
+    loadCurrentPage();}
 
 ListFeedWidget* FilesFeedWidget::activeFeed() const
 {

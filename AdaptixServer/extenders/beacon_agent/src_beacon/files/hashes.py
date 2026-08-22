@@ -178,7 +178,7 @@ GetModuleHandleA
 FreeLibrary
 __C_specific_handler
 AxAddScreenshot
-AxDownloadMemory
+BeaconDownload
 // Async BOF
 BeaconRegisterThreadCallback
 BeaconUnregisterThreadCallback

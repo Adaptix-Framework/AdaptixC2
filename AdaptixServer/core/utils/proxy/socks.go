@@ -47,11 +47,51 @@ func ReplySocks4StatusWs(wsconn adaptix.WebSocketConn, success bool) {
 }
 
 func ReplySocks5StatusConn(conn net.Conn, rep byte) {
-	_, _ = conn.Write([]byte{0x05, rep, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+	_, _ = conn.Write(Socks5Reply(rep, adaptix.ADDRESS_TYPE_IPV4, nil, 0))
 }
 
 func ReplySocks5StatusWs(wsconn adaptix.WebSocketConn, rep byte) {
-	_ = wsconn.WriteMessage(websocket.BinaryMessage, []byte{0x05, rep, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
+	_ = wsconn.WriteMessage(websocket.BinaryMessage, Socks5Reply(rep, adaptix.ADDRESS_TYPE_IPV4, nil, 0))
+}
+
+func Socks5Reply(rep byte, atyp int, addr []byte, port int) []byte {
+	if port < 0 {
+		port = 0
+	}
+	if port > 65535 {
+		port &= 0xffff
+	}
+	hi := byte(port >> 8)
+	lo := byte(port)
+	switch atyp {
+	case adaptix.ADDRESS_TYPE_IPV6:
+		a := make([]byte, 16)
+		copy(a, addr)
+		out := []byte{0x05, rep, 0x00, 0x04}
+		out = append(out, a...)
+		return append(out, hi, lo)
+	case adaptix.ADDRESS_TYPE_DOMAIN:
+		if len(addr) > 255 {
+			addr = addr[:255]
+		}
+		out := []byte{0x05, rep, 0x00, 0x03, byte(len(addr))}
+		out = append(out, addr...)
+		return append(out, hi, lo)
+	default:
+		a := []byte{0, 0, 0, 0}
+		if len(addr) >= 4 {
+			copy(a, addr[:4])
+		}
+		return []byte{0x05, rep, 0x00, 0x01, a[0], a[1], a[2], a[3], hi, lo}
+	}
+}
+
+func ReplySocks5AddrConn(conn net.Conn, rep byte, atyp int, addr []byte, port int) {
+	_, _ = conn.Write(Socks5Reply(rep, atyp, addr, port))
+}
+
+func ReplySocks5AddrWs(wsconn adaptix.WebSocketConn, rep byte, atyp int, addr []byte, port int) {
+	_ = wsconn.WriteMessage(websocket.BinaryMessage, Socks5Reply(rep, atyp, addr, port))
 }
 
 func CheckSocks4(conn net.Conn) (ProxySocks, error) {
@@ -173,15 +213,16 @@ func CheckSocks5(conn net.Conn, auth bool, username string, password string) (Pr
 		_, _ = conn.Write([]byte{0x05, 0x00}) // version 5, without auth
 	}
 
-	/// Check command: CONNECT (1)
+	/// Request: CONNECT (1) and BIND (2) only. UDP ASSOCIATE is drained then rejected.
 
 	buf = make([]byte, 4)
 	_, err = io.ReadFull(conn, buf)
-	if err != nil || buf[0] != 0x05 || buf[1] != 0x01 {
+	if err != nil || buf[0] != 0x05 {
 		ReplySocks5StatusConn(conn, adaptix.SOCKS5_COMMAND_NOT_SUPPORTED)
 		err = errors.New("no supported command")
 		return proxySocks, err
 	}
+	proxySocks.SocksCommand = int(buf[1])
 
 	//errByte = SOCKS5_ADDR_TYPE_NOT_SUPPORTED
 
@@ -238,6 +279,11 @@ func CheckSocks5(conn net.Conn, auth bool, username string, password string) (Pr
 		return proxySocks, err
 	}
 	proxySocks.Port = int(binary.BigEndian.Uint16(portBuf))
+
+	if proxySocks.SocksCommand != 1 && proxySocks.SocksCommand != 2 {
+		ReplySocks5StatusConn(conn, adaptix.SOCKS5_COMMAND_NOT_SUPPORTED)
+		return proxySocks, errors.New("no supported command")
+	}
 
 	return proxySocks, err
 }

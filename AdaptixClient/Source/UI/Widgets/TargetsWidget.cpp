@@ -178,7 +178,7 @@ void TargetsTableModel::reset(const QList<TargetData>& newTargets)
 
 
 
-TargetsWidget::TargetsWidget(AdaptixWidget* w) : DockTab("Targets", w->GetProfile()->GetProject(), ":/icons/devices"), adaptixWidget(w)
+TargetsWidget::TargetsWidget(AdaptixWidget* w) : DockTab("Targets", w->GetProfile()->GetProject(), ":/icons/devices", w), adaptixWidget(w)
 {
     this->createUI();
 

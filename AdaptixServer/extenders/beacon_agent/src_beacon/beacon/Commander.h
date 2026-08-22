@@ -35,8 +35,6 @@
 #define COMMAND_SAVEMEMORY 0x2321
 #define COMMAND_ERROR      0x1111ffff
 
-class Agent;
-
 class Commander
 {
 public:

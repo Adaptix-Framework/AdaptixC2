@@ -2,6 +2,7 @@
 #include <Client/AuthProfile.h>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 
 static const QString DB_CONNECTION_NAME = "adaptix_connection";
 
@@ -680,7 +681,7 @@ void Storage::SelectSettingsPayloads(SettingsData* settingsData)
         QJsonObject   json = doc.object();
 
         QJsonArray columns = json["columns"].toArray();
-        for (int i = 0; i < 13 && i < columns.size(); i++)
+        for (int i = 0; i < 14 && i < columns.size(); i++)
             settingsData->PayloadsTableColumns[i] = columns[i].toBool();
     }
 }
@@ -688,7 +689,7 @@ void Storage::SelectSettingsPayloads(SettingsData* settingsData)
 void Storage::UpdateSettingsPayloads(const SettingsData &settingsData)
 {
     QJsonArray columns;
-    for (int i = 0; i < 13; i++)
+    for (int i = 0; i < 14; i++)
         columns.append(settingsData.PayloadsTableColumns[i]);
 
     QJsonObject json;
@@ -791,7 +792,53 @@ void Storage::UpdateSettingsScript(const SettingsData &settingsData)
         LogError("SettingsScript not updated in database: %s\n", query.lastError().text().toStdString().c_str());
 }
 
+void Storage::SelectSettingsDockLayout(SettingsData* settingsData)
+{
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("SELECT data FROM Settings WHERE key = 'SettingsDockLayout' LIMIT 1;");
+    if (query.exec() && query.next()) {
+        QString       data = query.value("data").toString();
+        QJsonDocument doc  = QJsonDocument::fromJson(data.toUtf8());
+        QJsonObject   json = doc.object();
 
+        if (json.contains("layout") && !json["layout"].toString().isEmpty())
+            settingsData->DockLayout.layout = json["layout"].toString();
+
+        settingsData->DockLayout.openIn.clear();
+        if (json.contains("openIn") && json["openIn"].isObject()) {
+            QJsonObject openIn = json["openIn"].toObject();
+            for (auto it = openIn.begin(); it != openIn.end(); ++it)
+                settingsData->DockLayout.openIn.insert(it.key(), it.value().toString());
+        }
+
+        settingsData->DockLayout.startup.clear();
+        if (json.contains("startup") && json["startup"].isArray()) {
+            for (const QJsonValue& v : json["startup"].toArray())
+                settingsData->DockLayout.startup.append(v.toString());
+        }
+    }
+}
+
+void Storage::UpdateSettingsDockLayout(const SettingsData &settingsData)
+{
+    QJsonObject json;
+    json["layout"] = settingsData.DockLayout.layout;
+    QJsonObject openIn;
+    for (auto it = settingsData.DockLayout.openIn.constBegin(); it != settingsData.DockLayout.openIn.constEnd(); ++it)
+        openIn[it.key()] = it.value();
+    json["openIn"] = openIn;
+    QJsonArray startup;
+    for (const QString& id : settingsData.DockLayout.startup)
+        startup.append(id);
+    json["startup"] = startup;
+    QString data = QJsonDocument(json).toJson(QJsonDocument::Compact);
+
+    QSqlQuery query(QSqlDatabase::database(DB_CONNECTION_NAME));
+    query.prepare("INSERT OR REPLACE INTO Settings (key, data) VALUES ('SettingsDockLayout', :Data);");
+    query.bindValue(":Data", data);
+    if (!query.exec())
+        LogError("SettingsDockLayout not updated in database: %s\n", query.lastError().text().toStdString().c_str());
+}
 
 /// LISTENER PROFILES
 

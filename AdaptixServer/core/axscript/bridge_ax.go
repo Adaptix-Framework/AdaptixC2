@@ -62,6 +62,7 @@ func registerAxBridge(engine *ScriptEngine) {
 		obj.Set("setPreHook", builder.SetPreHook)
 		obj.Set("setPostHook", builder.SetPostHook)
 		obj.Set("setHandler", builder.SetHandler)
+		obj.Set("setDestructive", builder.SetDestructive)
 
 		obj.Set("__builder", builder)
 
@@ -69,28 +70,27 @@ func registerAxBridge(engine *ScriptEngine) {
 	})
 
 	axObj.Set("create_commands_group", func(call goja.FunctionCall) goja.Value {
+		bindGroup := func(group *jsCommandGroupBuilder) *goja.Object {
+			obj := rt.NewObject()
+			obj.Set("setParams", group.SetParams)
+			obj.Set("add", group.Add)
+			obj.Set("setDefaultEnabled", group.SetDefaultEnabled)
+			obj.Set("__group", group)
+			return obj
+		}
+
 		if len(call.Arguments) >= 2 {
 			groupName := call.Argument(0).String()
 			arrayVal := call.Argument(1)
 			group := newJsCommandGroupBuilder(engine)
 			group.SetParamsFromValue(groupName, arrayVal)
-
-			obj := rt.NewObject()
-			obj.Set("setParams", group.SetParams)
-			obj.Set("add", group.Add)
-			obj.Set("__group", group)
-			return obj
+			if len(call.Arguments) >= 3 && !goja.IsUndefined(call.Argument(2)) && !goja.IsNull(call.Argument(2)) {
+				group.defaultEnabled = call.Argument(2).ToBoolean()
+			}
+			return bindGroup(group)
 		}
 
-		group := newJsCommandGroupBuilder(engine)
-
-		obj := rt.NewObject()
-		obj.Set("setParams", group.SetParams)
-		obj.Set("add", group.Add)
-
-		obj.Set("__group", group)
-
-		return obj
+		return bindGroup(newJsCommandGroupBuilder(engine))
 	})
 
 	axObj.Set("execute_command", func(call goja.FunctionCall) goja.Value {
@@ -447,6 +447,37 @@ func registerAxBridge(engine *ScriptEngine) {
 			}
 		}
 
+		return goja.Undefined()
+	})
+
+	axObj.Set("register_service_commands", func(call goja.FunctionCall) goja.Value {
+		if engine.manager == nil || len(call.Arguments) < 1 {
+			return rt.ToValue(false)
+		}
+		groupBuilder := extractGroupBuilder(call.Argument(0))
+		if groupBuilder == nil {
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "register_service_commands", "invalid group object")
+			return goja.Undefined()
+		}
+		serviceName := strings.TrimPrefix(engine.name, "service:")
+		if serviceName == "" || serviceName == engine.name {
+			serviceName = groupBuilder.name
+		}
+		if serviceName == "" {
+			engine.manager.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "register_service_commands", "empty service name")
+			return goja.Undefined()
+		}
+		metaVal := rt.Get("metadata")
+		if metaVal != nil && !goja.IsUndefined(metaVal) && !goja.IsNull(metaVal) {
+			metaObj := metaVal.ToObject(rt)
+			if groupBuilder.description == "" {
+				if descVal := metaObj.Get("description"); descVal != nil && !goja.IsUndefined(descVal) && !goja.IsNull(descVal) {
+					groupBuilder.description = descVal.String()
+				}
+			}
+		}
+		group := groupBuilder.ToCommandGroup(serviceName)
+		engine.manager.RegisterServiceCommandGroup(serviceName, group)
 		return goja.Undefined()
 	})
 
@@ -945,6 +976,35 @@ func registerAxBridge(engine *ScriptEngine) {
 		return goja.Undefined()
 	})
 
+	axObj.Set("agent_set_command_group", func(call goja.FunctionCall) goja.Value {
+		if engine.manager == nil || engine.manager.teamserver == nil || len(call.Arguments) < 3 {
+			panic(rt.NewTypeError("agent_set_command_group requires (agentId, groupName, enabled)"))
+		}
+		agentId := exportInt64(call.Argument(0))
+		groupId := call.Argument(1).String()
+		enabled := call.Argument(2).ToBoolean()
+		if err := engine.manager.teamserver.AxAgentSetCommandGroup(agentId, groupId, enabled); err != nil {
+			panic(rt.NewGoError(err))
+		}
+		return goja.Undefined()
+	})
+
+	axObj.Set("agent_get_command_groups", func(call goja.FunctionCall) goja.Value {
+		if engine.manager == nil || engine.manager.teamserver == nil || len(call.Arguments) < 1 {
+			return rt.ToValue([]interface{}{})
+		}
+		agentId := exportInt64(call.Argument(0))
+		list, err := engine.manager.teamserver.AxAgentGetCommandGroups(agentId)
+		if err != nil {
+			return rt.ToValue([]interface{}{})
+		}
+		out := make([]interface{}, 0, len(list))
+		for _, item := range list {
+			out = append(out, item)
+		}
+		return rt.ToValue(out)
+	})
+
 	// --- Misc ---
 
 	axObj.Set("ticks", func(call goja.FunctionCall) goja.Value {
@@ -978,6 +1038,10 @@ func registerAxBridge(engine *ScriptEngine) {
 
 	axObj.Set("plugin_service_command", func(call goja.FunctionCall) goja.Value {
 		return goja.Undefined()
+	})
+
+	axObj.Set("plugin_service_wait", func(call goja.FunctionCall) goja.Value {
+		return rt.ToValue(map[string]interface{}{"ok": false, "error": "plugin_service_wait is a client-only stub"})
 	})
 
 	axObj.Set("plugin_agent_command", func(call goja.FunctionCall) goja.Value {

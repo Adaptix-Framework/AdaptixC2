@@ -23,6 +23,8 @@
 #include <QList>
 #include <MainAdaptix.h>
 #include <Client/Settings.h>
+#include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/DockWidgetRegister.h>
 #include <typeinfo>
 #include <cstdlib>
 #ifdef __GNUC__
@@ -65,6 +67,7 @@ protected:
     mutable QString m_cachedClassName;
     bool m_autoBlinkEnabled = true;
     QTimer* m_debounceTimer = nullptr;
+    QPointer<AdaptixWidget> m_adaptixWidget;
 
     QSet<int> m_newTableRows;
     int m_newTextPosition = -1;
@@ -86,7 +89,8 @@ protected:
     }
 
 public:
-    DockTab(const QString &tabName, const QString &projectName, const QString &icon = "") {
+    DockTab(const QString &tabName, const QString &projectName, const QString &icon = "", AdaptixWidget* adaptix = nullptr) {
+        m_adaptixWidget = adaptix;
         dockWidget = new KDDockWidgets::QtWidgets::DockWidget(tabName + ":Dock-" + projectName, KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
         dockWidget->setTitle(tabName);
         if (!icon.isEmpty())
@@ -113,12 +117,18 @@ public:
     bool isAutoBlinkEnabled() const { return m_autoBlinkEnabled; }
 
     void blinkNewContent() {
+        if (m_adaptixWidget && !m_adaptixWidget->IsSynchronized())
+            return;
+
+        const QString className = getClassName();
+        if (!isDockContentBlinkAllowed(className))
+            return;
+
         if (GlobalClient && GlobalClient->settings) {
             auto& data = GlobalClient->settings->data;
             if (!data.TabBlinkEnabled)
                 return;
 
-            QString className = getClassName();
             if (data.BlinkWidgets.contains(className) && !data.BlinkWidgets[className])
                 return;
         }
@@ -194,6 +204,8 @@ private Q_SLOTS:
     void onTableRowsInserted(const QModelIndex &parent, int first, int last) {
         Q_UNUSED(parent)
         if (!m_autoBlinkEnabled) return;
+        if (m_adaptixWidget && !m_adaptixWidget->IsSynchronized()) return;
+        if (!isDockContentBlinkAllowed(getClassName())) return;
 
         for (int i = first; i <= last; ++i) {
             m_newTableRows.insert(i);
@@ -203,6 +215,8 @@ private Q_SLOTS:
 
     void onTextChanged() {
         if (!m_autoBlinkEnabled) return;
+        if (m_adaptixWidget && !m_adaptixWidget->IsSynchronized()) return;
+        if (!isDockContentBlinkAllowed(getClassName())) return;
 
         if (auto* textEdit = qobject_cast<QTextEdit*>(sender())) {
             m_newTextPosition = textEdit->document()->blockCount() - 1;

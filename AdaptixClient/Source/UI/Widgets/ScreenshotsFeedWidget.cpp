@@ -7,7 +7,7 @@
 #include <Utils/FontManager.h>
 
 #include <oclero/qlementine/widgets/Menu.hpp>
-#include <oclero/qlementine/widgets/SegmentedControl.hpp>
+#include <Utils/CustomElements/SegmentControl.h>
 
 #include <QNetworkRequest>
 #include <QSslConfiguration>
@@ -19,8 +19,7 @@
 #include <QFileDialog>
 #include <QLinearGradient>
 #include <QSlider>
-
-
+#include <QSignalBlocker>
 
 ImageFrame::ImageFrame(QWidget* parent) : QWidget(parent), label(new QLabel), scrollArea(new QScrollArea(this)), ctrlPressed(false), scaleFactor(1.0)
 {
@@ -316,12 +315,15 @@ ScreenshotsFeedWidget::ScreenshotsFeedWidget(AdaptixWidget* w) : ListFeedWidget(
     m_viewStack->addWidget(m_feedSplitter);
     m_viewStack->addWidget(cardPanel);
 
-    auto* segment = new oclero::qlementine::SegmentedControl(this);
+    auto* segment = new SegmentControl(this);
     segment->addItem("Feed");
     segment->addItem("Card");
-    segment->setCurrentIndex(1);
-    segment->setFixedHeight(FontManager::instance().typography().segmentHeight);
-    connect(segment, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [segment, this]() {
+    {
+        QSignalBlocker b(segment);
+        segment->setCurrentIndex(1);
+    }
+    m_viewStack->setCurrentIndex(1);
+    connect(segment, &SegmentControl::currentIndexChanged, this, [segment, this]() {
         int idx = segment->currentIndex();
         m_viewStack->setCurrentIndex(idx);
         if (idx == 1) loadGridThumbnails();

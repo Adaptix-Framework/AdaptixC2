@@ -1032,7 +1032,7 @@ LayoutSaver::DockWidget::Ptr DockWidget::Private::serialize() const
     auto ptr = LayoutSaver::DockWidget::dockWidgetForName(q->uniqueName());
     ptr->affinities = q->affinities();
     ptr->lastCloseReason = m_lastCloseReason;
-#if defined(KDDW_FRONTEND_QT) && QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
     ptr->userData = m_userData;
 #endif
 

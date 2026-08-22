@@ -247,6 +247,10 @@ SET( HEADERS
         Headers/Client/AxScript/BridgeProcess.h
         Headers/UI/Dialogs/DialogPayload.h
         Headers/UI/Widgets/PayloadsFeedWidget.h
+        Headers/Client/DockLayoutEngine.h
+        Headers/Utils/CustomElements/SegmentControl.h
+        Headers/Utils/CustomElements/LogView.h
+        Headers/Utils/CustomElements/LogViewTape.h
 )
 
 add_executable(AdaptixClient
@@ -366,6 +370,10 @@ add_executable(AdaptixClient
         Source/Client/AxScript/BridgeProcess.cpp
         Source/UI/Dialogs/DialogPayload.cpp
         Source/UI/Widgets/PayloadsFeedWidget.cpp
+        Source/Client/DockLayoutEngine.cpp
+        Source/Utils/CustomElements/SegmentControl.cpp
+        Source/Utils/CustomElements/LogView.cpp
+        Source/Utils/CustomElements/LogViewTape.cpp
 )
 
 target_compile_definitions(

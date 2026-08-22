@@ -205,6 +205,50 @@ void BridgeApp::agent_set_tag(const QJSValue &agents, const QString &tag)
     scriptEngine->manager()->AppAgentSetTag(AxScriptUtils::jsArrayToStringList(agents), tag);
 }
 
+void BridgeApp::agent_set_command_group(const QString &id, const QString &group, bool enabled)
+{
+    auto* adaptix = scriptEngine->manager()->GetAdaptix();
+    if (!adaptix || !adaptix->GetProfile())
+        return;
+    const qint64 agentId = id.toLongLong();
+    {
+        QReadLocker locker(&adaptix->AgentsMapLock);
+        if (Agent* agent = adaptix->AgentsMap.value(agentId, nullptr)) {
+            if (agent->commander)
+                agent->commander->SetGroupEnabled(group, enabled);
+        }
+    }
+    HttpReqAgentCommandGroupSetAsync(agentId, group, enabled, *adaptix->GetProfile(), nullptr);
+}
+
+QJSValue BridgeApp::agent_get_command_groups(const QString &id) const
+{
+    auto* engine = scriptEngine->engine();
+    if (!engine)
+        return QJSValue(QJSValue::UndefinedValue);
+
+    QJSValue arr = engine->newArray();
+    auto* adaptix = scriptEngine->manager()->GetAdaptix();
+    if (!adaptix)
+        return arr;
+
+    const qint64 agentId = id.toLongLong();
+    QReadLocker locker(&adaptix->AgentsMapLock);
+    Agent* agent = adaptix->AgentsMap.value(agentId, nullptr);
+    if (!agent || !agent->commander)
+        return arr;
+
+    const auto status = agent->commander->GetGroupsStatus();
+    quint32 i = 0;
+    for (const auto &pair : status) {
+        QJSValue obj = engine->newObject();
+        obj.setProperty(QStringLiteral("name"), pair.first);
+        obj.setProperty(QStringLiteral("enabled"), pair.second);
+        arr.setProperty(i++, obj);
+    }
+    return arr;
+}
+
 void BridgeApp::agent_update_data(const QString &id, const QJSValue &data)
 {
     if (!data.isObject()) {
@@ -1049,13 +1093,34 @@ void BridgeApp::open_agent_console(const QString &id) { scriptEngine->manager()-
 
 void BridgeApp::open_access_tunnel(const QString &id, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd) { scriptEngine->manager()->GetAdaptix()->ShowTunnelCreator(id.toLongLong(), socks4, socks5, lportfwd, rportfwd); }
 
-void BridgeApp::open_browser_files(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadFileBrowserUI(id.toLongLong()); }
+static QString parseZoneArg(const QJSValue& zone)
+{
+    if (zone.isString())
+        return zone.toString().trimmed();
+    if (zone.isObject())
+        return zone.property(QStringLiteral("zone")).toString().trimmed();
+    return {};
+}
 
-void BridgeApp::open_browser_process(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadProcessBrowserUI(id.toLongLong()); }
+void BridgeApp::open_browser_files(const QString &id, const QJSValue &zone)
+{
+    scriptEngine->manager()->GetAdaptix()->LoadFileBrowserUI(id.toLongLong(), parseZoneArg(zone));
+}
 
-void BridgeApp::open_remote_terminal(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadTerminalUI(id.toLongLong()); }
+void BridgeApp::open_browser_process(const QString &id, const QJSValue &zone)
+{
+    scriptEngine->manager()->GetAdaptix()->LoadProcessBrowserUI(id.toLongLong(), parseZoneArg(zone));
+}
 
-void BridgeApp::open_remote_shell(const QString &id) { scriptEngine->manager()->GetAdaptix()->LoadShellUI(id.toLongLong()); }
+void BridgeApp::open_remote_terminal(const QString &id, const QJSValue &zone)
+{
+    scriptEngine->manager()->GetAdaptix()->LoadTerminalUI(id.toLongLong(), parseZoneArg(zone));
+}
+
+void BridgeApp::open_remote_shell(const QString &id, const QJSValue &zone)
+{
+    scriptEngine->manager()->GetAdaptix()->LoadShellUI(id.toLongLong(), parseZoneArg(zone));
+}
 
 static CodeEditorOpenOptions parseCodeEditorOpts(const QJSValue& v)
 {
@@ -1077,6 +1142,8 @@ static CodeEditorOpenOptions parseCodeEditorOpts(const QJSValue& v)
         }
         if (v.hasProperty(QStringLiteral("profile")))
             opts.profile = v.property(QStringLiteral("profile")).toString();
+        if (v.hasProperty(QStringLiteral("zone")))
+            opts.zone = v.property(QStringLiteral("zone")).toString().trimmed();
         return opts;
     }
     return CodeEditorOpenOptions::fromVariantMap(map);
@@ -1100,7 +1167,9 @@ void BridgeApp::open_code_editor(const QJSValue& arg1, const QJSValue& arg2)
 
     const QString id = arg1.toString().trimmed();
     CodeEditorOpenOptions opts;
-    if (arg2.isObject())
+    if (arg2.isString())
+        opts.zone = arg2.toString().trimmed();
+    else if (arg2.isObject())
         opts = parseCodeEditorOpts(arg2);
 
     if (id.isEmpty())
@@ -1275,6 +1344,12 @@ void BridgeApp::register_commands_group(QObject *obj, const QJSValue &agents, co
         AxScriptUtils::jsArrayToStringList(agents),
         AxScriptUtils::parseOsList(os)
     );
+}
+
+void BridgeApp::register_service_commands(QObject* obj)
+{
+    if (!qobject_cast<AxCommandGroupWrapper*>(obj))
+        Q_EMIT engineError("register_service_commands expected a commands group");
 }
 
 void BridgeApp::script_import(const QString &path)
@@ -1466,6 +1541,77 @@ void BridgeApp::plugin_service_command(const QString &service, const QString &co
     HttpReqPluginServiceCallAsync(service, command, argsStr, *adaptix->GetProfile(), [](bool, const QString&, const QJsonObject&) {});
 }
 
+QJSValue BridgeApp::plugin_service_wait(const QString &service, const QString &command, const QJSValue &args, const QJSValue &timeoutMs)
+{
+    QJSEngine* js = scriptEngine->engine();
+    auto fail = [js](const QString& err) {
+        QVariantMap m;
+        m["ok"] = false;
+        m["error"] = err;
+        return js->toScriptValue(m);
+    };
+
+    QString argsStr;
+    int timeout = 30000;
+
+    QJSValue argsVal = args;
+    QJSValue timeoutVal = timeoutMs;
+    if (argsVal.isNumber() && (timeoutVal.isUndefined() || timeoutVal.isNull())) {
+        timeout = argsVal.toInt();
+        argsVal = QJSValue();
+    } else if (timeoutVal.isNumber()) {
+        timeout = timeoutVal.toInt();
+    }
+    if (timeout <= 0)
+        timeout = 30000;
+
+    if (!argsVal.isUndefined() && !argsVal.isNull()) {
+        if (!argsVal.isObject())
+            return fail(QStringLiteral("plugin_service_wait expected object in args parameter"));
+        QJsonObject argsObj = QJsonObject::fromVariantMap(argsVal.toVariant().toMap());
+        argsStr = QString::fromUtf8(QJsonDocument(argsObj).toJson(QJsonDocument::Compact));
+    }
+
+    auto adaptix = scriptEngine->manager()->GetAdaptix();
+    if (!adaptix || !adaptix->GetProfile())
+        return fail(QStringLiteral("plugin_service_wait: no active profile"));
+
+    const QJsonObject jsonObject = HttpReqPluginServiceCallWait(service, command, argsStr, timeout, *adaptix->GetProfile());
+    if (jsonObject.isEmpty())
+        return fail(QStringLiteral("plugin_service_wait: empty or failed HTTP response"));
+
+    const QString message = jsonObject.value(QStringLiteral("message")).toString();
+    if (message == QLatin1String("error"))
+        return fail(jsonObject.value(QStringLiteral("error")).toString());
+
+    QVariantMap out;
+    out["ok"] = true;
+    const QJsonValue resultVal = jsonObject.value(QStringLiteral("result"));
+    if (resultVal.isString()) {
+        const QString raw = resultVal.toString();
+        out["raw"] = raw;
+        QJsonParseError parseError;
+        const QJsonDocument parsed = QJsonDocument::fromJson(raw.toUtf8(), &parseError);
+        if (parseError.error == QJsonParseError::NoError) {
+            if (parsed.isObject())
+                out["result"] = parsed.object().toVariantMap();
+            else if (parsed.isArray())
+                out["result"] = parsed.array().toVariantList();
+            else
+                out["result"] = raw;
+        } else {
+            out["result"] = raw;
+        }
+    } else if (resultVal.isObject()) {
+        out["result"] = resultVal.toObject().toVariantMap();
+    } else if (resultVal.isArray()) {
+        out["result"] = resultVal.toArray().toVariantList();
+    } else {
+        out["result"] = resultVal.toVariant();
+    }
+    return js->toScriptValue(out);
+}
+
 void BridgeApp::plugin_agent_command(const QJSValue &agentIdVal, const QString &command, const QJSValue &args)
 {
     if (command.isEmpty()) {
@@ -1617,6 +1763,7 @@ QJSValue BridgeApp::payloads() const
                     map[QStringLiteral("md5")]       = o.value(QStringLiteral("p_md5")).toString();
                     map[QStringLiteral("sha1")]      = o.value(QStringLiteral("p_sha1")).toString();
                     map[QStringLiteral("sha256")]    = o.value(QStringLiteral("p_sha256")).toString();
+                    map[QStringLiteral("tag")]       = o.value(QStringLiteral("p_tag")).toString();
                     map[QStringLiteral("uid")]       = o.value(QStringLiteral("p_uid")).toString();
                     map[QStringLiteral("hidden")]    = o.value(QStringLiteral("p_hidden")).toBool();
                     map[QStringLiteral("missing")]   = o.value(QStringLiteral("p_missing")).toBool();
@@ -1771,5 +1918,3 @@ QJSValue BridgeApp::validate_command(const QString &id, const QString &command) 
 
     return scriptEngine->engine()->toScriptValue(result);
 }
-
-

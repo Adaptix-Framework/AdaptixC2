@@ -94,7 +94,7 @@ func (ts *Teamserver) extractPivotTasks(agent *adaptix.Agent, availableSize int,
 		if lostSize <= 0 {
 			break
 		}
-		data, err := ts.TsAgentGetHostedAll(pivotData.ChildAgentId, lostSize)
+		data, _, err := ts.TsAgentGetHostedAll(pivotData.ChildAgentId, lostSize)
 		if err != nil {
 			continue
 		}

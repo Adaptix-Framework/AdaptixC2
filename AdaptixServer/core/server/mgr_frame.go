@@ -87,6 +87,10 @@ type downSession struct {
 	lastReqOffset  uint32 // for retry-aware attempt counting
 	haveLastOffset bool
 	sticky         bool
+	stats          adaptix.StatTasks
+	uniqueRequests int
+	statsReady     bool
+	statsTaken     bool
 }
 
 //////////
@@ -161,6 +165,23 @@ func (fm *FrameManager) Put(sid int64, index uint32, data []byte, totalSize uint
 		return fm.putChunkIndex(sid, uint16(index), chunkCount, data)
 	}
 	return fm.putByteOffset(sid, totalSize, index, data)
+}
+
+func (fm *FrameManager) PutDecoded(sid int64, index uint32, data []byte, totalSize uint32, chunkCount uint16, decode func(assembled []byte) ([]byte, error)) (complete bool, nextExpected uint32, received uint32, sackBitmap uint32, assembled []byte) {
+	complete, nextExpected, received, sackBitmap, assembled = fm.Put(sid, index, data, totalSize, chunkCount)
+	assembled = applyUpstreamDecode(assembled, decode)
+	return complete, nextExpected, received, sackBitmap, assembled
+}
+
+func applyUpstreamDecode(assembled []byte, decode func([]byte) ([]byte, error)) []byte {
+	if assembled == nil || decode == nil {
+		return assembled
+	}
+	body, err := decode(assembled)
+	if err != nil || body == nil {
+		return nil
+	}
+	return body
 }
 
 func (fm *FrameManager) putByteOffset(sid int64, totalSize uint32, offset uint32, data []byte) (complete bool, nextExpected uint32, received uint32, sackBitmap uint32, assembled []byte) {
@@ -422,7 +443,7 @@ func (fm *FrameManager) getChunk(sid int64, reqOffset uint32, maxChunkSize int, 
 		fm.downLoading[sid] = true
 		fm.mu.Unlock()
 
-		packed, err := fm.ts.TsAgentGetHostedAll(sid, int(fm.maxDownloadSize))
+		packed, stats, err := fm.ts.TsAgentGetHostedAll(sid, int(fm.maxDownloadSize))
 
 		fm.mu.Lock()
 		delete(fm.downLoading, sid)
@@ -452,6 +473,7 @@ func (fm *FrameManager) getChunk(sid int64, reqOffset uint32, maxChunkSize int, 
 			}
 		}
 
+		stats.Packed = len(payload)
 		nonce := uint32(time.Now().UnixNano()&0xFFFFFFFF) ^ rand.Uint32()
 		ds = &downSession{
 			buf:       payload,
@@ -459,6 +481,7 @@ func (fm *FrameManager) getChunk(sid int64, reqOffset uint32, maxChunkSize int, 
 			taskNonce: nonce,
 			lastChunk: time.Now(),
 			sticky:    sticky,
+			stats:     stats,
 		}
 		fm.downSessions[sid] = ds
 		return fm.serveDownChunk(ds, sid, reqOffset, maxChunkSize)
@@ -474,6 +497,9 @@ func (fm *FrameManager) serveDownChunk(ds *downSession, sid int64, reqOffset uin
 		ds.attempts = 1
 		ds.lastReqOffset = reqOffset
 		ds.haveLastOffset = true
+		if reqOffset < ds.total {
+			ds.uniqueRequests++
+		}
 	}
 
 	if ds.attempts > fm.maxAttempts {
@@ -502,9 +528,23 @@ func (fm *FrameManager) serveDownChunk(ds *downSession, sid int64, reqOffset uin
 	t := ds.total
 	nonce := ds.taskNonce
 
-	fm.mu.Unlock()
+	if !ds.statsReady && reqOffset+chunkLen >= ds.total {
+		ds.statsReady = true
+	}
 
+	fm.mu.Unlock()
 	return t, reqOffset, chunk, nonce, false
+}
+
+func (fm *FrameManager) TakeStatTasks(sid int64) (adaptix.StatTasks, int, bool) {
+	fm.mu.Lock()
+	defer fm.mu.Unlock()
+	ds := fm.downSessions[sid]
+	if ds == nil || !ds.statsReady || ds.statsTaken {
+		return adaptix.StatTasks{}, 0, false
+	}
+	ds.statsTaken = true
+	return ds.stats, ds.uniqueRequests, true
 }
 
 func (fm *FrameManager) HasPending(sid int64) bool {

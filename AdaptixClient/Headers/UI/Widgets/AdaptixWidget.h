@@ -7,6 +7,7 @@
 
 #include <kddockwidgets/qtwidgets/views/DockWidget.h>
 #include <kddockwidgets/qtwidgets/views/MainWindow.h>
+#include <Client/DockLayoutEngine.h>
 
 #include <oclero/qlementine/widgets/Popover.hpp>
 #include <oclero/qlementine/widgets/NotificationBadge.hpp>
@@ -88,6 +89,20 @@ struct EventHandlerInfo {
 class AdaptixWidget : public QWidget
 {
 Q_OBJECT
+public:
+    enum class UnreadKind {
+        Sessions = 0,
+        Listeners,
+        Logs,
+        Chat,
+        Downloads,
+        Creds,
+        Targets,
+        Screens,
+        Count
+    };
+
+private:
     QGridLayout*    mainGridLayout    = nullptr;
     QWidget*        toolbarWidget     = nullptr;
     QBoxLayout*     toolbarLayout     = nullptr;
@@ -100,12 +115,15 @@ Q_OBJECT
     QPushButton*    payloadsButton    = nullptr;
     QPushButton*    logsButton        = nullptr;
     QPushButton*    chatButton        = nullptr;
+    oclero::qlementine::NotificationBadge* sessionsBadge = nullptr;
+    oclero::qlementine::NotificationBadge* listenersBadge = nullptr;
     oclero::qlementine::NotificationBadge* chatBadge = nullptr;
     oclero::qlementine::NotificationBadge* logsBadge = nullptr;
     oclero::qlementine::NotificationBadge* downloadsBadge = nullptr;
-    oclero::qlementine::NotificationBadge* extDocksBadge = nullptr;
-    int             m_chatUnreadCount = 0;
-    int             m_logsUnreadCount = 0;
+    oclero::qlementine::NotificationBadge* credsBadge = nullptr;
+    oclero::qlementine::NotificationBadge* targetsBadge = nullptr;
+    oclero::qlementine::NotificationBadge* screensBadge = nullptr;
+    int             m_unreadCounts[static_cast<int>(UnreadKind::Count)] = {};
     QPushButton*    sessionsButton    = nullptr;
     QPushButton*    graphButton       = nullptr;
     QPushButton*    tasksButton       = nullptr;
@@ -125,9 +143,8 @@ Q_OBJECT
     QListWidget*    extDocksListWidget = nullptr;
     QLabel*         extDocksEmptyLabel = nullptr;
 
-    KDDockWidgets::QtWidgets::MainWindow* mainDockWidget;
-    KDDockWidgets::QtWidgets::DockWidget* dockTop;
-    KDDockWidgets::QtWidgets::DockWidget* dockBottom;
+    KDDockWidgets::QtWidgets::MainWindow* mainDockWidget = nullptr;
+    DockLayoutEngine layoutEngine;
 
     bool              synchronized     = false;
     bool              sync             = false;
@@ -164,6 +181,9 @@ Q_OBJECT
     void buildToolbarLayout(int position);
     void placeToolbarInGrid(QGridLayout* grid, int position);
     void applyThemeColorsToToolbar();
+    void wireUnreadDocks();
+    bool isUnreadDockViewed(UnreadKind kind) const;
+    void setUnreadCount(UnreadKind kind, int count);
 
 protected:
     void changeEvent(QEvent* event) override;
@@ -239,21 +259,24 @@ public:
     void rebuildToolbarLayout(int position);
 
     void PlaceDock(KDDockWidgets::QtWidgets::DockWidget* parentDock, KDDockWidgets::QtWidgets::DockWidget* dock) const;
-    KDDockWidgets::QtWidgets::DockWidget* get_dockTop() {return dockTop;}
-    KDDockWidgets::QtWidgets::DockWidget* get_dockBottom() {return dockBottom;}
+    void PlaceWidget(const QString& widgetId, KDDockWidgets::QtWidgets::DockWidget* dock, const QString& zoneOverride = QString()) const;
+    KDDockWidgets::QtWidgets::DockWidget* get_dockTop() { return layoutEngine.primaryHost(); }
+    KDDockWidgets::QtWidgets::DockWidget* get_dockBottom() { return layoutEngine.secondaryHost(); }
+    DockLayoutEngine& dockLayout() { return layoutEngine; }
 
     bool AddExtension(ExtensionFile* ext);
     void RemoveExtension(const ExtensionFile &ext);
-    bool IsSynchronized();
+    bool IsSynchronized() const;
     void Close();
     void ClearAdaptix();
     void ClearChatStream();
+    void notifyDockUnread(UnreadKind kind, int count = 1);
+    void clearDockUnread(UnreadKind kind);
+    void clearAllDockUnread();
     void ChatUnreadIncrement();
     void ChatUnreadClear();
     void LogsUnreadIncrement();
     void LogsUnreadClear();
-    void UpdateDownloadsBadge();
-    void UpdateExtDocksBadge();
     void ClearConsoleStreams();
     void ClearNotificationsStream();
 
@@ -278,15 +301,16 @@ public:
     void PostHandlerProcess(const QString &handlerId, const TaskData &taskData);
 
     void AddExtDock(const QString &id, const QString &title, const std::function<void()> &showCallback);
+    void SetExtDockIcon(const QString &id, const QIcon &icon);
     void RemoveExtDock(const QString &id);
     void ShowExtDocksPopup();
 
     void LoadConsoleUI(qint64 AgentId);
     void LoadTasksOutput() const;
-    void LoadFileBrowserUI(qint64 AgentId);
-    void LoadProcessBrowserUI(qint64 AgentId);
-    void LoadTerminalUI(qint64 AgentId);
-    void LoadShellUI(qint64 AgentId);
+    void LoadFileBrowserUI(qint64 AgentId, const QString& zoneOverride = QString());
+    void LoadProcessBrowserUI(qint64 AgentId, const QString& zoneOverride = QString());
+    void LoadTerminalUI(qint64 AgentId, const QString& zoneOverride = QString());
+    void LoadShellUI(qint64 AgentId, const QString& zoneOverride = QString());
     void ShowTunnelCreator(qint64 AgentId, bool socks4, bool socks5, bool lportfwd, bool rportfwd);
 
 Q_SIGNALS:

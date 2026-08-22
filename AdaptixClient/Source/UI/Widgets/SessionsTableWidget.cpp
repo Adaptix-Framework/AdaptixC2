@@ -207,7 +207,7 @@ void applySessionsIconColumnSize(ColorAwareTreeView* tableView)
 
 REGISTER_DOCK_WIDGET(SessionsTableWidget, "Sessions", true)
 
-SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions table", w->GetProfile()->GetProject(), ":/icons/format_list")
+SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions table", w->GetProfile()->GetProject(), ":/icons/format_list", w)
 {
     this->adaptixWidget = w;
 
@@ -809,12 +809,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
         tasksMenu->addAction(QIcon(QStringLiteral(":/icons/job")), QStringLiteral("Task manager"), this, &SessionsTableWidget::actionTasksBrowserOpen);
         adaptixWidget->ScriptManager->AddMenuSession(tasksMenu, QStringLiteral("SessionAgent"), agentIds);
 
-        auto* extMenu = ctxMenu.addMenu(QIcon(QStringLiteral(":/icons/extension")), QStringLiteral("Extensions"));
-        int mainCount = adaptixWidget->ScriptManager->AddMenuSession(extMenu, QStringLiteral("SessionMain"), agentIds);
-        if (mainCount > 0)
-            ctxMenu.addMenu(extMenu);
-        else
-            ctxMenu.removeAction(extMenu->menuAction());
+        adaptixWidget->ScriptManager->AddMenuSession(&ctxMenu, QStringLiteral("SessionMain"), agentIds);
 
         ctxMenu.addSeparator();
 
@@ -832,8 +827,7 @@ void SessionsTableWidget::handleSessionsTableMenu(const QPoint &pos)
         appearanceMenu->addAction(QIcon(QStringLiteral(":/icons/color_reset")), QStringLiteral("Reset color"), this, &SessionsTableWidget::actionColorReset);
 
         ctxMenu.addSeparator();
-        ctxMenu.addAction(QIcon(QStringLiteral(":/icons/delete")), QStringLiteral("Remove from server"),
-                          this, &SessionsTableWidget::actionAgentRemove);
+        ctxMenu.addAction(QIcon(QStringLiteral(":/icons/delete")), QStringLiteral("Remove from server"), this, &SessionsTableWidget::actionAgentRemove);
 
         ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));
     }

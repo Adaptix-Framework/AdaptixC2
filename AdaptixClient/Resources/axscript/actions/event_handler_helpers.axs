@@ -56,29 +56,38 @@ function __mockEvent(eventType, filters) {
   function first(arr, dflt) {
     return (arr && arr.length) ? arr[0] : dflt;
   }
-  let agentId = Number(first(filters.agent_ids, 0)) || 0;
-  let agentName = String(first(filters.agent_names, 'mock'));
+  let agentId = Number(first(filters.agent_ids, 42)) || 42;
+  let agentName = String(first(filters.agent_names, 'beacon'));
   let user = String(first(filters.users, 'user'));
-  let listener = String(first(filters.listeners, 'mock'));
+  let listener = String(first(filters.listeners, 'http'));
+  let listenerType = String(first(filters.listener_types, 'beacon_http'));
   let os = String(first(filters.os, 'windows'));
-  let client = String(first(filters.clients, 'local'));
+  let client = String(first(filters.clients, 'operator'));
   let computer = String(first(filters.computers, 'TEST-PC'));
   let tags = String(first(filters.tags, ''));
-  let port = Number(first(filters.ports, 0)) || 0;
-  let tunnelType = String(first(filters.tunnel_types, '0'));
+  let port = Number(first(filters.ports, 1080)) || 1080;
+  let tunnelType = String(first(filters.tunnel_types, '1'));
   let filename = String(first(filters.filenames, 'file.bin'));
   let fileId = Number(first(filters.file_ids, 1)) || 1;
-  let taskId = Number(first(filters.task_ids, 1)) || 1;
+  let taskId = Number(first(filters.task_ids, 1001)) || 1001;
+  let realm = String(first(filters.realms, 'CORP'));
+  let host = String(first(filters.hosts, 'dc01.corp.local'));
+  let domain = String(first(filters.domains, 'corp.local'));
+  let address = String(first(filters.addresses, '10.0.0.10'));
+  let credType = String(first(filters.cred_types, 'password'));
+  let alive = (typeof filters.alive === 'boolean') ? filters.alive : true;
 
-  return {
+  let ev = {
     type: eventType,
     event: eventType,
     phase: 'post',
     agentId: agentId,
     agentName: agentName,
     user: user,
+    username: client,
     listener: listener,
-    listenerType: String(first(filters.listener_types, '')),
+    listenerName: listener,
+    listenerType: listenerType,
     os: os,
     client: client,
     computer: computer,
@@ -86,13 +95,31 @@ function __mockEvent(eventType, filters) {
     taskId: taskId,
     fileId: fileId,
     filename: filename,
+    fileName: filename,
+    fileSize: 4096,
     port: port,
     tunnelType: tunnelType,
-    realm: String(first(filters.realms, '')),
-    host: String(first(filters.hosts, '')),
-    domain: String(first(filters.domains, '')),
-    address: String(first(filters.addresses, '')),
-    alive: (typeof filters.alive === 'boolean') ? filters.alive : true,
+    tunnelId: 7,
+    realm: realm,
+    credType: credType,
+    host: host,
+    domain: domain,
+    address: address,
+    alive: alive,
+    credId: 5,
+    count: 1,
+    screenId: 3,
+    note: 'desktop',
+    targetId: 9,
+    pivotId: 'pivot-1',
+    parentAgentId: agentId,
+    childAgentId: agentId + 1,
+    pivotName: 'smb',
+    cmdline: 'whoami',
+    remotePath: 'C:\\\\Windows\\\\Temp\\\\' + filename,
+    canceled: false,
+    info: 'socks',
+    restore: false,
     agent: {
       a_id: agentId,
       a_name: agentName,
@@ -101,6 +128,11 @@ function __mockEvent(eventType, filters) {
       a_username: user,
       a_tags: tags
     },
-    restore: false
+    task: {
+      t_task_id: taskId,
+      t_agent_id: agentId,
+      t_client: client
+    }
   };
+  return ev;
 }

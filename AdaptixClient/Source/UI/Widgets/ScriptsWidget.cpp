@@ -1,5 +1,6 @@
 #include <UI/Widgets/ScriptsWidget.h>
 #include <UI/Widgets/AdaptixWidget.h>
+#include <UI/Widgets/CodeEditorWidget.h>
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <Client/AuthProfile.h>
 #include <Client/Extender.h>
@@ -14,7 +15,7 @@
 #include <MainAdaptix.h>
 
 #include <oclero/qlementine/widgets/Menu.hpp>
-#include <oclero/qlementine/widgets/SegmentedControl.hpp>
+#include <Utils/CustomElements/SegmentControl.h>
 #include <oclero/qlementine/widgets/LineEdit.hpp>
 
 #include <QStackedWidget>
@@ -359,7 +360,7 @@ static void styleTable(QTableView* tv)
     applyFeedTableViewChrome(tv);
 }
 
-ScriptsWidget::ScriptsWidget(AdaptixWidget* w) : DockTab("Scripts", w->GetProfile()->GetProject(), ":/icons/folder_code"), adaptixWidget(w)
+ScriptsWidget::ScriptsWidget(AdaptixWidget* w) : DockTab("Scripts", w->GetProfile()->GetProject(), ":/icons/folder_code", w), adaptixWidget(w)
 {
     applyFeedWidgetSurface(this);
 
@@ -379,12 +380,12 @@ ScriptsWidget::ScriptsWidget(AdaptixWidget* w) : DockTab("Scripts", w->GetProfil
     layout->setSpacing(0);
     layout->addWidget(m_stack, 1);
 
-    auto makeSegment = [this](QWidget* panel, int idx) {
-        auto* seg = new oclero::qlementine::SegmentedControl(panel);
+    auto makeSegment = [](QWidget* panel, int idx) {
+        auto* seg = new SegmentControl(panel);
         seg->addItem(QStringLiteral("Scripts"));
         seg->addItem(QStringLiteral("Events"));
+        QSignalBlocker b(seg);
         seg->setCurrentIndex(idx);
-        seg->setFixedHeight(FontManager::instance().typography().segmentHeight);
         return seg;
     };
 
@@ -402,11 +403,11 @@ ScriptsWidget::ScriptsWidget(AdaptixWidget* w) : DockTab("Scripts", w->GetProfil
     insertSeg(m_scriptsPanel, m_segScripts);
     insertSeg(m_eventsPanel, m_segEvents);
 
-    connect(m_segScripts, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this]() {
+    connect(m_segScripts, &SegmentControl::currentIndexChanged, this, [this]() {
         if (m_segScripts)
             setSegment(m_segScripts->currentIndex());
     });
-    connect(m_segEvents, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this]() {
+    connect(m_segEvents, &SegmentControl::currentIndexChanged, this, [this]() {
         if (m_segEvents)
             setSegment(m_segEvents->currentIndex());
     });
@@ -1441,49 +1442,9 @@ void ScriptsWidget::onEventUnmute(const QStringList& events)
     rebuildEventTypeList();
 }
 
-static QString loadAxTemplate(const QString& relativePath)
-{
-    static QHash<QString, QString> cache;
-    const auto it = cache.constFind(relativePath);
-    if (it != cache.constEnd())
-        return it.value();
-    QFile f(QStringLiteral(":/axscript/") + relativePath);
-    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
-        return {};
-    const QString text = QString::fromUtf8(f.readAll());
-    cache.insert(relativePath, text);
-    return text;
-}
-
 static QString defaultHandlerBodyHint(const QString& eventType, const QString& hName)
 {
-    QString bodyPath = QStringLiteral("templates/handler_body_generic.axs");
-    if (eventType == QLatin1String("agent.new") || eventType == QLatin1String("agent.activate"))
-        bodyPath = QStringLiteral("templates/handler_body_agent.axs");
-    else if (eventType.startsWith(QLatin1String("task.")))
-        bodyPath = QStringLiteral("templates/handler_body_task.axs");
-    else if (eventType.startsWith(QLatin1String("client.")))
-        bodyPath = QStringLiteral("templates/handler_body_client.axs");
-
-    QString body = loadAxTemplate(bodyPath);
-    if (body.isEmpty()) {
-        body = QStringLiteral("    ax.log(\"%1: type=\" + event.type);").arg(hName);
-    } else {
-        body.replace(QStringLiteral("{{NAME}}"), hName);
-        if (body.endsWith(QLatin1Char('\n')))
-            body.chop(1);
-    }
-
-    QString shell = loadAxTemplate(QStringLiteral("templates/handler_shell.axs"));
-    if (shell.isEmpty()) {
-        return QStringLiteral(
-            "// Event handler — must define function handler(event)\n"
-            "function handler(event) {\n"
-            "%1\n"
-            "}\n"
-        ).arg(body);
-    }
-    return shell.replace(QStringLiteral("{{BODY}}"), body);
+    return CodeEditorWidget::buildEventHandlerTemplate(eventType, hName);
 }
 
 QString ScriptsWidget::nextDefaultHandlerName() const
@@ -1515,7 +1476,10 @@ void ScriptsWidget::onCreateEventHandler()
     if (!adaptixWidget)
         return;
 
-    const QString eventType = QStringLiteral("agent.new");
+    QString eventType = m_selectedEventType.trimmed();
+    if (eventType.isEmpty() || !knownEventTypes().contains(eventType))
+        eventType = QStringLiteral("agent.new");
+
     const QString scriptName = nextDefaultHandlerName();
     const QString handlerName = scriptName;
     const QString description = QStringLiteral("Handler for %1").arg(eventType);

@@ -137,8 +137,10 @@ void DialogListener::createUI()
     profileSeparator->setFrameShape(QFrame::HLine);
     profileSeparator->setFrameShadow(QFrame::Sunken);
 
-    buttonNewProfile = new QPushButton("New", this);
-    buttonNewProfile->setMinimumSize(QSize(10, 28));
+    buttonNewProfile = new QPushButton(QIcon(":/icons/plus"), "", this);
+    buttonNewProfile->setIconSize(QSize(18, 18));
+    buttonNewProfile->setFixedSize(QSize(28, 28));
+    buttonNewProfile->setToolTip("New profile");
 
     buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
     buttonLoad->setIconSize(QSize(18, 18));
@@ -153,7 +155,8 @@ void DialogListener::createUI()
     auto profileButtonsLayout = new QHBoxLayout();
     profileButtonsLayout->setContentsMargins(0, 0, 0, 0);
     profileButtonsLayout->setSpacing(4);
-    profileButtonsLayout->addWidget(buttonNewProfile, 1);
+    profileButtonsLayout->addStretch(1);
+    profileButtonsLayout->addWidget(buttonNewProfile);
     profileButtonsLayout->addWidget(buttonLoad);
     profileButtonsLayout->addWidget(buttonSave);
 
@@ -206,7 +209,7 @@ void DialogListener::createUI()
     mainGridLayout->addLayout(bodyLayout, 1);
     mainGridLayout->addWidget(footerWidget);
 
-    this->setMinimumWidth(800);
+    this->setMinimumSize(0, 0);
 }
 
 void DialogListener::Start()
@@ -307,18 +310,21 @@ void DialogListener::changeConfig(const QString &fn)
     const int scriptW = ax_ui->width  > 0 ? ax_ui->width  : 650;
     const int scriptH = ax_ui->height > 0 ? ax_ui->height : 650;
 
-    const int chromeH = 48 + 72 + 52 + 28;
-    const int formH   = qMax(ax_ui->widget->sizeHint().height(), ax_ui->widget->minimumSizeHint().height());
-    const int packedH = formH + chromeH;
-    const int slack   = 40;
+    constexpr int kProfilesW  = 220;
+    constexpr int kSeparatorW = 1;
+    constexpr int kHChrome    = 5 * 2 + 10 * 2 + 5 * 2 + 8 * 2 + kProfilesW + kSeparatorW;
+    constexpr int kFooterH    = 50;
+    constexpr int kHeaderH    = 48 + 72;
+    constexpr int kVChrome    = 5 * 2 + 10 * 2 + 5 * 2 + kHeaderH + kFooterH + 28;
 
-    int w = qMax(800, scriptW);
-    int h = scriptH;
-    if (scriptH > packedH + slack)
-        h = packedH + 12;
-    else
-        h = qMax(scriptH, packedH);
-    h = qMax(220, h);
+    int panelW = scriptW;
+    int panelH = scriptH;
+    panelW = qMax(panelW, qMax(ax_ui->widget->sizeHint().width(), ax_ui->widget->minimumSizeHint().width()));
+    panelH = qMax(panelH, qMax(ax_ui->widget->sizeHint().height(), ax_ui->widget->minimumSizeHint().height()));
+    ax_ui->widget->setMinimumWidth(panelW);
+
+    int w = panelW + kHChrome;
+    int h = panelH + kVChrome;
 
     if (const QScreen* scr = this->screen()) {
         const QRect avail = scr->availableGeometry();
@@ -329,14 +335,9 @@ void DialogListener::changeConfig(const QString &fn)
     if (mainGridLayout)
         mainGridLayout->setSizeConstraint(QLayout::SetNoConstraint);
 
-    this->setMinimumSize(0, 0);
     this->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+    this->setMinimumSize(0, 0);
     this->resize(w, h);
-    this->setMinimumWidth(800);
-    this->setMinimumHeight(h);
-    this->setMaximumHeight(h);
-    this->resize(w, h);
-    this->setMaximumHeight(QWIDGETSIZE_MAX);
 }
 
 void DialogListener::changeType(const QString &type)

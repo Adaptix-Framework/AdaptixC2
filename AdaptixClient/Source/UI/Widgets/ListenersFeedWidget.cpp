@@ -629,6 +629,7 @@ void ListenersFeedWidget::onGenerateAgent()
         QJSValue ui_container = result.property("ui_container");
         QJSValue ui_panel     = result.property("ui_panel");
         QJSValue ui_height    = result.property("ui_height");
+        QJSValue ui_width     = result.property("ui_width");
 
         if (ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject())
             return;
@@ -639,9 +640,10 @@ void ListenersFeedWidget::onGenerateAgent()
             return;
 
         int h = ui_height.isNumber() && ui_height.toInt() > 0 ? ui_height.toInt() : 650;
+        int w = ui_width.isNumber()  && ui_width.toInt()  > 0 ? ui_width.toInt()  : 650;
 
         agents.append(agent);
-        ax_uis[agent] = { container, formElement->widget(), h, 650 };
+        ax_uis[agent] = { container, formElement->widget(), h, w };
     }
 
     auto* dialogAgent = new DialogAgent(m_adaptixWidget, info.name, info.regName);

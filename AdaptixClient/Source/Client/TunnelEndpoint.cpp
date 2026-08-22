@@ -5,6 +5,9 @@
 #include <Client/Requestor.h>
 #include <QRandomGenerator>
 #include <QPointer>
+#include <QTimer>
+#include <QAbstractSocket>
+#include <QTcpSocket>
 
 TunnelEndpoint::TunnelEndpoint(QObject* parent) : QObject(parent), tcpServer(new QTcpServer(this)) {}
 
@@ -45,7 +48,11 @@ bool TunnelEndpoint::StartTunnel(AuthProfile* profile, const QString &type, cons
         return Listen(obj);
     }
     if (type == "rportfwd") {
-        return false;
+        this->fHost = obj["t_host"].toString();
+        this->fPort = static_cast<quint16>(obj["t_port"].toInt());
+        if (this->fHost.isEmpty() || this->fPort == 0)
+            return false;
+        return true;
     }
     return false;
 }
@@ -265,4 +272,115 @@ void TunnelEndpoint::onWorkerReady(TunnelWorker* worker, qint64 channelId)
 
 void TunnelEndpoint::onHandshakeFailed()
 {
+}
+
+
+void TunnelEndpoint::nackReverseChannel(qint64 channelId)
+{
+    if (!profile || tunnelId == 0 || channelId == 0)
+        return;
+    HttpReqTunnelChannelNackAsync(tunnelId, channelId, *profile, [](bool, const QString&, const QJsonObject&) {});
+}
+
+void TunnelEndpoint::startReverseWorker(QTcpSocket* clientSock, const QJsonObject& otpData, qint64 channelId)
+{
+    if (!profile || !clientSock) {
+        if (clientSock)
+            clientSock->deleteLater();
+        nackReverseChannel(channelId);
+        return;
+    }
+
+    clientSock->setParent(this);
+    clientSock->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+
+    const quint64 gen = endpointGeneration;
+
+    QPointer<TunnelEndpoint> self = this;
+    QPointer<QTcpSocket> sock = clientSock;
+
+    HttpReqGetOTPAsync("channel_tunnel", otpData, *profile, [self, sock, channelId, gen](bool success, const QString& message, const QJsonObject& response) {
+            Q_UNUSED(message);
+
+            if (!self || gen != self->endpointGeneration) {
+                if (sock)
+                    sock->deleteLater();
+                return;
+            }
+
+            if (!sock) {
+                self->nackReverseChannel(channelId);
+                return;
+            }
+
+            if (!success || !response.value(QStringLiteral("ok")).toBool()) {
+                sock->deleteLater();
+                self->nackReverseChannel(channelId);
+                return;
+            }
+
+            const QString otp = response.value(QStringLiteral("message")).toString();
+            if (otp.isEmpty()) {
+                sock->deleteLater();
+                self->nackReverseChannel(channelId);
+                return;
+            }
+
+            self->launchChannelWorker(sock.data(), otp, channelId);
+        });
+}
+
+void TunnelEndpoint::onReverseAccept(qint64 channelId)
+{
+    if (this->tunnelId == 0 || channelId == 0 || this->fHost.isEmpty() || this->fPort == 0)
+        return;
+    if (tunnelChannels.contains(channelId))
+        return;
+
+    auto* sock = new QTcpSocket(this);
+    sock->setSocketOption(QAbstractSocket::LowDelayOption, 1);
+
+    QPointer<TunnelEndpoint> self = this;
+    QPointer<QTcpSocket> sockPtr = sock;
+    const quint64 gen = endpointGeneration;
+
+    QObject::connect(sock, &QTcpSocket::connected, this, [self, sockPtr, channelId, gen]() {
+        if (!self || gen != self->endpointGeneration || !sockPtr) {
+            if (sockPtr)
+                sockPtr->deleteLater();
+            return;
+        }
+        QJsonObject otpData;
+        otpData["tunnel_id"]  = toJsonI64(self->tunnelId);
+        otpData["channel_id"] = toJsonI64(channelId);
+        otpData["mode"]       = QStringLiteral("reverse");
+        self->startReverseWorker(sockPtr.data(), otpData, channelId);
+    });
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
+    const auto errorSignal = &QAbstractSocket::errorOccurred;
+#else
+    const auto errorSignal = QOverload<QAbstractSocket::SocketError>::of(&QAbstractSocket::error);
+#endif
+    QObject::connect(sock, errorSignal, this, [self, sockPtr, channelId, gen](QAbstractSocket::SocketError) {
+        if (!self || gen != self->endpointGeneration)
+            return;
+        if (sockPtr && sockPtr->state() == QAbstractSocket::ConnectedState)
+            return;
+        self->nackReverseChannel(channelId);
+        if (sockPtr)
+            sockPtr->deleteLater();
+    });
+
+    QTimer::singleShot(15000, sock, [self, sockPtr, channelId, gen]() {
+        if (!self || gen != self->endpointGeneration || !sockPtr)
+            return;
+        if (sockPtr->state() == QAbstractSocket::ConnectedState)
+            return;
+        self->nackReverseChannel(channelId);
+        sockPtr->abort();
+        sockPtr->deleteLater();
+    });
+
+    sock->connectToHost(this->fHost, this->fPort);
 }

@@ -33,10 +33,7 @@ type StartMsg struct {
 type InitPack struct {
 	Type uint   `msgpack:"type"`
 	Data []byte `msgpack:"data"`
-}
-
-type ResumePack struct {
-	Id int64 `msgpack:"id"`
+	Id   int64  `msgpack:"agent_id,omitempty"`
 }
 
 type ExfilPack struct {

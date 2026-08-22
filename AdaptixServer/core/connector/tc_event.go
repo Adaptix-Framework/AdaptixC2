@@ -3,6 +3,7 @@ package connector
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -178,6 +179,42 @@ func (tc *TsConnector) TcEventUnmute(ctx *gin.Context) {
 		return
 	}
 	if err := tc.teamserver.TsEventUnmute(data.Event); err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+	respondOK(ctx)
+}
+
+func (tc *TsConnector) TcEventTypesList(ctx *gin.Context) {
+	raw, err := tc.teamserver.TsEventTypesList()
+	if err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(raw))
+}
+
+type EventEmitReq struct {
+	Event  string `json:"event"`
+	Source string `json:"source,omitempty"`
+	Text   string `json:"text"`
+}
+
+func (tc *TsConnector) TcEventEmit(ctx *gin.Context) {
+	var req EventEmitReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		respondError(ctx, http.StatusOK, "invalid JSON data")
+		return
+	}
+	source := strings.TrimSpace(req.Source)
+	if source == "" {
+		if u, ok := tc.extractUserContext(ctx); ok {
+			source = "operator:" + u
+		} else {
+			source = "api"
+		}
+	}
+	if err := tc.teamserver.TsEventEmitFrom(req.Event, source, req.Text); err != nil {
 		respondError(ctx, http.StatusOK, err.Error())
 		return
 	}

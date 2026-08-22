@@ -333,3 +333,35 @@ func (tc *TsConnector) TcTunnelSetIno(ctx *gin.Context) {
 
 	respondOKMessage(ctx, "Tunnel info updated")
 }
+
+type TunnelChannelNackAction struct {
+	TunnelId  int64 `json:"p_tunnel_id"`
+	ChannelId int64 `json:"p_channel_id"`
+}
+
+func (tc *TsConnector) TcTunnelChannelNack(ctx *gin.Context) {
+	var ta TunnelChannelNackAction
+	err := ctx.ShouldBindJSON(&ta)
+	if err != nil {
+		respondError(ctx, http.StatusOK, "invalid JSON data")
+		return
+	}
+
+	clientName, ok := mustUsername(ctx)
+	if !ok {
+		return
+	}
+
+	if ta.TunnelId == 0 || ta.ChannelId == 0 {
+		respondError(ctx, http.StatusOK, "tunnel_id and channel_id are required")
+		return
+	}
+
+	err = tc.teamserver.TsTunnelClientChannelNack(ta.TunnelId, ta.ChannelId, clientName)
+	if err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+
+	respondOKMessage(ctx, "ok")
+}

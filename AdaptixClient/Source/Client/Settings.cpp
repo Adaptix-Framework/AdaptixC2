@@ -1,6 +1,7 @@
 #include <UI/Dialogs/DialogSettings.h>
 #include <Client/Settings.h>
 #include <Client/Storage.h>
+#include <Client/DockLayoutEngine.h>
 #include <MainAdaptix.h>
 
 Settings::Settings(MainAdaptix* m)
@@ -36,6 +37,7 @@ void Settings::SetDefault()
     this->data.GraphAutoHideNoChilds = false;
     this->data.RemoteTerminalBufferSize = 10000;
     this->data.ToolbarPosition = 0;
+    this->data.DockLayout = DockLayoutEngine::defaultsForLayout(QStringLiteral("main_right"));
 
     this->data.ConsoleTime = true;
     this->data.ConsoleBufferSize = 50000;
@@ -82,7 +84,7 @@ void Settings::SetDefault()
         data.FilesTableColumns[i] = true;
     this->data.FilesCompactMode = false;
 
-    for (int i = 0; i < 13; i++)
+    for (int i = 0; i < 14; i++)
         data.PayloadsTableColumns[i] = true;
     data.PayloadsTableColumns[9] = false;
 
@@ -126,6 +128,9 @@ void Settings::LoadFromDB()
     mainAdaptix->storage->SelectSettingsPayloads( &data );
     mainAdaptix->storage->SelectSettingsTabBlink( &data );
     mainAdaptix->storage->SelectSettingsScript( &data );
+    mainAdaptix->storage->SelectSettingsDockLayout( &data );
+    DockLayoutEngine::ensureValid(data.DockLayout);
+    mainAdaptix->storage->UpdateSettingsDockLayout(data);
 }
 
 void Settings::SaveToDB() const
@@ -141,4 +146,5 @@ void Settings::SaveToDB() const
     mainAdaptix->storage->UpdateSettingsPayloads( data );
     mainAdaptix->storage->UpdateSettingsTabBlink( data );
     mainAdaptix->storage->UpdateSettingsScript( data );
+    mainAdaptix->storage->UpdateSettingsDockLayout( data );
 }

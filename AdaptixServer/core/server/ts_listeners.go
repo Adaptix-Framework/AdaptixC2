@@ -2,11 +2,13 @@ package server
 
 import (
 	"AdaptixServer/core/eventing"
+	"AdaptixServer/core/extender"
 	"AdaptixServer/core/utils/krypt"
 	isvalid "AdaptixServer/core/utils/valid"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/Adaptix-Framework/axc2/v2"
@@ -26,33 +28,47 @@ func (ts *Teamserver) TsListenerList() (string, error) {
 	return string(jsonListeners), nil
 }
 
-func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName string, listenerConfig string, createTime int64, listenerWatermark string, listenerCustomData []byte, tags string) error {
-	// --- PRE HOOK ---
-	preEvent := &eventing.EventDataListenerStart{
-		ListenerName: listenerName,
-		ListenerType: listenerRegName,
-		Config:       listenerConfig,
+func (ts *Teamserver) TsListenerGet(listenerName string) (adaptix.ListenerData, bool) {
+	if listenerName == "" {
+		return adaptix.ListenerData{}, false
 	}
-	if !ts.EventManager.Emit(eventing.EventListenerStart, eventing.HookPre, preEvent) {
-		if preEvent.Error != nil {
-			return preEvent.Error
-		}
-		return fmt.Errorf("operation cancelled by hook")
+	return ts.listeners.Get(listenerName)
+}
+
+func (ts *Teamserver) TsListenerCatalog() (string, error) {
+	out := make([]adaptix.ListenerCatalogItem, 0)
+	ts.listener_configs.ForEachFast(func(key string, info extender.ListenerInfo) bool {
+		out = append(out, adaptix.ListenerCatalogItem{
+			Name:     info.Name,
+			Protocol: info.Protocol,
+			Type:     info.Type,
+			AXS:      info.AX,
+		})
+		return true
+	})
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	raw, err := json.Marshal(out)
+	if err != nil {
+		return "", err
 	}
-	// ----------------
+	return string(raw), nil
+}
+
+func (ts *Teamserver) tsListenerRegister(listenerName, listenerRegName, listenerConfig string, createTime int64, listenerWatermark string, listenerCustomData []byte, tags string) (adaptix.ListenerData, []byte, error) {
+	var listenerData adaptix.ListenerData
 
 	listenerInfo, ok := ts.listener_configs.Get(listenerRegName)
 	if !ok {
-		return fmt.Errorf("listener %v does not register", listenerRegName)
+		return listenerData, nil, fmt.Errorf("listener %v does not register", listenerRegName)
 	}
 
 	if ts.listeners.Contains(listenerName) {
-		return errors.New("listener already exists")
+		return listenerData, nil, errors.New("listener already exists")
 	}
 
 	listenerData, customData, err := ts.Extender.ExListenerCreate(listenerName, listenerRegName, listenerConfig, listenerCustomData)
 	if err != nil {
-		return err
+		return listenerData, nil, err
 	}
 
 	listenerData.Name = listenerName
@@ -79,17 +95,53 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 		listenerData.Watermark, _ = krypt.GenerateUID(8)
 	}
 
-	err = ts.Extender.ExListenerStart(listenerName)
+	listenerData.Status = "Stopped"
+	ts.listeners.Put(listenerName, listenerData)
+	ts.wm_listeners.Put(listenerData.Watermark, []string{listenerName, listenerRegName})
+	return listenerData, customData, nil
+}
+
+func (ts *Teamserver) tsListenerBringUp(listenerName string) error {
+	listenerData, ok := ts.listeners.Get(listenerName)
+	if !ok {
+		return fmt.Errorf("listener '%v' does not exist", listenerName)
+	}
+	err := ts.Extender.ExListenerStart(listenerName)
 	if err != nil {
 		listenerData.Status = "Stopped"
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "listener", "", "Listener %s created but failed to start: %s", listenerName, err.Error())
-	} else {
-		listenerData.Status = "Listen"
+		ts.listeners.Put(listenerName, listenerData)
+		return err
+	}
+	listenerData.Status = "Listen"
+	ts.listeners.Put(listenerName, listenerData)
+	return nil
+}
+
+func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName string, listenerConfig string, createTime int64, listenerWatermark string, listenerCustomData []byte, tags string) error {
+	// --- PRE HOOK ---
+	preEvent := &eventing.EventDataListenerStart{
+		ListenerName: listenerName,
+		ListenerType: listenerRegName,
+		Config:       listenerConfig,
+	}
+	if !ts.EventManager.Emit(eventing.EventListenerStart, eventing.HookPre, preEvent) {
+		if preEvent.Error != nil {
+			return preEvent.Error
+		}
+		return fmt.Errorf("operation cancelled by hook")
+	}
+	// ----------------
+
+	listenerData, customData, err := ts.tsListenerRegister(listenerName, listenerRegName, listenerConfig, createTime, listenerWatermark, listenerCustomData, tags)
+	if err != nil {
+		return err
 	}
 
-	ts.listeners.Put(listenerName, listenerData)
-
-	ts.wm_listeners.Put(listenerData.Watermark, []string{listenerName, listenerRegName})
+	if err = ts.tsListenerBringUp(listenerName); err != nil {
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "listener", "", "Listener %s created but failed to start: %s", listenerName, err.Error())
+	} else {
+		listenerData, _ = ts.listeners.Get(listenerName)
+	}
 
 	packet := CreateSpListenerStart(listenerData)
 	ts.TsSyncAllClients(packet)

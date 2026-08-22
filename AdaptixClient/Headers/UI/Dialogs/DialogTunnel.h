@@ -3,7 +3,7 @@
 
 #include <main.h>
 #include <oclero/qlementine/widgets/Switch.hpp>
-#include <oclero/qlementine/widgets/SegmentedControl.hpp>
+#include <Utils/CustomElements/SegmentControl.h>
 
 class DialogTunnel : public QDialog
 {
@@ -18,8 +18,8 @@ class DialogTunnel : public QDialog
      QPushButton*    buttonCancel         = nullptr;
      QPushButton*    buttonCreate         = nullptr;
 
-     oclero::qlementine::SegmentedControl* typeSegment     = nullptr;
-     oclero::qlementine::SegmentedControl* endpointSegment = nullptr;
+     SegmentControl* typeSegment     = nullptr;
+     SegmentControl* endpointSegment = nullptr;
 
      QWidget*        socks5Widget         = nullptr;
      QLineEdit*      socks5AddrInput      = nullptr;
@@ -42,6 +42,7 @@ class DialogTunnel : public QDialog
      QSpinBox*       rpfPortSpin          = nullptr;
      QLineEdit*      rpfTargetAddrInput   = nullptr;
      QSpinBox*       rpfTargetPortSpin    = nullptr;
+     QLabel*         rpfHintLabel         = nullptr;
 
      bool       valid      = false;
      QString    message    = "";

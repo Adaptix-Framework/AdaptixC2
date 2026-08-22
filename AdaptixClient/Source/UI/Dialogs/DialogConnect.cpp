@@ -281,9 +281,10 @@ void DialogConnect::createUI()
     cardWidget->setSelectionMode(QAbstractItemView::ExtendedSelection);
     cardWidget->setFocusPolicy(Qt::ClickFocus);
 
-    buttonNewProfile = new QPushButton(this);
-    buttonNewProfile->setText("New Profile");
-    buttonNewProfile->setMinimumSize(QSize(10, 30));
+    buttonNewProfile = new QPushButton(QIcon(":/icons/plus"), "", this);
+    buttonNewProfile->setIconSize(QSize(20, 20));
+    buttonNewProfile->setFixedSize(QSize(30, 30));
+    buttonNewProfile->setToolTip("New profile");
 
     buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
     buttonLoad->setIconSize(QSize(20, 20));
@@ -296,6 +297,7 @@ void DialogConnect::createUI()
     buttonSave->setToolTip("Save profile to file");
 
     auto profileButtonsLayout = new QHBoxLayout();
+    profileButtonsLayout->addStretch(1);
     profileButtonsLayout->addWidget(buttonNewProfile);
     profileButtonsLayout->addWidget(buttonLoad);
     profileButtonsLayout->addWidget(buttonSave);

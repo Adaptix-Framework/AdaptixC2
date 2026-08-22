@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/axscript"
 	"AdaptixServer/core/eventing"
 	isvalid "AdaptixServer/core/utils/valid"
 	"context"
@@ -60,48 +61,52 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentUid []byte, beat []byt
 		return adaptix.AgentData{}, fmt.Errorf("agent %x does not register", agentUid)
 	}
 
+	if listenerName != "" {
+		listenerData, ok := ts.listeners.Get(listenerName)
+		if ok {
+			if !ts.listener_configs.Contains(listenerData.RegName) {
+				return adaptix.AgentData{}, fmt.Errorf("listener %v does not register", listenerData.RegName)
+			}
+		}
+	}
+
 	agentName, ok := ts.wm_agent_types.Get(agentCrc)
 	if !ok {
 		return adaptix.AgentData{}, fmt.Errorf("agent type %v does not exists", agentCrc)
 	}
 
-	agentData, agentFuncs, err := ts.Extender.ExAgentCreate(agentName, beat)
+	agentData, _, err := ts.Extender.ExAgentCreate(agentName, beat)
 	if err != nil {
 		return adaptix.AgentData{}, err
 	}
 
-	agentData.Id = ts.IdGen.Next("agent")
-
 	if len(agentData.UID) == 0 && len(agentUid) > 0 {
 		agentData.UID = agentUid
 	}
+	uidHex := ""
 	if len(agentData.UID) > 0 {
-		_, exists := ts.agentsUid.Get(hex.EncodeToString(agentData.UID))
-		if exists {
+		uidHex = hex.EncodeToString(agentData.UID)
+		if _, exists := ts.agentsUid.Get(uidHex); exists {
 			return adaptix.AgentData{}, fmt.Errorf("agent with uid %x already exists", agentData.UID)
 		}
 	}
 
+	now := time.Now().Unix()
+	agentData.Id = ts.IdGen.Next("agent")
 	agentData.Crc = agentCrc
 	agentData.Name = agentName
 	agentData.Listener = listenerName
 	agentData.ExternalIP = ExternalIP
-	agentData.CreateTime = time.Now().Unix()
-	agentData.LastTick = int(time.Now().Unix())
+	agentData.CreateTime = now
+	agentData.LastTick = int(now)
 	agentData.Async = Async
 	agentData.Tags = ""
 	agentData.Mark = ""
 	agentData.Color = ""
 
-	listenerData, ok := ts.listeners.Get(listenerName)
-	if !ok {
-		return agentData, fmt.Errorf("listener %v does not exists", listenerName)
-	}
-
-	regName := listenerData.RegName
-	_, ok = ts.listener_configs.Get(regName)
-	if !ok {
-		return agentData, fmt.Errorf("listener %v does not register", regName)
+	agentFuncs, err := ts.Extender.ExAgentRestore(agentName, agentData)
+	if err != nil {
+		return agentData, err
 	}
 
 	agent := adaptix.NewAgent(agentData, agentFuncs)
@@ -117,8 +122,8 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentUid []byte, beat []byt
 	// ----------------
 
 	ts.Agents.Put(agentData.Id, agent)
-	if len(agentData.UID) > 0 {
-		ts.agentsUid.Put(hex.EncodeToString(agentData.UID), agentData.Id)
+	if uidHex != "" {
+		ts.agentsUid.Put(uidHex, agentData.Id)
 	}
 
 	packetNew := CreateSpAgentNew(agentData)
@@ -132,19 +137,18 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentUid []byte, beat []byt
 		d.TargetId = tid
 	})
 
-	err = ts.DBMS.DbAgentInsert(agent.GetData())
+	created := agent.GetData()
+	err = ts.DBMS.DbAgentInsert(created)
 	if err != nil {
 		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "agent", "%s", err.Error())
 	}
 
-	ts.TsNotifyAgent(false, agent.GetData())
-
+	ts.TsNotifyAgent(false, created)
 	// --- POST HOOK ---
-	postEvent := &eventing.EventDataAgentNew{Agent: agent.GetData(), Restore: false}
-	ts.EventManager.EmitAsync(eventing.EventAgentNew, postEvent)
+	ts.EventManager.EmitAsync(eventing.EventAgentNew, &eventing.EventDataAgentNew{Agent: created, Restore: false})
 	// -----------------
 
-	return agent.GetData(), nil
+	return created, nil
 }
 
 func (ts *Teamserver) TsAgentCommand(agentName string, agentId int64, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error {
@@ -237,116 +241,56 @@ func (ts *Teamserver) TsAgentBuildEmptyTasks(agentId int64) ([]byte, error) {
 	return agent.PackTasks(nil)
 }
 
-func (ts *Teamserver) packAgentTasks(agent *adaptix.Agent, tasks []adaptix.TaskData) ([]byte, error) {
+func (ts *Teamserver) packAgentTasks(agent *adaptix.Agent, tasks []adaptix.TaskData) ([]byte, adaptix.StatTasks, error) {
 	ts.TaskManager.DispatchPreEncode(agent, tasks)
+	stats := adaptix.MakeStatTasks(tasks)
 
 	respData, err := agent.PackTasks(tasks)
 	if err != nil {
-		return nil, err
+		return nil, adaptix.StatTasks{}, err
 	}
+	stats.Packed = len(respData)
 
 	ts.TaskManager.DispatchPostEncode(agent, tasks)
-	return respData, nil
+	return respData, stats, nil
 }
 
-func (ts *Teamserver) TsAgentGetHostedAll(agentId int64, maxDataSize int) ([]byte, error) {
+func (ts *Teamserver) getHosted(agentId int64, maxCount, maxDataSize int, withPivot bool) ([]byte, adaptix.StatTasks, error) {
 	agent, ok := ts.Agents.Get(agentId)
 	if !ok {
-		return nil, fmt.Errorf("agent %v not found", agentId)
-	}
-	queueLen := agent.HostedQueue.Len()
-	pivotTasksExists := false
-	if agent.PivotChilds.Len() > 0 {
-		pivotTasksExists = ts.TsTasksPivotExists(agentId, true)
+		return nil, adaptix.StatTasks{}, fmt.Errorf("agent %v not found", agentId)
 	}
 
-	if queueLen > 0 || pivotTasksExists {
-
-		tasks, err := ts.TsTaskGetAvailableAll(agentId, maxDataSize)
-		if err != nil {
-			return nil, err
-		}
-
-		visibleCount := countOperatorVisibleTasks(tasks)
-		if visibleCount > 0 {
-			ts.TsAgentConsoleOutput(agentId, "", CONSOLE_OUT_INFO, fmt.Sprintf("Agent polled — %d task(s) to send", visibleCount), "", false)
-		}
-
-		respData, err := ts.packAgentTasks(agent, tasks)
-		if err != nil {
-			return nil, err
-		}
-
-		return respData, nil
+	hasQueue := agent.HostedQueue.Len() > 0
+	hasPivot := withPivot && agent.PivotChilds.Len() > 0 && ts.TsTasksPivotExists(agentId, true)
+	if !hasQueue && !hasPivot {
+		return []byte(""), adaptix.StatTasks{}, nil
 	}
 
-	return []byte(""), nil
+	var (
+		tasks []adaptix.TaskData
+		err   error
+	)
+	if withPivot {
+		tasks, err = ts.TsTaskGetAvailableAll(agentId, maxDataSize)
+	} else {
+		tasks, _, err = ts.TsTaskGetAvailableTasks(agentId, maxCount, maxDataSize)
+	}
+	if err != nil {
+		return nil, adaptix.StatTasks{}, err
+	}
+	if len(tasks) == 0 {
+		return []byte(""), adaptix.StatTasks{}, nil
+	}
+	return ts.packAgentTasks(agent, tasks)
 }
 
-func countOperatorVisibleTasks(tasks []adaptix.TaskData) int {
-	n := 0
-	for i := range tasks {
-		switch tasks[i].Type {
-		case adaptix.TASK_TYPE_TASK, adaptix.TASK_TYPE_JOB:
-			n++
-		}
-	}
-	return n
+func (ts *Teamserver) TsAgentGetHostedAll(agentId int64, maxDataSize int) ([]byte, adaptix.StatTasks, error) {
+	return ts.getHosted(agentId, 0, maxDataSize, true)
 }
 
-func (ts *Teamserver) TsAgentGetHostedTasks(agentId int64, maxDataSize int) ([]byte, error) {
-	agent, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return nil, fmt.Errorf("agent %v not found", agentId)
-	}
-	if agent.HostedQueue.Len() == 0 {
-		return []byte(""), nil
-	}
-
-	tasks, _, err := ts.TsTaskGetAvailableTasks(agentId, 0, maxDataSize)
-	if err != nil {
-		return nil, err
-	}
-
-	visibleCount := countOperatorVisibleTasks(tasks)
-	if visibleCount > 0 {
-		ts.TsAgentConsoleOutput(agentId, "", CONSOLE_OUT_INFO, fmt.Sprintf("Agent polled — %d task(s) to send", visibleCount), "", false)
-	}
-
-	respData, err := ts.packAgentTasks(agent, tasks)
-	if err != nil {
-		return nil, err
-	}
-
-	return respData, nil
-}
-
-func (ts *Teamserver) TsAgentGetHostedTasksCount(agentId int64, count int, maxDataSize int) ([]byte, error) {
-	agent, ok := ts.Agents.Get(agentId)
-	if !ok {
-		return nil, fmt.Errorf("agent %v not found", agentId)
-	}
-
-	if agent.HostedQueue.Len() == 0 {
-		return []byte(""), nil
-	}
-
-	tasks, _, err := ts.TsTaskGetAvailableTasks(agentId, count, maxDataSize)
-	if err != nil {
-		return nil, err
-	}
-
-	visibleCount := countOperatorVisibleTasks(tasks)
-	if visibleCount > 0 {
-		ts.TsAgentConsoleOutput(agentId, "", CONSOLE_OUT_INFO, fmt.Sprintf("Agent polled — %d task(s) to send", visibleCount), "", false)
-	}
-
-	respData, err := ts.packAgentTasks(agent, tasks)
-	if err != nil {
-		return nil, err
-	}
-
-	return respData, nil
+func (ts *Teamserver) TsAgentGetHostedTasks(agentId int64, maxCount int, maxDataSize int) ([]byte, adaptix.StatTasks, error) {
+	return ts.getHosted(agentId, maxCount, maxDataSize, false)
 }
 
 /// Data
@@ -696,6 +640,8 @@ func (ts *Teamserver) cleanupAgentResources(agentId int64) {
 			_ = ts.TsPivotDelete(pivotId)
 		}
 	}
+
+	ts.TsGroupRemoveAgentFromAll(agentId)
 }
 
 func (ts *Teamserver) TsAgentTerminate(agentId int64, terminateTaskId int64) error {
@@ -941,4 +887,75 @@ func (ts *Teamserver) TsAgentConsoleErrorCommand(agentId int64, client string, c
 func (ts *Teamserver) TsAgentConsoleLocalCommand(agentId int64, client string, cmdline string, message string, text string) {
 	packet := CreateSpAgentLocalCommand(agentId, cmdline, message, text)
 	ts.TsSyncConsole(packet, client, client)
+}
+
+func (ts *Teamserver) TsAgentCommandGroupSet(agentId int64, groupId string, enabled bool) error {
+	agent, ok := ts.Agents.Get(agentId)
+	if !ok {
+		return errors.New("agent does not exist")
+	}
+	if groupId == "" {
+		return errors.New("group id is empty")
+	}
+	agent.SetCommandGroupEnabled(groupId, enabled)
+
+	js := agent.CommandGroupOverridesJSON()
+	agent.UpdateData(func(d *adaptix.AgentData) {
+		d.CmdGroups = js
+	})
+	if err := ts.DBMS.DbAgentCmdGroupsUpdate(agentId, js); err != nil {
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "agent", "failed to persist cmd groups for agent %d: %v", agentId, err)
+	}
+
+	packet := CreateSpAgentCommandGroups(agentId, agent.GetCommandGroupOverrides())
+	ts.TsSyncStateWithCategory(packet, fmt.Sprintf("agent:%d", agentId), SyncCategoryAgents)
+	return nil
+}
+
+func (ts *Teamserver) TsAgentCommandGroupList(agentId int64) ([]map[string]interface{}, error) {
+	agent, ok := ts.Agents.Get(agentId)
+	if !ok {
+		return nil, errors.New("agent does not exist")
+	}
+	data := agent.GetData()
+	listenerRegName, _ := ts.TsListenerRegByName(data.Listener)
+	var groups []axscript.CommandGroup
+	if ts.ScriptManager != nil {
+		groups = ts.ScriptManager.CommandStore.GetCommandsForAgent(data.Name, listenerRegName, data.Os)
+	}
+	overrides := agent.GetCommandGroupOverrides()
+	out := make([]map[string]interface{}, 0, len(groups))
+	seen := map[string]bool{}
+	for _, g := range groups {
+		id := g.GroupName
+		if id == "" {
+			id = data.Name
+		}
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		def := g.DefaultEnabled
+		enabled := agent.IsCommandGroupEnabled(id, def)
+		if v, ok := overrides[id]; ok {
+			enabled = v
+		}
+		out = append(out, map[string]interface{}{
+			"name":            id,
+			"description":     g.GroupDescription,
+			"enabled":         enabled,
+			"default_enabled": def,
+			"source":          g.Source,
+			"command_count":   len(g.Commands),
+		})
+	}
+	return out, nil
+}
+
+func (ts *Teamserver) AxAgentSetCommandGroup(agentId int64, groupId string, enabled bool) error {
+	return ts.TsAgentCommandGroupSet(agentId, groupId, enabled)
+}
+
+func (ts *Teamserver) AxAgentGetCommandGroups(agentId int64) ([]map[string]interface{}, error) {
+	return ts.TsAgentCommandGroupList(agentId)
 }

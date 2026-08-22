@@ -8,6 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"AdaptixServer/core/utils/proxy"
+
 	"github.com/Adaptix-Framework/axsafe"
 
 	"github.com/Adaptix-Framework/axc2/v2"
@@ -25,6 +27,9 @@ const (
 	tunnelIngressBlockTimeout = 2 * time.Second
 
 	tunnelChannelResumeTimeout = 60 * time.Second
+	reverseAttachTimeout       = 45 * time.Second
+
+	bindListenPeekCap = 64 * 1024
 )
 
 type TunnelManager struct {
@@ -74,6 +79,35 @@ func (tc *TunnelChannel) writeWsBinary(data []byte) error {
 	tc.wsWriteMu.Lock()
 	defer tc.wsWriteMu.Unlock()
 	return tc.wsconn.WriteMessage(websocket.BinaryMessage, data)
+}
+
+func (tc *TunnelChannel) writeConn(data []byte) error {
+	if tc == nil || tc.conn == nil {
+		return io.ErrClosedPipe
+	}
+	tc.connWriteMu.Lock()
+	defer tc.connWriteMu.Unlock()
+	_, err := tc.conn.Write(data)
+	return err
+}
+
+func (tc *TunnelChannel) writeSocksBytes(data []byte) error {
+	if tc == nil {
+		return io.ErrClosedPipe
+	}
+	if tc.conn != nil {
+		return tc.writeConn(data)
+	}
+	return tc.writeWsBinary(data)
+}
+
+func (tc *TunnelChannel) markEgressReady() {
+	if tc == nil {
+		return
+	}
+	if tc.egressReady.CompareAndSwap(false, true) && tc.egressGate != nil {
+		close(tc.egressGate)
+	}
 }
 
 func (tc *TunnelChannel) closeWs() {
@@ -256,6 +290,7 @@ func (tm *TunnelManager) closeChannelInternal(channel *TunnelChannel) {
 	if channel.prSrv != nil {
 		_ = channel.prSrv.Close()
 	}
+	channel.markEgressReady()
 }
 
 func (tm *TunnelManager) ArmChannelResumeWatchdog(channelId int64, agentId int64, tunnel *Tunnel) {
@@ -275,26 +310,50 @@ func (tm *TunnelManager) ArmChannelResumeWatchdog(channelId int64, agentId int64
 		if ch.resumed.Load() {
 			return
 		}
+		if ch.protocol == "BIND" && ch.bindListening.Load() {
+			return
+		}
 		if !ch.resumed.CompareAndSwap(false, true) {
 			return
 		}
 
-		if tunnel.Data.Client == "" {
-			if ch.conn != nil {
-				if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
-					_, _ = ch.conn.Write([]byte{0x05, adaptix.SOCKS5_CONNECTION_REFUSED, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-				} else if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS4 {
-					_, _ = ch.conn.Write([]byte{0x00, 0x5b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-				}
-			}
-		} else if ch.wsconn != nil {
-			if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
-				_ = ch.writeWsBinary([]byte{0x05, adaptix.SOCKS5_CONNECTION_REFUSED, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-			} else if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS4 {
-				_ = ch.writeWsBinary([]byte{0x00, 0x5b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
-			}
+		if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5 || tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS5_AUTH {
+			_ = ch.writeSocksBytes(proxy.Socks5Reply(adaptix.SOCKS5_CONNECTION_REFUSED, adaptix.ADDRESS_TYPE_IPV4, nil, 0))
+		} else if tunnel.Type == adaptix.TUNNEL_TYPE_SOCKS4 {
+			_ = ch.writeSocksBytes([]byte{0x00, 0x5b, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00})
 		}
 
+		if tunnel.Callbacks.Close != nil {
+			tunnelManageTask(tm.ts, agentId, tunnel.Callbacks.Close(channelId))
+		}
+		ch.skipAgentClose.Store(true)
+		tm.CloseChannel(channelId, false)
+	}()
+}
+
+func (tm *TunnelManager) ArmReverseAttachWatchdog(channelId int64, agentId int64, tunnel *Tunnel) {
+	if tm == nil || tunnel == nil {
+		return
+	}
+	go func() {
+		timer := time.NewTimer(reverseAttachTimeout)
+		defer timer.Stop()
+		<-timer.C
+
+		entry, ok := tm.GetChannel(channelId)
+		if !ok || entry.Channel == nil {
+			return
+		}
+		ch := entry.Channel
+		if ch.resumed.Load() {
+			return
+		}
+		if ch.protocol != "REVERSE" {
+			return
+		}
+		if !ch.resumed.CompareAndSwap(false, true) {
+			return
+		}
 		if tunnel.Callbacks.Close != nil {
 			tunnelManageTask(tm.ts, agentId, tunnel.Callbacks.Close(channelId))
 		}
@@ -476,10 +535,11 @@ func NewSafeTunnelChannel(tm *TunnelManager, channelId int64, conn net.Conn, wsc
 	ctx, cancel := context.WithCancel(context.Background())
 	stc := &SafeTunnelChannel{
 		TunnelChannel: &TunnelChannel{
-			channelId: channelId,
-			conn:      conn,
-			wsconn:    wsconn,
-			protocol:  protocol,
+			channelId:  channelId,
+			conn:       conn,
+			wsconn:     wsconn,
+			protocol:   protocol,
+			egressGate: make(chan struct{}),
 		},
 		tm:     tm,
 		ctx:    ctx,
@@ -508,6 +568,13 @@ func (stc *SafeTunnelChannel) ingressPump() {
 			if !ok {
 				return
 			}
+			if (stc.protocol == "BIND" || stc.protocol == "REVERSE") && !stc.egressReady.Load() {
+				select {
+				case <-stc.egressGate:
+				case <-stc.ctx.Done():
+					return
+				}
+			}
 			if stc.flowPaused.Load() {
 				capLen := cap(stc.ingressChan)
 				if capLen > 0 && len(stc.ingressChan) < (capLen*tunnelIngressLoWM)/100 {
@@ -520,7 +587,7 @@ func (stc *SafeTunnelChannel) ingressPump() {
 			}
 
 			if stc.conn != nil {
-				if _, err := stc.conn.Write(data); err != nil {
+				if err := stc.writeConn(data); err != nil {
 					return
 				}
 			} else if stc.wsconn != nil {

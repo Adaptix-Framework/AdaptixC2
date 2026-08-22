@@ -27,6 +27,8 @@ public Q_SLOTS:
     void     agent_set_mark(const QJSValue& agents, const QString &mark);
     void     agent_set_tag(const QJSValue& agents, const QString &tag);
     void     agent_update_data(const QString &id, const QJSValue &data);
+    void     agent_set_command_group(const QString &id, const QString &group, bool enabled);
+    QJSValue agent_get_command_groups(const QString &id) const;
     QString  arch(const QString &id) const;
     QString  bof_pack(const QString &types, const QJSValue &args);
     void     copy_to_clipboard(const QString &text);
@@ -78,10 +80,10 @@ public Q_SLOTS:
     void     log_error(const QString &text);
     void     open_agent_console(const QString &id);
     void     open_access_tunnel(const QString &id, bool socks4, bool socks5, bool lportfwd, bool rportfwd);
-    void     open_browser_files(const QString &id);
-    void     open_browser_process(const QString &id);
-    void     open_remote_terminal(const QString &id);
-    void     open_remote_shell(const QString &id);
+    void     open_browser_files(const QString &id, const QJSValue &zone = QJSValue());
+    void     open_browser_process(const QString &id, const QJSValue &zone = QJSValue());
+    void     open_remote_terminal(const QString &id, const QJSValue &zone = QJSValue());
+    void     open_remote_shell(const QString &id, const QJSValue &zone = QJSValue());
     void     open_code_editor(const QJSValue& arg1 = QJSValue(), const QJSValue& arg2 = QJSValue());
     QString  editor_profile_upsert(const QJSValue& spec);
     bool     prompt_confirm(const QString &title, const QString &text);
@@ -91,6 +93,7 @@ public Q_SLOTS:
     QString  random_string(const int length, const QString &setname);
     int      random_int(const int min, const int max);
     void     register_commands_group(QObject* obj, const QJSValue& agents, const QJSValue& os, const QJSValue& listeners);
+    void     register_service_commands(QObject* obj);
     void     script_import(const QString &path);
     void     script_load(const QString &path);
     void     script_unload(const QString &path);
@@ -98,6 +101,7 @@ public Q_SLOTS:
     bool     event_handler_register(const QJSValue& meta);
     QJSValue screenshots();
     void     plugin_service_command(const QString &service, const QString &command, const QJSValue &args = QJSValue());
+    QJSValue plugin_service_wait(const QString &service, const QString &command, const QJSValue &args = QJSValue(), const QJSValue &timeoutMs = QJSValue());
     void     plugin_agent_command(const QJSValue &agentId, const QString &command, const QJSValue &args = QJSValue());
     void     plugin_listener_command(const QString &listenerName, const QString &command, const QJSValue &args = QJSValue());
     void     show_message(const QString &title, const QString &text);

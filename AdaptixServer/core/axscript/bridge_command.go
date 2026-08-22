@@ -264,20 +264,38 @@ func (b *jsCommandBuilder) SetHandler(call goja.FunctionCall) goja.Value {
 	return goja.Undefined()
 }
 
+func (b *jsCommandBuilder) SetDestructive(call goja.FunctionCall) goja.Value {
+	if len(call.Arguments) == 0 {
+		b.command.Destructive = true
+		return goja.Undefined()
+	}
+	b.command.Destructive = call.Argument(0).ToBoolean()
+	return goja.Undefined()
+}
+
 /// CommandGroup
 
 type jsCommandGroupBuilder struct {
-	engine      *ScriptEngine
-	name        string
-	description string
-	commands    []CommandDef
+	engine         *ScriptEngine
+	name           string
+	description    string
+	commands       []CommandDef
+	defaultEnabled bool
 }
 
 // /---
 func newJsCommandGroupBuilder(engine *ScriptEngine) *jsCommandGroupBuilder {
 	return &jsCommandGroupBuilder{
-		engine: engine,
+		engine:         engine,
+		defaultEnabled: true,
 	}
+}
+
+func (g *jsCommandGroupBuilder) SetDefaultEnabled(call goja.FunctionCall) goja.Value {
+	if len(call.Arguments) > 0 {
+		g.defaultEnabled = call.Argument(0).ToBoolean()
+	}
+	return goja.Undefined()
 }
 
 // /---
@@ -358,6 +376,7 @@ func (g *jsCommandGroupBuilder) ToCommandGroup(scriptName string) CommandGroup {
 		GroupDescription: g.description,
 		ScriptName:       scriptName,
 		Commands:         g.commands,
+		DefaultEnabled:   g.defaultEnabled,
 	}
 }
 
@@ -377,6 +396,25 @@ func isJsArray(rt *goja.Runtime, obj *goja.Object) (bool, error) {
 		return false, err
 	}
 	return result.ToBoolean(), nil
+}
+
+func extractGroupBuilder(val goja.Value) *jsCommandGroupBuilder {
+	if goja.IsUndefined(val) || goja.IsNull(val) {
+		return nil
+	}
+	if exported := val.Export(); exported != nil {
+		if gb, ok := exported.(*jsCommandGroupBuilder); ok {
+			return gb
+		}
+		if m, ok := exported.(map[string]interface{}); ok {
+			if gv, exists := m["__group"]; exists {
+				if gb, ok2 := gv.(*jsCommandGroupBuilder); ok2 {
+					return gb
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func extractCommandBuilder(val goja.Value) *jsCommandBuilder {

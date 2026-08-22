@@ -253,6 +253,7 @@ func (dbms *DBMS) DatabaseInit() error {
     	"Watermark" TEXT,
     	"Filename" TEXT NOT NULL,
     	"Notes" TEXT DEFAULT '',
+    	"Tag" TEXT DEFAULT '',
     	"Uid" TEXT DEFAULT '',
     	"Color" TEXT DEFAULT ''
     );`
@@ -262,6 +263,7 @@ func (dbms *DBMS) DatabaseInit() error {
 	}
 	_, _ = dbms.database.Exec(`ALTER TABLE "Payloads" ADD COLUMN "Uid" TEXT DEFAULT '';`)
 	_, _ = dbms.database.Exec(`ALTER TABLE "Payloads" ADD COLUMN "Color" TEXT DEFAULT '';`)
+	_, _ = dbms.database.Exec(`ALTER TABLE "Payloads" ADD COLUMN "Tag" TEXT DEFAULT '';`)
 	_, _ = dbms.database.Exec(`CREATE INDEX IF NOT EXISTS idx_payloads_created ON Payloads(Created);`)
 	_, _ = dbms.database.Exec(`CREATE INDEX IF NOT EXISTS idx_payloads_hidden ON Payloads(Hidden);`)
 	_, _ = dbms.database.Exec(`CREATE INDEX IF NOT EXISTS idx_payloads_sha256 ON Payloads(Sha256);`)
@@ -355,6 +357,7 @@ func (dbms *DBMS) DatabaseInit() error {
 	_, _ = dbms.database.Exec(`ALTER TABLE "Agents" ADD COLUMN "KillDate" INTEGER;`)
 	_, _ = dbms.database.Exec(`ALTER TABLE "Agents" ADD COLUMN "TargetId" INTEGER;`)
 	_, _ = dbms.database.Exec(`ALTER TABLE "Agents" ADD COLUMN "CustomData" BLOB;`)
+	_, _ = dbms.database.Exec(`ALTER TABLE "Agents" ADD COLUMN "CmdGroups" TEXT;`)
 
 	createTableQuery = `CREATE TABLE IF NOT EXISTS "Tasks" (
     	"TaskId" INTEGER NOT NULL UNIQUE, 

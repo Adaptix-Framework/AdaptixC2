@@ -58,6 +58,9 @@ private:
     QRegularExpression m_commentStartPattern;
     QRegularExpression m_commentEndPattern;
     QRegularExpression m_typesPattern; // combined \b(Type1|Type2|...)\b
+    QRegularExpression m_bofImportPattern;
+    QRegularExpression m_bofAbiTypePattern;
+    QRegularExpression m_bofCallConvPattern;
 
     QString m_filePath;
 

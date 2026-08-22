@@ -33,12 +33,16 @@ public Q_SLOTS:
 
     QString file() const;
     QString content() const;
+    void set_content(const QString& text);
     QString agent_id() const;
 
     QVariant get_panel_data(const QString& key = QString()) const;
 
     QString expand(const QString& tmpl) const;
     void log(const QString& text);
+
+    QString handler_template(const QString& eventType, const QString& handlerName = QString()) const;
+    bool apply_handler_template(const QString& eventType = QString());
 
     bool eval(const QString& code, const QJSValue& opts = QJSValue());
 
@@ -130,6 +134,8 @@ public:
     static QString defaultPanelScriptTemplate();
     static void postLog(const QString& text, const QColor& color = QColor(0xd4d4d4));
     static CodeEditorWidget* activeInstance();
+
+    static QString buildEventHandlerTemplate(const QString& eventType, const QString& handlerName);
 
     explicit CodeEditorWidget(AdaptixWidget* w, Agent* agent = nullptr);
     ~CodeEditorWidget() override;

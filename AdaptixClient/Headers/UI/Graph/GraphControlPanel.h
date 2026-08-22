@@ -6,21 +6,21 @@
 
 class SessionsGraph;
 
-namespace oclero::qlementine { class SegmentedControl; }
 namespace oclero::qlementine { class Switch; }
+class SegmentControl;
 class QToolButton;
 class QWidget;
 
 class GraphControlPanel final : public QFrame
 {
-    Q_OBJECT
+Q_OBJECT
 
     SessionsGraph* graph = nullptr;
     bool expanded = false;
 
     QToolButton* toggleBtn = nullptr;
     QWidget* contentWidget = nullptr;
-    oclero::qlementine::SegmentedControl* layoutSegment = nullptr;
+    SegmentControl* layoutSegment = nullptr;
     oclero::qlementine::Switch* activeOnlySwitch = nullptr;
     oclero::qlementine::Switch* withChildSwitch = nullptr;
     oclero::qlementine::Switch* noteIdSwitch = nullptr;

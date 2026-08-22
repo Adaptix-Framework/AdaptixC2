@@ -16,24 +16,41 @@
 #include <QFrame>
 #include <QSpinBox>
 #include <QToolButton>
+#include <QPushButton>
 #include <QPointer>
 #include <QMap>
 #include <QSet>
+#include <QStackedWidget>
 
 class AdaptixWidget;
+class SegmentControl;
 
 class LogsWidget : public DockTab
 {
+    enum Mode : int {
+        ModeClient = 0,
+        ModeServer = 1,
+    };
+
     QGridLayout*     mainGridLayout      = nullptr;
+    QWidget*         toolbarWidget       = nullptr;
+    QHBoxLayout*     toolbarLayout       = nullptr;
+    SegmentControl*  modeSegment         = nullptr;
+
+    QStackedWidget*  contentStack        = nullptr;
+
     QGridLayout*     logsGridLayout      = nullptr;
     TextEditConsole* logsConsoleTextEdit = nullptr;
-    QSplitter*       mainHSplitter       = nullptr;
     QWidget*         logsWidget          = nullptr;
 
     QWidget*         serverLogsWidget    = nullptr;
     QGridLayout*     serverLogsLayout    = nullptr;
     QWidget*         serverLogsHost      = nullptr;
     TextEditConsole* serverLogsTextEdit  = nullptr;
+
+    QWidget*                    serverFilterBar    = nullptr;
+    QLabel*                     sourceLabel        = nullptr;
+    QLabel*                     categoryLabel      = nullptr;
 
     QFrame*                     historyBar         = nullptr;
     QWidget*                    historyContent     = nullptr;
@@ -77,9 +94,15 @@ class LogsWidget : public DockTab
     QMap<QString, QSet<QString>> originCategories;
     QSet<QString> knownOrigins;
 
+    int  m_mode = ModeServer;
+    int  m_clientUnread = 0;
+    int  m_serverUnread = 0;
+
     const AdaptixWidget* adaptixWidget = nullptr;
 
     void createUI();
+    void setMode(int mode);
+    void updateModeChrome();
     void applyTheme();
     ConsoleThemeData getActiveTheme() const;
     void appendServerLogEntry(qint64 id, qint64 time, int status, int level, const QString& source, const QString& category, const QString& message);

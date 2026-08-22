@@ -172,6 +172,11 @@ void AxCommandWrappers::setPostHook(const QJSValue &handler)
     command.post_hook = handler;
 }
 
+void AxCommandWrappers::setDestructive(bool on)
+{
+    command.destructive = on;
+}
+
 void AxCommandWrappers::setHandler(const QJSValue &handler)
 {
     if (!handler.isCallable()) {

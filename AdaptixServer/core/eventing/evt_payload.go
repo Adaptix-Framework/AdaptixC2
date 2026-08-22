@@ -27,6 +27,13 @@ func EventToMap(event any) map[string]any {
 	}
 
 	attachHandlerExtras(event, m, facts)
+
+	if ce, ok := event.(*EventDataCustom); ok && ce != nil {
+		if ce.Source != "" {
+			m["source"] = ce.Source
+		}
+		m["text"] = ce.Text
+	}
 	return m
 }
 
@@ -243,6 +250,11 @@ func attachHandlerExtras(event any, m map[string]any, facts EventFacts) {
 			m["listenerName"] = e.ListenerName
 		}
 	case *EventDataAgentTerminate:
+	case *EventDataCustom:
+		if e.Source != "" {
+			m["source"] = e.Source
+		}
+		m["text"] = e.Text
 	default:
 		_ = e
 		_ = facts

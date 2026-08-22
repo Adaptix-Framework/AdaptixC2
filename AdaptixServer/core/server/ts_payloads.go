@@ -218,6 +218,19 @@ func (ts *Teamserver) TsPayloadHide(ids []int64, hidden bool) error {
 	return nil
 }
 
+func (ts *Teamserver) TsPayloadSetTag(ids []int64, tag string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	go func(ids []int64, t string) {
+		_ = ts.DBMS.DbPayloadSetTagBatch(ids, t)
+	}(ids, tag)
+
+	packet := CreateSpPayloadSetTag(ids, tag)
+	ts.TsSyncAllClientsWithCategory(packet, SyncCategoryPayloads)
+	return nil
+}
+
 func (ts *Teamserver) TsPayloadSetColor(ids []int64, background, foreground string, reset bool) error {
 	if len(ids) == 0 {
 		return nil

@@ -222,9 +222,10 @@ function GenerateUI(listeners_type)
 
     let hline = form.create_hline()
 
-    let labelReconnTimeout = form.create_label("Reconnect timeout:");
-    let textReconnTimeout = form.create_textline("10");
-    textReconnTimeout.setPlaceholder("seconds")
+    let labelReconnTimeout = form.create_label("Reconnect timeout (sec):");
+    let spinReconnTimeout = form.create_spin();
+    spinReconnTimeout.setRange(1, 1000000000);
+    spinReconnTimeout.setValue(10);
 
     let labelReconnCount = form.create_label("Reconnect count:");
     let spinReconnCount = form.create_spin();
@@ -242,7 +243,7 @@ function GenerateUI(listeners_type)
     layout.addWidget(switchDaemon,       4, 1, 1, 2);
     layout.addWidget(hline,              5, 0, 1, 3);
     layout.addWidget(labelReconnTimeout, 6, 0, 1, 2);
-    layout.addWidget(textReconnTimeout,  6, 2, 1, 1);
+    layout.addWidget(spinReconnTimeout,  6, 2, 1, 1);
     layout.addWidget(labelReconnCount,   7, 0, 1, 2);
     layout.addWidget(spinReconnCount,    7, 2, 1, 1);
 
@@ -268,7 +269,7 @@ function GenerateUI(listeners_type)
     container.put("os",             comboOS)
     container.put("arch",           comboArch)
     container.put("format",         comboFormat)
-    container.put("reconn_timeout", textReconnTimeout)
+    container.put("reconn_timeout", spinReconnTimeout)
     container.put("reconn_count",   spinReconnCount)
     container.put("win7_support",   switchWin7)
     container.put("daemon_mode",    switchDaemon)

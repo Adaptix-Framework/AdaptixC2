@@ -13,7 +13,9 @@
 
 #include <oclero/qlementine/widgets/Menu.hpp>
 #include <oclero/qlementine/widgets/Switch.hpp>
-#include <oclero/qlementine/widgets/SegmentedControl.hpp>
+#include <oclero/qlementine/widgets/IconWidget.hpp>
+#include <Utils/CustomElements/SegmentControl.h>
+#include <Utils/CustomElements/LogView.h>
 
 #include <QJSEngine>
 #include <QJsonArray>
@@ -23,11 +25,14 @@
 #include <QDateEdit>
 #include <QDialog>
 #include <QHeaderView>
+#include <QStyle>
+#include <QPixmap>
 #include <QMenu>
 #include <QApplication>
 #include <QScreen>
 #include <QGuiApplication>
 #include <QWindow>
+#include <QCursor>
 
 namespace {
 
@@ -76,7 +81,7 @@ QString downloadFieldToSortKey(const QString& field)
     return {};
 }
 
-    QString payloadFieldToSortKey(const QString& field)
+QString payloadFieldToSortKey(const QString& field)
 {
     if (field == QLatin1String("id") || field == QLatin1String("created"))
         return QStringLiteral("Created");
@@ -87,6 +92,7 @@ QString downloadFieldToSortKey(const QString& field)
     if (field == QLatin1String("size"))     return QStringLiteral("Size");
     if (field == QLatin1String("creator"))  return QStringLiteral("Creator");
     if (field == QLatin1String("filename")) return QStringLiteral("Filename");
+    if (field == QLatin1String("tag"))      return QStringLiteral("Tag");
     return {};
 }
 
@@ -124,6 +130,7 @@ PayloadData parsePayloadFromJson(const QJsonObject& o)
     p.BuildId     = o.value(QStringLiteral("p_build_id")).toString();
     p.Watermark   = o.value(QStringLiteral("p_watermark")).toString();
     p.Description = o.value(QStringLiteral("p_notes")).toString();
+    p.Tag         = o.value(QStringLiteral("p_tag")).toString();
     p.Uid         = o.value(QStringLiteral("p_uid")).toString();
     p.Color       = o.value(QStringLiteral("p_color")).toString();
     p.Missing     = o.value(QStringLiteral("p_missing")).toBool();
@@ -148,6 +155,7 @@ QVariantMap payloadToVariantMap(const PayloadData& p)
     map[QStringLiteral("md5")]         = p.Md5;
     map[QStringLiteral("sha1")]        = p.Sha1;
     map[QStringLiteral("sha256")]      = p.Sha256;
+    map[QStringLiteral("tag")]         = p.Tag;
     map[QStringLiteral("uid")]         = p.Uid;
     map[QStringLiteral("color")]       = p.Color;
     map[QStringLiteral("hidden")]      = p.Hidden;
@@ -415,6 +423,41 @@ void AxGridLayoutWrapper::addWidget(QObject* wrapper, const int row, const int c
         gridLayout->addItem(spacerElement->widget(), row, col, rowSpan, colSpan);
 }
 
+void AxGridLayoutWrapper::setContentsMargins(const int left, const int top, const int right, const int bottom) const
+{
+    if (gridLayout)
+        gridLayout->setContentsMargins(left, top, right, bottom);
+}
+
+void AxGridLayoutWrapper::setSpacing(const int spacing) const
+{
+    if (gridLayout)
+        gridLayout->setSpacing(spacing);
+}
+
+void AxGridLayoutWrapper::setHorizontalSpacing(const int spacing) const
+{
+    if (gridLayout)
+        gridLayout->setHorizontalSpacing(spacing);
+}
+
+void AxGridLayoutWrapper::setVerticalSpacing(const int spacing) const
+{
+    if (gridLayout)
+        gridLayout->setVerticalSpacing(spacing);
+}
+
+void AxGridLayoutWrapper::setColumnStretch(const int column, const int stretch) const
+{
+    if (gridLayout)
+        gridLayout->setColumnStretch(column, stretch);
+}
+
+void AxGridLayoutWrapper::setRowStretch(const int row, const int stretch) const
+{
+    if (gridLayout)
+        gridLayout->setRowStretch(row, stretch);
+}
 
 /// LINE
 
@@ -518,9 +561,30 @@ void AxComboBoxWrapper::clear() const { comboBox->clear(); }
 
 QString AxComboBoxWrapper::currentText() const { return comboBox->currentText(); }
 
+void AxComboBoxWrapper::setCurrentText(const QString& text) const
+{
+    if (!comboBox)
+        return;
+    int idx = comboBox->findText(text);
+    if (idx >= 0)
+        comboBox->setCurrentIndex(idx);
+    else if (comboBox->isEditable())
+        comboBox->setEditText(text);
+    else {
+        comboBox->addItem(text);
+        comboBox->setCurrentIndex(comboBox->count() - 1);
+    }
+}
+
 int AxComboBoxWrapper::currentIndex() const { return comboBox->currentIndex(); }
 
 void AxComboBoxWrapper::setCurrentIndex(const int index) const { comboBox->setCurrentIndex(index); }
+
+void AxComboBoxWrapper::setEditable(bool editable) const
+{
+    if (comboBox)
+        comboBox->setEditable(editable);
+}
 
 /// SPIN
 
@@ -595,6 +659,24 @@ void AxTextMultiWrapper::setPlaceholder(const QString& text) const { textedit->s
 
 void AxTextMultiWrapper::setReadOnly(const bool &readonly) const { textedit->setReadOnly(readonly); }
 
+
+
+/// LOGVIEW
+
+AxLogViewWrapper::AxLogViewWrapper(LogView* view, QObject* parent) : QObject(parent), logview(view) {}
+
+QWidget* AxLogViewWrapper::widget() const { return logview; }
+
+QString AxLogViewWrapper::append(const QString& role, const QString& text) const { return logview->append(role, text); }
+
+bool AxLogViewWrapper::appendDelta(const QString& blockId, const QString& text) const { return logview->appendDelta(blockId, text); }
+
+bool AxLogViewWrapper::endBlock(const QString& blockId) const { return logview->endBlock(blockId); }
+
+void AxLogViewWrapper::clear() const { logview->clearTape(); }
+
+void AxLogViewWrapper::setAutoScroll(bool enabled) const { logview->setAutoScroll(enabled); }
+
 /// CHECK
 
 AxCheckBoxWrapper::AxCheckBoxWrapper(QCheckBox* box, QObject* parent) : QObject(parent), check(box)
@@ -637,9 +719,9 @@ QString AxSwitchWrapper::text() const { return sw->text(); }
 
 /// SEGMENTED CONTROL
 
-AxSegmentedControlWrapper::AxSegmentedControlWrapper(oclero::qlementine::SegmentedControl* sc, QObject* parent) : QObject(parent), segControl(sc)
+AxSegmentedControlWrapper::AxSegmentedControlWrapper(SegmentControl* sc, QObject* parent) : QObject(parent), segControl(sc)
 {
-    connect(sc, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, &AxSegmentedControlWrapper::currentIndexChanged);
+    connect(sc, &SegmentControl::currentIndexChanged, this, &AxSegmentedControlWrapper::currentIndexChanged);
 }
 
 QVariant AxSegmentedControlWrapper::jsonMarshal() const { return currentIndex(); }
@@ -663,29 +745,101 @@ int AxSegmentedControlWrapper::currentIndex() const { return segControl->current
 
 void AxSegmentedControlWrapper::setCurrentIndex(const int index) const { segControl->setCurrentIndex(index); }
 
-QString AxSegmentedControlWrapper::currentText() const
-{
-    int idx = segControl->currentIndex();
-    return idx >= 0 ? segControl->getItemText(idx) : QString();
-}
+QString AxSegmentedControlWrapper::currentText() const { return segControl ? segControl->currentText() : QString(); }
 
 int AxSegmentedControlWrapper::count() const { return segControl->itemCount(); }
 
 void AxSegmentedControlWrapper::removeItem(const int index) const { segControl->removeItem(index); }
 
-QString AxSegmentedControlWrapper::itemText(const int index) const { return segControl->getItemText(index); }
+QString AxSegmentedControlWrapper::itemText(const int index) const { return segControl->itemText(index); }
 
 void AxSegmentedControlWrapper::setItemText(const int index, const QString& text) const { segControl->setItemText(index, text); }
 
 /// LABEL
 
-AxLabelWrapper::AxLabelWrapper(QLabel* label, QObject* parent) : QObject(parent), label(label) {}
+AxLabelWrapper::AxLabelWrapper(QLabel* label, QObject* parent) : QObject(parent), label(label)
+{
+    if (label) {
+        const int extent = label->style()
+            ? label->style()->pixelMetric(QStyle::PM_ButtonIconSize, nullptr, label)
+            : 16;
+        m_iconSize = QSize(extent, extent);
+    }
+}
 
 QLabel* AxLabelWrapper::widget() const { return label; }
 
-void AxLabelWrapper::setText(const QString& text) const { label->setText(text); }
+void AxLabelWrapper::setText(const QString& text) const
+{
+    if (!label)
+        return;
+    label->setText(text);
+    if (!m_icon.isNull())
+        applyIcon();
+}
 
-QString AxLabelWrapper::text() const { return label->text(); }
+QString AxLabelWrapper::text() const { return label ? label->text() : QString(); }
+
+void AxLabelWrapper::setWordWrap(bool on) const
+{
+    if (label)
+        label->setWordWrap(on);
+}
+
+void AxLabelWrapper::applyIcon() const
+{
+    if (!label)
+        return;
+    if (m_icon.isNull()) {
+        label->setPixmap(QPixmap());
+        return;
+    }
+    const qreal dpr = label->devicePixelRatioF();
+    QPixmap pm = m_icon.pixmap(m_iconSize * dpr);
+    pm.setDevicePixelRatio(dpr);
+    label->setPixmap(pm);
+}
+
+void AxLabelWrapper::setIcon(const QString& resourcePath)
+{
+    m_icon = AxScriptUtils::resolveIcon(resourcePath);
+    applyIcon();
+}
+
+void AxLabelWrapper::setIconSize(int size)
+{
+    setIconSize(size, size);
+}
+
+void AxLabelWrapper::setIconSize(int width, int height)
+{
+    m_iconSize = QSize(qMax(1, width), qMax(1, height));
+    if (!m_icon.isNull())
+        applyIcon();
+}
+
+/// ICON
+
+AxIconWrapper::AxIconWrapper(oclero::qlementine::IconWidget* widget, QObject* parent) : QObject(parent), iconWidget(widget) {}
+
+QWidget* AxIconWrapper::widget() const { return iconWidget; }
+
+void AxIconWrapper::setIcon(const QString& resourcePath) const
+{
+    if (iconWidget)
+        iconWidget->setIcon(AxScriptUtils::resolveIcon(resourcePath));
+}
+
+void AxIconWrapper::setIconSize(int size) const
+{
+    setIconSize(size, size);
+}
+
+void AxIconWrapper::setIconSize(int width, int height) const
+{
+    if (iconWidget)
+        iconWidget->setIconSize(QSize(qMax(1, width), qMax(1, height)));
+}
 
 /// TAB
 
@@ -811,7 +965,12 @@ void AxTableWidgetWrapper::addItem(const QJSValue &items) const
         QString text = "";
         if (i < length)
             text = items.property(i).toString();
-        model->setItem( model->rowCount() - 1, i, new QStandardItem(text) );
+        auto* item = new QStandardItem(text);
+        if (readonly)
+            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+        else
+            item->setFlags(item->flags() | Qt::ItemIsEditable);
+        model->setItem( model->rowCount() - 1, i, item );
     }
     table->setSortingEnabled( isSortingEnabled );
 }
@@ -848,15 +1007,30 @@ void AxTableWidgetWrapper::setText(const int row, const int column, const QStrin
 
 void AxTableWidgetWrapper::setReadOnly(const bool read)
 {
-    for(int rowIndex = 0; rowIndex < model->rowCount(); rowIndex++) {
-        for(int columnIndex = 0; columnIndex < model->columnCount(); columnIndex++) {
-            auto item = model->item(rowIndex, columnIndex);
-            if (item) {
-                if (read)
-                    item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-                else
-                    item->setFlags(item->flags() | Qt::ItemIsEditable);
-            }
+    this->readonly = read;
+    if (table) {
+        if (read) {
+            table->setFocusPolicy(Qt::NoFocus);
+            table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+            table->setSelectionBehavior(QAbstractItemView::SelectRows);
+        } else {
+            table->setFocusPolicy(Qt::StrongFocus);
+            table->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::EditKeyPressed | QAbstractItemView::AnyKeyPressed);
+            table->setSelectionBehavior(QAbstractItemView::SelectItems);
+            table->setTabKeyNavigation(true);
+        }
+    }
+    if (!model)
+        return;
+    for (int rowIndex = 0; rowIndex < model->rowCount(); rowIndex++) {
+        for (int columnIndex = 0; columnIndex < model->columnCount(); columnIndex++) {
+            auto* item = model->item(rowIndex, columnIndex);
+            if (!item)
+                continue;
+            if (read)
+                item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+            else
+                item->setFlags(item->flags() | Qt::ItemIsEditable);
         }
     }
 }
@@ -899,6 +1073,93 @@ QJSValue AxTableWidgetWrapper::selectedRows()
         jsArray.setProperty(i++, row);
     }
     return jsArray;
+}
+
+void AxTableWidgetWrapper::setMenuEnabled(const bool enabled)
+{
+    this->menuEnabled = enabled;
+
+    QWidget* vp = table ? table->viewport() : nullptr;
+    disconnect(table, &QWidget::customContextMenuRequested, this, &AxTableWidgetWrapper::showContextMenu);
+    if (vp)
+        disconnect(vp, &QWidget::customContextMenuRequested, this, &AxTableWidgetWrapper::showContextMenu);
+
+    if (enabled) {
+        table->setContextMenuPolicy(Qt::CustomContextMenu);
+        if (vp)
+            vp->setContextMenuPolicy(Qt::DefaultContextMenu);
+        connect(table, &QWidget::customContextMenuRequested, this, &AxTableWidgetWrapper::showContextMenu);
+    } else {
+        table->setContextMenuPolicy(Qt::DefaultContextMenu);
+        if (vp)
+            vp->setContextMenuPolicy(Qt::DefaultContextMenu);
+    }
+}
+
+void AxTableWidgetWrapper::removeRow(const int row)
+{
+    if (readonly || !model)
+        return;
+    if (row < 0 || row >= model->rowCount())
+        return;
+    model->removeRow(row);
+}
+
+void AxTableWidgetWrapper::showContextMenu(const QPoint &pos)
+{
+    if (!menuEnabled || !table)
+        return;
+
+    const QModelIndex idx = table->indexAt(pos);
+    if (idx.isValid())
+        table->setCurrentIndex(idx);
+
+    oclero::qlementine::Menu menu(table);
+
+    QAction* addAction = menu.addAction(QStringLiteral("Add"));
+    QAction* removeAction = menu.addAction(QStringLiteral("Remove"));
+    addAction->setEnabled(!readonly);
+    removeAction->setEnabled(!readonly && table->currentIndex().isValid());
+
+    connect(addAction, &QAction::triggered, this, &AxTableWidgetWrapper::onMenuAddRow);
+    connect(removeAction, &QAction::triggered, this, &AxTableWidgetWrapper::onMenuRemoveRow);
+
+    QWidget* origin = table->viewport() ? table->viewport() : table;
+    menu.exec(origin->mapToGlobal(pos));
+}
+
+void AxTableWidgetWrapper::onMenuAddRow()
+{
+    if (readonly || !model)
+        return;
+    QJSValue arr = engine->newArray(model->columnCount());
+    for (int c = 0; c < model->columnCount(); ++c)
+        arr.setProperty(c, QString());
+    addItem(arr);
+    const int row = model->rowCount() - 1;
+    if (row >= 0) {
+        const int editCol = table->isColumnHidden(0) && model->columnCount() > 1 ? 1 : 0;
+        table->setCurrentIndex(model->index(row, editCol));
+        table->edit(model->index(row, editCol));
+    }
+}
+
+void AxTableWidgetWrapper::setExpanding(const bool enabled)
+{
+    if (!table)
+        return;
+    if (enabled) {
+        table->setMinimumHeight(120);
+        table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    } else {
+        table->setMinimumHeight(0);
+        table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    }
+}
+
+void AxTableWidgetWrapper::onMenuRemoveRow()
+{
+    removeRow(currentRow());
 }
 
 /// LIST
@@ -1062,17 +1323,20 @@ void AxListWidgetWrapper::setMenuEnabled(const bool enabled)
 {
     this->menuEnabled = enabled;
 
-    QWidget* vp = list->viewport();
+    QWidget* vp = list ? list->viewport() : nullptr;
     disconnect(list, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
-    disconnect(vp,   &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
+    if (vp)
+        disconnect(vp, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
 
     if (enabled) {
-        list->setContextMenuPolicy(Qt::NoContextMenu);
-        vp->setContextMenuPolicy(Qt::CustomContextMenu);
-        connect(vp, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
+        list->setContextMenuPolicy(Qt::CustomContextMenu);
+        if (vp)
+            vp->setContextMenuPolicy(Qt::DefaultContextMenu);
+        connect(list, &QWidget::customContextMenuRequested, this, &AxListWidgetWrapper::showContextMenu);
     } else {
         list->setContextMenuPolicy(Qt::DefaultContextMenu);
-        vp->setContextMenuPolicy(Qt::DefaultContextMenu);
+        if (vp)
+            vp->setContextMenuPolicy(Qt::DefaultContextMenu);
     }
 }
 
@@ -1081,14 +1345,23 @@ void AxListWidgetWrapper::showContextMenu(const QPoint &pos)
     if (!menuEnabled || !list)
         return;
 
+    if (QListWidgetItem* under = list->itemAt(pos))
+        list->setCurrentItem(under);
+
     oclero::qlementine::Menu menu(list);
 
     QAction* addAction = menu.addAction(QStringLiteral("Add"));
     QAction* removeAction = menu.addAction(QStringLiteral("Remove"));
     removeAction->setEnabled(list->currentRow() >= 0 || !list->selectedItems().isEmpty());
 
-    connect(addAction, &QAction::triggered, this, &AxListWidgetWrapper::onAddClicked);
-    connect(removeAction, &QAction::triggered, this, &AxListWidgetWrapper::onRemoveClicked);
+    connect(addAction, &QAction::triggered, this, [this]() {
+        Q_EMIT addClicked();
+        onAddClicked();
+    });
+    connect(removeAction, &QAction::triggered, this, [this]() {
+        Q_EMIT removeClicked();
+        onRemoveClicked();
+    });
 
     menu.exec(list->viewport()->mapToGlobal(pos));
 }
@@ -1097,6 +1370,22 @@ void AxListWidgetWrapper::setButtonsEnabled(const bool enabled)
 {
     btnAdd->setVisible(enabled);
     btnRemove->setVisible(enabled);
+}
+
+void AxListWidgetWrapper::setExpanding(bool enabled)
+{
+    if (!container)
+        return;
+    if (enabled) {
+        container->setMinimumHeight(80);
+        container->setMaximumHeight(QWIDGETSIZE_MAX);
+        container->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        if (list) {
+            list->setMinimumHeight(60);
+            list->setMaximumHeight(QWIDGETSIZE_MAX);
+            list->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        }
+    }
 }
 
 void AxListWidgetWrapper::onAddClicked()
@@ -1136,6 +1425,46 @@ AxButtonWrapper::AxButtonWrapper(QPushButton* btn, QObject* parent) : QObject(pa
 }
 
 QPushButton* AxButtonWrapper::widget() const { return button; }
+
+void AxButtonWrapper::setText(const QString& text) const
+{
+    if (button)
+        button->setText(text);
+}
+
+QString AxButtonWrapper::text() const
+{
+    return button ? button->text() : QString();
+}
+
+void AxButtonWrapper::setIcon(const QString& resourcePath) const
+{
+    if (button)
+        button->setIcon(AxScriptUtils::resolveIcon(resourcePath));
+}
+
+void AxButtonWrapper::setIconSize(int size) const
+{
+    setIconSize(size, size);
+}
+
+void AxButtonWrapper::setIconSize(int width, int height) const
+{
+    if (button)
+        button->setIconSize(QSize(qMax(1, width), qMax(1, height)));
+}
+
+void AxButtonWrapper::setFixedSize(int width, int height) const
+{
+    if (!button)
+        return;
+    button->setFixedSize(qMax(1, width), qMax(1, height));
+    // Icon-only: kill default padding so the face matches the icon.
+    button->setFlat(false);
+    button->setStyleSheet(QStringLiteral(
+        "QPushButton { padding: 0px; margin: 0px; min-width: 0px; }"
+    ));
+}
 
 /// GROUPBOX
 
@@ -1262,6 +1591,13 @@ void AxPanelWrapper::setLayout(QObject* layoutWrapper) const
         panel->setLayout(box->layout());
 }
 
+void AxPanelWrapper::setExpanding(bool enabled) const
+{
+    if (!panel)
+        return;
+    panel->setSizePolicy(QSizePolicy::Expanding, enabled ? QSizePolicy::Expanding : QSizePolicy::Maximum);
+}
+
 /// CONTAINER
 
 AxContainerWrapper::AxContainerWrapper(QJSEngine* jsEngine, QObject* parent) : QObject(parent), engine(jsEngine) {}
@@ -1383,7 +1719,109 @@ void AxDialogWrapper::setLayout(QObject* layoutWrapper)
 
 void AxDialogWrapper::setSize(const int w, const int h ) const { dialog->resize(w, h); }
 
-bool AxDialogWrapper::exec() const { return dialog->exec() == QDialog::Accepted; }
+bool AxDialogWrapper::exec() const
+{
+    if (!dialog)
+        return false;
+
+    auto pickHost = []() -> QWidget* {
+        if (QWidget* a = QApplication::activeWindow()) {
+            if (a->isVisible() && a->isWindow())
+                return a;
+        }
+        if (QWidget* f = QApplication::focusWidget()) {
+            if (QWidget* w = f->window()) {
+                if (w->isVisible())
+                    return w;
+            }
+        }
+        for (QWidget* w : QApplication::topLevelWidgets()) {
+            if (w && w->isVisible() && w->isWindow() && w->isModal())
+                return w;
+        }
+        for (QWidget* w : QApplication::topLevelWidgets()) {
+            if (w && w->isVisible() && w->isWindow())
+                return w;
+        }
+        return nullptr;
+    };
+
+    QWidget* host = pickHost();
+    if (!host && dialog->parentWidget())
+        host = dialog->parentWidget()->window();
+
+    if (dialog->parentWidget())
+        dialog->setParent(nullptr);
+
+    dialog->setWindowFlags(Qt::Dialog | Qt::WindowTitleHint | Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
+    dialog->setWindowModality(Qt::WindowModal);
+    dialog->setModal(true);
+    dialog->ensurePolished();
+
+    const QSize sz = dialog->size().expandedTo(dialog->minimumSizeHint());
+    dialog->resize(sz);
+
+    QScreen* scr = nullptr;
+    QPoint hostCenter;
+    if (host && host->isVisible()) {
+        host->ensurePolished();
+        if (!host->windowHandle())
+            host->winId();
+        hostCenter = host->mapToGlobal(host->rect().center());
+        if (QWindow* hw = host->windowHandle())
+            scr = hw->screen();
+        if (!scr)
+            scr = QGuiApplication::screenAt(hostCenter);
+        if (!scr)
+            scr = host->screen();
+    }
+    if (!scr)
+        scr = QGuiApplication::screenAt(QCursor::pos());
+    if (!scr)
+        scr = QGuiApplication::primaryScreen();
+    if (!scr)
+        return dialog->exec() == QDialog::Accepted;
+
+    const QRect avail = scr->availableGeometry();
+    if (hostCenter.isNull() || !avail.contains(hostCenter))
+        hostCenter = avail.center();
+
+    QPoint topLeft = hostCenter - QPoint(sz.width() / 2, sz.height() / 2);
+    if (topLeft.x() < avail.left())
+        topLeft.setX(avail.left());
+    if (topLeft.y() < avail.top())
+        topLeft.setY(avail.top());
+    if (topLeft.x() + sz.width() > avail.right())
+        topLeft.setX(qMax(avail.left(), avail.right() - sz.width() + 1));
+    if (topLeft.y() + sz.height() > avail.bottom())
+        topLeft.setY(qMax(avail.top(), avail.bottom() - sz.height() + 1));
+
+    dialog->winId();
+    if (QWindow* dw = dialog->windowHandle()) {
+        dw->setScreen(scr);
+        if (host) {
+            if (!host->windowHandle())
+                host->winId();
+            if (QWindow* hw = host->windowHandle())
+                dw->setTransientParent(hw);
+        }
+        dw->setPosition(topLeft);
+    }
+    dialog->move(topLeft);
+
+    dialog->show();
+    dialog->raise();
+    dialog->activateWindow();
+    QApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
+
+    if (QWindow* dw = dialog->windowHandle()) {
+        dw->setScreen(scr);
+        dw->setPosition(topLeft);
+    }
+    dialog->move(topLeft);
+
+    return dialog->exec() == QDialog::Accepted;
+}
 
 void AxDialogWrapper::close() const { dialog->close(); }
 
@@ -1391,11 +1829,21 @@ void AxDialogWrapper::setButtonsText(const QString &ok_text, const QString &canc
 {
     QPushButton *okButton = buttons->button(QDialogButtonBox::Ok);
     if (okButton) {
-        okButton->setText(ok_text);
+        if (ok_text.isEmpty()) {
+            buttons->removeButton(okButton);
+            okButton->deleteLater();
+        } else {
+            okButton->setText(ok_text);
+        }
     }
     QPushButton *cancelButton = buttons->button(QDialogButtonBox::Cancel);
     if (cancelButton) {
-        cancelButton->setText(cancel_text);
+        if (cancel_text.isEmpty()) {
+            buttons->removeButton(cancelButton);
+            cancelButton->deleteLater();
+        } else {
+            cancelButton->setText(cancel_text);
+        }
     }
 }
 
@@ -1492,12 +1940,24 @@ AxSelectorFile::AxSelectorFile(QLineEdit* edit, QObject* parent) : QObject(paren
 
 QLineEdit* AxSelectorFile::widget() const { return lineEdit; }
 
-QVariant AxSelectorFile::jsonMarshal() const { return content; }
+QVariant AxSelectorFile::jsonMarshal() const { return fileContent; }
 
 void AxSelectorFile::jsonUnmarshal(const QVariant& value)
 {
-    content = value.toString();
-    lineEdit->setText("Selected...");
+    setContent(value.toString());
+}
+
+QString AxSelectorFile::content() const { return fileContent; }
+
+void AxSelectorFile::setContent(const QString& value)
+{
+    fileContent = value;
+    if (!lineEdit)
+        return;
+    if (value.isEmpty())
+        lineEdit->clear();
+    else
+        lineEdit->setText("Selected...");
 }
 
 void AxSelectorFile::onSelectFile()
@@ -1519,7 +1979,7 @@ void AxSelectorFile::onSelectFile()
             QByteArray fileData = file.readAll();
             file.close();
 
-            content = QString::fromUtf8(fileData.toBase64());
+            fileContent = QString::fromUtf8(fileData.toBase64());
         });
 }
 
@@ -2649,6 +3109,7 @@ QVariant AxPayloadsTableModel::data(const QModelIndex& index, int role) const
         if (key == QLatin1String("md5"))         return p.Md5;
         if (key == QLatin1String("sha1"))        return p.Sha1;
         if (key == QLatin1String("sha256"))      return p.Sha256;
+        if (key == QLatin1String("tag"))         return p.Tag;
         if (key == QLatin1String("uid"))         return p.Uid;
         if (key == QLatin1String("hidden"))      return p.Hidden ? QStringLiteral("yes") : QString();
     }
@@ -2878,9 +3339,10 @@ void AxSelectorPayloads::close() const
 #include <MainAdaptix.h>
 #include <UI/MainUI.h>
 
-AxDockWrapper::AxDockWrapper(AdaptixWidget* w, const QString& id, const QString& title, const QString& location): DockTab(title, w->GetProfile()->GetProject())
+AxDockWrapper::AxDockWrapper(AdaptixWidget* w, const QString& id, const QString& title, const QString& location): DockTab(title, w->GetProfile()->GetProject(), QString(), w)
 {
     adaptixWidget = w;
+    setAutoBlinkEnabled(false);
     QString project = w->GetProfile()->GetProject();
 
     contentWidget = new QWidget();
@@ -2890,23 +3352,12 @@ AxDockWrapper::AxDockWrapper(AdaptixWidget* w, const QString& id, const QString&
 
     dockId = id + "-" + project;
     dockTitle = title;
+    dockLocation = location.trimmed().toLower();
 
     if (adaptixWidget) {
         adaptixWidget->AddExtDock(dockId, title, [this]() {
             show();
         });
-    }
-
-    if (location == "top") {
-        w->PlaceDock(w->get_dockTop() , dockWidget);
-        dockWidget->toggleAction()->trigger();
-    }
-    else if (location == "bottom") {
-        w->PlaceDock(w->get_dockBottom() , dockWidget);
-        dockWidget->toggleAction()->trigger();
-    }
-    else {
-        dockWidget->open();
     }
 
     connect(dockWidget, &KDDockWidgets::QtWidgets::DockWidget::isOpenChanged, this, [this](bool open) {
@@ -2946,11 +3397,18 @@ void AxDockWrapper::setSize(const int w, const int h) const
 
 void AxDockWrapper::show()
 {
-    if (!dockWidget)
+    if (!dockWidget || !adaptixWidget)
         return;
 
-    if ( !dockWidget->isOpen() )
-        dockWidget->toggleAction()->trigger();
+    if (dockWidget->isOpen()) {
+        dockWidget->setAsCurrentTab();
+        return;
+    }
+
+    QString zone = dockLocation;
+    if (zone.isEmpty())
+        zone = QStringLiteral("right");
+    adaptixWidget->PlaceWidget(QStringLiteral("axscript_dock"), dockWidget, zone);
 }
 
 void AxDockWrapper::hide()
@@ -2975,4 +3433,14 @@ void AxDockWrapper::setTitle(const QString& title)
     dockTitle = title;
     if (dockWidget)
         dockWidget->setTitle(title);
+}
+
+void AxDockWrapper::setIcon(const QString& resourcePath)
+{
+    if (!dockWidget)
+        return;
+    const QIcon icon = AxScriptUtils::resolveIcon(resourcePath);
+    dockWidget->setIcon(icon, KDDockWidgets::IconPlace::TabBar);
+    if (adaptixWidget)
+        adaptixWidget->SetExtDockIcon(dockId, icon);
 }

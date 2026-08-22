@@ -464,6 +464,10 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     case TYPE_TUNNEL_DELETE:
         return checkField("p_tunnel_id", isNum);
 
+    case TYPE_TUNNEL_ACCEPT:
+        return checkField("p_tunnel_id", isNum) &&
+               checkField("p_channel_id", isNum);
+
     case TYPE_SCREEN_CREATE:
         return checkField("s_screen_id", isNum) &&
                checkField("s_agent_id", isNum) &&
@@ -616,6 +620,10 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     case TYPE_PAYLOAD_DELETE:
         return checkField("p_ids", isArr);
 
+    case TYPE_PAYLOAD_SET_TAG:
+        return checkField("p_ids", isArr) &&
+               checkField("p_tag", isStr);
+
     default:
         qWarning() << "[SyncPacket] Unknown packet type:" << spType;
         return false;
@@ -718,6 +726,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_LISTENER_START:
         ListenersDock->AddListenerItem(parseListenerData(jsonObj));
+        notifyDockUnread(UnreadKind::Listeners);
         break;
 
     case TYPE_LISTENER_EDIT:
@@ -775,6 +784,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         if (previousFocus)
             previousFocus->setFocus();
 
+        notifyDockUnread(UnreadKind::Sessions);
         break;
     }
 
@@ -1049,7 +1059,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         TransferData td = parseTransferCreate(jsonObj);
         DownloadsDock->AddTransferItem(td);
         replayDeferredTransferPackets(td.FileId);
-        UpdateDownloadsBadge();
+        if (td.TransferType == TRANSFER_DOWNLOAD)
+            notifyDockUnread(UnreadKind::Downloads);
         break;
     }
 
@@ -1069,7 +1080,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             break;
         }
         DownloadsDock->EditTransferItem(transferType, fileId, parseI64(jsonObj, "t_progress"), static_cast<int>(jsonObj["t_state"].toDouble()));
-        UpdateDownloadsBadge();
         break;
     }
 
@@ -1079,7 +1089,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             ids.append(parseI64(val));
         }
         DownloadsDock->RemoveTransferItem(static_cast<int>(jsonObj["t_type"].toDouble()), ids);
-        UpdateDownloadsBadge();
         break;
     }
 
@@ -1087,7 +1096,6 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         TransferData td = parseTransferActual(jsonObj);
         DownloadsDock->AddTransferItem(td);
         replayDeferredTransferPackets(td.FileId);
-        UpdateDownloadsBadge();
         break;
     }
 
@@ -1102,6 +1110,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case TYPE_SCREEN_CREATE:
         ScreenshotsDock->AddScreenshotItem(parseScreenData(jsonObj));
+        notifyDockUnread(UnreadKind::Screens);
         break;
 
     case TYPE_SCREEN_UPDATE:
@@ -1144,6 +1153,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             credList.append(c);
         }
         CredentialsDock->AddCredentialsItems(credList);
+        if (!credList.isEmpty())
+            notifyDockUnread(UnreadKind::Creds, credList.size());
         break;
     }
 
@@ -1220,6 +1231,8 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
             targetsList.append(t);
         }
         TargetsDock->AddTargetsItems(targetsList);
+        if (!targetsList.isEmpty())
+            notifyDockUnread(UnreadKind::Targets, targetsList.size());
         break;
     }
 
@@ -1291,6 +1304,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         p.BuildId = jsonObj["p_build_id"].toString();
         p.Watermark = jsonObj["p_watermark"].toString();
         p.Description = jsonObj["p_notes"].toString();
+        p.Tag = jsonObj["p_tag"].toString();
         p.Uid = jsonObj["p_uid"].toString();
         p.Color = jsonObj["p_color"].toString();
         p.Missing = jsonObj["p_missing"].toBool();
@@ -1325,6 +1339,18 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         break;
     }
 
+    case TYPE_PAYLOAD_SET_TAG: {
+        if (!PayloadsDock)
+            break;
+        QList<qint64> ids;
+        for (const QJsonValue &val : jsonObj["p_ids"].toArray()) {
+            if (val.isDouble())
+                ids.append(static_cast<qint64>(val.toDouble()));
+        }
+        PayloadsDock->UpdatePayloadTag(ids, jsonObj["p_tag"].toString());
+        break;
+    }
+
     case TYPE_TUNNEL_CREATE: {
         TunnelData tunnelData = parseTunnelData(jsonObj);
         TunnelsDock->AddTunnelItem(tunnelData);
@@ -1353,6 +1379,17 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         TunnelsDock->EditTunnelItem(tid, jsonObj["p_info"].toString());
         if (jsonObj.contains(QStringLiteral("p_active")))
             TunnelsDock->SetTunnelActive(tid, jsonObj["p_active"].toBool());
+        break;
+    }
+
+    case TYPE_TUNNEL_ACCEPT: {
+        const qint64 tunnelId  = parseI64(jsonObj, "p_tunnel_id");
+        const qint64 channelId = parseI64(jsonObj, "p_channel_id");
+        if (ClientTunnels.contains(tunnelId)) {
+            auto* endpoint = ClientTunnels.value(tunnelId, nullptr);
+            if (endpoint)
+                endpoint->onReverseAccept(channelId);
+        }
         break;
     }
 
@@ -1520,12 +1557,7 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
 
     case SP_TYPE_EVENT:
         LogsDock->AddLogs( jsonObj["event_type"].toDouble(), jsonObj["date"].toDouble(), jsonObj["message"].toString() );
-        if (LogsDock) {
-            auto* coreDw = LogsDock->dock() ? LogsDock->dock()->dockWidget() : nullptr;
-            const bool viewingLogs = coreDw && coreDw->isOpen() && coreDw->isCurrentTab();
-            if (!viewingLogs)
-                LogsUnreadIncrement();
-        }
+        notifyDockUnread(UnreadKind::Logs);
         break;
 
     case TYPE_LOG_BATCH:

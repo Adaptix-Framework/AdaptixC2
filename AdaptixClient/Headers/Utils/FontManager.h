@@ -44,7 +44,7 @@ struct AppTypography {
     int tabBarHeight   = 24;  // project tabs in MainUI
     int mainToolbarH   = 40;  // top/bottom Adaptix toolbar
     int sideToolbarW   = 72;  // left/right Adaptix toolbar
-    int segmentHeight  = 26;  // SegmentedControl strips
+    int segmentHeight  = 26;  // legacy; SegmentControl uses controlHeight
 
     int chatAvatarSize  = 32;
     int chatReplyH      = 32;

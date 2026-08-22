@@ -24,6 +24,14 @@
         <file alias="templates/handler_body_agent.axs">axscript/templates/handler_body_agent.axs</file>
         <file alias="templates/handler_body_task.axs">axscript/templates/handler_body_task.axs</file>
         <file alias="templates/handler_body_client.axs">axscript/templates/handler_body_client.axs</file>
+        <file alias="templates/handler_body_listener.axs">axscript/templates/handler_body_listener.axs</file>
+        <file alias="templates/handler_body_credentials.axs">axscript/templates/handler_body_credentials.axs</file>
+        <file alias="templates/handler_body_download.axs">axscript/templates/handler_body_download.axs</file>
+        <file alias="templates/handler_body_upload.axs">axscript/templates/handler_body_upload.axs</file>
+        <file alias="templates/handler_body_screenshot.axs">axscript/templates/handler_body_screenshot.axs</file>
+        <file alias="templates/handler_body_tunnel.axs">axscript/templates/handler_body_tunnel.axs</file>
+        <file alias="templates/handler_body_target.axs">axscript/templates/handler_body_target.axs</file>
+        <file alias="templates/handler_body_pivot.axs">axscript/templates/handler_body_pivot.axs</file>
         <file alias="templates/handler_body_generic.axs">axscript/templates/handler_body_generic.axs</file>
     </qresource>
 

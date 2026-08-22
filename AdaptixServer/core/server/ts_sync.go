@@ -45,7 +45,7 @@ func getPacketCategory(packet interface{}) string {
 		return SyncCategoryDownloadsHistory
 	case SyncPackerScreenshotCreate:
 		return SyncCategoryScreenshotHistory
-	case SyncPackerTunnelCreate:
+	case SyncPackerTunnelCreate, SyncPackerTunnelAccept:
 		return "tunnels"
 	case SyncPackerPivotCreate:
 		return "pivots"
@@ -55,7 +55,7 @@ func getPacketCategory(packet interface{}) string {
 		return SyncCategoryCredentialsHistory
 	case SyncPackerTargetsAdd:
 		return SyncCategoryTargetsHistory
-	case SyncPackerPayloadCreate, SyncPackerPayloadUpdate, SyncPackerPayloadDelete, SyncPackerPayloadEdit:
+	case SyncPackerPayloadCreate, SyncPackerPayloadUpdate, SyncPackerPayloadDelete, SyncPackerPayloadEdit, SyncPackerPayloadTag:
 		return SyncCategoryPayloads
 	case json.RawMessage:
 		return SyncCategoryConsoleHistory
@@ -299,7 +299,11 @@ func (ts *Teamserver) TsPresyncAgentsInactive() []interface{} {
 	packets := make([]interface{}, 0, len(agents))
 	ts.Agents.DirectLock()
 	for _, agentData := range agents {
-		p := CreateSpAgentNew(agentData)
+		var groups map[string]bool
+		if ag, ok := ts.Agents.Get(agentData.Id); ok {
+			groups = ag.GetCommandGroupOverrides()
+		}
+		p := CreateSpAgentNewWithGroups(agentData, groups)
 		packets = append(packets, p)
 	}
 	ts.Agents.DirectUnlock()
@@ -331,7 +335,11 @@ func (ts *Teamserver) presyncAgentsFiltered(activeOnly bool) []interface{} {
 	packets := make([]interface{}, 0, len(agents))
 	ts.Agents.DirectLock()
 	for _, agentData := range agents {
-		p := CreateSpAgentNew(agentData)
+		var groups map[string]bool
+		if ag, ok := ts.Agents.Get(agentData.Id); ok {
+			groups = ag.GetCommandGroupOverrides()
+		}
+		p := CreateSpAgentNewWithGroups(agentData, groups)
 		packets = append(packets, p)
 	}
 	ts.Agents.DirectUnlock()

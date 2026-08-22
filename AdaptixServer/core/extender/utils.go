@@ -83,6 +83,8 @@ type Teamserver interface {
 	TsServiceReg(serviceInfo ServiceInfo) error
 	TsServiceUnreg(serviceName string) error
 
+	ServiceWaitBegin(operator, service string) (ch <-chan string, cancel func())
+
 	TsExtenderDataSave(extenderName string, key string, value []byte) error
 	TsExtenderDataLoad(extenderName string, key string) ([]byte, error)
 	TsExtenderDataDelete(extenderName string, key string) error

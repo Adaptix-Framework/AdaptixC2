@@ -211,7 +211,7 @@ func (tc *TsConnector) tcChannelOTP(ctx *gin.Context) {
 
 	switch otpType {
 	case "channel_tunnel":
-		if err := tc.teamserver.TsTunnelClientNewChannel(channelDataStr, wsConn); err != nil {
+		if err := tc.teamserver.TsTunnelClientNewChannel(channelDataStr, wsConn, wsData.Username); err != nil {
 			tc.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "server", "connector", "Tunnel channel error: %s", err.Error())
 			wsConn.Close()
 		}

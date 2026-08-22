@@ -9,6 +9,7 @@
 #include <QPlainTextEdit>
 #include <QTabWidget>
 #include <QStackedWidget>
+#include <QButtonGroup>
 #include <oclero/qlementine/widgets/Switch.hpp>
 
 class Settings;
@@ -51,9 +52,18 @@ Q_OBJECT
     QLabel*      terminalSizeLabel = nullptr;
     QSpinBox*    terminalSizeSpin  = nullptr;
     QLabel*      toolbarPosLabel   = nullptr;
-    QFrame*      toolbarPosFrame   = nullptr;
-    QGridLayout* toolbarPosGrid    = nullptr;
-    QPushButton* toolbarPosBtn[4]  = {nullptr, nullptr, nullptr, nullptr};
+    QComboBox*   toolbarPosCombo   = nullptr;
+
+    QLabel*       dockLayoutHint      = nullptr;
+    QWidget*      dockLayoutSchemes   = nullptr;
+    QButtonGroup* dockLayoutGroup     = nullptr;
+    QWidget*      dockZoneColumnsHost = nullptr;
+
+    QString currentDockLayoutId() const;
+    void    setDockLayoutId(const QString& layoutId);
+    void    refreshDockZoneColumns(const QMap<QString, QString>* preferredOpenIn = nullptr, const QStringList* preferredStartup = nullptr);
+    QMap<QString, QString> collectDockOpenIn() const;
+    QStringList collectDockStartup() const;
 
     QGroupBox*   consoleThemeGroup         = nullptr;
     QGridLayout* consoleThemeGroupLayout   = nullptr;
@@ -138,8 +148,8 @@ Q_OBJECT
     QWidget*     payloadsWidget     = nullptr;
     QGridLayout* payloadsLayout     = nullptr;
     QGroupBox*   payloadsGroup      = nullptr;
-    int          payloadsCheckCount = 13;
-    QCheckBox*   payloadsCheck[13];
+    int          payloadsCheckCount = 14;
+    QCheckBox*   payloadsCheck[14];
 
     QWidget*     tabblinkWidget          = nullptr;
     QGridLayout* tabblinkLayout          = nullptr;

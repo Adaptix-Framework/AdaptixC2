@@ -24,8 +24,8 @@ func (dbms *DBMS) DbPayloadInsert(p adaptix.PayloadData) error {
 	if p.Hidden {
 		hidden = 1
 	}
-	q := `INSERT INTO Payloads ( PayloadId, Name, AgentType, Artifact, Arch, Listeners, Size, Sha1, Sha256, Md5, Creator, Created, Hidden, LocalPath, ConfigJson, BuildId, Watermark, Filename, Notes, Uid, Color) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);`
-	_, err = dbms.database.Exec(q, p.PayloadId, p.Name, p.AgentType, p.Artifact, p.Arch, string(listenersJSON), p.Size, p.Sha1, p.Sha256, p.Md5, p.Creator, p.Created, hidden, p.LocalPath, p.ConfigJson, p.BuildId, p.Watermark, p.Filename, p.Notes, p.Uid, p.Color)
+	q := `INSERT INTO Payloads ( PayloadId, Name, AgentType, Artifact, Arch, Listeners, Size, Sha1, Sha256, Md5, Creator, Created, Hidden, LocalPath, ConfigJson, BuildId, Watermark, Filename, Notes, Tag, Uid, Color) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);`
+	_, err = dbms.database.Exec(q, p.PayloadId, p.Name, p.AgentType, p.Artifact, p.Arch, string(listenersJSON), p.Size, p.Sha1, p.Sha256, p.Md5, p.Creator, p.Created, hidden, p.LocalPath, p.ConfigJson, p.BuildId, p.Watermark, p.Filename, p.Notes, p.Tag, p.Uid, p.Color)
 	return err
 }
 
@@ -35,7 +35,7 @@ func scanPayload(row interface {
 	var p adaptix.PayloadData
 	var listenersJSON string
 	var hidden int
-	err := row.Scan(&p.PayloadId, &p.Name, &p.AgentType, &p.Artifact, &p.Arch, &listenersJSON, &p.Size, &p.Sha1, &p.Sha256, &p.Md5, &p.Creator, &p.Created, &hidden, &p.LocalPath, &p.ConfigJson, &p.BuildId, &p.Watermark, &p.Filename, &p.Notes, &p.Uid, &p.Color)
+	err := row.Scan(&p.PayloadId, &p.Name, &p.AgentType, &p.Artifact, &p.Arch, &listenersJSON, &p.Size, &p.Sha1, &p.Sha256, &p.Md5, &p.Creator, &p.Created, &hidden, &p.LocalPath, &p.ConfigJson, &p.BuildId, &p.Watermark, &p.Filename, &p.Notes, &p.Tag, &p.Uid, &p.Color)
 	if err != nil {
 		return p, err
 	}
@@ -49,7 +49,7 @@ func scanPayload(row interface {
 	return p, nil
 }
 
-const payloadSelectCols = `PayloadId, Name, AgentType, Artifact, Arch, Listeners, Size, Sha1, Sha256, Md5, Creator, Created, Hidden, LocalPath, ConfigJson, BuildId, Watermark, Filename, Notes, Uid, Color`
+const payloadSelectCols = `PayloadId, Name, AgentType, Artifact, Arch, Listeners, Size, Sha1, Sha256, Md5, Creator, Created, Hidden, LocalPath, ConfigJson, BuildId, Watermark, Filename, Notes, Tag, Uid, Color`
 
 func (dbms *DBMS) DbPayloadGet(id int64) (adaptix.PayloadData, error) {
 	var p adaptix.PayloadData
@@ -81,6 +81,7 @@ var sortablePayloadColumns = map[string]string{
 	"Size":     "Size",
 	"Creator":  "Creator",
 	"Filename": "Filename",
+	"Tag":      "Tag",
 }
 
 func (dbms *DBMS) DbPayloadGetPage(offset, limit int, showHidden bool, filterExpr, sortCol, sortOrder string) ([]adaptix.PayloadData, int, error) {
@@ -107,7 +108,7 @@ func (dbms *DBMS) DbPayloadGetPage(offset, limit int, showHidden bool, filterExp
 			return nil, 0, fmt.Errorf("invalid filter: %w", err)
 		}
 		if node != nil {
-			filterSQL, filterArgs := filter.ToSQL(node, []string{"PayloadId", "Name", "AgentType", "Artifact", "Arch", "Listeners", "Filename", "Creator", "Sha1", "Sha256", "Md5", "BuildId", "Watermark", "Notes"})
+			filterSQL, filterArgs := filter.ToSQL(node, []string{"PayloadId", "Name", "AgentType", "Artifact", "Arch", "Listeners", "Filename", "Creator", "Sha1", "Sha256", "Md5", "BuildId", "Watermark", "Notes", "Tag"})
 			if filterSQL != "" {
 				where += " AND " + filterSQL
 				args = append(args, filterArgs...)
@@ -185,6 +186,25 @@ func (dbms *DBMS) DbPayloadSetColor(ids []int64, color string) error {
 		args = append(args, id)
 	}
 	q := fmt.Sprintf(`UPDATE Payloads SET Color = ? WHERE PayloadId IN (%s);`, strings.Join(ph, ","))
+	_, err := dbms.database.Exec(q, args...)
+	return err
+}
+
+func (dbms *DBMS) DbPayloadSetTagBatch(ids []int64, tag string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+	if !dbms.DatabaseExists() {
+		return errors.New("database does not exist")
+	}
+	ph := make([]string, len(ids))
+	args := make([]interface{}, 0, len(ids)+1)
+	args = append(args, tag)
+	for i, id := range ids {
+		ph[i] = "?"
+		args = append(args, id)
+	}
+	q := fmt.Sprintf(`UPDATE Payloads SET Tag = ? WHERE PayloadId IN (%s);`, strings.Join(ph, ","))
 	_, err := dbms.database.Exec(q, args...)
 	return err
 }

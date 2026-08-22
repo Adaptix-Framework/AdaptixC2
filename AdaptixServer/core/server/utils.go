@@ -149,9 +149,12 @@ type TunnelChannel struct {
 	channelId int64
 	protocol  string
 
-	wsconn    adaptix.WebSocketConn
-	wsWriteMu sync.Mutex
-	conn      net.Conn
+	wsconn      adaptix.WebSocketConn
+	wsWriteMu   sync.Mutex
+	conn        net.Conn
+	connWriteMu sync.Mutex
+	egressReady atomic.Bool
+	egressGate  chan struct{}
 
 	pwSrv *io.PipeWriter
 	prSrv *io.PipeReader
@@ -166,6 +169,10 @@ type TunnelChannel struct {
 	flowPaused     atomic.Bool
 	resumed        atomic.Bool
 	skipAgentClose atomic.Bool
+	bindListening  atomic.Bool
+	bindWatchOnce  sync.Once
+	bindMu         sync.Mutex
+	bindPeek       []byte
 }
 
 func (tc *TunnelChannel) CloseIngress() {
@@ -342,65 +349,67 @@ type SyncPackerPluginListenerData struct {
 type SyncPackerAgentNew struct {
 	SpType int `json:"type"`
 
-	Id           int64  `json:"a_id"`
-	Name         string `json:"a_name"`
-	Listener     string `json:"a_listener"`
-	Async        bool   `json:"a_async"`
-	ExternalIP   string `json:"a_external_ip"`
-	InternalIP   string `json:"a_internal_ip"`
-	GmtOffset    int    `json:"a_gmt_offset"`
-	WorkingTime  int    `json:"a_workingtime"`
-	KillDate     int    `json:"a_killdate"`
-	Sleep        uint   `json:"a_sleep"`
-	Jitter       uint   `json:"a_jitter"`
-	ACP          int    `json:"a_acp"`
-	OemCP        int    `json:"a_oemcp"`
-	Pid          string `json:"a_pid"`
-	Tid          string `json:"a_tid"`
-	Arch         string `json:"a_arch"`
-	Elevated     bool   `json:"a_elevated"`
-	Process      string `json:"a_process"`
-	Os           int    `json:"a_os"`
-	OsDesc       string `json:"a_os_desc"`
-	Domain       string `json:"a_domain"`
-	Computer     string `json:"a_computer"`
-	Username     string `json:"a_username"`
-	Impersonated string `json:"a_impersonated"`
-	CreateTime   int64  `json:"a_create_time"`
-	LastTick     int    `json:"a_last_tick"`
-	Tags         string `json:"a_tags"`
-	Mark         string `json:"a_mark"`
-	Color        string `json:"a_color"`
+	Id            int64           `json:"a_id"`
+	Name          string          `json:"a_name"`
+	Listener      string          `json:"a_listener"`
+	Async         bool            `json:"a_async"`
+	ExternalIP    string          `json:"a_external_ip"`
+	InternalIP    string          `json:"a_internal_ip"`
+	GmtOffset     int             `json:"a_gmt_offset"`
+	WorkingTime   int             `json:"a_workingtime"`
+	KillDate      int             `json:"a_killdate"`
+	Sleep         uint            `json:"a_sleep"`
+	Jitter        uint            `json:"a_jitter"`
+	ACP           int             `json:"a_acp"`
+	OemCP         int             `json:"a_oemcp"`
+	Pid           string          `json:"a_pid"`
+	Tid           string          `json:"a_tid"`
+	Arch          string          `json:"a_arch"`
+	Elevated      bool            `json:"a_elevated"`
+	Process       string          `json:"a_process"`
+	Os            int             `json:"a_os"`
+	OsDesc        string          `json:"a_os_desc"`
+	Domain        string          `json:"a_domain"`
+	Computer      string          `json:"a_computer"`
+	Username      string          `json:"a_username"`
+	Impersonated  string          `json:"a_impersonated"`
+	CreateTime    int64           `json:"a_create_time"`
+	LastTick      int             `json:"a_last_tick"`
+	Tags          string          `json:"a_tags"`
+	Mark          string          `json:"a_mark"`
+	Color         string          `json:"a_color"`
+	CommandGroups map[string]bool `json:"a_cmd_groups,omitempty"`
 }
 
 type SyncPackerAgentUpdate struct {
 	SpType int `json:"type"`
 
-	Id           int64   `json:"a_id"`
-	Sleep        *uint   `json:"a_sleep,omitempty"`
-	Jitter       *uint   `json:"a_jitter,omitempty"`
-	WorkingTime  *int    `json:"a_workingtime,omitempty"`
-	KillDate     *int    `json:"a_killdate,omitempty"`
-	Impersonated *string `json:"a_impersonated,omitempty"`
-	Tags         *string `json:"a_tags,omitempty"`
-	Mark         *string `json:"a_mark,omitempty"`
-	Color        *string `json:"a_color,omitempty"`
-	InternalIP   *string `json:"a_internal_ip,omitempty"`
-	ExternalIP   *string `json:"a_external_ip,omitempty"`
-	GmtOffset    *int    `json:"a_gmt_offset,omitempty"`
-	ACP          *int    `json:"a_acp,omitempty"`
-	OemCP        *int    `json:"a_oemcp,omitempty"`
-	Pid          *string `json:"a_pid,omitempty"`
-	Tid          *string `json:"a_tid,omitempty"`
-	Arch         *string `json:"a_arch,omitempty"`
-	Elevated     *bool   `json:"a_elevated,omitempty"`
-	Process      *string `json:"a_process,omitempty"`
-	Os           *int    `json:"a_os,omitempty"`
-	OsDesc       *string `json:"a_os_desc,omitempty"`
-	Domain       *string `json:"a_domain,omitempty"`
-	Computer     *string `json:"a_computer,omitempty"`
-	Username     *string `json:"a_username,omitempty"`
-	Listener     *string `json:"a_listener,omitempty"`
+	Id            int64           `json:"a_id"`
+	Sleep         *uint           `json:"a_sleep,omitempty"`
+	Jitter        *uint           `json:"a_jitter,omitempty"`
+	WorkingTime   *int            `json:"a_workingtime,omitempty"`
+	KillDate      *int            `json:"a_killdate,omitempty"`
+	Impersonated  *string         `json:"a_impersonated,omitempty"`
+	Tags          *string         `json:"a_tags,omitempty"`
+	Mark          *string         `json:"a_mark,omitempty"`
+	Color         *string         `json:"a_color,omitempty"`
+	InternalIP    *string         `json:"a_internal_ip,omitempty"`
+	ExternalIP    *string         `json:"a_external_ip,omitempty"`
+	GmtOffset     *int            `json:"a_gmt_offset,omitempty"`
+	ACP           *int            `json:"a_acp,omitempty"`
+	OemCP         *int            `json:"a_oemcp,omitempty"`
+	Pid           *string         `json:"a_pid,omitempty"`
+	Tid           *string         `json:"a_tid,omitempty"`
+	Arch          *string         `json:"a_arch,omitempty"`
+	Elevated      *bool           `json:"a_elevated,omitempty"`
+	Process       *string         `json:"a_process,omitempty"`
+	Os            *int            `json:"a_os,omitempty"`
+	OsDesc        *string         `json:"a_os_desc,omitempty"`
+	Domain        *string         `json:"a_domain,omitempty"`
+	Computer      *string         `json:"a_computer,omitempty"`
+	Username      *string         `json:"a_username,omitempty"`
+	Listener      *string         `json:"a_listener,omitempty"`
+	CommandGroups map[string]bool `json:"a_cmd_groups,omitempty"`
 }
 
 type SyncPackerAgentTick struct {
@@ -866,6 +875,13 @@ type SyncPackerTunnelDelete struct {
 	TunnelId int64 `json:"p_tunnel_id"`
 }
 
+type SyncPackerTunnelAccept struct {
+	SpType int `json:"type"`
+
+	TunnelId  int64 `json:"p_tunnel_id"`
+	ChannelId int64 `json:"p_channel_id"`
+}
+
 /// AXSCRIPT
 
 type SyncPackerAxScriptData struct {
@@ -914,6 +930,7 @@ type SyncPackerPayloadCreate struct {
 	BuildId   string   `json:"p_build_id,omitempty"`
 	Watermark string   `json:"p_watermark,omitempty"`
 	Notes     string   `json:"p_notes,omitempty"`
+	Tag       string   `json:"p_tag,omitempty"`
 	Uid       string   `json:"p_uid,omitempty"`
 	Color     string   `json:"p_color,omitempty"`
 	Missing   bool     `json:"p_missing,omitempty"`
@@ -952,9 +969,17 @@ type SyncPackerPayloadEdit struct {
 	BuildId   string   `json:"p_build_id,omitempty"`
 	Watermark string   `json:"p_watermark,omitempty"`
 	Notes     string   `json:"p_notes,omitempty"`
+	Tag       string   `json:"p_tag,omitempty"`
 	Uid       string   `json:"p_uid,omitempty"`
 	Color     string   `json:"p_color,omitempty"`
 	Missing   bool     `json:"p_missing,omitempty"`
+}
+
+type SyncPackerPayloadTag struct {
+	SpType int `json:"type"`
+
+	PayloadIds []int64 `json:"p_ids"`
+	Tag        string  `json:"p_tag"`
 }
 
 /// LOGS

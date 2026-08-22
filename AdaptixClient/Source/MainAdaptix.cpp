@@ -12,6 +12,7 @@
 #include <MainAdaptix.h>
 
 #include <QFontInfo>
+#include <QTimer>
 #include <kddockwidgets/Config.h>
 #include <oclero/qlementine.hpp>
 

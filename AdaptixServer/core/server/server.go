@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/Adaptix-Framework/axc2/v2"
@@ -78,6 +79,14 @@ func NewTeamserver(debug bool) *Teamserver {
 	_ = ts.IdGen.Bind(dbms.GetDB())
 
 	ts.ScriptManager = axscript.NewScriptManager(ts)
+	cwd, _ := os.Getwd()
+	ts.ScriptManager.SetGlobalAllowedRoots([]string{
+		os.TempDir(),
+		"/tmp",
+		filepath.Join(cwd, "data"),
+		filepath.Join(cwd, "data", "download"),
+		filepath.Join(cwd, "data", "payloads"),
+	})
 	ts.initEventHandlerRegistry()
 	ts.TaskManager = NewTaskManager(ts)
 	ts.TunnelManager = NewTunnelManager(ts)
@@ -119,6 +128,15 @@ func (ts *Teamserver) RestoreData() {
 
 	ts.TsLogAdd(adaptix.LogStatusInfo, 0, "server", "", "Restore data from Database...")
 
+	/// LISTENERS (register only — Start after agents so poll)
+	restoreListeners := ts.DBMS.DbListenerAll()
+	for _, restoreListener := range restoreListeners {
+		_, _, err = ts.tsListenerRegister(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.CreateTime, restoreListener.Watermark, restoreListener.CustomData, restoreListener.Tags)
+		if err != nil {
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
+		}
+	}
+
 	/// AGENTS
 	countAgents := 0
 	restoreAgents := ts.DBMS.DbAgentAll()
@@ -131,6 +149,7 @@ func (ts *Teamserver) RestoreData() {
 		}
 
 		agent := adaptix.NewAgent(agentData, agentFunctions)
+		agent.LoadCommandGroupOverridesJSON(agentData.CmdGroups)
 
 		if agentData.Mark == "Terminated" {
 			agent.SetActive(false)
@@ -145,7 +164,7 @@ func (ts *Teamserver) RestoreData() {
 			ts.agentsUid.Put(hex.EncodeToString(agentData.UID), agentData.Id)
 		}
 
-		packet := CreateSpAgentNew(agentData)
+		packet := CreateSpAgentNewWithGroups(agentData, agent.GetCommandGroupOverrides())
 		ts.TsSyncAllClients(packet)
 
 		ts.TsNotifyAgent(true, agentData)
@@ -191,35 +210,38 @@ func (ts *Teamserver) RestoreData() {
 		countTunnels++
 	}
 	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v tunnels (paused)", countTunnels)
-	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v listeners", ts.DBMS.DbTableCount("Listeners"))
 	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v screenshots", ts.DBMS.DbTableCount("Screenshots"))
 	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v downloads", ts.DBMS.DbTableCount("Downloads"))
 	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v credentials", ts.DBMS.DbTableCount("Credentials"))
 	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v targets", ts.DBMS.DbTableCount("Targets"))
 
-	/// LISTENERS
-	restoreListeners := ts.DBMS.DbListenerAll()
+	/// LISTENERS start (after agents — UID map is populated)
+	started := 0
 	for _, restoreListener := range restoreListeners {
-		err = ts.TsListenerStart(restoreListener.ListenerName, restoreListener.ListenerRegName, restoreListener.ListenerConfig, restoreListener.CreateTime, restoreListener.Watermark, restoreListener.CustomData, restoreListener.Tags)
-		if err != nil {
-			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "", "Failed to restore listener %s: %s", restoreListener.ListenerName, err.Error())
-		} else {
-			listenerData, ok := ts.listeners.Get(restoreListener.ListenerName)
-			if ok {
-				if restoreListener.ListenerStatus == "Paused" && listenerData.Status == "Listen" {
-					err = ts.Extender.ExListenerPause(restoreListener.ListenerName)
-					if err != nil {
-						ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "", "Failed to pause restored listener %s: %s", restoreListener.ListenerName, err.Error())
-					} else {
-						listenerData.Status = "Paused"
-						ts.listeners.Put(restoreListener.ListenerName, listenerData)
-						packet := CreateSpListenerEdit(listenerData)
-						ts.TsSyncAllClients(packet)
-					}
-				}
+		if !ts.listeners.Contains(restoreListener.ListenerName) {
+			continue
+		}
+		if err = ts.tsListenerBringUp(restoreListener.ListenerName); err != nil {
+			ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "", "Failed to start listener %s: %s", restoreListener.ListenerName, err.Error())
+			continue
+		}
+		listenerData, ok := ts.listeners.Get(restoreListener.ListenerName)
+		if !ok {
+			continue
+		}
+		if restoreListener.ListenerStatus == "Paused" && listenerData.Status == "Listen" {
+			if err = ts.Extender.ExListenerPause(restoreListener.ListenerName); err != nil {
+				ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "", "Failed to pause restored listener %s: %s", restoreListener.ListenerName, err.Error())
+			} else {
+				listenerData.Status = "Paused"
+				ts.listeners.Put(restoreListener.ListenerName, listenerData)
 			}
 		}
+		ts.TsSyncAllClients(CreateSpListenerStart(listenerData))
+		ts.TsNotifyListenerStart(true, restoreListener.ListenerName, restoreListener.ListenerRegName)
+		started++
 	}
+	ts.TsLogAdd(adaptix.LogStatusSuccess, 1, "server", "", "Restored %v listeners", started)
 }
 
 func (ts *Teamserver) Start() {

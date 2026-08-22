@@ -773,7 +773,7 @@ bool TerminalTab::isRunning() const { return terminalWorker != nullptr; }
 
 
 
-TerminalContainerWidget::TerminalContainerWidget(Agent* a, AdaptixWidget* w, TerminalMode mode) : DockTab(QString("%1 [%2]").arg(mode == TerminalModeShell ? "Shell" : "Terminal").arg(a->data.Id), w->GetProfile()->GetProject())
+TerminalContainerWidget::TerminalContainerWidget(Agent* a, AdaptixWidget* w, TerminalMode mode) : DockTab(QString("%1 [%2]").arg(mode == TerminalModeShell ? "Shell" : "Terminal").arg(a->data.Id), w->GetProfile()->GetProject(), QString(), w)
 {
     this->agent = a;
     this->adaptixWidget = w;

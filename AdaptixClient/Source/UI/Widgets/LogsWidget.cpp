@@ -7,6 +7,7 @@
 #include <Client/Settings.h>
 #include <Utils/Convert.h>
 #include <Utils/FontManager.h>
+#include <Utils/CustomElements/SegmentControl.h>
 #include <MainAdaptix.h>
 
 #include <oclero/qlementine/style/QlementineStyle.hpp>
@@ -19,11 +20,13 @@
 #include <QToolButton>
 #include <QSpinBox>
 #include <QFrame>
+#include <QStackedWidget>
 #include <algorithm>
+#include <QSignalBlocker>
 
 REGISTER_DOCK_WIDGET(LogsWidget, "Logs", true)
 
-LogsWidget::LogsWidget(const AdaptixWidget* w) : DockTab("Logs", w->GetProfile()->GetProject(), ":/icons/logs"), adaptixWidget(w)
+LogsWidget::LogsWidget(const AdaptixWidget* w) : DockTab("Logs", w->GetProfile()->GetProject(), ":/icons/logs", const_cast<AdaptixWidget*>(w)), adaptixWidget(w)
 {
     serverPageSize    = qBound(10, GlobalClient->settings->data.ConsolePageSize, 2000);
     autoLoadEarlier   = GlobalClient->settings->data.ConsoleAutoLoadEarlier;
@@ -252,14 +255,14 @@ void LogsWidget::createUI()
     serverSearchPanel->installEventFilter(this);
     QTimer::singleShot(0, this, [this]() { positionServerOverlays(); });
 
-    auto* sourceLabel = new QLabel(QStringLiteral("Source:"), this);
+    sourceLabel = new QLabel(QStringLiteral("Source:"), this);
     sourceCombo = new QComboBox(this);
     sourceCombo->setMinimumWidth(120);
     sourceCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
     sourceCombo->addItem(QStringLiteral("All"), QString());
     sourceCombo->setToolTip(QStringLiteral("Log origin (events, server, listener, …)"));
 
-    auto* categoryLabel = new QLabel(QStringLiteral("Category:"), this);
+    categoryLabel = new QLabel(QStringLiteral("Category:"), this);
     categoryCombo = new QComboBox(this);
     categoryCombo->setMinimumWidth(140);
     categoryCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
@@ -273,37 +276,104 @@ void LogsWidget::createUI()
     searchEdit->setMinimumWidth(160);
     searchEdit->setToolTip(QStringLiteral("Case-insensitive substring anywhere in source (e.g. beac → listener:tcp_beacon)"));
 
-    auto* sourceBar = new QHBoxLayout();
-    sourceBar->setContentsMargins(2, 2, 2, 2);
+    toolbarWidget = new QWidget(this);
+    toolbarWidget->setFixedHeight(FontManager::instance().typography().toolbarHeight);
+    toolbarLayout = new QHBoxLayout(toolbarWidget);
+    toolbarLayout->setContentsMargins(4, 2, 4, 2);
+    toolbarLayout->setSpacing(8);
+
+    modeSegment = new SegmentControl(toolbarWidget);
+    modeSegment->addItem(QStringLiteral("Client"));
+    modeSegment->addItem(QStringLiteral("Server"));
+    modeSegment->setItemToolTip(ModeClient, QStringLiteral("Client notification events"));
+    modeSegment->setItemToolTip(ModeServer, QStringLiteral("Teamserver logs"));
+    {
+        QSignalBlocker b(modeSegment);
+        modeSegment->setCurrentIndex(ModeServer);
+    }
+    toolbarLayout->addWidget(modeSegment, 0);
+
+    serverFilterBar = new QWidget(toolbarWidget);
+    auto* sourceBar = new QHBoxLayout(serverFilterBar);
+    sourceBar->setContentsMargins(0, 0, 0, 0);
     sourceBar->setSpacing(6);
     sourceBar->addWidget(sourceLabel);
     sourceBar->addWidget(sourceCombo);
     sourceBar->addWidget(categoryLabel);
     sourceBar->addWidget(categoryCombo);
     sourceBar->addWidget(searchEdit, 1);
+    toolbarLayout->addWidget(serverFilterBar, 1);
 
     serverLogsLayout = new QGridLayout(this);
     serverLogsLayout->setContentsMargins(1, 1, 1, 1);
     serverLogsLayout->setVerticalSpacing(1);
-    serverLogsLayout->addLayout( sourceBar,      0, 0, 1, 1);
-    serverLogsLayout->addWidget( serverLogsHost, 1, 0, 1, 1);
+    serverLogsLayout->addWidget(serverLogsHost, 0, 0, 1, 1);
 
     serverLogsWidget = new QWidget(this);
     serverLogsWidget->setLayout(serverLogsLayout);
 
-    mainHSplitter = new QSplitter( Qt::Horizontal, this );
-    mainHSplitter->setHandleWidth(3);
-    mainHSplitter->addWidget(logsWidget);
-    mainHSplitter->addWidget(serverLogsWidget);
-    mainHSplitter->setStretchFactor(0, 1);
-    mainHSplitter->setStretchFactor(1, 1);
+    contentStack = new QStackedWidget(this);
+    contentStack->addWidget(logsWidget);        // ModeClient = 0
+    contentStack->addWidget(serverLogsWidget);  // ModeServer = 1
 
-    mainGridLayout = new QGridLayout( this );
+    mainGridLayout = new QGridLayout(this);
     mainGridLayout->setContentsMargins(0, 0, 0, 0);
     mainGridLayout->setVerticalSpacing(0);
-    mainGridLayout->addWidget( mainHSplitter, 0, 0, 1, 1);
+    mainGridLayout->addWidget(toolbarWidget, 0, 0, 1, 1);
+    mainGridLayout->addWidget(contentStack,  1, 0, 1, 1);
 
-    this->setLayout( mainGridLayout );
+    this->setLayout(mainGridLayout);
+
+    connect(modeSegment, &SegmentControl::currentIndexChanged, this, [this]() {
+        if (modeSegment)
+            setMode(modeSegment->currentIndex());
+    });
+
+    setMode(ModeServer);
+}
+
+void LogsWidget::setMode(int mode)
+{
+    if (mode != ModeClient && mode != ModeServer)
+        mode = ModeServer;
+    m_mode = mode;
+
+    if (contentStack)
+        contentStack->setCurrentIndex(m_mode);
+
+    if (modeSegment) {
+        QSignalBlocker b(modeSegment);
+        modeSegment->setCurrentIndex(m_mode);
+    }
+
+    updateModeChrome();
+
+    if (m_mode == ModeClient)
+        m_clientUnread = 0;
+    else
+        m_serverUnread = 0;
+
+    if (m_mode == ModeServer)
+        QTimer::singleShot(0, this, [this]() { positionServerOverlays(); });
+}
+
+void LogsWidget::updateModeChrome()
+{
+    const bool server = (m_mode == ModeServer);
+    if (serverFilterBar)
+        serverFilterBar->setEnabled(server);
+    if (sourceLabel)
+        sourceLabel->setEnabled(server);
+    if (categoryLabel)
+        categoryLabel->setEnabled(server);
+    if (sourceCombo)
+        sourceCombo->setEnabled(server);
+    if (categoryCombo)
+        categoryCombo->setEnabled(server && sourceCombo && sourceCombo->currentIndex() > 0);
+    if (searchEdit)
+        searchEdit->setEnabled(server);
+    if (historyBar)
+        historyBar->setVisible(server);
 }
 
 void LogsWidget::applyHistoryBarMetrics()
@@ -373,7 +443,7 @@ void LogsWidget::applyHistoryBarStyle()
 {
     if (!historyBar)
         return;
-    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
     const int fontPx = FontManager::instance().typography().chromeFontPx;
     const QString monoFamily = FontManager::instance().typography().family;
@@ -602,6 +672,9 @@ void LogsWidget::AddLogs(const int type, const qint64 time, const QString &messa
     else if( type == EVENT_TUNNEL_START )      logsConsoleTextEdit->appendFormatted(logMsg, [&](QTextCharFormat& fmt){ fmt = theme.tunnel.toFormat(); });
     else if( type == EVENT_TUNNEL_STOP )       logsConsoleTextEdit->appendFormatted(logMsg, [&](QTextCharFormat& fmt){ fmt = theme.tunnel.toFormat(); });
     else                                       logsConsoleTextEdit->appendPlain(logMsg);
+
+    if (m_mode != ModeClient)
+        ++m_clientUnread;
 }
 
 void LogsWidget::applyTheme()
@@ -640,6 +713,8 @@ void LogsWidget::applyTheme()
 
     applyHistoryBarStyle();
     applyHistoryBarMetrics();
+    if (modeSegment)
+        modeSegment->applyTheme();
     positionServerOverlays();
 }
 
@@ -761,6 +836,8 @@ void LogsWidget::rebuildCategoryCombo()
     categoryCombo->clear();
     categoryCombo->addItem(QStringLiteral("All"), QString());
 
+    const bool filtersOn = (m_mode == ModeServer);
+
     if (origin.isEmpty()) {
         categoryCombo->setEnabled(false);
         categoryCombo->setCurrentIndex(0);
@@ -768,7 +845,7 @@ void LogsWidget::rebuildCategoryCombo()
         return;
     }
 
-    categoryCombo->setEnabled(true);
+    categoryCombo->setEnabled(filtersOn);
     QStringList cats = originCategories.value(origin).values();
     cats.erase(std::remove_if(cats.begin(), cats.end(), [](const QString& c) { return c.trimmed().isEmpty(); }), cats.end());
     cats.sort(Qt::CaseInsensitive);
@@ -939,6 +1016,8 @@ void LogsWidget::AddServerLogBatch(const QJsonArray& items)
             : seenLogIds.size();
         if (serverTotalKnown < serverLoadedCount)
             serverTotalKnown = serverLoadedCount;
+        if (m_mode != ModeServer)
+            m_serverUnread += rendered;
         updateHistoryBar();
     }
 }

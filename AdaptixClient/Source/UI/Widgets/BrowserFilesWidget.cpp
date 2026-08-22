@@ -13,6 +13,9 @@
 #include <oclero/qlementine/widgets/Menu.hpp>
 #include <oclero/qlementine/utils/ImageUtils.hpp>
 
+#include <QApplication>
+#include <QClipboard>
+
 #include <algorithm>
 
 REGISTER_DOCK_WIDGET(BrowserFilesWidget, "Browser Files", false)
@@ -57,7 +60,7 @@ void BrowserFileData::SetStored(const bool stored)
 
 
 
-BrowserFilesWidget::BrowserFilesWidget(const AdaptixWidget* w, Agent* a) : DockTab(QString("Files [%1]").arg(a->data.Id), w->GetProfile()->GetProject())
+BrowserFilesWidget::BrowserFilesWidget(const AdaptixWidget* w, Agent* a) : DockTab(QString("Files [%1]").arg(a->data.Id), w->GetProfile()->GetProject(), QString(), const_cast<AdaptixWidget*>(w))
 {
     agent = a;
     this->createUI();
@@ -747,7 +750,7 @@ void BrowserFilesWidget::handleTreeDoubleClicked(QTreeWidgetItem* item, int colu
 
 void BrowserFilesWidget::handleTableMenu(const QPoint& pos)
 {
-    if (!agent || !agent->adaptixWidget || !agent->adaptixWidget->ScriptManager)
+    if (!agent || !tableView || !tableModel)
         return;
 
     if (!tableView->indexAt(pos).isValid() || currentPath.isEmpty())
@@ -763,6 +766,7 @@ void BrowserFilesWidget::handleTableMenu(const QPoint& pos)
     }
 
     QVector<DataMenuFileBrowser> items;
+    QStringList fullPaths;
     for (int rowIndex = 0; rowIndex < tableModel->rowCount(); rowIndex++) {
         if (!tableView->selectionModel()->isSelected(tableModel->index(rowIndex, 0)))
             continue;
@@ -778,16 +782,41 @@ void BrowserFilesWidget::handleTableMenu(const QPoint& pos)
         if (!entry)
             continue;
 
+        const QString absPath = entry->Fullpath.isEmpty() ? fullname : entry->Fullpath;
+        if (!absPath.isEmpty())
+            fullPaths.append(absPath);
+
         if (entry->Type == TYPE_FILE)
             items.append(DataMenuFileBrowser{agent->data.Id, path, filename, QStringLiteral("file")});
         else
             items.append(DataMenuFileBrowser{agent->data.Id, path, filename, QStringLiteral("dir")});
     }
 
-    if (items.isEmpty())
+    if (items.isEmpty() && fullPaths.isEmpty())
         return;
 
     oclero::qlementine::Menu ctxMenu;
-    agent->adaptixWidget->ScriptManager->AddMenuFileBrowser(&ctxMenu, items);
+
+    if (!fullPaths.isEmpty()) {
+        const QString label = fullPaths.size() == 1 ? QStringLiteral("Copy full path") : QStringLiteral("Copy full paths (%1)").arg(fullPaths.size());
+        ctxMenu.addAction(QIcon(QStringLiteral(":/icons/copy_all")), label, this, [this, fullPaths]() {
+            if (QClipboard* cb = QApplication::clipboard())
+                cb->setText(fullPaths.join(QLatin1Char('\n')));
+            if (statusLabel) {
+                if (fullPaths.size() == 1)
+                    statusLabel->setText(QStringLiteral("Copied path to clipboard"));
+                else
+                    statusLabel->setText(QStringLiteral("Copied %1 paths to clipboard").arg(fullPaths.size()));
+            }
+        });
+        ctxMenu.addSeparator();
+    }
+
+    if (agent->adaptixWidget && agent->adaptixWidget->ScriptManager && !items.isEmpty())
+        agent->adaptixWidget->ScriptManager->AddMenuFileBrowser(&ctxMenu, items);
+
+    if (ctxMenu.actions().isEmpty())
+        return;
+
     ctxMenu.exec(tableView->viewport()->mapToGlobal(pos));
 }

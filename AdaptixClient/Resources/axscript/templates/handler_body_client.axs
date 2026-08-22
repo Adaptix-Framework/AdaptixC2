@@ -1,1 +1,3 @@
-    ax.log("{{NAME}}: user=" + (event.username || event.client || ""));
+    // client.connect / client.disconnect
+    var user = event.username || event.client || "";
+    ax.log("{{NAME}}: type=" + event.type + " user=" + user);

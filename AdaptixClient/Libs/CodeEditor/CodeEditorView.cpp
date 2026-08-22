@@ -163,9 +163,10 @@ void CodeEditorView::applyTypography()
     if (m_toolBar) {
         m_toolBar->setIconSize(QSize(icon, icon));
         m_toolBar->setFixedHeight(qMax(ty.controlHeight + 12, icon + 20));
+        m_toolBar->setObjectName(QStringLiteral("CodeEditorToolBar"));
         m_toolBar->setStyleSheet(QStringLiteral(
-            "QToolBar { spacing: 4px; padding: 4px 6px; }"
-            "QToolButton { padding: 4px; margin: 0 1px; }"
+            "QToolBar#CodeEditorToolBar { spacing: 4px; padding: 4px 6px; border: none; }"
+            "QToolBar#CodeEditorToolBar > QToolButton { padding: 4px; margin: 0 1px; }"
         ));
     }
     if (m_logPanel)

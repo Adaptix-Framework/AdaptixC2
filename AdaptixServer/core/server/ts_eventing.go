@@ -20,6 +20,51 @@ func (ts *Teamserver) TsEventHookRegister(eventType string, name string, phase i
 	})
 }
 
+func (ts *Teamserver) TsEventEmit(eventType string, text string) error {
+	return ts.TsEventEmitFrom(eventType, "api", text)
+}
+
+func (ts *Teamserver) TsEventEmitFrom(eventType string, source string, text string) error {
+	if ts.EventManager == nil {
+		return fmt.Errorf("event manager not initialized")
+	}
+	et := strings.TrimSpace(eventType)
+	if !eventing2.IsValidEventType(et) {
+		return fmt.Errorf("invalid event type %q (use domain.action, e.g. sessions.create)", eventType)
+	}
+	src := strings.TrimSpace(source)
+	if src == "" {
+		src = "api"
+	}
+
+	ev := &eventing2.EventDataCustom{
+		Source: src,
+		Text:   text,
+	}
+	eventing2.TrackCustomEventType(et)
+	ts.EventManager.EmitAsync(eventing2.EventType(et), ev)
+	return nil
+}
+
+func (ts *Teamserver) TsEventTypesList() (string, error) {
+	types := eventing2.ListAllEventTypes()
+	sort.Strings(types)
+	out := make([]string, 0, len(types))
+	seen := make(map[string]bool, len(types))
+	for _, t := range types {
+		if t == "" || seen[t] {
+			continue
+		}
+		seen[t] = true
+		out = append(out, t)
+	}
+	data, err := json.Marshal(out)
+	if err != nil {
+		return "[]", err
+	}
+	return string(data), nil
+}
+
 func (ts *Teamserver) TsEventHookUnregister(hookID string) bool {
 	return ts.EventManager.Unregister(hookID)
 }

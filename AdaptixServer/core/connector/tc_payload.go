@@ -154,6 +154,24 @@ func (tc *TsConnector) TcPayloadSetColor(ctx *gin.Context) {
 	respondOK(ctx)
 }
 
+type PayloadTagReq struct {
+	Ids []int64 `json:"id_array"`
+	Tag string  `json:"tag"`
+}
+
+func (tc *TsConnector) TcPayloadSetTag(ctx *gin.Context) {
+	var req PayloadTagReq
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		respondError(ctx, http.StatusOK, "invalid JSON data")
+		return
+	}
+	if err := tc.teamserver.TsPayloadSetTag(req.Ids, req.Tag); err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+	respondOK(ctx)
+}
+
 type PayloadRemoveReq struct {
 	Ids  []int64 `json:"id_array"`
 	Hard bool    `json:"hard"`

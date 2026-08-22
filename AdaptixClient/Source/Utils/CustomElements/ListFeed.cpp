@@ -93,7 +93,7 @@ static QColor ensureDeadBgContrast(const QColor& bg, bool dark)
 FeedColors FeedColors::fromTheme()
 {
     FeedColors fc;
-    auto* style = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* style = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     QPalette pal;
     bool dark = false;
     QColor baseText;
@@ -1335,7 +1335,7 @@ void ListFeedDelegate::addBlock(FeedBlock* block)
 }
 
 const FeedColors& ListFeedDelegate::feedColors() const {
-    auto* style = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* style = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     if (style) {
         const auto& theme = style->theme();
         if (theme.primaryColor != m_cachedPrimaryColor) {

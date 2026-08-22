@@ -206,9 +206,10 @@ void DialogAgent::createUI()
     profileSeparator->setFrameShape(QFrame::HLine);
     profileSeparator->setFrameShadow(QFrame::Sunken);
 
-    buttonNewProfile = new QPushButton(this);
-    buttonNewProfile->setText("New");
-    buttonNewProfile->setMinimumSize(QSize(10, 28));
+    buttonNewProfile = new QPushButton(QIcon(":/icons/plus"), "", this);
+    buttonNewProfile->setIconSize(QSize(18, 18));
+    buttonNewProfile->setFixedSize(QSize(28, 28));
+    buttonNewProfile->setToolTip("New profile");
 
     buttonLoad = new QPushButton(QIcon(":/icons/file_open"), "", this);
     buttonLoad->setIconSize(QSize(18, 18));
@@ -223,7 +224,8 @@ void DialogAgent::createUI()
     auto profileButtonsLayout = new QHBoxLayout();
     profileButtonsLayout->setContentsMargins(0, 0, 0, 0);
     profileButtonsLayout->setSpacing(4);
-    profileButtonsLayout->addWidget(buttonNewProfile, 1);
+    profileButtonsLayout->addStretch(1);
+    profileButtonsLayout->addWidget(buttonNewProfile);
     profileButtonsLayout->addWidget(buttonLoad);
     profileButtonsLayout->addWidget(buttonSave);
 
@@ -337,6 +339,7 @@ void DialogAgent::createUI()
 
     buildLogOutput = new QTextEdit(this);
     buildLogOutput->setReadOnly(true);
+    buildLogOutput->setLineWrapMode(QTextEdit::NoWrap);
     buildLogOutput->setFont(FontManager::instance().appMonoFont());
     buildLogOutput->setFrameShape(QFrame::NoFrame);
     buildLogOutput->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
@@ -532,6 +535,11 @@ void DialogAgent::Start()
 {
     this->setModal(true);
     this->show();
+    const QString agentName = agentCombobox ? agentCombobox->currentText() : QString();
+    if (!agentName.isEmpty() && ax_uis.contains(agentName)) {
+        const AxUI& ui = ax_uis[agentName];
+        packDialogSize(ui.width, ui.height);
+    }
 }
 
 void DialogAgent::onButtonLoad()
@@ -646,7 +654,7 @@ void DialogAgent::changeConfig(const QString &agentName)
         if (ax_ui) {
             configStackWidget->setCurrentWidget(ax_ui->widget);
             if (ax_ui->widget) {
-                ax_ui->widget->setMinimumSize(0, 0);
+                ax_ui->widget->setMinimumWidth(ax_ui->width > 0 ? ax_ui->width : 0);
                 ax_ui->widget->adjustSize();
             }
             configStackWidget->updateGeometry();
@@ -1398,7 +1406,7 @@ void DialogAgent::regenerateAgentUI(const QString &agentName, const QStringList 
         }
     }
 
-    formElement->widget()->setMinimumSize(0, 0);
+    formElement->widget()->setMinimumSize(w, 0);
     ax_uis[agentName] = { container, formElement->widget(), h, w };
     configStackWidget->addWidget(formElement->widget());
     configStackWidget->setCurrentWidget(formElement->widget());
@@ -1412,22 +1420,24 @@ void DialogAgent::regenerateAgentUI(const QString &agentName, const QStringList 
 
 void DialogAgent::packDialogSize(int scriptW, int scriptH)
 {
-    const int chromeH = 48 + 96 + 52 + 36;
-    int formH = 0;
+    constexpr int kProfilesW  = 220;
+    constexpr int kSeparatorW = 1;
+    constexpr int kHChrome    = 5 * 2 + 10 * 2 + 5 * 2 + kProfilesW + kSeparatorW;
+    constexpr int kFooterH    = 50;
+    constexpr int kHeaderH    = 48 + 96;
+    constexpr int kVChrome    = 5 * 2 + 10 * 2 + 5 * 2 + kHeaderH + kFooterH + 36;
+
+    int panelW = scriptW > 0 ? scriptW : 650;
+    int panelH = scriptH > 0 ? scriptH : 650;
     if (configStackWidget && configStackWidget->currentWidget()) {
         QWidget* cur = configStackWidget->currentWidget();
-        formH = qMax(cur->sizeHint().height(), cur->minimumSizeHint().height());
+        panelW = qMax(panelW, qMax(cur->sizeHint().width(), cur->minimumSizeHint().width()));
+        panelH = qMax(panelH, qMax(cur->sizeHint().height(), cur->minimumSizeHint().height()));
+        cur->setMinimumWidth(panelW);
     }
-    const int packedH = formH + chromeH;
-    const int slack = 40;
 
-    int w = qMax(800, scriptW > 0 ? scriptW : 650);
-    int h = scriptH > 0 ? scriptH : 650;
-    if (scriptH > packedH + slack)
-        h = packedH + 12;
-    else
-        h = qMax(scriptH > 0 ? scriptH : 0, packedH);
-    h = qMax(220, h);
+    int w = panelW + kHChrome;
+    int h = panelH + kVChrome;
 
     if (const QScreen* scr = this->screen()) {
         const QRect avail = scr->availableGeometry();
@@ -1438,11 +1448,8 @@ void DialogAgent::packDialogSize(int scriptW, int scriptH)
     if (auto* lay = this->layout())
         lay->setSizeConstraint(QLayout::SetNoConstraint);
 
-    this->setMinimumSize(0, 0);
     this->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
-    this->resize(w, h);
-    this->setMinimumWidth(800);
-    this->setMinimumHeight(0);
+    this->setMinimumSize(0, 0);
     this->resize(w, h);
 }
 

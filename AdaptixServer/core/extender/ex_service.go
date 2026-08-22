@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"plugin"
+	"time"
 
 	"github.com/Adaptix-Framework/axc2/v2"
 	"github.com/goccy/go-yaml"
@@ -99,7 +100,36 @@ func (ex *AdaptixExtender) ExPluginServiceCall(serviceName string, operator stri
 }
 
 func (ex *AdaptixExtender) ExPluginServiceCallWait(serviceName string, operator string, function string, args string, timeoutMs int) (string, error) {
-	return "", fmt.Errorf("service call wait timeout after %dms (service=%s operator=%s)", timeoutMs, serviceName, operator)
+	module, err := ex.getServiceModule(serviceName)
+	if err != nil {
+		return "", err
+	}
+	if timeoutMs <= 0 {
+		timeoutMs = 30000
+	}
+	type rpcRes struct {
+		s string
+		e error
+	}
+	ch := make(chan rpcRes, 1)
+	go func() {
+		s, e := module.CallRPC(operator, function, args)
+		ch <- rpcRes{s, e}
+	}()
+	select {
+	case r := <-ch:
+		return r.s, r.e
+	case <-time.After(time.Duration(timeoutMs) * time.Millisecond):
+		return "", fmt.Errorf("service call wait timeout after %dms (service=%s operator=%s)", timeoutMs, serviceName, operator)
+	}
+}
+
+func (ex *AdaptixExtender) ExServiceHasRPC(serviceName string) bool {
+	return ex.ExServiceLoaded(serviceName)
+}
+
+func (ex *AdaptixExtender) ExServiceLoaded(serviceName string) bool {
+	return ex.serviceModules.Contains(serviceName)
 }
 
 func (ex *AdaptixExtender) ExServiceList() []string {

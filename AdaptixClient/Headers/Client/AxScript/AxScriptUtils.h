@@ -6,15 +6,25 @@
 #include <QStringList>
 #include <QSet>
 #include <QIcon>
+#include <QFileInfo>
 
 class AxScriptUtils {
 public:
-    static QIcon resolveMenuIcon(const QString& resourcePath)
+    static QIcon resolveIcon(const QString& resourcePath)
     {
         const QString s = resourcePath.trimmed();
-        if (s.isEmpty() || !s.startsWith(QLatin1String(":/")))
+        if (s.isEmpty())
             return {};
-        return QIcon(s);
+        if (s.startsWith(QLatin1String(":/")))
+            return QIcon(s);
+        if (QFileInfo::exists(s))
+            return QIcon(s);
+        return {};
+    }
+
+    static QIcon resolveMenuIcon(const QString& resourcePath)
+    {
+        return resolveIcon(resourcePath);
     }
 
     static QStringList jsArrayToStringList(const QJSValue& array)

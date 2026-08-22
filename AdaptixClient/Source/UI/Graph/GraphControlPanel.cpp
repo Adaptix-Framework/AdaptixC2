@@ -4,7 +4,7 @@
 #include <Client/Settings.h>
 #include <MainAdaptix.h>
 
-#include <oclero/qlementine/widgets/SegmentedControl.hpp>
+#include <Utils/CustomElements/SegmentControl.h>
 #include <oclero/qlementine/widgets/Switch.hpp>
 #include <oclero/qlementine/style/QlementineStyle.hpp>
 #include <oclero/qlementine/style/Theme.hpp>
@@ -83,11 +83,10 @@ void GraphControlPanel::buildExpanded()
     v->setSpacing(6);
 
     auto* layoutLabel = new QLabel(tr("Layout"), contentWidget);
-    layoutSegment = new oclero::qlementine::SegmentedControl(contentWidget);
+    layoutSegment = new SegmentControl(contentWidget);
     layoutSegment->addItem(tr("Left \u2192 Right"));
     layoutSegment->addItem(tr("Top \u2192 Bottom"));
-    layoutSegment->setFixedHeight(FontManager::instance().typography().segmentHeight);
-    connect(layoutSegment, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this]() {
+    connect(layoutSegment, &SegmentControl::currentIndexChanged, this, [this]() {
         if (graph) {
             const int idx = layoutSegment->currentIndex();
             graph->SetLayoutDirection(idx == 0 ? LayoutLeftToRight : LayoutTopToBottom);

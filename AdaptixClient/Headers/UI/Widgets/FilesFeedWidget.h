@@ -10,7 +10,7 @@
 #include <QStackedWidget>
 
 class AdaptixWidget;
-namespace oclero::qlementine { class SegmentedControl; }
+class SegmentControl;
 
 enum FilesFeedBlock {
     FFB_Id = 0,
@@ -48,9 +48,9 @@ Q_OBJECT
 
     int m_currentSegment = 0;
 
-    oclero::qlementine::SegmentedControl* m_segDl   = nullptr;
-    oclero::qlementine::SegmentedControl* m_segUl   = nullptr;
-    oclero::qlementine::SegmentedControl* m_segSync = nullptr;
+    SegmentControl* m_segDl   = nullptr;
+    SegmentControl* m_segUl   = nullptr;
+    SegmentControl* m_segSync = nullptr;
 
     QStackedWidget* m_stack = nullptr;
 
@@ -61,6 +61,8 @@ Q_OBJECT
     ListFeedWidget* activeFeed() const;
     FeedListModel*  activeModel() const;
     void loadCurrentPage();
+
+    SegmentControl* createModeSegment(QWidget* parent, int selectedIdx);
 
 public:
     explicit FilesFeedWidget(AdaptixWidget* w);

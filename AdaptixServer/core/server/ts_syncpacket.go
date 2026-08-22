@@ -69,6 +69,7 @@ const (
 	TYPE_TUNNEL_CREATE = 0x57
 	TYPE_TUNNEL_EDIT   = 0x58
 	TYPE_TUNNEL_DELETE = 0x59
+	TYPE_TUNNEL_ACCEPT = 0x5a
 
 	TYPE_SCREEN_CREATE = 0x5b
 	TYPE_SCREEN_UPDATE = 0x5c
@@ -108,10 +109,11 @@ const (
 	TYPE_GROUP_MEMBERS  = 0xa4
 	TYPE_GROUP_REPARENT = 0xa5
 
-	TYPE_PAYLOAD_CREATE = 0xb1
-	TYPE_PAYLOAD_UPDATE = 0xb2
-	TYPE_PAYLOAD_DELETE = 0xb3
-	TYPE_PAYLOAD_EDIT   = 0xb4
+	TYPE_PAYLOAD_CREATE  = 0xb1
+	TYPE_PAYLOAD_UPDATE  = 0xb2
+	TYPE_PAYLOAD_DELETE  = 0xb3
+	TYPE_PAYLOAD_EDIT    = 0xb4
+	TYPE_PAYLOAD_SET_TAG = 0xb5
 )
 
 func CreateSpNotification(notifyType int, message string) SpNotification {
@@ -250,6 +252,25 @@ func CreateSpAgentNew(agentData adaptix.AgentData) SyncPackerAgentNew {
 		Tags:         agentData.Tags,
 		Mark:         agentData.Mark,
 		Color:        agentData.Color,
+	}
+}
+
+func CreateSpAgentNewWithGroups(agentData adaptix.AgentData, cmdGroups map[string]bool) SyncPackerAgentNew {
+	p := CreateSpAgentNew(agentData)
+	if len(cmdGroups) > 0 {
+		p.CommandGroups = cmdGroups
+	}
+	return p
+}
+
+func CreateSpAgentCommandGroups(agentId int64, cmdGroups map[string]bool) SyncPackerAgentUpdate {
+	if cmdGroups == nil {
+		cmdGroups = map[string]bool{}
+	}
+	return SyncPackerAgentUpdate{
+		SpType:        TYPE_AGENT_UPDATE,
+		Id:            agentId,
+		CommandGroups: cmdGroups,
 	}
 }
 
@@ -829,6 +850,14 @@ func CreateSpTunnelDelete(tunnelData adaptix.TunnelData) SyncPackerTunnelDelete 
 	}
 }
 
+func CreateSpTunnelAccept(tunnelId, channelId int64) SyncPackerTunnelAccept {
+	return SyncPackerTunnelAccept{
+		SpType:    TYPE_TUNNEL_ACCEPT,
+		TunnelId:  tunnelId,
+		ChannelId: channelId,
+	}
+}
+
 /// SERVICE
 
 func CreateSpServiceReg(name string, ax string) SyncPackerServiceReg {
@@ -987,6 +1016,7 @@ func CreateSpPayloadCreate(p adaptix.PayloadData) SyncPackerPayloadCreate {
 		BuildId:   p.BuildId,
 		Watermark: p.Watermark,
 		Notes:     p.Notes,
+		Tag:       p.Tag,
 		Uid:       p.Uid,
 		Color:     p.Color,
 		Missing:   p.Missing,
@@ -1032,8 +1062,17 @@ func CreateSpPayloadEdit(p adaptix.PayloadData) SyncPackerPayloadEdit {
 		BuildId:   p.BuildId,
 		Watermark: p.Watermark,
 		Notes:     p.Notes,
+		Tag:       p.Tag,
 		Uid:       p.Uid,
 		Color:     p.Color,
 		Missing:   p.Missing,
+	}
+}
+
+func CreateSpPayloadSetTag(ids []int64, tag string) SyncPackerPayloadTag {
+	return SyncPackerPayloadTag{
+		SpType:     TYPE_PAYLOAD_SET_TAG,
+		PayloadIds: ids,
+		Tag:        tag,
 	}
 }

@@ -181,8 +181,8 @@ func (l *Listener) InternalHandler(data []byte) (int64, error) {
 	agentType := fmt.Sprintf("%08x", uint(binary.BigEndian.Uint32(agentInfo[:4])))
 	agentInfo = agentInfo[4:]
 	agentUid := make([]byte, 4)
-	binary.BigEndian.PutUint32(agentUid, binary.BigEndian.Uint32(agentInfo[:4]))
-	agentInfo = agentInfo[4:]
+	copy(agentUid, agentInfo[4:8])
+	agentInfo = agentInfo[8:]
 
 	var exists bool
 	agentId, exists = Ts.TsAgentIdByUID(agentUid)

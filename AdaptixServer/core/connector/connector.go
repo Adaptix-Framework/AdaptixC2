@@ -264,6 +264,7 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		api_group.POST("/otp/generate", connector.tcOTP_Generate)
 
 		api_group.GET("/listener/list", connector.TcListenerList)
+		api_group.GET("/listener/catalog", connector.TcListenerCatalog)
 		api_group.POST("/listener/create", connector.TcListenerStart)
 		api_group.POST("/listener/edit", connector.TcListenerEdit)
 		api_group.POST("/listener/stop", connector.TcListenerStop)
@@ -273,6 +274,7 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		api_group.POST("/listener/tags", connector.TcListenerSetTags)
 
 		api_group.GET("/agent/list", connector.TcAgentList)
+		api_group.GET("/agent/catalog", connector.TcAgentCatalog)
 		api_group.POST("/agent/generate", connector.TcAgentGenerate)
 		api_group.POST("/agent/remove", connector.TcAgentRemove)
 
@@ -283,6 +285,8 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		api_group.POST("/agent/set/mark", connector.TcAgentSetMark)
 		api_group.POST("/agent/set/color", connector.TcAgentSetColor)
 		api_group.POST("/agent/update/data", connector.TcAgentUpdateData)
+		api_group.POST("/agent/command_group/set", connector.TcAgentCommandGroupSet)
+		api_group.GET("/agent/command_group/list", connector.TcAgentCommandGroupList)
 
 		api_group.GET("/group/list", connector.TcGroupList)
 		api_group.POST("/group/create", connector.TcGroupCreate)
@@ -323,6 +327,7 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		api_group.POST("/payload/hide", connector.TcPayloadHide)
 		api_group.POST("/payload/update", connector.TcPayloadUpdate)
 		api_group.POST("/payload/set_color", connector.TcPayloadSetColor)
+		api_group.POST("/payload/set/tag", connector.TcPayloadSetTag)
 		api_group.POST("/payload/remove", connector.TcPayloadRemove)
 		api_group.POST("/payload/import", connector.TcPayloadImport)
 		api_group.GET("/payload/sync", connector.TcPayloadSync)
@@ -356,11 +361,15 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		api_group.POST("/tunnel/pause", connector.TcTunnelPause)
 		api_group.POST("/tunnel/resume", connector.TcTunnelResume)
 		api_group.POST("/tunnel/set/info", connector.TcTunnelSetIno)
+		api_group.POST("/tunnel/channel/nack", connector.TcTunnelChannelNack)
 
 		api_group.GET("/service/list", connector.TcServiceList)
+		api_group.GET("/service/catalog", connector.TcServiceCatalog)
+		api_group.GET("/service/catalog/:name", connector.TcServiceCatalogOne)
 		//api_group.POST("/service/load", connector.TcServiceLoad)
 		//api_group.POST("/service/unload", connector.TcServiceUnload)
 		api_group.POST("/plugin/service/call", connector.TcPluginServiceCall)
+		api_group.POST("/plugin/service/call_wait", connector.TcPluginServiceCallWait)
 		api_group.POST("/plugin/agent/call", connector.TcPluginAgentCall)
 		api_group.POST("/plugin/listener/call", connector.TcPluginListenerCall)
 
@@ -379,6 +388,8 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 		api_group.POST("/events/mute", connector.TcEventMute)
 		api_group.POST("/events/unmute", connector.TcEventUnmute)
 		api_group.POST("/events/mutes", connector.TcEventMutesList)
+		api_group.GET("/events/types", connector.TcEventTypesList)
+		api_group.POST("/events/emit", connector.TcEventEmit)
 	}
 
 	connector.Engine.NoRoute(limitTimeoutMiddleware(httpCfg), default404Middleware(httpErr), func(c *gin.Context) { _ = c.Error(errors.New("NoRoute")) })

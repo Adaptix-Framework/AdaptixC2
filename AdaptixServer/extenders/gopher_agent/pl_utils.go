@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -332,35 +330,6 @@ const (
 	CALLBACK_AX_SCREENSHOT   = 0x81
 	CALLBACK_AX_DOWNLOAD_MEM = 0x82
 )
-
-func parseDurationToSeconds(input string) (int, error) {
-	re := regexp.MustCompile(`(\d+)(h|m|s)`)
-	matches := re.FindAllStringSubmatch(input, -1)
-
-	if matches == nil {
-		input = input + "s"
-		matches = re.FindAllStringSubmatch(input, -1)
-	}
-
-	totalSeconds := 0
-	for _, match := range matches {
-		value, err := strconv.Atoi(match[1])
-		if err != nil {
-			return 0, err
-		}
-
-		switch match[2] {
-		case "h":
-			totalSeconds += value * 3600
-		case "m":
-			totalSeconds += value * 60
-		case "s":
-			totalSeconds += value
-		}
-	}
-
-	return totalSeconds, nil
-}
 
 func ZipBytes(data []byte, name string) ([]byte, error) {
 	var buf bytes.Buffer

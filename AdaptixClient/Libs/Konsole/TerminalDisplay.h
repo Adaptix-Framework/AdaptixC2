@@ -45,6 +45,7 @@ enum BackgroundMode {
     Zoom,
     Fit,
     Center,
+    Fill,
     Tile
 };
 

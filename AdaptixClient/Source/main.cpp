@@ -23,8 +23,21 @@ void messageFilter(QtMsgType type, const QMessageLogContext &context, const QStr
         defaultHandler(type, context, msg);
 }
 
+static void applyLinuxQpaDefaults()
+{
+#if defined(Q_OS_LINUX)
+    if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORMTHEME"))
+        qputenv("QT_QPA_PLATFORMTHEME", QByteArray());
+
+    if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORM"))
+        qputenv("QT_QPA_PLATFORM", "xcb");
+#endif
+}
+
 int main(int argc, char *argv[])
 {
+    applyLinuxQpaDefaults();
+
     defaultHandler = qInstallMessageHandler(messageFilter);
     
     QLoggingCategory::setFilterRules(

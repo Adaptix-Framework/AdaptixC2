@@ -17,7 +17,10 @@ CXXHighlighter::CXXHighlighter(QTextDocument* document) :
     m_functionPattern(QRegularExpression(R"(\b([_a-zA-Z][_a-zA-Z0-9]*\s+)?((?:[_a-zA-Z][_a-zA-Z0-9]*\s*::\s*)*[_a-zA-Z][_a-zA-Z0-9]*)(?=\s*\())")),
     m_defTypePattern(QRegularExpression(R"(\b([_a-zA-Z][_a-zA-Z0-9]*)\s+[_a-zA-Z][_a-zA-Z0-9]*\s*[;=])")),
     m_commentStartPattern(QRegularExpression(R"(/\*)")),
-    m_commentEndPattern(QRegularExpression(R"(\*/)"))
+    m_commentEndPattern(QRegularExpression(R"(\*/)")),
+    m_bofImportPattern(QRegularExpression(R"(\b([A-Za-z0-9][A-Za-z0-9._+-]*)\$([A-Za-z_][A-Za-z0-9_]*))")),
+    m_bofAbiTypePattern(QRegularExpression(R"(\b(?:i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|ptr|void|bool|char|wchar|size_t|usize|isize)\b)")),
+    m_bofCallConvPattern(QRegularExpression( R"(\b(?:cdecl|stdcall|fastcall|thiscall|vectorcall|sysv|ms_abi|win64|pascal|fortran|regparm)\b)", QRegularExpression::CaseInsensitiveOption))
 {
     Q_INIT_RESOURCE(codeeditor_resources);
     QFile fl(":/languages/cpp.xml");
@@ -47,10 +50,6 @@ CXXHighlighter::CXXHighlighter(QTextDocument* document) :
     m_highlightRules.append({QRegularExpression(R"(#[a-zA-Z_]+)"), "Preprocessor"});
     m_highlightRules.append({QRegularExpression(R"(//[^\n]*)"), "Comment"});
     m_highlightRules.append({
-        QRegularExpression(R"(\b([A-Za-z_][A-Za-z0-9_]*)\$([A-Za-z_][A-Za-z0-9_]*))"),
-        "Function"
-    });
-    m_highlightRules.append({
         QRegularExpression(R"(\b(?:__stdcall|__cdecl|__fastcall|__thiscall|__vectorcall|WINAPI|CALLBACK|APIENTRY|PASCAL|FARPROC|HMODULE|HINSTANCE|HRESULT|NTSTATUS|BOOL|DWORD|WORD|BYTE|LPSTR|LPCSTR|LPWSTR|LPCWSTR|HANDLE|HWND|HDC|HKEY|LPVOID|LPCVOID)\b)"),
         "Type"
     });
@@ -62,6 +61,9 @@ CXXHighlighter::CXXHighlighter(QTextDocument* document) :
     m_simpleRules.append({QRegularExpression(R"(//[^\n]*)"), "Comment"});
     m_simpleRules.append({QRegularExpression(R"(\b(?:if|else|for|while|do|switch|case|break|continue|return|goto|sizeof|typedef|struct|class|enum|union|const|static|extern|volatile|inline|void|int|char|short|long|float|double|signed|unsigned|bool|true|false|nullptr|NULL|namespace|using|template|typename|public|private|protected|virtual|override|final|noexcept|auto|decltype|constexpr|include|define|ifdef|ifndef|endif|pragma|error|warning)\b)"), "Keyword" });
     m_simpleRules.append({QRegularExpression(R"(\b(?:BOOL|DWORD|WORD|BYTE|HANDLE|HWND|HRESULT|LPVOID|LPCVOID|LPSTR|LPCSTR|LPWSTR|LPCWSTR|NTSTATUS|HMODULE|HINSTANCE)\b)"), "Type" });
+    m_simpleRules.append({m_bofImportPattern, "Function"});
+    m_simpleRules.append({m_bofCallConvPattern, "Keyword"});
+    m_simpleRules.append({m_bofAbiTypePattern, "Type"});
 
     if (document) {
         connect(document, &QTextDocument::contentsChanged, this, [this]() {
@@ -512,6 +514,38 @@ void CXXHighlighter::highlightBlock(const QString& text)
             if (isInComment(match.capturedStart(), match.capturedLength()))
                 continue;
             setFormat(match.capturedStart(1), match.capturedLength(1), syntaxStyle()->getFormat(QStringLiteral("Type")));
+        }
+    }
+
+    {
+        auto it = m_bofImportPattern.globalMatch(text);
+        while (it.hasNext()) {
+            auto match = it.next();
+            if (isInComment(match.capturedStart(), match.capturedLength()))
+                continue;
+            setFormat(match.capturedStart(), match.capturedLength(), syntaxStyle()->getFormat(QStringLiteral("Function")));
+            setFormat(match.capturedStart(1), match.capturedLength(1), syntaxStyle()->getFormat(QStringLiteral("Type")));
+            setFormat(match.capturedStart(2), match.capturedLength(2), syntaxStyle()->getFormat(QStringLiteral("Function")));
+        }
+    }
+
+    {
+        auto it = m_bofCallConvPattern.globalMatch(text);
+        while (it.hasNext()) {
+            auto match = it.next();
+            if (isInComment(match.capturedStart(), match.capturedLength()))
+                continue;
+            setFormat(match.capturedStart(), match.capturedLength(), syntaxStyle()->getFormat(QStringLiteral("Keyword")));
+        }
+    }
+
+    {
+        auto it = m_bofAbiTypePattern.globalMatch(text);
+        while (it.hasNext()) {
+            auto match = it.next();
+            if (isInComment(match.capturedStart(), match.capturedLength()))
+                continue;
+            setFormat(match.capturedStart(), match.capturedLength(), syntaxStyle()->getFormat(QStringLiteral("Type")));
         }
     }
 }

@@ -54,6 +54,7 @@ Q_OBJECT
         ColCreator,
         ColCreated,
         ColUid,
+        ColTag,
         ColMd5,
         ColSha1,
         ColSha256,
@@ -87,6 +88,7 @@ public:
     void AddPayloadItem(const PayloadData& p);
     void UpdatePayloadItem(const PayloadData& p);
     void UpdatePayloadHidden(const QList<qint64>& ids, bool hidden);
+    void UpdatePayloadTag(const QList<qint64>& ids, const QString& tag);
     void RemovePayloadItems(const QList<qint64>& ids);
     void UpdateColumnsVisible();
 
@@ -104,6 +106,7 @@ public Q_SLOTS:
     void actionItemColor();
     void actionTextColor();
     void actionColorReset();
+    void actionSetTag();
     void handleContextMenu(const QPoint& pos);
     void onGenerateFromToolbar();
 

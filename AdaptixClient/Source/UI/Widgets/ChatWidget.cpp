@@ -392,7 +392,7 @@ struct ChatColors {
     QColor flashBorder;
 
     static ChatColors fromTheme() {
-        auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+        auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
         const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
 
         bool isDark = t.backgroundColorMain1.lightnessF() < 0.5;
@@ -426,7 +426,7 @@ struct ChatColors {
 static const ChatColors& chatColors() {
     static ChatColors cached;
     static oclero::qlementine::QlementineStyle* lastStyle = nullptr;
-    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     if (qs && qs != lastStyle) {
         cached = ChatColors::fromTheme();
         lastStyle = qs;
@@ -951,7 +951,7 @@ TodoWidget::TodoWidget(QWidget* parent) : QWidget(parent), updating(false) {
         applyFonts();
         applyPanelStyle();
     });
-    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style())) {
+    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr)) {
         connect(qs, &oclero::qlementine::QlementineStyle::themeChanged, this, &TodoWidget::refreshTheme,
                 Qt::UniqueConnection);
     }
@@ -994,7 +994,7 @@ void TodoWidget::showEmptyPlaceholder()
     if (!renderedView)
         return;
 
-    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
     const AppTypography& ty = FontManager::instance().typography();
     const int bodyPx = qMax(11, ty.baseSize);
@@ -1015,7 +1015,7 @@ void TodoWidget::showEmptyPlaceholder()
 
 void TodoWidget::applyPanelStyle()
 {
-    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
     const AppTypography& ty = FontManager::instance().typography();
     const int fontPx = ty.chromeFontPx;
@@ -1247,7 +1247,7 @@ void TodoWidget::SetTodo(const QString& content, const QString& updatedBy, qint6
     updateEmptyChrome();
 }
 
-ChatWidget::ChatWidget(AdaptixWidget* w) : DockTab("Chat", w->GetProfile()->GetProject(), ":/icons/chat"), adaptixWidget(w)
+ChatWidget::ChatWidget(AdaptixWidget* w) : DockTab("Chat", w->GetProfile()->GetProject(), ":/icons/chat", w), adaptixWidget(w)
 {
     this->createUI();
 
@@ -1342,8 +1342,10 @@ ChatWidget::ChatWidget(AdaptixWidget* w) : DockTab("Chat", w->GetProfile()->GetP
 
     connect(&FontManager::instance(), &FontManager::typographyChanged, this, refreshChrome);
 
-    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style())) {
-        connect(qs, &oclero::qlementine::QlementineStyle::themeChanged, this, [this, refreshChrome]() { refreshChrome(); });
+    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr)) {
+        connect(qs, &oclero::qlementine::QlementineStyle::themeChanged, this, [this, refreshChrome]() {
+            refreshChrome();
+        });
     }
 
     this->dockWidget->setWidget(this);
@@ -1781,7 +1783,7 @@ void ChatWidget::seedSplitterSizes()
 
 void ChatWidget::applyChatChromeStyle()
 {
-    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
     const int fontPx = FontManager::instance().typography().chromeFontPx;
     const AppTypography& ty = FontManager::instance().typography();
@@ -2321,7 +2323,7 @@ void ChatWidget::AddChatMessage(qint64 id, const QString& username, const QStrin
         auto* coreDw = dockWidget ? dockWidget->dockWidget() : nullptr;
         const bool viewingChat = coreDw && coreDw->isOpen() && coreDw->isCurrentTab();
         if (!viewingChat) {
-            if (adaptixWidget)
+            if (adaptixWidget && adaptixWidget->IsSynchronized())
                 adaptixWidget->ChatUnreadIncrement();
             blinkNewContent();
         }
@@ -2385,6 +2387,7 @@ void ChatWidget::showEvent(QShowEvent* event)
 }
 
 void ChatWidget::Clear() {
+    presyncing = true;
     messageModel->clear();
     todoWidget->SetTodo("", "", 0);
     hasMore = true;

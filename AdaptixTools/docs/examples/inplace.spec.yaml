@@ -21,4 +21,3 @@ extenders:
         - config.yaml
         - ax_config.axs
         - my_service.so
-        - service_manifest.yaml

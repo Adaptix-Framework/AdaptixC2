@@ -116,8 +116,8 @@ func resolveExternalAddress(symbolName string, outChannel chan<- interface{}, as
 				fallthrough
 			case string("AxAddScreenshot"):
 				return windows.NewCallback(boffer.AxAddScreenshot(outChannel))
-			case string("AxDownloadMemory"):
-				return windows.NewCallback(boffer.AxDownloadMemory(outChannel))
+			case string("BeaconDownload"):
+				return windows.NewCallback(boffer.BeaconDownload(outChannel))
 			case string("BeaconWakeup"):
 				if asyncCtx != nil {
 					return windows.NewCallback(boffer.GetBeaconWakeup(asyncCtx.WakeupFunc))

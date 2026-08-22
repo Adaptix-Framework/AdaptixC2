@@ -1368,6 +1368,19 @@ void TerminalDisplay::paintEvent(QPaintEvent *pe) {
             QRect r = currentBackgroundImage.rect();
             r.moveCenter(cr.center());
             paint.drawPixmap(r.topLeft(), currentBackgroundImage);
+        } else if (_backgroundMode == Fill) {
+            QRect r = currentBackgroundImage.rect();
+            qreal wRatio = static_cast<qreal>(cr.width()) / r.width();
+            qreal hRatio = static_cast<qreal>(cr.height()) / r.height();
+            if (wRatio < hRatio) {
+                r.setWidth(qRound(r.width() * hRatio));
+                r.setHeight(cr.height());
+            } else {
+                r.setHeight(qRound(r.height() * wRatio));
+                r.setWidth(cr.width());
+            }
+            r.moveCenter(cr.center());
+            paint.drawPixmap(r, currentBackgroundImage, currentBackgroundImage.rect());
         } else if (_backgroundMode == Tile) {
             QPixmap scaled = currentBackgroundImage;
             qreal wRatio =

@@ -11,7 +11,9 @@
 #include <QApplication>
 #include <QJSEngine>
 #include <oclero/qlementine/widgets/Switch.hpp>
-#include <oclero/qlementine/widgets/SegmentedControl.hpp>
+#include <Utils/CustomElements/SegmentControl.h>
+#include <Utils/CustomElements/LogView.h>
+#include <oclero/qlementine/widgets/IconWidget.hpp>
 
 
 
@@ -151,6 +153,16 @@ QObject* BridgeForm::create_label(const QString& text)
     return wrapper;
 }
 
+QObject* BridgeForm::create_icon(const QString& resourcePath)
+{
+    auto* icon = new oclero::qlementine::IconWidget(getParentWidget());
+    auto* wrapper = new AxIconWrapper(icon, this);
+    if (!resourcePath.trimmed().isEmpty())
+        wrapper->setIcon(resourcePath);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
 QObject* BridgeForm::create_textline(const QString &text)
 {
     auto* edit = new QLineEdit(text, getParentWidget());
@@ -186,7 +198,7 @@ QObject* BridgeForm::create_switch(const QString& label)
 
 QObject* BridgeForm::create_segcontrol()
 {
-    auto* sc = new oclero::qlementine::SegmentedControl(getParentWidget());
+    auto* sc = new SegmentControl(getParentWidget());
     auto* wrapper = new AxSegmentedControlWrapper(sc, this);
     scriptEngine->registerObject(wrapper);
     return wrapper;
@@ -228,6 +240,14 @@ QObject* BridgeForm::create_textmulti(const QString& text)
 {
     auto* textEdit = new QPlainTextEdit(text, getParentWidget());
     auto* wrapper = new AxTextMultiWrapper(textEdit, this);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
+QObject* BridgeForm::create_logview()
+{
+    auto* view = new LogView(getParentWidget());
+    auto* wrapper = new AxLogViewWrapper(view, this);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }
@@ -418,11 +438,13 @@ QObject* BridgeForm::create_selector_payload_store(const QJSValue &headers) cons
     return wrapper;
 }
 
-QObject* BridgeForm::create_ext_dock(const QString &id, const QString &title, const QString &location)
+QObject* BridgeForm::create_ext_dock(const QString &id, const QString &title, const QString &location, const QString &icon)
 {
     AdaptixWidget* adaptixWidget = scriptEngine->manager()->GetAdaptix();
 
     auto* wrapper = new AxDockWrapper(adaptixWidget, id, title, location);
+    if (!icon.trimmed().isEmpty())
+        wrapper->setIcon(icon);
     scriptEngine->registerObject(wrapper);
     return wrapper;
 }

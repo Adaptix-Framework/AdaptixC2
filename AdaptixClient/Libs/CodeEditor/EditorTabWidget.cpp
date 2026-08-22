@@ -9,6 +9,7 @@
 #include <AxScriptHighlighter.h>
 
 #include <QTabBar>
+#include <QAbstractButton>
 #include <QFileInfo>
 #include <QFile>
 #include <QTextStream>
@@ -17,9 +18,41 @@
 #include <QTimer>
 #include <algorithm>
 
+namespace {
+
+void polishCloseButton(QTabBar* bar, int index)
+{
+    if (!bar)
+        return;
+    QWidget* btn = bar->tabButton(index, QTabBar::RightSide);
+    if (!btn)
+        return;
+    constexpr int kClose = 16;
+    btn->setFixedSize(kClose, kClose);
+    if (auto* ab = qobject_cast<QAbstractButton*>(btn)) {
+        ab->setIconSize(QSize(kClose - 4, kClose - 4));
+        ab->setFocusPolicy(Qt::NoFocus);
+        ab->setCursor(Qt::ArrowCursor);
+    }
+}
+
+void polishAllCloseButtons(QTabBar* bar)
+{
+    if (!bar)
+        return;
+    for (int i = 0; i < bar->count(); ++i)
+        polishCloseButton(bar, i);
+}
+
+} // namespace
+
 EditorTabWidget::EditorTabWidget(QWidget* parent) : QTabWidget(parent), m_syntaxStyle(nullptr)
 {
+    setObjectName(QStringLiteral("CodeEditorFileTabs"));
     setMovable(true);
+    setDocumentMode(true);
+    setElideMode(Qt::ElideRight);
+    setUsesScrollButtons(true);
 
     connect(this, &QTabWidget::tabCloseRequested, this, [this](int index) {
         closeTab(index);
@@ -31,6 +64,13 @@ EditorTabWidget::EditorTabWidget(QWidget* parent) : QTabWidget(parent), m_syntax
     });
 
     setTabsClosable(true);
+
+    if (auto* bar = tabBar()) {
+        connect(bar, &QTabBar::tabBarClicked, this, [this](int) {
+            polishAllCloseButtons(tabBar());
+        });
+    }
+    QTimer::singleShot(0, this, [this]() { polishAllCloseButtons(tabBar()); });
 }
 
 void EditorTabWidget::setSyntaxStyle(SyntaxStyle* style)
@@ -326,6 +366,11 @@ void EditorTabWidget::tabInserted(int index)
 {
     QTabWidget::tabInserted(index);
     updateTabTitle(index);
+    polishCloseButton(tabBar(), index);
+    QTimer::singleShot(0, this, [this, index]() {
+        if (index >= 0 && index < count())
+            polishCloseButton(tabBar(), index);
+    });
 }
 
 void EditorTabWidget::tabRemoved(int index)

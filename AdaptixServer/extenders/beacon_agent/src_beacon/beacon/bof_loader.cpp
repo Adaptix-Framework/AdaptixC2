@@ -45,10 +45,11 @@ BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 	{ HASH_FUNC_BEACONDATALENGTH,             (LPVOID) BeaconDataLength },
 	{ HASH_FUNC_BEACONDATAEXTRACT,            (LPVOID) BeaconDataExtract },
 
-	/// 2 - Output API
+	/// 3 - Output API
 
 	{ HASH_FUNC_BEACONOUTPUT,                 (LPVOID) BeaconOutput },
 	{ HASH_FUNC_BEACONPRINTF,                 (LPVOID) BeaconPrintf },
+	{ HASH_FUNC_BEACONDOWNLOAD,               (LPVOID)BeaconDownload },
 
 	/// 7 - Format API
 
@@ -76,9 +77,8 @@ BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 	{ HASH_FUNC_BEACONGETVALUE,               (LPVOID) BeaconGetValue },
 	{ HASH_FUNC_BEACONREMOVEVALUE,            (LPVOID) BeaconRemoveValue },
 
-	/// 2 - Adaptix APIs
+	/// 1 - Adaptix APIs
 	{ HASH_FUNC_AXADDSCREENSHOT,  (LPVOID) AxAddScreenshot },
-	{ HASH_FUNC_AXDOWNLOADMEMORY, (LPVOID) AxDownloadMemory },
 
 	/// 3 - Async BOF APIs
 	{ HASH_FUNC_BEACONREGISTERTHREADCALLBACK,   (LPVOID) BeaconRegisterThreadCallback },

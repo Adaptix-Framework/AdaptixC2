@@ -23,9 +23,9 @@
 #include <QTimer>
 #include <QEvent>
 
-REGISTER_DOCK_WIDGET(ConsoleWidget, "Agent Console", true)
+REGISTER_DOCK_WIDGET(ConsoleWidget, "Agent Console", false)
 
-ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTab(QString("Console [%1]").arg( a->data.Id ), w->GetProfile()->GetProject())
+ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTab(QString("Console [%1]").arg( a->data.Id ), w->GetProfile()->GetProject(), QString(), w)
 {
     adaptixWidget = w;
     agent         = a;
@@ -140,7 +140,7 @@ void ConsoleWidget::SetUpdatesEnabled(const bool enabled)
 
 void ConsoleWidget::createUI()
 {
-    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
     const QString textColor   = t.secondaryColor.name();
     const QString borderColor = t.borderColor.name();
@@ -584,7 +584,7 @@ void ConsoleWidget::applyHistoryBarStyle()
 {
     if (!historyBar)
         return;
-    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
     const int fontPx = FontManager::instance().typography().chromeFontPx;
     const QString monoFamily = FontManager::instance().typography().family;
@@ -1142,7 +1142,7 @@ void ConsoleWidget::applyTheme()
     }
     OutputTextEdit->setConsoleBackground(bg.color, imagePath, dimming);
 
-    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     const auto& at = qs ? qs->theme() : oclero::qlementine::Theme();
     OutputTextEdit->setStyleSheet(
         QStringLiteral("QPlainTextEdit { background-color: transparent; color: %1; border: 1px solid %2; border-radius: 4px; }")
@@ -1259,7 +1259,21 @@ void ConsoleWidget::ProcessCmdResult(const QString &commandLine, const Commander
             }
 
             this->ConsoleOutputPrompt(0, "", "", commandLine);
-            this->ConsoleOutputMessage(0, "", type, message, text, true);
+            if (cmdResult.styledHelp && !cmdResult.error) {
+                const auto theme = getActiveTheme();
+                const QStringList lines = text.split(QLatin1Char('\n'));
+                for (QString line : lines) {
+                    if (line.startsWith(kHelpInactiveMarker)) {
+                        line.remove(0, 1);
+                        OutputTextEdit->appendFormatted(line + QLatin1Char('\n'),
+                            [&](QTextCharFormat& fmt){ fmt = theme.debug.toFormat(); });
+                    } else {
+                        OutputTextEdit->appendPlain(line + QLatin1Char('\n'));
+                    }
+                }
+            } else {
+                this->ConsoleOutputMessage(0, "", type, message, text, true);
+            }
         }
         return;
     }

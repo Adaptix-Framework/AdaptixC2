@@ -137,6 +137,7 @@
 #define TYPE_TUNNEL_CREATE 0x57
 #define TYPE_TUNNEL_EDIT   0x58
 #define TYPE_TUNNEL_DELETE 0x59
+#define TYPE_TUNNEL_ACCEPT 0x5a
 
 #define TYPE_SCREEN_CREATE 0x5b
 #define TYPE_SCREEN_UPDATE 0x5c
@@ -176,10 +177,11 @@
 #define TYPE_GROUP_MEMBERS  0xa4
 #define TYPE_GROUP_REPARENT 0xa5
 
-#define TYPE_PAYLOAD_CREATE 0xb1
-#define TYPE_PAYLOAD_UPDATE 0xb2
-#define TYPE_PAYLOAD_DELETE 0xb3
-#define TYPE_PAYLOAD_EDIT   0xb4
+#define TYPE_PAYLOAD_CREATE  0xb1
+#define TYPE_PAYLOAD_UPDATE  0xb2
+#define TYPE_PAYLOAD_DELETE  0xb3
+#define TYPE_PAYLOAD_EDIT    0xb4
+#define TYPE_PAYLOAD_SET_TAG 0xb5
 
 //////////
 
@@ -230,6 +232,11 @@ typedef struct AxScriptPolicy {
     bool sandboxFs = true;
 } AxScriptPolicy;
 
+typedef struct DockLayoutSettings {
+    QString layout = QStringLiteral("split_v2");
+    QMap<QString, QString> openIn;
+    QStringList startup;
+} DockLayoutSettings;
 
 typedef struct SettingsData {
     QString MainTheme;
@@ -241,6 +248,7 @@ typedef struct SettingsData {
     int     RemoteTerminalBufferSize;
     int     PageSize;
     int     ToolbarPosition; // 0 = top, 1 = bottom, 2 = left, 3 = right
+    DockLayoutSettings DockLayout;
 
     bool ConsoleTime;
     int  ConsoleBufferSize;
@@ -280,7 +288,7 @@ typedef struct SettingsData {
     bool FilesTableColumns[11];
     bool FilesCompactMode;
 
-    bool PayloadsTableColumns[13];
+    bool PayloadsTableColumns[14];
 
     bool TabBlinkEnabled;
     QMap<QString, bool> BlinkWidgets;  // className -> enabled
@@ -423,6 +431,7 @@ typedef struct PayloadData
     QString   Watermark;
     QString   ConfigJson;
     QString   Description;
+    QString   Tag;
     QString   Uid;
     QString   Color;
     bool      Missing = false;

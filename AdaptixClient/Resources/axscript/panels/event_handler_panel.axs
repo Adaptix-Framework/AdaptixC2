@@ -15,6 +15,20 @@ function GeneratePanel() {
 
     let eventCombo = form.create_combo();
     eventCombo.addItems(events);
+    if (eventCombo.setEditable)
+        eventCombo.setEditable(true);
+
+    let applyTemplateBtn = form.create_button("Template");
+    applyTemplateBtn.setEnabled(true);
+
+    let eventRow = form.create_hlayout();
+    eventRow.setContentsMargins(0, 0, 0, 0);
+    eventRow.setSpacing(6);
+    eventRow.addWidget(eventCombo);
+    eventRow.addWidget(applyTemplateBtn);
+
+    let eventRowPanel = form.create_panel();
+    eventRowPanel.setLayout(eventRow);
 
     let nameEdit = form.create_textline("");
     nameEdit.setPlaceholder("auto_handler");
@@ -31,13 +45,24 @@ function GeneratePanel() {
     let metaGrid = form.create_gridlayout();
     let r = 0;
     metaGrid.addWidget(form.create_label("Event"), r, 0, 1, 1);
-    metaGrid.addWidget(eventCombo, r, 1, 1, 1); r++;
+    metaGrid.addWidget(eventRowPanel, r, 1, 1, 1); r++;
     metaGrid.addWidget(form.create_label("Name"), r, 0, 1, 1);
     metaGrid.addWidget(nameEdit, r, 1, 1, 1); r++;
     metaGrid.addWidget(form.create_label("Group"), r, 0, 1, 1);
     metaGrid.addWidget(groupEdit, r, 1, 1, 1); r++;
     metaGrid.addWidget(form.create_label("Description"), r, 0, 1, 1);
     metaGrid.addWidget(descEdit, r, 1, 1, 1);
+
+    form.connect(applyTemplateBtn, "clicked", function () {
+        let et = String(eventCombo.currentText() || "").trim() || "agent.new";
+        if (typeof editor === "undefined" || !editor || !editor.apply_handler_template) {
+            return;
+        }
+        if (editor.apply_handler_template(et)) {
+            if (!descEdit.text() || String(descEdit.text()).indexOf("Handler for ") === 0)
+                descEdit.setText("Handler for " + et);
+        }
+    });
 
     let metaInner = form.create_panel();
     metaInner.setLayout(metaGrid);
@@ -158,9 +183,10 @@ function GeneratePanel() {
             show([fComputer, fDomain, fAddress, fOs, fTags, fAlive]);
         } else if (fam === "client") {
             show([fClient]);
+        } else if (fam === "pivot") {
+            show([fAgentId]);
         } else {
-            // pivot / unknown
-            show([]);
+            show([fAgentId, fAgentName, fUser, fComputer, fTags, fClient, fTaskId]);
         }
     }
 

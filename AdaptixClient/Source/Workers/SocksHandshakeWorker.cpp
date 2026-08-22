@@ -220,13 +220,18 @@ bool SocksHandshakeWorker::processSocks5(QJsonObject& otpData, qint64& channelId
     }
 
     buf = readExact(clientSock, 4);
-    if (buf.size() != 4 || static_cast<uchar>(buf[0]) != 0x05 || static_cast<uchar>(buf[1]) != 0x01) {
+    if (buf.size() != 4 || static_cast<uchar>(buf[0]) != 0x05) {
+        rejectAndClose(clientSock, QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00", 10));
+        return false;
+    }
+    const uchar cmd = static_cast<uchar>(buf[1]);
+    if (cmd != 0x01 && cmd != 0x02) {
         rejectAndClose(clientSock, QByteArray("\x05\x07\x00\x01\x00\x00\x00\x00\x00\x00", 10));
         return false;
     }
     uchar addrType = static_cast<uchar>(buf[3]);
 
-    QString mode = "tcp";
+    QString mode = (cmd == 0x02) ? QStringLiteral("bind") : QStringLiteral("tcp");
     QString dstAddress;
 
     switch (addrType) {

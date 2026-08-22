@@ -36,6 +36,8 @@ type TeamserverBridge interface {
 	AxAgentSetMark(agentIds []int64, mark string) error
 	AxAgentSetColor(agentIds []int64, background string, foreground string, reset bool) error
 	AxAgentUpdateData(agentId int64, updateData map[string]interface{}) error
+	AxAgentSetCommandGroup(agentId int64, groupId string, enabled bool) error
+	AxAgentGetCommandGroups(agentId int64) ([]map[string]interface{}, error)
 
 	AxGetDownloads() []interface{}
 	AxGetScreenshots() []interface{}
@@ -45,6 +47,8 @@ type TeamserverBridge interface {
 	AxGetInterfaces() []string
 	AxGetAgentMark(agentId int64) string
 	AxUnloadAxScript(name string) error
+
+	TsEventEmitFrom(eventType string, source string, text string) error
 }
 
 type ScriptManager struct {
@@ -57,6 +61,8 @@ type ScriptManager struct {
 	agentEngines       map[string]*ScriptEngine
 	userEngines        map[string]*ScriptEngine
 	axscriptEngines    map[string]*ScriptEngine
+	serviceEngines     map[string]*ScriptEngine
+	serviceCommands    map[string]CommandGroup
 	scriptInfos        []ScriptInfo
 	globalAllowedRoots []string
 }
@@ -69,6 +75,8 @@ func NewScriptManager(ts TeamserverBridge) *ScriptManager {
 		agentEngines:    make(map[string]*ScriptEngine),
 		userEngines:     make(map[string]*ScriptEngine),
 		axscriptEngines: make(map[string]*ScriptEngine),
+		serviceEngines:  make(map[string]*ScriptEngine),
+		serviceCommands: make(map[string]CommandGroup),
 	}
 }
 
@@ -103,6 +111,90 @@ func (sm *ScriptManager) LoadAgentScript(agentName string, axScript string, list
 		sm.executeRegisterCommands(engine, agentName, "")
 	}
 	return nil
+}
+
+func (sm *ScriptManager) LoadServiceScript(serviceName, axScript string) error {
+	if serviceName == "" {
+		return fmt.Errorf("service name is required")
+	}
+	sm.UnloadServiceScript(serviceName)
+
+	engine := NewScriptEngine("service:"+serviceName, sm)
+	registerFormStubs(engine)
+	registerMenuStubs(engine)
+	registerEventStubs(engine)
+	registerAxBridge(engine)
+
+	if err := engine.Execute(axScript); err != nil {
+		return fmt.Errorf("failed to execute service script for '%s': %w", serviceName, err)
+	}
+
+	sm.mu.Lock()
+	sm.serviceEngines[serviceName] = engine
+	sm.scriptInfos = append(sm.scriptInfos, ScriptInfo{
+		Name:       serviceName,
+		ScriptType: "service",
+	})
+	sm.mu.Unlock()
+
+	sm.executeRegisterServiceCommands(engine, serviceName)
+	return nil
+}
+
+func (sm *ScriptManager) UnloadServiceScript(serviceName string) {
+	sm.mu.Lock()
+	delete(sm.serviceEngines, serviceName)
+	delete(sm.serviceCommands, serviceName)
+	filtered := sm.scriptInfos[:0]
+	for _, info := range sm.scriptInfos {
+		if !(info.ScriptType == "service" && info.Name == serviceName) {
+			filtered = append(filtered, info)
+		}
+	}
+	sm.scriptInfos = filtered
+	sm.mu.Unlock()
+}
+
+func (sm *ScriptManager) RegisterServiceCommandGroup(serviceName string, group CommandGroup) {
+	if serviceName == "" {
+		return
+	}
+	if group.GroupName == "" {
+		group.GroupName = serviceName
+	}
+	group.ScriptName = serviceName
+	group.Source = "service"
+	sm.mu.Lock()
+	sm.serviceCommands[serviceName] = group
+	sm.mu.Unlock()
+}
+
+func (sm *ScriptManager) ServiceCommandGroup(serviceName string) (CommandGroup, bool) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	g, ok := sm.serviceCommands[serviceName]
+	return g, ok
+}
+
+func (sm *ScriptManager) executeRegisterServiceCommands(engine *ScriptEngine, serviceName string) {
+	engine.mu.Lock()
+	rt := engine.runtime
+	fn := rt.Get("RegisterServiceCommands")
+	if fn == nil || goja.IsUndefined(fn) {
+		engine.mu.Unlock()
+		return
+	}
+	registerFn, ok := goja.AssertFunction(fn)
+	if !ok {
+		engine.mu.Unlock()
+		sm.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "axscript_manager", "log", "RegisterServiceCommands is not a function in script for service '%s'", serviceName)
+		return
+	}
+	_, err := registerFn(goja.Undefined())
+	engine.mu.Unlock()
+	if err != nil {
+		sm.teamserver.TsLogAdd(adaptix.LogStatusError, 0, "axscript_manager", "log", "Error calling RegisterServiceCommands for service '%s': %v", serviceName, err)
+	}
 }
 
 func (sm *ScriptManager) LoadAxScript(scriptPath string) error {
@@ -281,6 +373,9 @@ func (sm *ScriptManager) executeRegisterCommands(engine *ScriptEngine, agentName
 	}
 
 	obj := result.ToObject(rt)
+	sm.extractCommandGroupsArray(engine, agentName, listenerType, obj, "command_groups_windows", OsWindows)
+	sm.extractCommandGroupsArray(engine, agentName, listenerType, obj, "command_groups_linux", OsLinux)
+	sm.extractCommandGroupsArray(engine, agentName, listenerType, obj, "command_groups_macos", OsMac)
 	sm.extractCommandsFromResult(engine, agentName, listenerType, obj, "commands_windows", OsWindows)
 	sm.extractCommandsFromResult(engine, agentName, listenerType, obj, "commands_linux", OsLinux)
 	sm.extractCommandsFromResult(engine, agentName, listenerType, obj, "commands_macos", OsMac)
@@ -327,6 +422,75 @@ func (sm *ScriptManager) extractCommandsFromResult(engine *ScriptEngine, agentNa
 	group := groupBuilder.ToCommandGroup(agentName)
 	group.Source = "agent"
 	sm.CommandStore.RegisterGroups(SourceAgent, agentName, listenerType, osType, []CommandGroup{group}, engine)
+}
+
+func (sm *ScriptManager) extractGroupBuilder(engine *ScriptEngine, prop goja.Value) *jsCommandGroupBuilder {
+	if prop == nil || goja.IsUndefined(prop) || goja.IsNull(prop) {
+		return nil
+	}
+	exported := prop.Export()
+	if gb, ok := exported.(*jsCommandGroupBuilder); ok {
+		return gb
+	}
+	if m, ok := exported.(map[string]interface{}); ok {
+		if gv, exists := m["__group"]; exists {
+			if gb, ok2 := gv.(*jsCommandGroupBuilder); ok2 {
+				return gb
+			}
+		}
+	}
+	propObj := prop.ToObject(engine.runtime)
+	if propObj == nil {
+		return nil
+	}
+	groupVal := propObj.Get("__group")
+	if groupVal != nil && !goja.IsUndefined(groupVal) && !goja.IsNull(groupVal) {
+		if gb, ok := groupVal.Export().(*jsCommandGroupBuilder); ok {
+			return gb
+		}
+	}
+	return nil
+}
+
+func (sm *ScriptManager) extractCommandGroupsArray(engine *ScriptEngine, agentName string, listenerType string, obj *goja.Object, propName string, osType int) {
+	prop := obj.Get(propName)
+	if prop == nil || goja.IsUndefined(prop) || goja.IsNull(prop) {
+		return
+	}
+
+	rt := engine.runtime
+	propObj := prop.ToObject(rt)
+	if propObj == nil {
+		return
+	}
+
+	isArr, _ := isJsArray(rt, propObj)
+	if !isArr {
+		if gb := sm.extractGroupBuilder(engine, prop); gb != nil {
+			group := gb.ToCommandGroup(agentName)
+			group.Source = "agent"
+			sm.CommandStore.RegisterGroups(SourceAgent, agentName, listenerType, osType, []CommandGroup{group}, engine)
+		}
+		return
+	}
+
+	length := int(propObj.Get("length").ToInteger())
+	var groups []CommandGroup
+	for i := 0; i < length; i++ {
+		item := propObj.Get(fmt.Sprintf("%d", i))
+		gb := sm.extractGroupBuilder(engine, item)
+		if gb == nil {
+			sm.teamserver.TsLogAdd(adaptix.LogStatusWarn, 0, "axscript_manager", "log",
+				"command group item %d in '%s' for agent '%s' is not a CommandGroup", i, propName, agentName)
+			continue
+		}
+		group := gb.ToCommandGroup(agentName)
+		group.Source = "agent"
+		groups = append(groups, group)
+	}
+	if len(groups) > 0 {
+		sm.CommandStore.RegisterGroups(SourceAgent, agentName, listenerType, osType, groups, engine)
+	}
 }
 
 ////////////////////
@@ -493,6 +657,10 @@ func parsePayloadRef(path string) (int64, bool) {
 		return 0, false
 	}
 	idStr := strings.TrimSpace(s[len(prefix):])
+	// Allow "__payload:#12 (name.bin)" copied from UI / tool notes.
+	if i := strings.IndexAny(idStr, " \t("); i >= 0 {
+		idStr = strings.TrimSpace(idStr[:i])
+	}
 	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || id <= 0 {
 		return 0, false
@@ -748,7 +916,57 @@ func (sm *ScriptManager) GetCommandsJSON() (string, error) {
 
 // /---
 func (sm *ScriptManager) SetGlobalAllowedRoots(roots []string) {
-	sm.globalAllowedRoots = roots
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	out := make([]string, 0, len(roots))
+	seen := map[string]bool{}
+	for _, r := range roots {
+		r = strings.TrimSpace(r)
+		if r == "" {
+			continue
+		}
+		abs, err := filepath.Abs(r)
+		if err != nil {
+			continue
+		}
+		if seen[abs] {
+			continue
+		}
+		seen[abs] = true
+		out = append(out, abs)
+	}
+	sm.globalAllowedRoots = out
+}
+
+func (sm *ScriptManager) AddGlobalAllowedRoot(root string) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	root = strings.TrimSpace(root)
+	if root == "" {
+		return
+	}
+	abs, err := filepath.Abs(root)
+	if err != nil {
+		return
+	}
+	for _, r := range sm.globalAllowedRoots {
+		if r == abs {
+			return
+		}
+	}
+	sm.globalAllowedRoots = append(sm.globalAllowedRoots, abs)
+	add := func(engines map[string]*ScriptEngine) {
+		for _, e := range engines {
+			if e == nil {
+				continue
+			}
+			e.allowedRoots = append(e.allowedRoots, abs)
+		}
+	}
+	add(sm.agentEngines)
+	add(sm.userEngines)
+	add(sm.axscriptEngines)
+	add(sm.serviceEngines)
 }
 
 func (sm *ScriptManager) ReadFileSandboxed(engine *ScriptEngine, path string) ([]byte, error) {
@@ -846,6 +1064,28 @@ func (sm *ScriptManager) ValidateCommand(agentId int64, cmdline string) (map[str
 	resolved, resolveErr := sm.CommandStore.ResolveFromCmdline(agentName, listenerRegName, osType, cmdline)
 	if resolveErr != nil {
 		return map[string]interface{}{"valid": false, "message": resolveErr.Error()}, nil
+	}
+
+	if resolved.Group != nil {
+		groupId := resolved.Group.GroupName
+		if groupId == "" {
+			groupId = agentName
+		}
+		if groups, err := sm.teamserver.AxAgentGetCommandGroups(agentId); err == nil {
+			for _, g := range groups {
+				name, _ := g["name"].(string)
+				if name != groupId {
+					continue
+				}
+				if en, ok := g["enabled"].(bool); ok && !en {
+					return map[string]interface{}{
+						"valid":   false,
+						"message": fmt.Sprintf("Command group '%s' is disabled for this session", groupId),
+					}, nil
+				}
+				break
+			}
+		}
 	}
 
 	parsed, parseErr := ParseCommand(cmdline, resolved)

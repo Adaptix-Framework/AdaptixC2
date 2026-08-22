@@ -33,6 +33,7 @@ type CommandDef struct {
 	Message     string        `json:"message"`
 	Description string        `json:"description"`
 	Example     string        `json:"example"`
+	Destructive bool          `json:"destructive,omitempty"`
 	Args        []ArgumentDef `json:"args,omitempty"`
 	Subcommands []CommandDef  `json:"subcommands,omitempty"`
 
@@ -50,6 +51,7 @@ type CommandGroup struct {
 	ScriptName       string        `json:"script_name"`
 	Commands         []CommandDef  `json:"commands"`
 	Source           string        `json:"source,omitempty"`
+	DefaultEnabled   bool          `json:"default_enabled"`
 	Engine           *ScriptEngine `json:"-"`
 }
 

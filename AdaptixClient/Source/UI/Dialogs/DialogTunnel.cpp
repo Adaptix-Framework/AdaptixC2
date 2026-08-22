@@ -12,7 +12,8 @@ DialogTunnel::DialogTunnel(qint64 agentId, const bool s4, const bool s5, const b
      if (lpf) { typeSegment->addItem("LPF"); typeNames << "LPF"; }
      if (rpf) { typeSegment->addItem("RPF"); typeNames << "RPF"; }
 
-     connect(typeSegment, &oclero::qlementine::SegmentedControl::currentIndexChanged, this, [this]() { changeType(typeSegment->currentIndex()); });
+     connect(typeSegment, &SegmentControl::currentIndexChanged, this, [this]() { changeType(typeSegment->currentIndex()); });
+     connect(endpointSegment, &SegmentControl::currentIndexChanged, this, [this]() { changeType(typeSegment->currentIndex()); });
      connect(buttonCreate, &QPushButton::clicked, this, &DialogTunnel::onButtonCreate);
      connect(buttonCancel, &QPushButton::clicked, this, &DialogTunnel::onButtonCancel);
      connect(socks5UseAuth, &oclero::qlementine::Switch::toggled, this, &DialogTunnel::onSocks5AuthCheckChange);
@@ -28,13 +29,11 @@ void DialogTunnel::createUI()
     this->setWindowTitle("Create Tunnel");
     this->setProperty("Main", "base");
 
-    typeSegment = new oclero::qlementine::SegmentedControl(this);
-    typeSegment->setFixedHeight(FontManager::instance().typography().segmentHeight);
+    typeSegment = new SegmentControl(this);
 
-    endpointSegment = new oclero::qlementine::SegmentedControl(this);
+    endpointSegment = new SegmentControl(this);
     endpointSegment->addItem("Server");
     endpointSegment->addItem("Client");
-    endpointSegment->setFixedHeight(FontManager::instance().typography().segmentHeight);
 
     segLayout = new QHBoxLayout();
     segLayout->setSpacing(8);
@@ -140,7 +139,7 @@ void DialogTunnel::createUI()
     rpfGrid->setContentsMargins(12, 12, 12, 12);
     rpfGrid->setSpacing(8);
 
-    auto* rpfPortLabel = new QLabel("Port", rpfWidget);
+    auto* rpfPortLabel = new QLabel("Listen port (agent)", rpfWidget);
     rpfPortSpin = new QSpinBox(rpfWidget);
     rpfPortSpin->setRange(1, 65535);
     rpfPortSpin->setValue(8000);
@@ -150,6 +149,10 @@ void DialogTunnel::createUI()
     rpfTargetPortSpin = new QSpinBox(rpfWidget);
     rpfTargetPortSpin->setRange(1, 65535);
     rpfTargetPortSpin->setValue(8000);
+    rpfHintLabel = new QLabel(rpfWidget);
+    rpfHintLabel->setWordWrap(true);
+    rpfHintLabel->setObjectName(QStringLiteral("RpfHint"));
+    rpfHintLabel->setStyleSheet(QStringLiteral("color: palette(placeholderText);"));
 
     rpfGrid->addWidget(rpfPortLabel,       0, 0);
     rpfGrid->addWidget(rpfPortSpin,        0, 1);
@@ -157,6 +160,7 @@ void DialogTunnel::createUI()
     rpfGrid->addWidget(rpfTargetAddrInput, 1, 1);
     rpfGrid->addWidget(rpfTPortLabel,      2, 0);
     rpfGrid->addWidget(rpfTargetPortSpin,  2, 1);
+    rpfGrid->addWidget(rpfHintLabel,       3, 0, 1, 2);
     stackWidget->addWidget(rpfWidget);
 
     buttonCreate = new QPushButton("Create Tunnel", this);
@@ -218,7 +222,7 @@ void DialogTunnel::changeType(int index) const
     } else if (type == "RPF") {
         stackWidget->setCurrentIndex(3);
         configGroup->setTitle("RPF Configuration");
-        endpointSegment->setVisible(false);
+        endpointSegment->setVisible(true);
     }
 }
 

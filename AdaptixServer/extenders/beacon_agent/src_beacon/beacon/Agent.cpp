@@ -2,6 +2,7 @@
 #include "ApiLoader.h"
 #include "utils.h"
 #include "Packer.h"
+#include "Commander.h"
 #include "Crypt.h"
 
 void* Agent::operator new(size_t sz) 

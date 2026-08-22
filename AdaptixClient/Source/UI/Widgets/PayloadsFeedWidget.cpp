@@ -52,6 +52,7 @@
 #include <QTimer>
 #include <QColorDialog>
 #include <QColor>
+#include <QInputDialog>
 
 static constexpr int kPayloadIdRole   = Qt::UserRole + 1;
 static constexpr int kHiddenRole      = Qt::UserRole + 2;
@@ -164,7 +165,7 @@ static QStandardItem* textItem(const QString& t, bool bold = false, bool muted =
     return it;
 }
 
-static void fitPayloadColumns(QTableView* tv, int firstHashCol)
+static void fitPayloadColumns(QTableView* tv, int firstHashCol, int lastHashCol)
 {
     if (!tv || !tv->model() || !tv->horizontalHeader())
         return;
@@ -181,17 +182,18 @@ static void fitPayloadColumns(QTableView* tv, int firstHashCol)
 
     tv->resizeColumnsToContents();
 
-    for (int c = 0; c < firstHashCol && c < n; ++c) {
+    for (int c = 0; c < n; ++c) {
+        if (c >= firstHashCol && c <= lastHashCol) {
+            h->setSectionResizeMode(c, QHeaderView::Stretch);
+            h->setMinimumSectionSize(72);
+            continue;
+        }
         const QString label = tv->model()->headerData(c, Qt::Horizontal).toString();
         const int headerW = h->fontMetrics().horizontalAdvance(label) + 28;
         const int contentW = h->sectionSize(c);
         const int w = qMax(contentW, headerW);
         h->setSectionResizeMode(c, QHeaderView::Interactive);
         h->resizeSection(c, w);
-    }
-    for (int c = firstHashCol; c < n; ++c) {
-        h->setSectionResizeMode(c, QHeaderView::Stretch);
-        h->setMinimumSectionSize(c >= firstHashCol ? 72 : 40);
     }
 }
 
@@ -322,7 +324,7 @@ PayloadsFeedWidget::PayloadsFeedWidget(AdaptixWidget* w) : QWidget(w), m_adaptix
         QStringLiteral("ID"), QStringLiteral("Name"), QStringLiteral("Description"),
         QStringLiteral("Type"), QStringLiteral("Artifact"), QStringLiteral("Listener(s)"),
         QStringLiteral("Size"), QStringLiteral("Creator"), QStringLiteral("Created"),
-        QStringLiteral("UID"),
+        QStringLiteral("UID"), QStringLiteral("Tag"),
         QStringLiteral("MD5"), QStringLiteral("SHA1"), QStringLiteral("SHA256")
     });
 
@@ -491,6 +493,7 @@ PayloadData PayloadsFeedWidget::parsePayloadObject(const QJsonObject& o)
     p.Watermark = o.value("p_watermark").toString();
     p.ConfigJson = o.value("p_config").toString();
     p.Description = o.value("p_notes").toString();
+    p.Tag = o.value("p_tag").toString();
     p.Uid = o.value("p_uid").toString();
     p.Color = o.value("p_color").toString();
     p.Missing = o.value("p_missing").toBool();
@@ -559,11 +562,12 @@ QList<QStandardItem*> PayloadsFeedWidget::makeRow(const PayloadData& p)
         return it;
     };
 
+    auto* tagIt = makeCell(p.Tag);
     auto* md5It = makeHash(p.Md5);
     auto* sha1It = makeHash(p.Sha1);
     auto* sha256It = makeHash(p.Sha256);
 
-    return { idIt, nameIt, descIt, typeIt, artIt, lisIt, sizeIt, creatorIt, createdIt, uidIt, md5It, sha1It, sha256It };
+    return { idIt, nameIt, descIt, typeIt, artIt, lisIt, sizeIt, creatorIt, createdIt, uidIt, tagIt, md5It, sha1It, sha256It };
 }
 
 void PayloadsFeedWidget::applyPage(const QJsonObject& response)
@@ -614,7 +618,7 @@ void PayloadsFeedWidget::updatePaginationChrome(int shown, int total)
 void PayloadsFeedWidget::fitColumns()
 {
     if (table)
-        fitPayloadColumns(table, ColMd5);
+        fitPayloadColumns(table, ColMd5, ColSha256);
 }
 
 void PayloadsFeedWidget::UpdateColumnsVisible()
@@ -677,6 +681,16 @@ void PayloadsFeedWidget::UpdatePayloadHidden(const QList<qint64>& ids, bool hidd
     for (qint64 id : ids) {
         if (m_items.contains(id))
             m_items[id].Hidden = hidden;
+    }
+    if (m_cachePrimed)
+        loadCurrentPage();
+}
+
+void PayloadsFeedWidget::UpdatePayloadTag(const QList<qint64>& ids, const QString& tag)
+{
+    for (qint64 id : ids) {
+        if (m_items.contains(id))
+            m_items[id].Tag = tag;
     }
     if (m_cachePrimed)
         loadCurrentPage();
@@ -799,6 +813,7 @@ void PayloadsFeedWidget::actionGenerate()
         QJSValue ui_container = result.property(QStringLiteral("ui_container"));
         QJSValue ui_panel     = result.property(QStringLiteral("ui_panel"));
         QJSValue ui_height    = result.property(QStringLiteral("ui_height"));
+        QJSValue ui_width     = result.property(QStringLiteral("ui_width"));
 
         if (ui_container.isUndefined() || !ui_container.isObject() || ui_panel.isUndefined() || !ui_panel.isQObject())
             continue;
@@ -809,8 +824,9 @@ void PayloadsFeedWidget::actionGenerate()
             continue;
 
         const int h = ui_height.isNumber() && ui_height.toInt() > 0 ? ui_height.toInt() : 650;
+        const int w = ui_width.isNumber()  && ui_width.toInt()  > 0 ? ui_width.toInt()  : 650;
         agents.append(agent);
-        ax_uis[agent] = { container, formElement->widget(), h, 650 };
+        ax_uis[agent] = { container, formElement->widget(), h, w };
     }
 
     if (agents.isEmpty()) {
@@ -1079,6 +1095,33 @@ void PayloadsFeedWidget::actionColorReset()
         });
 }
 
+void PayloadsFeedWidget::actionSetTag()
+{
+    const QList<qint64> ids = selectedIds();
+    if (ids.isEmpty() || !m_adaptixWidget || !m_adaptixWidget->GetProfile())
+        return;
+
+    QString tag;
+    for (qint64 id : ids) {
+        PayloadData* p = findById(id);
+        if (!p)
+            continue;
+        if (tag.isEmpty())
+            tag = p->Tag;
+    }
+
+    bool inputOk = false;
+    const QString newTag = QInputDialog::getText(nullptr, QStringLiteral("Set tags"), QStringLiteral("New tag"), QLineEdit::Normal, tag, &inputOk);
+    if (!inputOk)
+        return;
+
+    HttpReqPayloadSetTagAsync(ids, newTag, *m_adaptixWidget->GetProfile(),
+        [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? QStringLiteral("Response timeout") : message);
+        });
+}
+
 void PayloadsFeedWidget::handleContextMenu(const QPoint& pos)
 {
     if (!table)
@@ -1111,6 +1154,7 @@ void PayloadsFeedWidget::handleContextMenu(const QPoint& pos)
 
     if (!ids.isEmpty()) {
         menu.addSeparator();
+        menu.addAction(QIcon(QStringLiteral(":/icons/tag")), QStringLiteral("Set tag"), this, &PayloadsFeedWidget::actionSetTag);
         auto* appearanceMenu = menu.addMenu(QIcon(QStringLiteral(":/icons/picture")), QStringLiteral("Appearance"));
         appearanceMenu->addAction(QIcon(QStringLiteral(":/icons/color_fill")), QStringLiteral("Set items color"), this, &PayloadsFeedWidget::actionItemColor);
         appearanceMenu->addAction(QIcon(QStringLiteral(":/icons/color_text")), QStringLiteral("Set text color"), this, &PayloadsFeedWidget::actionTextColor);

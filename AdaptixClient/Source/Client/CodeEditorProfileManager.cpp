@@ -500,6 +500,8 @@ CodeEditorOpenOptions CodeEditorOpenOptions::fromVariantMap(const QVariantMap& m
     }
     if (m.contains(QStringLiteral("profile")))
         opts.profile = m.value(QStringLiteral("profile")).toString();
+    if (m.contains(QStringLiteral("zone")))
+        opts.zone = m.value(QStringLiteral("zone")).toString();
     return opts;
 }
 

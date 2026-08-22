@@ -525,6 +525,7 @@ void DialogPayload::loadAndShow()
             p.BuildId = o.value(QStringLiteral("p_build_id")).toString();
             p.Watermark = o.value(QStringLiteral("p_watermark")).toString();
             p.Description = o.value(QStringLiteral("p_notes")).toString();
+            p.Tag = o.value(QStringLiteral("p_tag")).toString();
             p.Uid = o.value(QStringLiteral("p_uid")).toString();
             p.Missing = o.value(QStringLiteral("p_missing")).toBool();
             p.ConfigJson = o.value(QStringLiteral("p_config")).toString();

@@ -177,8 +177,17 @@ type GenerateConfig struct {
 	Format           string `json:"format"`
 	Win7support      bool   `json:"win7_support"`
 	DaemonMode       bool   `json:"daemon_mode"`
-	ReconnectTimeout string `json:"reconn_timeout"`
+	ReconnectTimeout int    `json:"reconn_timeout"`
 	ReconnectCount   int    `json:"reconn_count"`
+}
+
+func (c *GenerateConfig) applyDefaults() {
+	if c.ReconnectTimeout <= 0 {
+		c.ReconnectTimeout = 10
+	}
+	if c.ReconnectCount <= 0 {
+		c.ReconnectCount = 1000000000
+	}
 }
 
 var SrcPath = "src_gopher"
@@ -204,6 +213,7 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 		if err != nil {
 			return nil, err
 		}
+		generateConfig.applyDefaults()
 
 		agentWatermark, err := strconv.ParseInt(AgentWatermark, 16, 64)
 		if err != nil {
@@ -215,11 +225,10 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 		if err != nil {
 			return nil, err
 		}
-
-		reconnectTimeout, err := parseDurationToSeconds(generateConfig.ReconnectTimeout)
-		if err != nil {
-			return nil, err
+		if len(encryptKey) < 16 {
+			return nil, errors.New("encrypt_key must be at least 16 bytes (32 hex chars)")
 		}
+		encryptKey = encryptKey[:16]
 
 		protocol, _ := listenerMap["protocol"].(string)
 		switch protocol {
@@ -263,7 +272,7 @@ func (p *PluginAgent) GenerateProfiles(profile adaptix.BuildProfile) ([][]byte, 
 				Type:        uint(agentWatermark),
 				Addresses:   addresses,
 				BannerSize:  len(tcp_banner),
-				ConnTimeout: reconnectTimeout,
+				ConnTimeout: generateConfig.ReconnectTimeout,
 				ConnCount:   generateConfig.ReconnectCount,
 				UseSSL:      Ssl,
 				SslCert:     sslCert,
@@ -311,6 +320,7 @@ func (p *PluginAgent) BuildPayload(profile adaptix.BuildProfile, agentProfiles [
 	if err != nil {
 		return nil, "", err
 	}
+	generateConfig.applyDefaults()
 
 	currentDir := ModuleDir
 	tempDir, err := os.MkdirTemp("", "ax-*")
@@ -637,6 +647,7 @@ func CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.Ta
 			goto RET
 		}
 
+		taskData.Type = adaptix.TASK_TYPE_JOB
 		taskData.TaskId = Ts.TsTaskGenID()
 
 		packerData, _ := msgpack.Marshal(ParamsDownload{Path: path, Task: fmt.Sprintf("%08x", taskData.TaskId)})

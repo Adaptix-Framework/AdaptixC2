@@ -137,6 +137,7 @@ struct CodeEditorOpenOptions
     QString content;
     QString documentKey;
     QJsonObject panelSeed;
+    QString zone;
 
     static CodeEditorOpenOptions fromVariantMap(const QVariantMap& m);
 };

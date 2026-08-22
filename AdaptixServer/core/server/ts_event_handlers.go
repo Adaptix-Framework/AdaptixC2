@@ -176,9 +176,10 @@ func (r *EventHandlerRegistry) Register(req RegisterEventHandlerRequest, operato
 	if event == "" {
 		return nil, fmt.Errorf("event is required")
 	}
-	if !eventing.KnownEventTypes[eventing.EventType(event)] {
-		return nil, fmt.Errorf("unknown event type %q", event)
+	if !eventing.IsValidEventType(event) {
+		return nil, fmt.Errorf("invalid event type %q (use domain.action, e.g. sessions.create)", event)
 	}
+	eventing.TrackCustomEventType(event)
 
 	script := strings.TrimSpace(req.Script)
 	if script == "" {

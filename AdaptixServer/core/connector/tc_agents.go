@@ -54,6 +54,15 @@ func (tc *TsConnector) TcAgentList(ctx *gin.Context) {
 	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonAgents))
 }
 
+func (tc *TsConnector) TcAgentCatalog(ctx *gin.Context) {
+	raw, err := tc.teamserver.TsAgentCatalog()
+	if err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(raw))
+}
+
 type AgentConfig struct {
 	ListenerName []string `json:"listener_name"`
 	AgentName    string   `json:"agent"`
@@ -656,4 +665,46 @@ func (tc *TsConnector) TcAgentUpdateData(ctx *gin.Context) {
 	}
 
 	respondOK(ctx)
+}
+
+type AgentCommandGroupSet struct {
+	AgentId int64  `json:"agent_id"`
+	Group   string `json:"group"`
+	Enabled bool   `json:"enabled"`
+}
+
+func (tc *TsConnector) TcAgentCommandGroupSet(ctx *gin.Context) {
+	var data AgentCommandGroupSet
+	if err := ctx.ShouldBindJSON(&data); err != nil {
+		respondError(ctx, http.StatusOK, "invalid JSON data")
+		return
+	}
+	if data.Group == "" {
+		respondError(ctx, http.StatusOK, "group is required")
+		return
+	}
+	if err := tc.teamserver.TsAgentCommandGroupSet(data.AgentId, data.Group, data.Enabled); err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+	respondOK(ctx)
+}
+
+func (tc *TsConnector) TcAgentCommandGroupList(ctx *gin.Context) {
+	agentIdStr := ctx.Query("agent_id")
+	if agentIdStr == "" {
+		respondError(ctx, http.StatusOK, "agent_id is required")
+		return
+	}
+	var agentId int64
+	if _, err := fmt.Sscan(agentIdStr, &agentId); err != nil {
+		respondError(ctx, http.StatusOK, "invalid agent_id")
+		return
+	}
+	list, err := tc.teamserver.TsAgentCommandGroupList(agentId)
+	if err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+	respondOKMessage(ctx, list)
 }

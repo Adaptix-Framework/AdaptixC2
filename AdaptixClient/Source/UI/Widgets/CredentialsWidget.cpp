@@ -174,7 +174,7 @@ void CredsTableModel::reset(const QList<CredentialData>& newCreds)
 
 
 
-CredentialsWidget::CredentialsWidget(AdaptixWidget* w) : DockTab("Credentials", w->GetProfile()->GetProject(), ":/icons/key"), adaptixWidget(w)
+CredentialsWidget::CredentialsWidget(AdaptixWidget* w) : DockTab("Credentials", w->GetProfile()->GetProject(), ":/icons/key", w), adaptixWidget(w)
 {
     this->createUI();
 

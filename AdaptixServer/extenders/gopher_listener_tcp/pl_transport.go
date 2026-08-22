@@ -74,6 +74,12 @@ const (
 	BOF_PACK      = 7
 )
 
+func packIdAck(agentId int64, sessionKey []byte) ([]byte, error) {
+	idBytes := make([]byte, 8)
+	binary.BigEndian.PutUint64(idBytes, uint64(agentId))
+	return EncryptData(idBytes, sessionKey)
+}
+
 type StartMsg struct {
 	Type int    `msgpack:"id"`
 	Data []byte `msgpack:"data"`
@@ -82,10 +88,7 @@ type StartMsg struct {
 type InitPack struct {
 	Type uint   `msgpack:"type"`
 	Data []byte `msgpack:"data"`
-}
-
-type ResumePack struct {
-	Id int64 `msgpack:"id"`
+	Id   int64  `msgpack:"agent_id,omitempty"`
 }
 
 type ExfilPack struct {
@@ -234,6 +237,7 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts adaptix.Teamserver) {
 		encKey   []byte
 		err      error
 		initMsg  StartMsg
+		stats    adaptix.StatTasks
 	)
 
 	if len(t.Config.TcpBanner) > 0 {
@@ -256,6 +260,9 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts adaptix.Teamserver) {
 	if err != nil {
 		goto ERR
 	}
+	if len(encKey) > 16 {
+		encKey = encKey[:16]
+	}
 	recvData, err = DecryptData(recvData, encKey)
 	if err != nil {
 		goto ERR
@@ -266,47 +273,58 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts adaptix.Teamserver) {
 		goto ERR
 	}
 
-	if initMsg.Type == INIT_PACK || initMsg.Type == RESUME_PACK {
+	if initMsg.Type == INIT_PACK {
 
-		var agentId int64
-		if initMsg.Type == INIT_PACK {
-			var initPack InitPack
-			err := msgpack.Unmarshal(initMsg.Data, &initPack)
-			if err != nil {
+		var initPack InitPack
+		err := msgpack.Unmarshal(initMsg.Data, &initPack)
+		if err != nil {
+			goto ERR
+		}
+
+		var (
+			agentId    int64
+			sessionKey []byte
+		)
+		if initPack.Id != 0 && Ts.TsAgentIsExists(initPack.Id) {
+			agentId = initPack.Id
+			ad, ok := Ts.TsAgentGetById(agentId)
+			if !ok {
+				err = fmt.Errorf("agent %d not found", agentId)
 				goto ERR
 			}
-
+			sessionKey = ad.SessionKey
+			_ = Ts.TsAgentUpdateDataPartial(agentId, struct {
+				Mark     *string `json:"mark"`
+				Listener *string `json:"listener"`
+			}{Mark: new(""), Listener: &t.Name})
+		} else {
 			agentType := fmt.Sprintf("%08x", initPack.Type)
 			ExternalIP := ""
 			if host, _, err := net.SplitHostPort(conn.RemoteAddr().String()); err == nil {
 				ExternalIP = host
 			}
-
 			agentData, errCreate := Ts.TsAgentCreate(agentType, nil, initPack.Data, t.Name, ExternalIP, false)
 			if errCreate != nil {
 				err = errCreate
 				goto ERR
 			}
 			agentId = agentData.Id
+			sessionKey = agentData.SessionKey
+		}
 
-		} else {
-			var resumePack ResumePack
-			err := msgpack.Unmarshal(initMsg.Data, &resumePack)
-			if err != nil {
-				goto ERR
-			}
-			agentId = resumePack.Id
-
-			_ = Ts.TsAgentUpdateDataPartial(agentId, struct {
-				Mark     *string `json:"mark"`
-				Listener *string `json:"listener"`
-			}{Mark: new(""), Listener: &t.Name})
+		idAck, aerr := packIdAck(agentId, sessionKey)
+		if aerr != nil {
+			err = aerr
+			goto ERR
+		}
+		if err = sendMsg(conn, idAck); err != nil {
+			goto ERR
 		}
 
 		t.AgentConnects.Put(agentId, connection)
 
 		for {
-			sendData, err = Ts.TsAgentGetHostedTasks(agentId, 0x1900000)
+			sendData, stats, err = Ts.TsAgentGetHostedTasks(agentId, 0, 0x1900000)
 			if err != nil {
 				break
 			}
@@ -315,6 +333,11 @@ func (t *TransportTCP) handleConnection(conn net.Conn, ts adaptix.Teamserver) {
 				err = sendMsg(conn, sendData)
 				if err != nil {
 					break
+				}
+
+				if !stats.Select().Empty() {
+					msg := fmt.Sprintf("Sent %s", adaptix.FormatByteSize(len(sendData)))
+					Ts.TsAgentConsoleOutput(agentId, "", adaptix.MESSAGE_INFO, msg, "", false)
 				}
 
 				recvData, err = recvMsg(conn)

@@ -73,6 +73,10 @@ extern "C" {
 	void   BeaconOutput(int type, const char* data, int len);
 	void   BeaconPrintf(int type, const char* fmt, ...);
 
+	/* Download an in-memory buffer via native download (CS BOF C API).
+	 * Beacon copies the buffer; BOF may free its original memory after return. */
+	BOOL   BeaconDownload(const char* filename, const char* buffer, unsigned int length);
+
 	/* Token Functions */
 	BOOL   BeaconUseToken(HANDLE token);
 	void   BeaconRevertToken();

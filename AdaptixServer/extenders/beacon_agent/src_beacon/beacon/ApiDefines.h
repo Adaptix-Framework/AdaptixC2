@@ -156,7 +156,8 @@
 #define HASH_FUNC_FREELIBRARY                        0x26ccae3b
 #define HASH_FUNC___C_SPECIFIC_HANDLER               0x6d7af307
 #define HASH_FUNC_AXADDSCREENSHOT                    0x495c25a4
-#define HASH_FUNC_AXDOWNLOADMEMORY                   0x5c8fc8ce
+#define HASH_FUNC_BEACONDOWNLOAD                     0x56a1c224
+
 // Async BOF
 #define HASH_FUNC_BEACONREGISTERTHREADCALLBACK       0x6db87516
 #define HASH_FUNC_BEACONUNREGISTERTHREADCALLBACK     0x816703d9

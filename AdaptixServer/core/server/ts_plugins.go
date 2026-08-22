@@ -6,14 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"sort"
 
 	"github.com/Adaptix-Framework/axc2/v2"
 )
 
 func (ts *Teamserver) TsListenerReg(listenerInfo extender.ListenerInfo) error {
 
-	if listenerInfo.Type != "internal" && listenerInfo.Type != "external" && listenerInfo.Type != "bind" {
-		return errors.New("invalid listener type: must be internal or external")
+	if listenerInfo.Type != "internal" && listenerInfo.Type != "external" && listenerInfo.Type != "bind" && listenerInfo.Type != "cloud" {
+		return errors.New("invalid listener type: must be internal, external, bind or cloud")
 	}
 
 	if !isvalid.ValidSBNString(listenerInfo.Protocol) {
@@ -63,6 +64,24 @@ func (ts *Teamserver) TsAgentReg(agentInfo extender.AgentInfo) error {
 	return nil
 }
 
+func (ts *Teamserver) TsAgentCatalog() (string, error) {
+	out := make([]adaptix.AgentCatalogItem, 0)
+	ts.agent_configs.ForEachFast(func(key string, info extender.AgentInfo) bool {
+		out = append(out, adaptix.AgentCatalogItem{
+			Name:      info.Name,
+			Listeners: append([]string(nil), info.Listeners...),
+			AXS:       info.AX,
+		})
+		return true
+	})
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
+	raw, err := json.Marshal(out)
+	if err != nil {
+		return "", err
+	}
+	return string(raw), nil
+}
+
 func (ts *Teamserver) TsServiceReg(serviceInfo extender.ServiceInfo) error {
 
 	if !isvalid.ValidSBNString(serviceInfo.Name) {
@@ -75,6 +94,12 @@ func (ts *Teamserver) TsServiceReg(serviceInfo extender.ServiceInfo) error {
 
 	ts.service_configs.Put(serviceInfo.Name, serviceInfo)
 
+	if serviceInfo.AX != "" && ts.ScriptManager != nil {
+		if err := ts.ScriptManager.LoadServiceScript(serviceInfo.Name, serviceInfo.AX); err != nil {
+			ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "extender", "Service %s: AxScript command catalog failed: %v", serviceInfo.Name, err)
+		}
+	}
+
 	return nil
 }
 
@@ -83,6 +108,9 @@ func (ts *Teamserver) TsServiceUnreg(serviceName string) error {
 		return fmt.Errorf("service %v not found", serviceName)
 	}
 
+	if ts.ScriptManager != nil {
+		ts.ScriptManager.UnloadServiceScript(serviceName)
+	}
 	ts.service_configs.Delete(serviceName)
 
 	return nil

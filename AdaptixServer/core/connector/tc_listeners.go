@@ -18,6 +18,15 @@ func (tc *TsConnector) TcListenerList(ctx *gin.Context) {
 	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(jsonListeners))
 }
 
+func (tc *TsConnector) TcListenerCatalog(ctx *gin.Context) {
+	raw, err := tc.teamserver.TsListenerCatalog()
+	if err != nil {
+		respondError(ctx, http.StatusOK, err.Error())
+		return
+	}
+	ctx.Data(http.StatusOK, "application/json; charset=utf-8", []byte(raw))
+}
+
 func (tc *TsConnector) TcPluginListenerCall(ctx *gin.Context) {
 	var jsonData struct {
 		Listener string `json:"listener"`

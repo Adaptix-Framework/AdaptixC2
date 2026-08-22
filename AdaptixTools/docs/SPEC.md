@@ -214,7 +214,6 @@ extenders:
         - config.yaml
         - mcp_server.so
         - ax_config.axs
-        - service_manifest.yaml
       # config: config.yaml   # optional override
 ```
 

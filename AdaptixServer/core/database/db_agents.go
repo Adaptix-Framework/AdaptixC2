@@ -22,14 +22,14 @@ func (dbms *DBMS) DbAgentInsert(agentData adaptix.AgentData) error {
 
 	insertQuery := `INSERT OR IGNORE INTO Agents (Id, Crc, UID, Name, SessionKey, Listener, Async, ExternalIP, InternalIP, GmtOffset,
                        Sleep, Jitter, Pid, Tid, Arch, Elevated, Process, Os, OsDesc, Domain, Computer, Username, Impersonated,
-					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color, TargetId, CustomData
-				   ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);`
+					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color, TargetId, CustomData, CmdGroups
+				   ) values(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);`
 	result, err := dbms.database.Exec(insertQuery,
 		agentData.Id, agentData.Crc, agentData.UID, agentData.Name, agentData.SessionKey, agentData.Listener, agentData.Async, agentData.ExternalIP,
 		agentData.InternalIP, agentData.GmtOffset, agentData.Sleep, agentData.Jitter, agentData.Pid, agentData.Tid, agentData.Arch,
 		agentData.Elevated, agentData.Process, agentData.Os, agentData.OsDesc, agentData.Domain, agentData.Computer, agentData.Username,
 		agentData.Impersonated, agentData.OemCP, agentData.ACP, agentData.CreateTime, agentData.LastTick, agentData.WorkingTime, agentData.KillDate, agentData.Tags, agentData.Mark,
-		agentData.Color, agentData.TargetId, agentData.CustomData,
+		agentData.Color, agentData.TargetId, agentData.CustomData, agentData.CmdGroups,
 	)
 	if err != nil {
 		return err
@@ -49,13 +49,13 @@ func (dbms *DBMS) DbAgentUpdate(agentData adaptix.AgentData) error {
 
 	updateQuery := `UPDATE Agents SET ExternalIP = ?, InternalIP = ?, GmtOffset = ?, Sleep = ?, Jitter = ?, Pid = ?, Tid = ?, Arch = ?, Elevated = ?,
                      Process = ?, Os = ?, OsDesc = ?, Domain = ?, Computer = ?, Username = ?, Impersonated = ?, OemCP = ?, ACP = ?,
-                     WorkingTime = ?, KillDate = ?, Tags = ?, Mark = ?, Color = ?, CustomData = ?, SessionKey = ? WHERE Id = ?;`
+                     WorkingTime = ?, KillDate = ?, Tags = ?, Mark = ?, Color = ?, CustomData = ?, SessionKey = ?, CmdGroups = ? WHERE Id = ?;`
 	result, err := dbms.database.Exec(updateQuery,
 		agentData.ExternalIP, agentData.InternalIP, agentData.GmtOffset, agentData.Sleep, agentData.Jitter,
 		agentData.Pid, agentData.Tid, agentData.Arch, agentData.Elevated, agentData.Process,
 		agentData.Os, agentData.OsDesc, agentData.Domain, agentData.Computer, agentData.Username, agentData.Impersonated,
 		agentData.OemCP, agentData.ACP, agentData.WorkingTime, agentData.KillDate,
-		agentData.Tags, agentData.Mark, agentData.Color, agentData.CustomData, agentData.SessionKey, agentData.Id,
+		agentData.Tags, agentData.Mark, agentData.Color, agentData.CustomData, agentData.SessionKey, agentData.CmdGroups, agentData.Id,
 	)
 	if err != nil {
 		return err
@@ -102,7 +102,7 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
 	if ok {
 		selectQuery := `SELECT Id, Crc, UID, Name, SessionKey, Listener, Async, ExternalIP, InternalIP, GmtOffset,
                        Sleep, Jitter, Pid, Tid, Arch, Elevated, Process, Os, OsDesc, Domain, Computer, Username, Impersonated,
-					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color, TargetId, CustomData FROM Agents;`
+					   OemCP, ACP, CreateTime, LastTick, WorkingTime, KillDate, Tags, Mark, Color, TargetId, CustomData, CmdGroups FROM Agents;`
 		query, err := dbms.database.Query(selectQuery)
 		if err != nil {
 			dbms.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "database", "Failed to query agents: %s", err.Error())
@@ -114,19 +114,39 @@ func (dbms *DBMS) DbAgentAll() []adaptix.AgentData {
 
 		for query.Next() {
 			agentData := adaptix.AgentData{}
+			var cmdGroups sql.NullString
 			err = query.Scan(&agentData.Id, &agentData.Crc, &agentData.UID, &agentData.Name, &agentData.SessionKey, &agentData.Listener,
 				&agentData.Async, &agentData.ExternalIP, &agentData.InternalIP, &agentData.GmtOffset, &agentData.Sleep,
 				&agentData.Jitter, &agentData.Pid, &agentData.Tid, &agentData.Arch, &agentData.Elevated, &agentData.Process,
 				&agentData.Os, &agentData.OsDesc, &agentData.Domain, &agentData.Computer, &agentData.Username, &agentData.Impersonated,
 				&agentData.OemCP, &agentData.ACP, &agentData.CreateTime, &agentData.LastTick, &agentData.WorkingTime, &agentData.KillDate,
-				&agentData.Tags, &agentData.Mark, &agentData.Color, &agentData.TargetId, &agentData.CustomData,
+				&agentData.Tags, &agentData.Mark, &agentData.Color, &agentData.TargetId, &agentData.CustomData, &cmdGroups,
 			)
 			if err != nil {
 				dbms.ts.TsLogAdd(adaptix.LogStatusWarn, 0, "server", "database", "failed to scan agent row: %v", err)
 				continue
 			}
+			if cmdGroups.Valid {
+				agentData.CmdGroups = cmdGroups.String
+			}
 			agents = append(agents, agentData)
 		}
 	}
 	return agents
+}
+
+func (dbms *DBMS) DbAgentCmdGroupsUpdate(agentId int64, cmdGroupsJSON string) error {
+	ok := dbms.DatabaseExists()
+	if !ok {
+		return errors.New("database does not exist")
+	}
+	result, err := dbms.database.Exec(`UPDATE Agents SET CmdGroups = ? WHERE Id = ?;`, cmdGroupsJSON, agentId)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("agent %d does not exist", agentId)
+	}
+	return nil
 }

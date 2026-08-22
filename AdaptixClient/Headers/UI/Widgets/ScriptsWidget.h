@@ -23,7 +23,7 @@ class QListWidget;
 class QSplitter;
 class PaginationBar;
 
-namespace oclero::qlementine { class SegmentedControl; }
+class SegmentControl;
 
 class ScriptsTableFilter : public QSortFilterProxyModel
 {
@@ -34,13 +34,21 @@ public:
     explicit ScriptsTableFilter(QObject* parent = nullptr) : QSortFilterProxyModel(parent) {}
     void setSearchText(const QString& text) {
         m_searchText = text;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
         beginFilterChange();
         endFilterChange();
+#else
+        invalidateFilter();
+#endif
     }
     void setOriginFilter(const QString& origin) {
         m_originFilter = origin;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 10, 0)
         beginFilterChange();
         endFilterChange();
+#else
+        invalidateFilter();
+#endif
     }
 protected:
     bool filterAcceptsRow(int sourceRow, const QModelIndex& sourceParent) const override;
@@ -81,8 +89,8 @@ Q_OBJECT
     int               m_eventsTotal      = 0;
 
     QStackedWidget* m_stack = nullptr;
-    oclero::qlementine::SegmentedControl* m_segScripts = nullptr;
-    oclero::qlementine::SegmentedControl* m_segEvents  = nullptr;
+    SegmentControl* m_segScripts = nullptr;
+    SegmentControl* m_segEvents  = nullptr;
     int m_currentSegment = 0;
 
     void setupScriptsTable();

@@ -34,6 +34,7 @@ public Q_SLOTS:
     QObject* create_vspacer();
     QObject* create_hspacer();
     QObject* create_label(const QString &text = "");
+    QObject* create_icon(const QString& resourcePath = "");
     QObject* create_textline(const QString &text = "");
     QObject* create_combo();
     QObject* create_check(const QString& label= "");
@@ -44,6 +45,7 @@ public Q_SLOTS:
     QObject* create_timeline(const QString& format = "HH:mm:ss");
     QObject* create_button(const QString& text= "");
     QObject* create_textmulti(const QString& text= "");
+    QObject* create_logview();
     QObject* create_list();
     QObject* create_table(const QJSValue &headers);
 
@@ -65,7 +67,7 @@ public Q_SLOTS:
     QObject* create_selector_downloads(const QJSValue &headers = QJSValue()) const;
     QObject* create_selector_payload_store(const QJSValue &headers = QJSValue()) const;
 
-    QObject* create_ext_dock(const QString &id, const QString &title, const QString &location = "");
+    QObject* create_ext_dock(const QString &id, const QString &title, const QString &location = "", const QString &icon = "");
     QObject* create_ext_dialog(const QString &title);
 
 Q_SIGNALS:

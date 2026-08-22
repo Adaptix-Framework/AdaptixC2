@@ -15,6 +15,8 @@ Q_OBJECT
     QUrl    wsUrl;
     quint16 lPort = 0;
     QString lHost;
+    QString fHost;
+    quint16 fPort = 0;
     bool    useAuth = false;
     QString username;
     QString password;
@@ -32,8 +34,10 @@ Q_OBJECT
     QMap<qint64, ChannelHandle> tunnelChannels;
 
     void startWorker(QTcpSocket* clientSock, const QJsonObject& otpData, qint64 channelId);
+    void startReverseWorker(QTcpSocket* clientSock, const QJsonObject& otpData, qint64 channelId);
     void launchChannelWorker(QTcpSocket* clientSock, const QString& otp, qint64 channelId);
     void startHandshakeWorker(QTcpSocket* clientSock, const QString& type);
+    void nackReverseChannel(qint64 channelId);
 
 public:
     TunnelEndpoint(QObject* parent = nullptr);
@@ -46,6 +50,7 @@ public:
     void Stop();
 
     void StopChannel(qint64 channelId);
+    void onReverseAccept(qint64 channelId);
 
 private Q_SLOTS:
     void onStartLpfChannel();

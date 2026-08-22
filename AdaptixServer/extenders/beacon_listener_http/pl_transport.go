@@ -184,11 +184,11 @@ func (t *TransportHTTP) Start(ts adaptix.Teamserver) error {
 	t.Server = &http.Server{
 		Addr:     fmt.Sprintf("%s:%d", t.Config.HostBind, t.Config.PortBind),
 		Handler:  router,
-		ErrorLog: log.New(Ts.TsLogWriter(adaptix.LogStatusWarn, logSrc, logCtg), "", 0),
+		ErrorLog: log.New(Ts.TsLogWriter(adaptix.LogStatusWarn, logSrc, ""), "", 0),
 	}
 
 	if t.Config.Ssl {
-		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, logCtg, "Started listener '%s': https://%s:%d", t.Name, t.Config.HostBind, t.Config.PortBind)
+		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, "", "Started listener '%s': https://%s:%d", t.Name, t.Config.HostBind, t.Config.PortBind)
 
 		listenerPath := ListenerDataDir + "/" + t.Name
 		_, err = os.Stat(listenerPath)
@@ -206,7 +206,7 @@ func (t *TransportHTTP) Start(ts adaptix.Teamserver) error {
 			err = t.generateSelfSignedCert(t.Config.SslCertPath, t.Config.SslKeyPath)
 			if err != nil {
 				t.Active = false
-				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, logCtg, "Error generating self-signed certificate: %v", err)
+				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "", "Error generating self-signed certificate: %v", err)
 				return err
 			}
 		} else {
@@ -247,19 +247,19 @@ func (t *TransportHTTP) Start(ts adaptix.Teamserver) error {
 		go func() {
 			err = t.Server.ListenAndServeTLS("", "")
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, logCtg, "Error starting HTTPS server: %v", err)
+				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "", "Error starting HTTPS server: %v", err)
 				t.Active = false
 				return
 			}
 		}()
 
 	} else {
-		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, logCtg, "Started listener '%s': http://%s:%d", t.Name, t.Config.HostBind, t.Config.PortBind)
+		Ts.TsLogAdd(adaptix.LogStatusSuccess, 1, logSrc, "", "Started listener '%s': http://%s:%d", t.Name, t.Config.HostBind, t.Config.PortBind)
 
 		go func() {
 			err = t.Server.ListenAndServe()
 			if err != nil && !errors.Is(err, http.ErrServerClosed) {
-				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, logCtg, "Error starting HTTP server: %v", err)
+				Ts.TsLogAdd(adaptix.LogStatusError, 0, logSrc, "", "Error starting HTTP server: %v", err)
 				t.Active = false
 				return
 			}
@@ -304,6 +304,7 @@ func (t *TransportHTTP) processRequest(ctx *gin.Context) {
 		beat         []byte
 		bodyData     []byte
 		responseData []byte
+		stats        adaptix.StatTasks
 	)
 
 	// Validate URI against configured URIs (newline-separated)
@@ -357,8 +358,7 @@ func (t *TransportHTTP) processRequest(ctx *gin.Context) {
 	if t.Config.TrustXForwardedFor && ctx.Request.Header.Get("X-Forwarded-For") != "" {
 		ExternalIP = ctx.Request.Header.Get("X-Forwarded-For")
 	} else {
-		host, _, err := net.SplitHostPort(ctx.Request.RemoteAddr)
-		if err == nil {
+		if host, _, err := net.SplitHostPort(ctx.Request.RemoteAddr); err == nil {
 			ExternalIP = host
 		}
 	}
@@ -370,19 +370,19 @@ func (t *TransportHTTP) processRequest(ctx *gin.Context) {
 
 	agentId, exists = Ts.TsAgentIdByUID(agentUid)
 	if !exists {
-		agentData, errCreate := Ts.TsAgentCreate(agentType, agentUid, beat, t.Name, ExternalIP, true)
+		ad, errCreate := Ts.TsAgentCreate(agentType, agentUid, beat, t.Name, ExternalIP, true)
 		if errCreate != nil {
 			err = errCreate
 			goto ERR
 		}
-		agentId = agentData.Id
+		agentId = ad.Id
 	}
 
 	_ = Ts.TsAgentSetTick(agentId, t.Name)
 
 	_ = Ts.TsAgentProcessData(agentId, bodyData)
 
-	responseData, err = Ts.TsAgentGetHostedAll(agentId, 0x1900000) // 25 Mb
+	responseData, stats, err = Ts.TsAgentGetHostedAll(agentId, 0x1900000) // 25 Mb
 	if err != nil {
 		goto ERR
 	} else {
@@ -391,6 +391,10 @@ func (t *TransportHTTP) processRequest(ctx *gin.Context) {
 		if err != nil {
 			t.pageError(ctx)
 			return
+		}
+		if !stats.Select().Empty() {
+			msg := fmt.Sprintf("Sent %s", adaptix.FormatByteSize(len(html)))
+			Ts.TsAgentConsoleOutput(agentId, "", adaptix.MESSAGE_INFO, msg, "", false)
 		}
 	}
 
@@ -421,7 +425,7 @@ func (t *TransportHTTP) parseBeatAndData(ctx *gin.Context) (string, []byte, []by
 	}
 
 	agentInfoCrypt, err = base64.StdEncoding.DecodeString(beat)
-	if len(agentInfoCrypt) < 8 || err != nil {
+	if err != nil || len(agentInfoCrypt) < 8 {
 		return "", nil, nil, nil, errors.New("failed decrypt beat")
 	}
 
@@ -436,11 +440,13 @@ func (t *TransportHTTP) parseBeatAndData(ctx *gin.Context) (string, []byte, []by
 	agentInfo = make([]byte, len(agentInfoCrypt))
 	rc4crypt.XORKeyStream(agentInfo, agentInfoCrypt)
 
+	if len(agentInfo) < 8 {
+		return "", nil, nil, nil, errors.New("failed decrypt beat")
+	}
 	agentType = uint(binary.BigEndian.Uint32(agentInfo[:4]))
-	agentInfo = agentInfo[4:]
 	agentUid = make([]byte, 4)
-	binary.BigEndian.PutUint32(agentUid, binary.BigEndian.Uint32(agentInfo[:4]))
-	agentInfo = agentInfo[4:]
+	copy(agentUid, agentInfo[4:8])
+	agentInfo = agentInfo[8:]
 
 	bodyData, err = io.ReadAll(ctx.Request.Body)
 	if err != nil {

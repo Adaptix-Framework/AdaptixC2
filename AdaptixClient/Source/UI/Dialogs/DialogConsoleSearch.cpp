@@ -93,7 +93,7 @@ DialogConsoleSearch::~DialogConsoleSearch() = default;
 
 void DialogConsoleSearch::createUI()
 {
-    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
 
     queryEdit = new QLineEdit(this);

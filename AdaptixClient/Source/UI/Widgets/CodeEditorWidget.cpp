@@ -15,6 +15,7 @@
 
 #include <QPointer>
 #include <QFile>
+#include <QHash>
 #include <QIcon>
 #include <QJSValue>
 #include <QJsonDocument>
@@ -44,11 +45,79 @@
 #include <QKeySequence>
 #include <QInputDialog>
 #include <QMessageBox>
-
 REGISTER_DOCK_WIDGET(CodeEditorWidget, "Code Editor", false)
 
 QList<QPointer<CodeEditorWidget>> CodeEditorWidget::s_instances;
 int CodeEditorWidget::s_nextInstanceId = 1;
+
+namespace {
+
+QString loadAxTemplate(const QString& relativePath)
+{
+    static QHash<QString, QString> cache;
+    const auto it = cache.constFind(relativePath);
+    if (it != cache.constEnd())
+        return it.value();
+    QFile f(QStringLiteral(":/axscript/") + relativePath);
+    if (!f.open(QIODevice::ReadOnly | QIODevice::Text))
+        return {};
+    const QString text = QString::fromUtf8(f.readAll());
+    cache.insert(relativePath, text);
+    return text;
+}
+
+QString handlerBodyTemplatePath(const QString& eventType)
+{
+    if (eventType.startsWith(QLatin1String("agent.")))
+        return QStringLiteral("templates/handler_body_agent.axs");
+    if (eventType.startsWith(QLatin1String("task.")))
+        return QStringLiteral("templates/handler_body_task.axs");
+    if (eventType.startsWith(QLatin1String("client.")))
+        return QStringLiteral("templates/handler_body_client.axs");
+    if (eventType.startsWith(QLatin1String("listener.")))
+        return QStringLiteral("templates/handler_body_listener.axs");
+    if (eventType.startsWith(QLatin1String("credentials.")))
+        return QStringLiteral("templates/handler_body_credentials.axs");
+    if (eventType.startsWith(QLatin1String("download.")))
+        return QStringLiteral("templates/handler_body_download.axs");
+    if (eventType.startsWith(QLatin1String("upload.")))
+        return QStringLiteral("templates/handler_body_upload.axs");
+    if (eventType.startsWith(QLatin1String("screenshot.")))
+        return QStringLiteral("templates/handler_body_screenshot.axs");
+    if (eventType.startsWith(QLatin1String("tunnel.")))
+        return QStringLiteral("templates/handler_body_tunnel.axs");
+    if (eventType.startsWith(QLatin1String("target.")))
+        return QStringLiteral("templates/handler_body_target.axs");
+    if (eventType.startsWith(QLatin1String("pivot.")))
+        return QStringLiteral("templates/handler_body_pivot.axs");
+    return QStringLiteral("templates/handler_body_generic.axs");
+}
+
+} // namespace
+
+QString CodeEditorWidget::buildEventHandlerTemplate(const QString& eventType, const QString& handlerName)
+{
+    const QString hName = handlerName.trimmed().isEmpty() ? QStringLiteral("auto_handler") : handlerName.trimmed();
+    QString body = loadAxTemplate(handlerBodyTemplatePath(eventType));
+    if (body.isEmpty()) {
+        body = QStringLiteral("    ax.log(\"%1: type=\" + event.type);").arg(hName);
+    } else {
+        body.replace(QStringLiteral("{{NAME}}"), hName);
+        if (body.endsWith(QLatin1Char('\n')))
+            body.chop(1);
+    }
+
+    QString shell = loadAxTemplate(QStringLiteral("templates/handler_shell.axs"));
+    if (shell.isEmpty()) {
+        return QStringLiteral(
+            "// Event handler — must define function handler(event)\n"
+            "function handler(event) {\n"
+            "%1\n"
+            "}\n"
+        ).arg(body);
+    }
+    return shell.replace(QStringLiteral("{{BODY}}"), body);
+}
 
 CodeEditorActionApi::CodeEditorActionApi(CodeEditorWidget* host, QObject* parent): QObject(parent), m_host(host)
 {
@@ -76,6 +145,14 @@ QString CodeEditorActionApi::content() const
     if (auto* ed = m_host->currentEditor())
         return ed->toPlainText();
     return {};
+}
+
+void CodeEditorActionApi::set_content(const QString& text)
+{
+    if (!m_host)
+        return;
+    if (auto* ed = m_host->currentEditor())
+        ed->setPlainText(text);
 }
 
 QString CodeEditorActionApi::agent_id() const
@@ -109,6 +186,51 @@ void CodeEditorActionApi::log(const QString& text)
 {
     if (m_host)
         m_host->appendToLog(text);
+}
+
+QString CodeEditorActionApi::handler_template(const QString& eventType, const QString& handlerName) const
+{
+    QString name = handlerName.trimmed();
+    if (name.isEmpty() && m_host) {
+        const QVariant v = m_host->panelFieldValue(QStringLiteral("name"));
+        name = v.toString().trimmed();
+    }
+    if (name.isEmpty())
+        name = QStringLiteral("auto_handler");
+    QString et = eventType.trimmed();
+    if (et.isEmpty() && m_host) {
+        const QVariant v = m_host->panelFieldValue(QStringLiteral("event"));
+        et = v.toString().trimmed();
+    }
+    if (et.isEmpty())
+        et = QStringLiteral("agent.new");
+    return CodeEditorWidget::buildEventHandlerTemplate(et, name);
+}
+
+bool CodeEditorActionApi::apply_handler_template(const QString& eventType)
+{
+    if (!m_host || !m_host->currentEditor())
+        return false;
+    QString et = eventType.trimmed();
+    if (et.isEmpty()) {
+        const QVariant v = m_host->panelFieldValue(QStringLiteral("event"));
+        et = v.toString().trimmed();
+    }
+    if (et.isEmpty())
+        et = QStringLiteral("agent.new");
+
+    QString name;
+    {
+        const QVariant v = m_host->panelFieldValue(QStringLiteral("name"));
+        name = v.toString().trimmed();
+    }
+    if (name.isEmpty())
+        name = QStringLiteral("auto_handler");
+
+    const QString body = CodeEditorWidget::buildEventHandlerTemplate(et, name);
+    m_host->currentEditor()->setPlainText(body);
+    m_host->appendToLog(QStringLiteral("Applied handler template for %1\n").arg(et));
+    return true;
 }
 
 bool CodeEditorActionApi::eval(const QString& code, const QJSValue& opts)
@@ -152,7 +274,7 @@ void CodeEditorActionApi::job_stop_all()
         m_host->stopAllJobs();
 }
 
-CodeEditorWidget::CodeEditorWidget(AdaptixWidget* w, Agent* agent) : DockTab(agent ? QStringLiteral("Code Editor [%1]").arg(agent->data.Id) : QStringLiteral("Code Editor"), w->GetProfile()->GetProject(), ":/icons/code")
+CodeEditorWidget::CodeEditorWidget(AdaptixWidget* w, Agent* agent) : DockTab(agent ? QStringLiteral("Code Editor [%1]").arg(agent->data.Id) : QStringLiteral("Code Editor"), w->GetProfile()->GetProject(), QString(), w)
 {
     m_adaptix    = w;
     m_agent      = agent;
@@ -170,6 +292,18 @@ CodeEditorWidget::CodeEditorWidget(AdaptixWidget* w, Agent* agent) : DockTab(age
     if (!isAgentBound() && m_profiles)
         m_profiles->setCurrent(m_sessionProfileId);
     refreshProfileCombo();
+
+    if (dockWidget) {
+        QIcon tabIcon;
+        const QPixmap src(QStringLiteral(":/icons/code"));
+        if (!src.isNull()) {
+            for (int s : {16, 20, 24, 32})
+                tabIcon.addPixmap(src.scaled(s, s, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        } else {
+            tabIcon = QIcon(QStringLiteral(":/icons/code"));
+        }
+        dockWidget->setIcon(tabIcon, KDDockWidgets::IconPlace::TabBar);
+    }
 
     this->dockWidget->setWidget(this);
 
@@ -372,7 +506,7 @@ void CodeEditorWidget::setupConnections()
         }
     });
 
-    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style())) {
+    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr)) {
         connect(qs, &oclero::qlementine::QlementineStyle::themeChanged, this, &CodeEditorWidget::applyTheme, Qt::UniqueConnection);
     }
     applyTheme();
@@ -430,7 +564,7 @@ void CodeEditorWidget::connectConsoleSignals(AxScriptManager* sm)
 
     connect(sm, &AxScriptManager::consoleError, this, &CodeEditorWidget::onScriptConsoleError, Qt::UniqueConnection);
 
-    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style())) {
+    if (auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr)) {
         connect(qs, &oclero::qlementine::QlementineStyle::themeChanged, this, &CodeEditorWidget::applyTheme, Qt::UniqueConnection);
     }
     applyTheme();
@@ -470,7 +604,7 @@ void CodeEditorWidget::applyTheme()
     if (!m_editor)
         return;
 
-    auto* style = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp->style());
+    auto* style = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
     SyntaxStyle* syntaxStyle = style
         ? EditorTheme::createFromQlementine(style->theme(), this)
         : EditorTheme::createDarkTheme(this);
@@ -727,6 +861,11 @@ void CodeEditorWidget::rebuildAxScriptPanel(const BuildProfile& p)
     }
 
     m_panelEngine = new AxScriptEngine(m_sm, QStringLiteral("editor_panel_%1_%2").arg(m_instanceId).arg(p.id.isEmpty() ? p.name : p.id), this, AxScriptTrust::CodeEditor);
+
+    if (QJSEngine* js = m_panelEngine->engine()) {
+        auto* api = new CodeEditorActionApi(this, m_panelEngine);
+        js->globalObject().setProperty(QStringLiteral("editor"), js->newQObject(api));
+    }
 
     QJsonObject seed = p.panelState;
     const QString stateJson = QString::fromUtf8(QJsonDocument(seed).toJson(QJsonDocument::Compact));

@@ -6,5 +6,3 @@
 #define CALLBACK_AX_DOWNLOAD_MEM 0x82
 
 void AxAddScreenshot(char* note, char* data, int len);
-
-void AxDownloadMemory(char* filename, char* data, int len);
