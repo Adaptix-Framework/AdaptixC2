@@ -372,7 +372,7 @@ func (t *TransportDNS) handleGET(req *dnsRequest, w dns.ResponseWriter) []byte {
 
 	stats, n, ok := Ts.TsFrameTakeStatTasks(agentId)
 	if ok && !stats.Select().Empty() {
-		msg := fmt.Sprintf("Sent %s", adaptix.FormatByteSize(int(total)))
+		msg := fmt.Sprintf("Sent %s", adaptix.FormatByteSize(int(n)))
 		if n > 1 {
 			msg = fmt.Sprintf("%s (in %d requests)", msg, n)
 		}
