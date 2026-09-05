@@ -49,24 +49,32 @@ static FeedRow agentToFeedRow(const Agent* agent) {
         {"firstTag", tagList.isEmpty() ? QString() : tagList.first().toLower()}
     };
 
-    QString user = d.Username;
+    QString user = d.Username.trimmed();
     if (d.Elevated)
-        user = "* " + user;
+        user = user.isEmpty() ? QStringLiteral("*") : (QStringLiteral("* ") + user);
     if (!d.Impersonated.isEmpty())
         user += " [" + d.Impersonated + "]";
 
     QStringList mainParts;
-    if (sessionsCol(SC_User) && !user.isEmpty())
+    if (sessionsCol(SC_User) && !(d.Username.trimmed().isEmpty() && !d.Elevated))
         mainParts << user;
     if (sessionsCol(SC_Computer) && !d.Computer.isEmpty())
         mainParts << d.Computer;
 
     QString mainText = mainParts.join(QString(" \u00B7 "));
-    if (sessionsCol(SC_Domain) && !d.Domain.isEmpty()) {
+    QString domain = d.Domain.trimmed();
+    if (!domain.isEmpty() && !d.Computer.isEmpty()) {
+        QString host = d.Computer;
+        const int dot = host.indexOf(QLatin1Char('.'));
+        const QString hostShort = dot > 0 ? host.left(dot) : host;
+        if (QString::compare(domain, host, Qt::CaseInsensitive) == 0 || QString::compare(domain, hostShort, Qt::CaseInsensitive) == 0)
+            domain.clear();
+    }
+    if (sessionsCol(SC_Domain) && !domain.isEmpty()) {
         if (!mainText.isEmpty())
-            mainText += " @ " + d.Domain;
+            mainText += " @ " + domain;
         else
-            mainText = d.Domain;
+            mainText = domain;
     }
 
     const QString submain = sessionsCol(SC_Internal) ? d.InternalIP : QString();
@@ -268,6 +276,10 @@ SessionsFeedWidget::SessionsFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), ad
 
     connect(treeView(), &QTreeView::customContextMenuRequested, this, &SessionsFeedWidget::handleFeedMenu);
     connect(treeView(), &QTreeView::doubleClicked, this, &SessionsFeedWidget::onItemDoubleClicked);
+
+    auto* shortcutConsole = new QShortcut(QKeySequence("Ctrl+I"), this);
+    shortcutConsole->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(shortcutConsole, &QShortcut::activated, this, &SessionsFeedWidget::actionConsoleOpen);
 }
 
 SessionsFeedWidget::~SessionsFeedWidget() = default;
@@ -677,9 +689,14 @@ void SessionsFeedWidget::onItemDoubleClicked(const QModelIndex& index)
 
 void SessionsFeedWidget::actionConsoleOpen()
 {
-    QModelIndex idx = treeView()->currentIndex();
-    if (idx.isValid()) {
-        qint64 agentId = groupingProxy()->data(idx, Qt::UserRole).toLongLong();
+    QModelIndexList selectedRows = treeView()->selectionModel()->selectedRows();
+    if (selectedRows.isEmpty()) {
+        const QModelIndex idx = treeView()->currentIndex();
+        if (idx.isValid())
+            selectedRows << idx;
+    }
+    for (const QModelIndex& proxyIndex : selectedRows) {
+        const qint64 agentId = proxyIndex.data(Qt::UserRole).toLongLong();
         if (agentId > 0)
             adaptixWidget->LoadConsoleUI(agentId);
     }

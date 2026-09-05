@@ -107,6 +107,8 @@ protected Q_SLOTS:
     void onButtonBuild();
     void onBuildConnected();
     void onBuildMessage(const QString &msg);
+    void onBuildFileReady(const QString &filename, const QByteArray &content);
+    void onBuildError(const QString &err);
     void onBuildFinished();
     void onSaveBuildFile();
     void stopBuild();

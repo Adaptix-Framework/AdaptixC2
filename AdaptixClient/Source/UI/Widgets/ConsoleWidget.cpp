@@ -4,13 +4,16 @@
 #include <UI/Widgets/DockWidgetRegister.h>
 #include <UI/Dialogs/DialogUploader.h>
 #include <UI/Dialogs/DialogConsoleSearch.h>
+#include <UI/Dialogs/DialogConsoleHelp.h>
 #include <UI/Widgets/FilesFeedWidget.h>
 #include <Client/Requestor.h>
 #include <Client/Settings.h>
 #include <Client/AuthProfile.h>
 #include <Client/ConsoleTheme.h>
 #include <Utils/FontManager.h>
+#include <Utils/Convert.h>
 #include <MainAdaptix.h>
+#include <QDateTime>
 
 #include <oclero/qlementine/style/QlementineStyle.hpp>
 #include <oclero/qlementine/style/Theme.hpp>
@@ -45,6 +48,7 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
     });
     connect(OutputTextEdit,   &TextEditConsole::ctx_find,                             searchPanel, &SearchPanel::toggle);
     connect(OutputTextEdit,   &TextEditConsole::ctx_history,                          this, &ConsoleWidget::handleShowHistory);
+    connect(OutputTextEdit,   &TextEditConsole::ctx_help,                             this, &ConsoleWidget::handleShowHelp);
     connect(OutputTextEdit,   &TextEditConsole::ctx_clear,                            this, &ConsoleWidget::Clear);
     connect(commander,        &Commander::commandsUpdated,                            this, &ConsoleWidget::upgradeCompleter);
 
@@ -64,6 +68,10 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
     shortcutHistory->setContext(Qt::WidgetWithChildrenShortcut);
     connect(shortcutHistory, &QShortcut::activated, this, &ConsoleWidget::handleShowHistory);
 
+    auto* shortcutHelp = new QShortcut(QKeySequence("Ctrl+Shift+H"), this);
+    shortcutHelp->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(shortcutHelp, &QShortcut::activated, this, &ConsoleWidget::handleShowHelp);
+
     auto* shortcutServerSearch = new QShortcut(QKeySequence("Ctrl+Shift+F"), this);
     shortcutServerSearch->setContext(Qt::WidgetWithChildrenShortcut);
     connect(shortcutServerSearch, &QShortcut::activated, this, &ConsoleWidget::openHistorySearch);
@@ -72,6 +80,8 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
     kphInputLineEdit->setCommandModel(completerModel);
     kphInputLineEdit->setCompleterPopup(CommandCompleter->popup());
     InputLineEdit->installEventFilter(kphInputLineEdit);
+    connect(kphInputLineEdit, &KPH_ConsoleInput::showHistory, this, &ConsoleWidget::handleShowHistory);
+    connect(kphInputLineEdit, &KPH_ConsoleInput::showHelp, this, &ConsoleWidget::handleShowHelp);
 
     connect(&ConsoleThemeManager::instance(), &ConsoleThemeManager::themeChanged, this, [this]() {
         applyTheme();
@@ -386,10 +396,46 @@ void ConsoleWidget::UpdateInfoLabel()
     }
 }
 
+static QString formatAgentIoBytes(qint64 n)
+{
+    if (n < 1024)
+        return QString("%1 B").arg(n);
+    return BytesToFormat(n);
+}
+
+static QString formatAgentIoStatus(const Agent* agent)
+{
+    QStringList parts;
+    if (agent->IoUpTotal > 0)
+        parts << QString("recv %1 / %2").arg(formatAgentIoBytes(agent->IoUpFilled), formatAgentIoBytes(agent->IoUpTotal));
+    if (agent->IoDownTotal > 0)
+        parts << QString("send %1 / %2").arg(formatAgentIoBytes(agent->IoDownFilled), formatAgentIoBytes(agent->IoDownTotal));
+
+    qint64 elapsed = 0;
+    if (agent->IoStarted > 0)
+        elapsed = QDateTime::currentSecsSinceEpoch() - agent->IoStarted;
+    if (elapsed < 0)
+        elapsed = 0;
+    parts << FormatSecToStr(static_cast<int>(elapsed));
+
+    if (agent->IoUpTotal > agent->IoUpFilled && elapsed >= 2 && agent->IoUpFilled > 0) {
+        const double rate = double(agent->IoUpFilled) / double(elapsed);
+        const int eta = static_cast<int>(double(agent->IoUpTotal - agent->IoUpFilled) / rate + 0.5);
+        if (eta >= 2)
+            parts << QString("~%1 left").arg(FormatSecToStr(eta));
+    }
+    return parts.join(QStringLiteral(" | "));
+}
+
 void ConsoleWidget::UpdateStatusLabel()
 {
     if (!StatusLabel || !agent)
         return;
+
+    if (agent->IoActive) {
+        StatusLabel->setText(formatAgentIoStatus(agent));
+        return;
+    }
 
     QString lastText;
     QString statusText;
@@ -794,7 +840,7 @@ void ConsoleWidget::finishBulkLoad()
     }
 }
 
-void ConsoleWidget::applyConsolePacket(const QJsonObject& obj, bool fromHistory)
+void ConsoleWidget::applyConsolePacket(const QJsonObject& obj, bool seedHistory)
 {
     int spType = obj["type"].toInt();
     if (spType == 0) spType = obj["SpType"].toInt();
@@ -805,14 +851,20 @@ void ConsoleWidget::applyConsolePacket(const QJsonObject& obj, bool fromHistory)
             break;
         case TYPE_AGENT_CONSOLE_LOCAL: {
             const qint64 t = static_cast<qint64>(obj["time"].toDouble());
-            ConsoleOutputPrompt(t, "", "", obj["a_cmdline"].toString());
+            const QString cmdline = obj["a_cmdline"].toString();
+            ConsoleOutputPrompt(t, "", "", cmdline);
             ConsoleOutputMessage(t, "", CONSOLE_OUT_LOCAL_INFO, obj["a_message"].toString(), obj["a_text"].toString(), false);
+            if (seedHistory && !cmdline.isEmpty())
+                AddToHistory(cmdline);
             break;
         }
         case TYPE_AGENT_CONSOLE_ERROR: {
             const qint64 t = static_cast<qint64>(obj["time"].toDouble());
-            ConsoleOutputPrompt(t, "", "", obj["a_cmdline"].toString());
+            const QString cmdline = obj["a_cmdline"].toString();
+            ConsoleOutputPrompt(t, "", "", cmdline);
             ConsoleOutputMessage(t, "", CONSOLE_OUT_LOCAL_ERROR, obj["a_message"].toString(), "", true);
+            if (seedHistory && !cmdline.isEmpty())
+                AddToHistory(cmdline);
             break;
         }
         case TYPE_AGENT_CONSOLE_TASK_SYNC: {
@@ -824,7 +876,8 @@ void ConsoleWidget::applyConsolePacket(const QJsonObject& obj, bool fromHistory)
 
             ConsoleOutputPrompt(startTime, taskIdStr, obj["a_client"].toString(), cmdline);
             ConsoleOutputMessage( completed ? finishTime : startTime, taskIdStr, obj["a_msg_type"].toInt(), obj["a_message"].toString(), obj["a_text"].toString(), completed );
-            Q_UNUSED(fromHistory); // history path never seeds Up-arrow command history
+            if (seedHistory && !cmdline.isEmpty())
+                AddToHistory(cmdline);
             break;
         }
         case TYPE_AGENT_CONSOLE_TASK_UPD:
@@ -837,6 +890,8 @@ void ConsoleWidget::applyConsolePacket(const QJsonObject& obj, bool fromHistory)
 
 void ConsoleWidget::applyPageItems(const QJsonArray& items, bool prepend)
 {
+    const bool seedHistory = !prepend && !historyWindow;
+
     if (prepend) {
         auto* sb = OutputTextEdit->verticalScrollBar();
         int oldValue = sb->value();
@@ -846,7 +901,7 @@ void ConsoleWidget::applyPageItems(const QJsonArray& items, bool prepend)
         try {
             for (const QJsonValue& v : items) {
                 if (v.isObject())
-                    applyConsolePacket(v.toObject(), true);
+                    applyConsolePacket(v.toObject(), seedHistory);
             }
         } catch (...) {}
         OutputTextEdit->endPrepend();
@@ -857,7 +912,7 @@ void ConsoleWidget::applyPageItems(const QJsonArray& items, bool prepend)
         OutputTextEdit->setSyncMode(true);
         for (const QJsonValue& v : items) {
             if (v.isObject())
-                applyConsolePacket(v.toObject(), true);
+                applyConsolePacket(v.toObject(), seedHistory);
         }
         OutputTextEdit->setSyncMode(false);
     }
@@ -1463,6 +1518,33 @@ void ConsoleWidget::handleShowHistory()
 
     historyDialog->setModal(true);
     historyDialog->show();
+}
+
+void ConsoleWidget::handleShowHelp()
+{
+    if (!commander)
+        return;
+
+    const QString seed = InputLineEdit ? InputLineEdit->text() : QString();
+    const qint64 agentId = agent ? agent->data.Id : 0;
+
+    if (helpDialog) {
+        helpDialog->reloadCatalog();
+        helpDialog->setQuery(seed);
+        helpDialog->raise();
+        helpDialog->activateWindow();
+        return;
+    }
+
+    helpDialog = new DialogConsoleHelp(commander, agentId, this);
+    connect(helpDialog, &DialogConsoleHelp::insertCommand, this, [this](const QString& command) {
+        if (InputLineEdit)
+            InputLineEdit->setText(command);
+        InputFocus();
+    });
+    helpDialog->setQuery(seed);
+    helpDialog->move(QCursor::pos() - QPoint(helpDialog->width() / 2, helpDialog->height() / 2));
+    helpDialog->show();
 }
 
 void ConsoleWidget::onCompletionSelected(const QString &selectedText) { userSelectedCompletion = true; }

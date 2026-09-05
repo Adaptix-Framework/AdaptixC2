@@ -48,8 +48,9 @@ QVariant AgentsTableModel::data(const QModelIndex &index, const int role) const 
                 case SC_Computer:  return d.Computer;
                 case SC_User:
                 {
-                    QString username = d.Username;
-                    if ( d.Elevated ) username = "* " + username;
+                    QString username = d.Username.trimmed();
+                    if ( d.Elevated )
+                        username = username.isEmpty() ? QStringLiteral("*") : (QStringLiteral("* ") + username);
                     if ( d.Impersonated != "" ) username += " [" + d.Impersonated + "]";
                     return username;
                 }
@@ -280,17 +281,7 @@ SessionsTableWidget::SessionsTableWidget( AdaptixWidget* w ) : DockTab("Sessions
 
     auto shortcutConsole = new QShortcut(QKeySequence("Ctrl+I"), this);
     shortcutConsole->setContext(Qt::WidgetWithChildrenShortcut);
-    connect(shortcutConsole, &QShortcut::activated, this, [this]() {
-        QModelIndexList selectedRows = tableView->selectionModel()->selectedRows();
-        for (const QModelIndex &proxyIndex : selectedRows) {
-            if (groupingModel->isGroupIndex(proxyIndex))
-                continue;
-            qint64 agentId = groupingModel->agentIdFromIndex(proxyIndex);
-            if (agentId == 0)
-                continue;
-            adaptixWidget->LoadConsoleUI(agentId);
-        }
-    });
+    connect(shortcutConsole, &QShortcut::activated, this, &SessionsTableWidget::actionConsoleOpen);
 
     this->dockWidget->setWidget(this);
 }
@@ -429,7 +420,8 @@ void SessionsTableWidget::createUI()
     tableView->setSortingEnabled( true );
     tableView->setWordWrap( false );
     tableView->setSelectionBehavior( QAbstractItemView::SelectRows );
-    tableView->setFocusPolicy( Qt::NoFocus );
+    tableView->setFocusPolicy( Qt::ClickFocus );
+    installViewSelectAll(tableView);
     tableView->setAlternatingRowColors( true );
     tableView->setAnimated( true );
     tableView->setIndentation( 22 );

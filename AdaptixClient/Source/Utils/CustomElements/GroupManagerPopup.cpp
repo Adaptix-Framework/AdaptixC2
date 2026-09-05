@@ -1,4 +1,5 @@
 #include <Utils/CustomElements/GroupManagerPopup.h>
+#include <Utils/CustomElements/ListFeed.h>
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
 #include <Client/Requestor.h>
@@ -127,6 +128,7 @@ void GroupManagerPopup::createUI()
     );
     tree->setHeaderHidden(true);
     tree->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    installViewSelectAll(tree);
     tree->setContextMenuPolicy(Qt::CustomContextMenu);
     tree->setRootIsDecorated(true);
     tree->setProperty("autoIconColor", QVariant::fromValue(oclero::qlementine::AutoIconColor::None));

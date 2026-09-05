@@ -193,6 +193,7 @@ public:
     WebSocketWorker* ChannelWsWorker = nullptr;
     QThread*         TickThread      = nullptr;
     LastTickWorker*  TickWorker      = nullptr;
+    bool             m_closed        = false;
 
     AxScriptManager* ScriptManager = nullptr;
 

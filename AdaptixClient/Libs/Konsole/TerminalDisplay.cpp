@@ -695,6 +695,7 @@ void TerminalDisplay::drawCursor(QPainter &painter, const QRect &rect,
                                  bool &invertCharacterColor, bool preedit) {
     QRectF cursorRect = rect;
     cursorRect.setHeight(_fontHeight - _lineSpacing - 1);
+    cursorRect.translate(0, (rect.height() - cursorRect.height()) / 2.0);
 
     if (!_cursorBlinking) {
         if (_cursorColor.isValid())
@@ -702,28 +703,30 @@ void TerminalDisplay::drawCursor(QPainter &painter, const QRect &rect,
         else
             painter.setPen(foregroundColor);
 
+        if (preedit)
+            cursorRect.setWidth(_fontWidth);
+
+        const float halfStroke = qMax(1, painter.pen().width()) / 2.0f;
+        cursorRect.adjust(halfStroke, halfStroke, -halfStroke, -halfStroke);
+
         if (_cursorShape == Emulation::KeyboardCursorShape::BlockCursor) {
-            float penWidth = qMax(1, painter.pen().width());
-
-            if (preedit) {
-                cursorRect.setWidth(_fontWidth);
-            }
-
-            painter.drawRect(cursorRect.adjusted(penWidth / 2, penWidth / 2, -penWidth / 2, -penWidth / 2));
-
             if (preedit || hasFocus()) {
-                painter.fillRect(cursorRect, _cursorColor.isValid() ? _cursorColor
-                                                                                                                        : foregroundColor);
-                if (!_cursorColor.isValid()) {
+                painter.setBrush(painter.pen().color());
+                if (!_cursorColor.isValid())
                     invertCharacterColor = true;
-                }
+            } else {
+                painter.setBrush(Qt::NoBrush);
             }
-        } else if (_cursorShape == Emulation::KeyboardCursorShape::UnderlineCursor)
+            painter.drawRect(cursorRect);
+        } else if (_cursorShape == Emulation::KeyboardCursorShape::UnderlineCursor) {
+            cursorRect.adjust(halfStroke, halfStroke, -halfStroke, -halfStroke);
             painter.drawLine(cursorRect.left(), cursorRect.bottom(),
-                                             cursorRect.right(), cursorRect.bottom());
-        else if (_cursorShape == Emulation::KeyboardCursorShape::IBeamCursor)
-            painter.drawLine(cursorRect.left(), cursorRect.top(), cursorRect.left(),
-                                             cursorRect.bottom());
+                             cursorRect.right(), cursorRect.bottom());
+        } else if (_cursorShape == Emulation::KeyboardCursorShape::IBeamCursor) {
+            cursorRect.adjust(halfStroke, halfStroke, -halfStroke, -halfStroke);
+            painter.drawLine(cursorRect.left(), cursorRect.top(),
+                             cursorRect.left(), cursorRect.bottom());
+        }
     }
 }
 
@@ -1583,7 +1586,7 @@ int TerminalDisplay::textWidth(const int startColumn, const int length, const in
     int result = 0;
     for (int column = 0; column < length; column++) {
         auto c = _image[loc(startColumn + column, line)];
-        if (_fixedFont_original && !isLineChar(c)) { 
+        if (_fixedFont_original && !isLineChar(c)) {
             result += fm.horizontalAdvance(QLatin1Char(REPCHAR[0]));
         } else {
             result += fm.horizontalAdvance(QChar(static_cast<uint>(c.character)));
@@ -1660,7 +1663,7 @@ void TerminalDisplay::drawContents(QPainter &paint, const QRect &rect) {
             CharacterColor currentForeground = _image[loc(x, y)].foregroundColor;
             CharacterColor currentBackground = _image[loc(x, y)].backgroundColor;
             quint8 currentRendition = _image[loc(x, y)].rendition;
-            
+
             quint32 nxtC = 0;
             bool nxtDoubleWidth = false;
             int nxtCharWidth = 0;
@@ -1756,8 +1759,11 @@ QRect TerminalDisplay::imageToWidget(const QRect &imageArea) const {
 }
 
 void TerminalDisplay::updateCursor() {
-    QRect cursorRect = imageToWidget(QRect(cursorPosition(), QSize(1, 1)));
-    update(cursorRect);
+    const QPoint cPos = cursorPosition();
+    int cWidth = 1;
+    if (_image && _image[qMin(loc(cPos.x(), cPos.y()) + 1, _imageSize)].character == 0)
+        cWidth = 2;
+    update(imageToWidget(QRect(cPos, QSize(cWidth, 1))));
 }
 
 void TerminalDisplay::blinkCursorEvent() {

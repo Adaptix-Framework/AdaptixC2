@@ -475,6 +475,8 @@ public:
     Q_INVOKABLE void    appendText(const QString& text) const;
     Q_INVOKABLE void    setPlaceholder(const QString& text) const;
     Q_INVOKABLE void    setReadOnly(const bool& readonly) const;
+    Q_INVOKABLE void    setMinimumHeight(int h) const;
+    Q_INVOKABLE void    setMaximumHeight(int h) const;
 };
 
 
@@ -616,6 +618,7 @@ public:
     Q_INVOKABLE void setText(const QString& text) const;
     Q_INVOKABLE QString text() const;
     Q_INVOKABLE void setWordWrap(bool on) const;
+    Q_INVOKABLE void setAlignment(const QString& align) const;
     Q_INVOKABLE void setIcon(const QString& resourcePath);
     Q_INVOKABLE void setIconSize(int size);
     Q_INVOKABLE void setIconSize(int width, int height);

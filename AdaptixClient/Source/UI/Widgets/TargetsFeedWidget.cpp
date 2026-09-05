@@ -630,6 +630,7 @@ void TargetsFeedWidget::handleFeedMenu(const QPoint& pos)
                     ctxMenu.addSeparator();
 
                 ctxMenu.addAction(QIcon(":/icons/edit_note"), "Edit", this, &TargetsFeedWidget::onEditTarget);
+                ctxMenu.addAction(QIcon(":/icons/plus"), "Create on template", this, &TargetsFeedWidget::onCreateFromTemplate);
                 ctxMenu.addAction(QIcon(":/icons/delete"), "Remove", this, &TargetsFeedWidget::onRemoveTarget);
                 ctxMenu.addSeparator();
 
@@ -671,27 +672,52 @@ void TargetsFeedWidget::onCreateTarget()
     if (!m_adaptixWidget)
         return;
 
-    DialogTarget* dialogTargets = new DialogTarget();
-    while (true) {
-        dialogTargets->StartDialog();
-        if (dialogTargets->IsValid())
-            break;
+    auto* dialogTargets = new DialogTarget(this);
+    connect(dialogTargets, &DialogTarget::submitted, this, [this](const TargetData& targetData) {
+        this->TargetsAdd({targetData});
+    });
+    dialogTargets->StartDialog();
+}
 
-        QString msg = dialogTargets->GetMessage();
-        if (msg.isEmpty()) {
-            delete dialogTargets;
-            return;
+void TargetsFeedWidget::onCreateFromTemplate()
+{
+    if (!m_adaptixWidget)
+        return;
+
+    TargetInfo info = currentTargetInfo();
+    if (!info.valid)
+        return;
+
+    TargetData targetData;
+    bool found = false;
+    {
+        QReadLocker locker(&m_adaptixWidget->TargetsLock);
+        for (const auto& target : m_adaptixWidget->Targets) {
+            if (target.TargetId == info.targetId) {
+                targetData = target;
+                found = true;
+                break;
+            }
         }
-
-        MessageError(msg);
     }
+    if (!found) {
+        auto it = m_targetCache.constFind(info.targetId);
+        if (it != m_targetCache.constEnd()) {
+            targetData = it.value();
+            found = true;
+        }
+    }
+    if (!found)
+        return;
 
-    TargetData targetData = dialogTargets->GetTargetData();
-    delete dialogTargets;
-
-    QList<TargetData> targetList;
-    targetList.append(targetData);
-    this->TargetsAdd(targetList);
+    auto* dialogTargets = new DialogTarget(this);
+    dialogTargets->SetTemplate(targetData);
+    connect(dialogTargets, &DialogTarget::submitted, this, [this](TargetData newTargetData) {
+        newTargetData.TargetId = 0;
+        newTargetData.Agents.clear();
+        this->TargetsAdd({newTargetData});
+    });
+    dialogTargets->StartDialog();
 }
 
 void TargetsFeedWidget::onEditTarget()
@@ -715,42 +741,27 @@ void TargetsFeedWidget::onEditTarget()
     if (!found)
         return;
 
-    DialogTarget* dialogTarget = new DialogTarget();
+    auto* dialogTarget = new DialogTarget(this);
     dialogTarget->SetEditmode(targetData);
-    while (true) {
-        dialogTarget->StartDialog();
-        if (dialogTarget->IsValid())
-            break;
+    connect(dialogTarget, &DialogTarget::submitted, this, [this](const TargetData& newTargetData) {
+        QJsonObject dataJson;
+        dataJson["t_target_id"] = static_cast<qint64>(newTargetData.TargetId);
+        dataJson["t_computer"]  = newTargetData.Computer;
+        dataJson["t_domain"]    = newTargetData.Domain;
+        dataJson["t_address"]   = newTargetData.Address;
+        dataJson["t_os"]        = newTargetData.Os;
+        dataJson["t_os_desk"]   = newTargetData.OsDesc;
+        dataJson["t_tag"]       = newTargetData.Tag;
+        dataJson["t_info"]      = newTargetData.Info;
+        dataJson["t_alive"]     = newTargetData.Alive;
+        QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-        QString msg = dialogTarget->GetMessage();
-        if (msg.isEmpty()) {
-            delete dialogTarget;
-            return;
-        }
-
-        MessageError(msg);
-    }
-
-    TargetData newTargetData = dialogTarget->GetTargetData();
-
-    QJsonObject dataJson;
-    dataJson["t_target_id"] = static_cast<qint64>(newTargetData.TargetId);
-    dataJson["t_computer"]  = newTargetData.Computer;
-    dataJson["t_domain"]    = newTargetData.Domain;
-    dataJson["t_address"]   = newTargetData.Address;
-    dataJson["t_os"]        = newTargetData.Os;
-    dataJson["t_os_desk"]   = newTargetData.OsDesc;
-    dataJson["t_tag"]       = newTargetData.Tag;
-    dataJson["t_info"]      = newTargetData.Info;
-    dataJson["t_alive"]     = newTargetData.Alive;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    delete dialogTarget;
-
-    HttpReqTargetEditAsync(jsonData, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-        if (!success)
-            MessageError(message.isEmpty() ? "Server is not responding" : message);
+        HttpReqTargetEditAsync(jsonData, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Server is not responding" : message);
+        });
     });
+    dialogTarget->StartDialog();
 }
 
 void TargetsFeedWidget::onRemoveTarget()

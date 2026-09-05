@@ -13,6 +13,7 @@
 #include <QVBoxLayout>
 #include <QToolButton>
 #include <QIcon>
+#include <QItemSelection>
 #include <functional>
 
 namespace {
@@ -257,6 +258,55 @@ void applyFeedWidgetSurface(QWidget* widget)
     widget->setAutoFillBackground(true);
 }
 
+void installViewSelectAll(QAbstractItemView* view)
+{
+    if (!view)
+        return;
+
+    if (view->focusPolicy() == Qt::NoFocus)
+        view->setFocusPolicy(Qt::ClickFocus);
+
+    static const char kInstalled[] = "_adaptix_selectAll";
+    if (view->property(kInstalled).toBool())
+        return;
+    view->setProperty(kInstalled, true);
+
+    auto* shortcut = new QShortcut(QKeySequence::SelectAll, view);
+    shortcut->setContext(Qt::WidgetWithChildrenShortcut);
+    QObject::connect(shortcut, &QShortcut::activated, view, [view]() {
+        auto* model = view->model();
+        auto* sm = view->selectionModel();
+        if (!model || !sm)
+            return;
+
+        const auto mode = view->selectionMode();
+        if (mode == QAbstractItemView::NoSelection || mode == QAbstractItemView::SingleSelection)
+            return;
+
+        QItemSelection sel;
+        std::function<void(const QModelIndex&)> collect = [&](const QModelIndex& parent) {
+            const int rows = model->rowCount(parent);
+            if (rows <= 0)
+                return;
+            const int lastCol = qMax(0, model->columnCount(parent) - 1);
+            sel.select(model->index(0, 0, parent), model->index(rows - 1, lastCol, parent));
+            for (int r = 0; r < rows; ++r) {
+                const QModelIndex child = model->index(r, 0, parent);
+                if (model->hasChildren(child))
+                    collect(child);
+            }
+        };
+        collect(QModelIndex());
+
+        QItemSelectionModel::SelectionFlags flags = QItemSelectionModel::ClearAndSelect;
+        if (view->selectionBehavior() == QAbstractItemView::SelectRows)
+            flags |= QItemSelectionModel::Rows;
+        else if (view->selectionBehavior() == QAbstractItemView::SelectColumns)
+            flags |= QItemSelectionModel::Columns;
+        sm->select(sel, flags);
+    });
+}
+
 void applyFeedTableViewChrome(QAbstractItemView* view)
 {
     if (!view)
@@ -289,6 +339,8 @@ void applyFeedTableViewChrome(QAbstractItemView* view)
 
     if (QWidget* host = view->parentWidget())
         applyFeedWidgetSurface(host);
+
+    installViewSelectAll(view);
 }
 
 
@@ -2155,6 +2207,7 @@ ListFeedWidget::ListFeedWidget(QWidget* parent) : QWidget(parent)
     m_treeView->viewport()->setAutoFillBackground(false);
     m_treeView->setProperty("autoIconColor", QVariant::fromValue(oclero::qlementine::AutoIconColor::None));
     m_treeView->setAutoFillBackground(false);
+    installViewSelectAll(m_treeView);
 
     m_toolbarWidget = new QWidget(this);
     m_toolbarWidget->setFixedHeight(FontManager::instance().typography().toolbarHeight);

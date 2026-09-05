@@ -72,6 +72,10 @@ public:
     
     const QStringList& getHistory() const { return history; }
 
+Q_SIGNALS:
+    void showHistory();
+    void showHelp();
+
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override {
         // Intercept Tab on QCompleter popup (Tab events go to popup, not InputLineEdit)
@@ -92,6 +96,23 @@ protected:
                     inputLineEdit->setFocus();
                     return true;
                 }
+            }
+        }
+
+        if (watched == inputLineEdit && (event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride)) {
+            QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+
+            const Qt::KeyboardModifiers mods = keyEvent->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier);
+            if (keyEvent->key() == Qt::Key_H && (mods == Qt::ControlModifier || mods == (Qt::ControlModifier | Qt::ShiftModifier))) {
+                if (event->type() == QEvent::ShortcutOverride) {
+                    keyEvent->accept();
+                    return true;
+                }
+                if (mods == Qt::ControlModifier)
+                    Q_EMIT showHistory();
+                else
+                    Q_EMIT showHelp();
+                return true;
             }
         }
 

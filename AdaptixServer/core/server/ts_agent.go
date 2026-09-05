@@ -152,44 +152,52 @@ func (ts *Teamserver) TsAgentCreate(agentCrc string, agentUid []byte, beat []byt
 }
 
 func (ts *Teamserver) TsAgentCommand(agentName string, agentId int64, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) error {
+	_, _, err := ts.TsAgentCommandResult(agentName, agentId, clientName, hookId, handlerId, cmdline, ui, args)
+	return err
+}
+
+func (ts *Teamserver) TsAgentCommandResult(agentName string, agentId int64, clientName string, hookId string, handlerId string, cmdline string, ui bool, args map[string]any) (int64, bool, error) {
 	if !ts.agent_configs.Contains(agentName) {
-		return fmt.Errorf("agent %v not registered", agentName)
+		return 0, false, fmt.Errorf("agent %v not registered", agentName)
 	}
 
 	agent, ok := ts.Agents.Get(agentId)
 	if !ok {
-		return fmt.Errorf("agent %v not found", agentId)
+		return 0, false, fmt.Errorf("agent %v not found", agentId)
 	}
 	if !agent.IsActive() {
-		return fmt.Errorf("agent '%v' not active", agentId)
+		return 0, false, fmt.Errorf("agent '%v' not active", agentId)
 	}
 	if agent.IsRemoved() {
-		return adaptix.ErrAgentRemoved
+		return 0, false, adaptix.ErrAgentRemoved
 	}
 
 	taskData, messageData, err := agent.Fn.CreateCommand(agent.GetData(), args)
 	if err != nil {
-		return err
+		return 0, false, err
 	}
 	if taskData.Type == adaptix.TASK_TYPE_LOCAL {
 		if taskData.Message != "" || taskData.ClearText != "" {
 			ts.TsAgentConsoleLocalCommand(agentId, clientName, cmdline, taskData.Message, taskData.ClearText)
 		}
-	} else {
-		taskData.HookId = hookId
-		taskData.HandlerId = handlerId
-		if taskData.Type == adaptix.TASK_TYPE_TASK && ui {
-			taskData.Type = adaptix.TASK_TYPE_BROWSER
-		}
-
-		ts.TsTaskCreate(agentId, cmdline, clientName, taskData)
-
-		if (taskData.Type != adaptix.TASK_TYPE_BROWSER) && (len(messageData.Message) > 0 || len(messageData.Text) > 0) {
-			ts.TsAgentConsoleOutput(agentId, clientName, messageData.Status, messageData.Message, messageData.Text, false)
-		}
+		return 0, true, nil
 	}
 
-	return nil
+	taskData.HookId = hookId
+	taskData.HandlerId = handlerId
+	if taskData.Type == adaptix.TASK_TYPE_TASK && ui {
+		taskData.Type = adaptix.TASK_TYPE_BROWSER
+	}
+
+	taskId := ts.TaskManager.Create(agentId, cmdline, clientName, taskData)
+	if taskId == 0 {
+		return 0, false, fmt.Errorf("task was not created")
+	}
+
+	if (taskData.Type != adaptix.TASK_TYPE_BROWSER) && (len(messageData.Message) > 0 || len(messageData.Text) > 0) {
+		ts.TsAgentConsoleOutput(agentId, clientName, messageData.Status, messageData.Message, messageData.Text, false)
+	}
+	return taskId, false, nil
 }
 
 func (ts *Teamserver) TsAgentProcessData(agentId int64, bodyData []byte) error {
@@ -253,6 +261,27 @@ func (ts *Teamserver) packAgentTasks(agent *adaptix.Agent, tasks []adaptix.TaskD
 
 	ts.TaskManager.DispatchPostEncode(agent, tasks)
 	return respData, stats, nil
+}
+
+func (ts *Teamserver) requeueOrphanRunningTasks(agent *adaptix.Agent) {
+	if agent == nil {
+		return
+	}
+	var orphans []adaptix.TaskData
+	agent.RunningTasks.ForEach(func(_ int64, task adaptix.TaskData) bool {
+		if task.Completed || len(task.Data) == 0 {
+			return true
+		}
+		switch task.Type {
+		case adaptix.TASK_TYPE_TASK, adaptix.TASK_TYPE_BROWSER:
+			orphans = append(orphans, task)
+		}
+		return true
+	})
+	for _, task := range orphans {
+		agent.RunningTasks.Delete(task.TaskId)
+		agent.HostedQueue.Push(task.Priority, task)
+	}
 }
 
 func (ts *Teamserver) getHosted(agentId int64, maxCount, maxDataSize int, withPivot bool) ([]byte, adaptix.StatTasks, error) {

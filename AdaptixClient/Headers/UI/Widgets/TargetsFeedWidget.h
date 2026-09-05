@@ -58,6 +58,7 @@ public Q_SLOTS:
     void handleFeedMenu(const QPoint& pos);
     void onItemDoubleClicked(const QModelIndex& index);
     void onCreateTarget();
+    void onCreateFromTemplate();
     void onImportTargets();
     void onEditTarget();
     void onRemoveTarget();

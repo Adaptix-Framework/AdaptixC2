@@ -280,6 +280,7 @@ func (ts *Teamserver) closeUploadForce(fileId int64, reason int) error {
 		uploadData.Progress = uploadData.TotalSize
 	} else {
 		uploadData.State = adaptix.TRANSFER_STATE_CANCELED
+		ts.TsFrameResetDownstream(uploadData.AgentId)
 	}
 
 	if err := ts.DBMS.DbUploadUpdateState(uploadData.FileId, uploadData.State, uploadData.Progress); err != nil {

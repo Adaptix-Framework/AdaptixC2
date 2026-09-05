@@ -269,7 +269,6 @@ const char* kSettingsCardCss =
     "}";
 
 } // namespace
-
 void DialogSettings::createUI()
 {
     this->setWindowTitle("Adaptix Settings");
@@ -306,7 +305,7 @@ void DialogSettings::createUI()
             return;
         }
         auto reply = QMessageBox::question(this, "Delete Theme", QString("Delete theme '%1'?").arg(name),
-            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+                                           QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (reply != QMessageBox::Yes) return;
         if (deleteAppTheme(name)) {
             refreshAppThemeCombo();
@@ -441,7 +440,7 @@ void DialogSettings::createUI()
             return;
         }
         auto reply = QMessageBox::question(this, "Delete Theme", QString("Delete theme '%1'?").arg(name),
-            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+                                           QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (reply != QMessageBox::Yes) return;
         if (ConsoleThemeManager::instance().deleteTheme(name)) {
             refreshConsoleThemeCombo();
@@ -882,8 +881,7 @@ void DialogSettings::createUI()
     codeEditorPanelEnabledSwitch = new oclero::qlementine::Switch(panelCard);
     codeEditorPanelEnabledSwitch->setText(QStringLiteral("Show GeneratePanel under the editor"));
     codeEditorPanelEnabledSwitch->setToolTip(
-        QStringLiteral("On — AxScript GeneratePanel() in the editor bottom strip.\n"
-                       "Off — no config panel."));
+        QStringLiteral("On — AxScript GeneratePanel() in the editor bottom strip.\nOff — no config panel."));
     panelCardLay->addWidget(codeEditorPanelEnabledSwitch);
     auto* panelHint = new QLabel(QStringLiteral("Edit the script on the Panel tab. Values are free-form keys in the container."), panelCard);
     panelHint->setWordWrap(true);
@@ -1019,8 +1017,7 @@ void DialogSettings::createUI()
     emptyLay->setSpacing(12);
     emptyLay->setAlignment(Qt::AlignCenter);
     codeEditorCustomEmptyLabel = new QLabel(
-        QStringLiteral("No toolbar actions yet.\n"
-                       "Add toolbar actions — each runs an AxScript handler with global editor."),
+        QStringLiteral("No toolbar actions yet.\nAdd toolbar actions — each runs an AxScript handler with global editor."),
         emptyPage);
     codeEditorCustomEmptyLabel->setAlignment(Qt::AlignCenter);
     codeEditorCustomEmptyLabel->setWordWrap(true);
@@ -1057,29 +1054,29 @@ void DialogSettings::createUI()
     codeEditorActionsTable->setMaximumWidth(200);
     codeEditorActionsTable->setMinimumWidth(168);
     codeEditorActionsTable->setStyleSheet(QStringLiteral(
-        "QTableWidget {"
-        "  border: 1px solid palette(mid);"
-        "  border-radius: 8px;"
-        "  background: palette(base);"
-        "  gridline-color: transparent;"
-        "  outline: none;"
-        "}"
-        "QTableWidget::item {"
-        "  padding: 6px 8px;"
-        "}"
-        "QTableWidget::item:selected {"
-        "  background: palette(highlight);"
-        "  color: palette(highlighted-text);"
-        "}"
-        "QHeaderView::section {"
-        "  background: palette(alternate-base);"
-        "  color: %1;"
-        "  border: none;"
-        "  border-bottom: 1px solid palette(mid);"
-        "  padding: 6px 8px;"
-        "  font-weight: 600;"
-        "  font-size: 11px;"
-        "}")
+            "QTableWidget {"
+            "  border: 1px solid palette(mid);"
+            "  border-radius: 8px;"
+            "  background: palette(base);"
+            "  gridline-color: transparent;"
+            "  outline: none;"
+            "}"
+            "QTableWidget::item {"
+            "  padding: 6px 8px;"
+            "}"
+            "QTableWidget::item:selected {"
+            "  background: palette(highlight);"
+            "  color: palette(highlighted-text);"
+            "}"
+            "QHeaderView::section {"
+            "  background: palette(alternate-base);"
+            "  color: %1;"
+            "  border: none;"
+            "  border-bottom: 1px solid palette(mid);"
+            "  padding: 6px 8px;"
+            "  font-weight: 600;"
+            "  font-size: 11px;"
+            "}")
         .arg(mutedColor.name(QColor::HexArgb)));
     customSplit->addWidget(codeEditorActionsTable, 0);
 
@@ -1173,17 +1170,17 @@ void DialogSettings::createUI()
     codeEditorPanelScriptEdit->setFont(monoFont);
     codeEditorPanelScriptEdit->setTabStopDistance(28);
     codeEditorPanelScriptEdit->setStyleSheet(QStringLiteral(
-        "QPlainTextEdit {"
-        "  background: palette(base);"
-        "  border: 1px solid palette(mid);"
-        "  border-radius: 8px;"
-        "  padding: 10px;"
-        "  selection-background-color: palette(highlight);"
-        "}"
-        "QPlainTextEdit:disabled {"
-        "  color: %1;"
-        "  background: palette(alternate-base);"
-        "}")
+            "QPlainTextEdit {"
+            "  background: palette(base);"
+            "  border: 1px solid palette(mid);"
+            "  border-radius: 8px;"
+            "  padding: 10px;"
+            "  selection-background-color: palette(highlight);"
+            "}"
+            "QPlainTextEdit:disabled {"
+            "  color: %1;"
+            "  background: palette(alternate-base);"
+            "}")
         .arg(mutedColor.name(QColor::HexArgb)));
     panelLay->addWidget(codeEditorPanelScriptEdit, 1);
 
@@ -1287,9 +1284,9 @@ void DialogSettings::createUI()
     });
     if (codeEditorPanelEnabledSwitch) {
         connect(codeEditorPanelEnabledSwitch, &oclero::qlementine::Switch::toggled, this, [this, markDirty](bool) {
-                    updateCodeEditorPanelScriptVisibility();
-                    markDirty();
-                });
+            updateCodeEditorPanelScriptVisibility();
+            markDirty();
+        });
     }
     if (codeEditorPanelScriptEdit)
         connect(codeEditorPanelScriptEdit, &QPlainTextEdit::textChanged, this, [markDirty]() { markDirty(); });
@@ -1299,8 +1296,8 @@ void DialogSettings::createUI()
                 return;
             if (!codeEditorPanelScriptEdit->toPlainText().trimmed().isEmpty()) {
                 const auto reply = QMessageBox::question(this, QStringLiteral("Insert template"),
-                    QStringLiteral("Replace current panel script with the template?"),
-                    QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+                                                         QStringLiteral("Replace current panel script with the template?"),
+                                                         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
                 if (reply != QMessageBox::Yes)
                     return;
             }
@@ -1333,8 +1330,8 @@ void DialogSettings::createUI()
             codeEditorActionsTable->setItem(row, 1, new QTableWidgetItem(QStringLiteral("Action")));
             codeEditorActionsTable->setItem(row, 2, new QTableWidgetItem(QStringLiteral("axscript")));
             codeEditorActionsTable->setItem(row, 3, new QTableWidgetItem(QStringLiteral(
-                "let p = editor.get_panel_data();\n"
-                "editor.eval(editor.content(), { main: !!p.mainEngine });\n")));
+                                                "let p = editor.get_panel_data();\n"
+                                                "editor.eval(editor.content(), { main: !!p.mainEngine });\n")));
             codeEditorActionsTable->selectRow(row);
             loadCodeEditorActionScriptFromRow(row);
             markDirty();
@@ -2035,6 +2032,7 @@ void DialogSettings::createUI()
     addRow("Ctrl+L",             "Console",    "Clear output");
     addRow("Ctrl+A",             "Console",    "Select all");
     addRow("Ctrl+H",             "Console",    "Command history");
+    addRow("Ctrl+Shift+H",       "Console",    "Command help");
 
     addSection("Terminal");
     addRow("Ctrl+Shift+C",      "Terminal",   "Copy selection");
@@ -2044,6 +2042,7 @@ void DialogSettings::createUI()
 
     addSection("Other Widgets");
     addRow("Ctrl+F",             "List/Table", "Search / Filter");
+    addRow("Ctrl+A",             "List/Table", "Select all rows");
     addRow("Esc",                "List/Table", "Clear filter");
 
     shortcutsLayout->addWidget(shortcutsTable, 0, 0);
@@ -2120,7 +2119,7 @@ void DialogSettings::createUI()
 
     auto* note = new QLabel(
         QStringLiteral("Policy changes apply to newly created script engines (reload scripts / restart action). "
-                       "process.exec is hard-limited to Code Editor toolbar actions even if other toggles appear."),
+            "process.exec is hard-limited to Code Editor toolbar actions even if other toggles appear."),
         scriptSecWidget);
     note->setWordWrap(true);
     note->setStyleSheet(QStringLiteral("color: palette(placeholderText); font-size: 11px;"));
@@ -2209,9 +2208,9 @@ void DialogSettings::createUI()
 
     auto markScriptDirty = [this](bool) { buttonApply->setEnabled(true); };
     for (auto* sw : {scriptServerRead, scriptServerWrite, scriptServerProcess, scriptServerSandbox,
-                     scriptLocalRead, scriptLocalWrite, scriptLocalProcess, scriptLocalSandbox,
-                     scriptEditorRead, scriptEditorWrite, scriptEditorProcess, scriptEditorSandbox,
-                     scriptActionRead, scriptActionWrite, scriptActionProcess, scriptActionSandbox}) {
+             scriptLocalRead, scriptLocalWrite, scriptLocalProcess, scriptLocalSandbox,
+             scriptEditorRead, scriptEditorWrite, scriptEditorProcess, scriptEditorSandbox,
+             scriptActionRead, scriptActionWrite, scriptActionProcess, scriptActionSandbox}) {
         if (sw)
             connect(sw, &oclero::qlementine::Switch::toggled, buttonApply, markScriptDirty);
     }
@@ -2251,6 +2250,7 @@ void DialogSettings::createUI()
     buttonApply->setFixedHeight(buttonHeight);
     buttonClose->setFixedHeight(buttonHeight);
 }
+
 
 void DialogSettings::onStackChange(int index) const
 {

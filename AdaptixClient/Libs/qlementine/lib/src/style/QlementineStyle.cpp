@@ -957,58 +957,68 @@ void QlementineStyle::drawPrimitive(PrimitiveElement pe, const QStyleOption* opt
           widgetHasFocus && selection == SelectionState::Selected ? FocusState::Focused : FocusState::NotFocused;
         const auto active = getActiveState(itemState);
         const auto& color = listItemBackgroundColor(mouse, selection, focus, active, optItem->index, w);
-        p->fillRect(rect, color);
+        const auto* listView = qobject_cast<const QListView*>(w);
+        const auto viewMode = listView ? listView->viewMode() : QListView::ListMode;
 
-        // Border on the left if necessary.
-        if (column == 0) {
-          if (const auto* tableView = qobject_cast<const QTableView*>(w)) {
-            if (tableView->showGrid() && tableView->verticalHeader()->isHidden()) {
-              const auto lineW = _impl->theme.borderWidth;
-              const auto p1 = QPointF(rect.x() + lineW * .5, rect.y());
-              const auto p2 = QPointF(rect.x() + lineW * .5, rect.y() + rect.height());
-              const auto& lineColor = tableLineColor();
-              p->setRenderHint(QPainter::Antialiasing, false);
-              p->setPen(QPen(lineColor, lineW));
-              p->drawLine(p1, p2);
+        if (viewMode == QListView::IconMode) {
+          p->setRenderHint(QPainter::Antialiasing, true);
+          p->setBrush(color);
+          p->setPen(Qt::NoPen);
+          p->drawRoundedRect(rect, _impl->theme.borderRadius, _impl->theme.borderRadius);
+        } else {
+          p->fillRect(rect, color);
+
+          // Border on the left if necessary.
+          if (column == 0) {
+            if (const auto* tableView = qobject_cast<const QTableView*>(w)) {
+              if (tableView->showGrid() && tableView->verticalHeader()->isHidden()) {
+                const auto lineW = _impl->theme.borderWidth;
+                const auto p1 = QPointF(rect.x() + lineW * .5, rect.y());
+                const auto p2 = QPointF(rect.x() + lineW * .5, rect.y() + rect.height());
+                const auto& lineColor = tableLineColor();
+                p->setRenderHint(QPainter::Antialiasing, false);
+                p->setPen(QPen(lineColor, lineW));
+                p->drawLine(p1, p2);
+              }
             }
           }
-        }
-        // Border on the top if necessary.
-        if (row == 0) {
-          if (const auto* tableView = qobject_cast<const QTableView*>(w)) {
-            if (tableView->showGrid() && tableView->horizontalHeader()->isHidden()) {
-              const auto lineW = _impl->theme.borderWidth;
-              const auto p1 = QPointF(rect.x(), rect.y() + lineW * .5);
-              const auto p2 = QPointF(rect.x() + rect.width(), rect.y() + lineW * .5);
-              const auto& lineColor = tableLineColor();
-              p->setRenderHint(QPainter::Antialiasing, false);
-              p->setPen(QPen(lineColor, lineW));
-              p->drawLine(p1, p2);
+          // Border on the top if necessary.
+          if (row == 0) {
+            if (const auto* tableView = qobject_cast<const QTableView*>(w)) {
+              if (tableView->showGrid() && tableView->horizontalHeader()->isHidden()) {
+                const auto lineW = _impl->theme.borderWidth;
+                const auto p1 = QPointF(rect.x(), rect.y() + lineW * .5);
+                const auto p2 = QPointF(rect.x() + rect.width(), rect.y() + lineW * .5);
+                const auto& lineColor = tableLineColor();
+                p->setRenderHint(QPainter::Antialiasing, false);
+                p->setPen(QPen(lineColor, lineW));
+                p->drawLine(p1, p2);
+              }
             }
           }
-        }
 
-        // Border that indicates which cell has focus.
-        // We don't show this border in the first column of a table/tree (the column with the arrow).
-        const auto isTable = qobject_cast<const QTableView*>(w) != nullptr;
-        if (isTable && row < 0)
-          return;
+          // Border that indicates which cell has focus.
+          // We don't show this border in the first column of a table/tree (the column with the arrow).
+          const auto isTable = qobject_cast<const QTableView*>(w) != nullptr;
+          if (isTable && row < 0)
+            return;
 
 #if 0
-        //const auto* itemView = qobject_cast<const QAbstractItemView*>(optItem->widget);
-        //const auto* model = itemView ? itemView->model() : nullptr;
-        //const auto columnCount = model ? model->columnCount() : 1;
-        //const auto multiColumn = columnCount > 1;
-        //const auto isCurrentCell = active == ActiveState::Active && focus == FocusState::Focused;
-        //const auto multiSelection = itemView ? itemView->selectionMode() != QAbstractItemView::SelectionMode::SingleSelection : false;
-        const auto showCellFocus = true; //multiColumn ? isCurrentCell : multiSelection;
-        const auto cellFocus = showCellFocus ? focus : FocusState::NotFocused;
-        const auto& borderColor = cellItemFocusBorderColor(cellFocus, selection, active);
-        const auto borderW = _impl->theme.borderWidth * 2;
-        auto borderRect = optItem->rect;
-        borderRect.setLeft(0);
-        drawRectBorder(p, borderRect, borderColor, borderW);
+          //const auto* itemView = qobject_cast<const QAbstractItemView*>(optItem->widget);
+          //const auto* model = itemView ? itemView->model() : nullptr;
+          //const auto columnCount = model ? model->columnCount() : 1;
+          //const auto multiColumn = columnCount > 1;
+          //const auto isCurrentCell = active == ActiveState::Active && focus == FocusState::Focused;
+          //const auto multiSelection = itemView ? itemView->selectionMode() != QAbstractItemView::SelectionMode::SingleSelection : false;
+          const auto showCellFocus = true; //multiColumn ? isCurrentCell : multiSelection;
+          const auto cellFocus = showCellFocus ? focus : FocusState::NotFocused;
+          const auto& borderColor = cellItemFocusBorderColor(cellFocus, selection, active);
+          const auto borderW = _impl->theme.borderWidth * 2;
+          auto borderRect = optItem->rect;
+          borderRect.setLeft(0);
+          drawRectBorder(p, borderRect, borderColor, borderW);
 #endif
+        }
       }
       return;
     case PE_PanelItemViewRow:
@@ -2301,18 +2311,18 @@ void QlementineStyle::drawControl(ControlElement ce, const QStyleOption* opt, QP
 
         // Foreground.
         const auto& features = optItem->features;
-        const auto spacing = _impl->theme.spacing;
-        const auto hPadding = spacing;
         const auto hasIcon = features.testFlag(QStyleOptionViewItem::HasDecoration) && !optItem->icon.isNull();
         const auto& iconSize = hasIcon ? optItem->decorationSize : QSize{ 0, 0 };
-        const auto fgRect = optItem->rect.marginsRemoved(QMargins{ hPadding, 0, hPadding, 0 });
         const auto selected = getSelectionState(optItem->state);
         const auto hasCheck = features.testFlag(QStyleOptionViewItem::HasCheckIndicator);
-        const auto checkBoxSize = _impl->theme.iconSize;
-        const auto checkBoxSpace = hasCheck ? checkBoxSize.width() + spacing : 0;
         const auto isChecked = hasCheck && optItem->checkState == Qt::Checked;
         const auto checked = isChecked ? CheckState::Checked : CheckState::NotChecked;
         const auto active = getActiveState(optItem->state);
+
+        const auto* styleProxy = this->proxy();
+        const auto checkboxRect = styleProxy->subElementRect(SE_ItemViewItemCheckIndicator, optItem, w);
+        const auto iconRect = styleProxy->subElementRect(SE_ItemViewItemDecoration, optItem, w);
+        const auto textRect = styleProxy->subElementRect(SE_ItemViewItemText, optItem, w);
 
         // We show the selected color on the whole row, not only the cell.
         // Make it consistent with the background color in PE_PanelItemViewItem.
@@ -2322,9 +2332,6 @@ void QlementineStyle::drawControl(ControlElement ce, const QStyleOption* opt, QP
 
         // Checkbox, if any.
         if (hasCheck) {
-          const auto checkBoxX = fgRect.x();
-          const auto checkBoxY = fgRect.y() + (fgRect.height() - checkBoxSize.height()) / 2;
-          const auto checkboxRect = QRect{ QPoint{ checkBoxX, checkBoxY }, checkBoxSize };
           auto checkBoxState = optItem->state;
           //// TODO: How to know if checkbox hovered/pressed?
           //auto checkHovered = false;
@@ -2353,24 +2360,10 @@ void QlementineStyle::drawControl(ControlElement ce, const QStyleOption* opt, QP
         const auto& textColor =
           focus == FocusState::Focused ? fgColor : optItem->palette.color(paletteColorGroup, paletteColorRole);
 
-        const auto contentRect = fgRect.adjusted(checkBoxSpace, 0, 0, 0);
-        auto availableW = contentRect.width();
-        auto availableX = contentRect.x();
-
         // Icon.
-        if (availableW > 0 && hasIcon) {
-          const auto iconW = iconSize.width();
-          const auto iconSpacing = iconW > 0 ? spacing : 0;
+        if (iconRect.width() > 0 && hasIcon) {
           const auto pixmap = getPixmap(optItem->icon, iconSize, itemMouse, checked, w);
           const auto autoIconColor = listItemAutoIconColor(itemMouse, selected, focus, active, optItem->index, w);
-          const auto pixmapPixelRatio = pixmap.devicePixelRatio();
-          const auto pixmapW = pixmapPixelRatio != 0 ? (int) ((qreal) pixmap.width() / pixmapPixelRatio) : 0;
-          const auto pixmapH = pixmapPixelRatio != 0 ? (int) ((qreal) pixmap.height() / pixmapPixelRatio) : 0;
-          const auto pixmapX = availableX + (iconSize.width() - pixmapW) / 2; // Center the icon in the rect.
-          const auto pixmapY = contentRect.y() + (contentRect.height() - pixmapH) / 2;
-          const auto pixmapRect = QRect{ pixmapX, pixmapY, pixmapW, pixmapH };
-          availableW -= iconW + iconSpacing;
-          availableX += iconW + iconSpacing;
 
           if (itemMouse == MouseState::Disabled && autoIconColor == AutoIconColor::None) {
             const auto& bgColor =
@@ -2380,22 +2373,18 @@ void QlementineStyle::drawControl(ControlElement ce, const QStyleOption* opt, QP
             const auto opacity = selected == SelectionState::Selected ? 0.3 : 0.25;
             const auto backupOpacity = p->opacity();
             p->setOpacity(opacity * backupOpacity);
-            p->drawPixmap(pixmapRect, tintedPixmap);
+            p->drawPixmap(iconRect, tintedPixmap);
             p->setOpacity(backupOpacity);
           } else {
             const auto& colorizedPixmap = getColorizedPixmap(pixmap, autoIconColor, fgColor, textColor);
-            auto iconRect = subElementRect(SE_ItemViewItemDecoration, optItem, w);
-            iconRect.moveLeft(pixmapRect.left());
             p->drawPixmap(iconRect, colorizedPixmap);
           }
         }
 
         // Text.
-        if (availableW > 0 && !optItem->text.isEmpty()) {
+        if (textRect.width() > 0 && !optItem->text.isEmpty()) {
           const auto& fm = optItem->fontMetrics;
-          const auto elidedText = fm.elidedText(optItem->text, Qt::ElideRight, availableW, Qt::TextSingleLine);
-          const auto textX = availableX;
-          const auto textRect = QRect{ textX, contentRect.y(), availableW, contentRect.height() };
+          const auto elidedText = fm.elidedText(optItem->text, Qt::ElideRight, textRect.width(), Qt::TextSingleLine);
           const auto textAlignment = optItem->displayAlignment;
           auto hAlign = Qt::AlignLeft;
           if (textAlignment.testFlag(Qt::AlignHCenter)) {
@@ -2591,7 +2580,67 @@ QRect QlementineStyle::subElementRect(SubElement se, const QStyleOption* opt, co
     case SE_ItemViewItemCheckIndicator:
     case SE_ItemViewItemDecoration:
     case SE_ItemViewItemText:
-      // Let QCommonStyle handle these.
+      if (const auto* optItem = qstyleoption_cast<const QStyleOptionViewItem*>(opt)) {
+        const auto* listView = qobject_cast<const QListView*>(w);
+        const auto iconMode = listView && listView->viewMode() == QListView::IconMode;
+        const auto& features = optItem->features;
+        const auto spacing = _impl->theme.spacing;
+        const auto hPadding = spacing;
+        const auto hasIcon = features.testFlag(QStyleOptionViewItem::HasDecoration) && !optItem->icon.isNull();
+        const auto iconSize = hasIcon ? optItem->decorationSize : QSize{ 0, 0 };
+        const auto hasText = features.testFlag(QStyleOptionViewItem::HasDisplay) && !optItem->text.isEmpty();
+        const auto textH = hasText ? optItem->fontMetrics.height() : 0;
+        const auto hasCheck = features.testFlag(QStyleOptionViewItem::HasCheckIndicator);
+        const auto checkSize = hasCheck ? _impl->theme.iconSize : QSize{ 0, 0 };
+
+        if (iconMode) {
+          const auto contentH = iconSize.height() + (hasIcon && hasText ? spacing : 0) + textH
+                                + (hasCheck && (hasIcon || hasText) ? spacing : 0) + checkSize.height();
+          auto y = optItem->rect.y() + std::max(0, optItem->rect.height() - contentH) / 2;
+
+          if (se == SE_ItemViewItemDecoration) {
+            return hasIcon ? QRect{ optItem->rect.x() + (optItem->rect.width() - iconSize.width()) / 2, y,
+                                    iconSize.width(), iconSize.height() }
+                           : QRect{};
+          }
+
+          if (hasIcon)
+            y += iconSize.height() + (hasText || hasCheck ? spacing : 0);
+          if (se == SE_ItemViewItemText) {
+            return hasText ? QRect{ optItem->rect.x() + hPadding, y, optItem->rect.width() - 2 * hPadding, textH }
+                           : QRect{};
+          }
+
+          if (hasText)
+            y += textH + (hasCheck ? spacing : 0);
+          return hasCheck ? QRect{ optItem->rect.x() + (optItem->rect.width() - checkSize.width()) / 2, y,
+                                   checkSize.width(), checkSize.height() }
+                          : QRect{};
+        }
+
+        auto x = optItem->rect.x() + hPadding;
+        const auto contentY = optItem->rect.y();
+        const auto contentH = optItem->rect.height();
+        const auto contentRight = optItem->rect.x() + optItem->rect.width() - hPadding;
+
+        if (se == SE_ItemViewItemCheckIndicator) {
+          return hasCheck
+                   ? QRect{ x, contentY + (contentH - checkSize.height()) / 2, checkSize.width(), checkSize.height() }
+                   : QRect{};
+        }
+
+        if (hasCheck)
+          x += checkSize.width() + spacing;
+        if (se == SE_ItemViewItemDecoration) {
+          return hasIcon
+                   ? QRect{ x, contentY + (contentH - iconSize.height()) / 2, iconSize.width(), iconSize.height() }
+                   : QRect{};
+        }
+
+        if (hasIcon)
+          x += iconSize.width() + spacing;
+        return hasText ? QRect{ x, contentY, std::max(0, contentRight - x), contentH } : QRect{};
+      }
       break;
     case SE_TreeViewDisclosureItem:
       break;
@@ -4195,13 +4244,37 @@ QSize QlementineStyle::sizeFromContents(
         const auto hasCheck = features.testFlag(QStyleOptionViewItem::HasCheckIndicator);
         const auto& checkSize = hasCheck ? _impl->theme.iconSize : QSize{ 0, 0 };
 
+        const auto* listView = qobject_cast<const QListView*>(widget);
+        const auto iconMode = listView && listView->viewMode() == QListView::IconMode;
+
         auto font = widget ? QFont(widget->font()) : QFont();
         const auto fm = QFontMetrics(font);
         const auto itemTextW = qlementine::textWidth(fm, optItem->text);
-
-        const auto itemW = itemTextW + 2 * hPadding + (iconSize.width() > 0 ? iconSize.width() + spacing : 0)
-                       + (checkSize.width() > 0 ? checkSize.width() + spacing : 0);
         const auto defaultH = _impl->theme.controlHeightLarge;
+
+        if (iconMode) {
+          constexpr auto maxTextWInIconMode = 100;
+          const auto maxContentW = std::max({
+            std::min(itemTextW, maxTextWInIconMode),
+            iconSize.width(),
+            checkSize.width(),
+          });
+          auto w = 2 * hPadding + maxContentW;
+          const auto hasContentAboveCheck = hasIcon || hasText;
+          auto h = std::max({
+            iconSize.height() + (hasIcon && hasText ? spacing : 0) + textH
+              + (hasCheck && hasContentAboveCheck ? spacing : 0) + checkSize.height(),
+            defaultH,
+          });
+          const auto gridSize = listView->gridSize();
+          w = qMax(gridSize.width(), w);
+          h = qMax(gridSize.height(), h);
+          return QSize{ w, h };
+        }
+
+        const auto sideBySideIconWidth = (iconSize.width() > 0 ? iconSize.width() + spacing : 0);
+        const auto sideBySideCheckWidth = (checkSize.width() > 0 ? checkSize.width() + spacing : 0);
+        const auto itemW = itemTextW + 2 * hPadding + sideBySideIconWidth + sideBySideCheckWidth;
         const auto h = std::max({ iconSize.height() + spacing, textH + spacing, defaultH });
         return QSize{ itemW, h };
       }

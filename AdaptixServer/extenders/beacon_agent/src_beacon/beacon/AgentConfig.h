@@ -94,7 +94,6 @@ public:
 
 #elif defined(BEACON_DNS)
 	ProfileDNS profile;
-
 #endif
 
 	AgentConfig();

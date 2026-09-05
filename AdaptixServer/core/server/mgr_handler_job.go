@@ -15,6 +15,10 @@ func (h *JobTaskHandler) Create(tm *TaskManager, agent *adaptix.Agent, taskData 
 	if taskData.Sync {
 		tm.syncTaskCreate(taskData.AgentId, taskData)
 	}
+	if taskData.Completed {
+		tm.completeTask(taskData)
+		return
+	}
 	agent.HostedQueue.Push(taskData.Priority, *taskData)
 }
 
@@ -130,40 +134,78 @@ func (h *JobTaskHandler) updateWithoutHook(tm *TaskManager, agent *adaptix.Agent
 
 		tm.completeTask(task)
 	} else {
-		if ok {
-			jobs.Put(hookJob)
-		} else {
-			newJobs := axsafe.NewSlice()
-			newJobs.Put(hookJob)
-			agent.RunningJobs.Put(task.TaskId, newJobs)
+		if !ok {
+			jobs = axsafe.NewSlice()
+			agent.RunningJobs.Put(task.TaskId, jobs)
 		}
+		jobs.Put(hookJob)
 	}
 
 	tm.syncTaskUpdate(task.AgentId, updateData)
 }
 
 func (h *JobTaskHandler) aggregateJobResults(task *adaptix.TaskData, jobs *axsafe.Slice) {
-	jobsArray := jobs.CutArray()
+	foldJobs(task, jobs.CutArray())
+}
 
+func foldJobs(task *adaptix.TaskData, jobsArray []interface{}) {
 	for _, jobValue := range jobsArray {
-		jobData := jobValue.(*adaptix.HookJob)
+		jobData, ok := jobValue.(*adaptix.HookJob)
+		if !ok || jobData == nil {
+			continue
+		}
+		jobData.Mu.RLock()
+		chunk := jobData.Job
+		jobData.Mu.RUnlock()
 
 		if task.MessageType != CONSOLE_OUT_ERROR {
-			task.MessageType = jobData.Job.MessageType
+			task.MessageType = chunk.MessageType
 		}
 		if task.Message == "" {
-			task.Message = jobData.Job.Message
+			task.Message = chunk.Message
 		}
 
-		if len(task.ClearText)+len(jobData.Job.ClearText) > maxAccumulatedSize {
-			remaining := maxAccumulatedSize - len(jobData.Job.ClearText) - 1000
+		if len(task.ClearText)+len(chunk.ClearText) > maxAccumulatedSize {
+			remaining := maxAccumulatedSize - len(chunk.ClearText) - 1000
 			if remaining <= 0 {
 				task.ClearText = ""
 			} else {
 				task.ClearText = task.ClearText[len(task.ClearText)-remaining:] + "\n[EARLIER OUTPUT TRUNCATED]\n"
 			}
 		}
-		task.ClearText += jobData.Job.ClearText
+		task.ClearText += chunk.ClearText
+	}
+}
+
+func overlayLiveJobText(ts *Teamserver, task *adaptix.TaskData) {
+	if ts == nil || task == nil || task.Completed {
+		return
+	}
+	agent, ok := ts.Agents.Get(task.AgentId)
+	if !ok {
+		return
+	}
+	jobs, ok := agent.RunningJobs.Get(task.TaskId)
+	if !ok || jobs == nil {
+		return
+	}
+	var items []interface{}
+	jobs.DirectAccess(func(item interface{}) {
+		items = append(items, item)
+	})
+	if len(items) == 0 {
+		return
+	}
+	snap := *task
+	snap.ClearText = ""
+	foldJobs(&snap, items)
+	task.ClearText = snap.ClearText
+	if snap.Message != "" {
+		task.Message = snap.Message
+	}
+	task.MessageType = snap.MessageType
+	if snap.FinishDate != 0 {
+		task.FinishDate = snap.FinishDate
 	}
 }
 

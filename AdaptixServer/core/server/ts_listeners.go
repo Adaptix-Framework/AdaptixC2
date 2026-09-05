@@ -215,13 +215,20 @@ func (ts *Teamserver) TsListenerStop(listenerName string, listenerType string) e
 	if !ts.listener_configs.Contains(listenerType) {
 		return fmt.Errorf("listener %v does not exist", listenerType)
 	}
-	if !ts.listeners.Contains(listenerName) {
+	listenerData, ok := ts.listeners.Get(listenerName)
+	if !ok {
 		return fmt.Errorf("listener '%v' does not exist", listenerName)
 	}
 
 	if err := ts.Extender.ExListenerStop(listenerName); err != nil {
 		ts.TsLogAdd(adaptix.LogStatusError, 0, "listener", "", "failed to stop listener '%s': %v", listenerName, err)
-		return err
+		if listenerData.Status == "Listen" {
+			return err
+		}
+		ts.TsLogAdd(adaptix.LogStatusInfo, 0, "listener", "", "removing '%s' despite stop error (status=%s)", listenerName, listenerData.Status)
+	}
+	if listenerData.Watermark != "" {
+		ts.wm_listeners.Delete(listenerData.Watermark)
 	}
 	ts.listeners.Delete(listenerName)
 

@@ -43,6 +43,8 @@ void applyFeedWidgetSurface(QWidget* widget);
 
 void applyFeedTableViewChrome(QAbstractItemView* view);
 
+void installViewSelectAll(QAbstractItemView* view);
+
 struct FeedPaintContext {
     int maxIdTextWidth = 0;
     bool compact = false;

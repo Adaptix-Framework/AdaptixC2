@@ -284,6 +284,7 @@ ScreenshotsFeedWidget::ScreenshotsFeedWidget(AdaptixWidget* w) : ListFeedWidget(
     gridView->setUniformItemSizes(true);
     gridView->setSelectionBehavior(QAbstractItemView::SelectItems);
     gridView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    installViewSelectAll(gridView);
     gridView->setContextMenuPolicy(Qt::CustomContextMenu);
     gridView->setVerticalScrollMode(QAbstractItemView::ScrollPerPixel);
     gridView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);

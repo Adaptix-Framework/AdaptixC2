@@ -132,10 +132,13 @@ BOOL ApiLoad()
 		ApiWin->ResetEvent              = (decltype(ResetEvent)*)               GetSymbolAddress(hKernel32Module, HASH_FUNC_RESETEVENT);
 		ApiWin->SetCurrentDirectoryA    = (decltype(SetCurrentDirectoryA)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_SETCURRENTDIRECTORYA);
 		ApiWin->SetNamedPipeHandleState = (decltype(SetNamedPipeHandleState)*) GetSymbolAddress(hKernel32Module, HASH_FUNC_SETNAMEDPIPEHANDLESTATE);
+		ApiWin->GetOverlappedResult		= (decltype(GetOverlappedResult)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_GETOVERLAPPEDRESULT);
 		ApiWin->Sleep					= (decltype(Sleep)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_SLEEP);
+		ApiWin->CancelIo				= (decltype(CancelIo)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_CANCELIO);
 		ApiWin->VirtualAlloc			= (decltype(VirtualAlloc)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALALLOC);
 		ApiWin->VirtualFree				= (decltype(VirtualFree)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALFREE);
 		ApiWin->WaitForSingleObject     = (decltype(WaitForSingleObject)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_WAITFORSINGLEOBJECT);
+		ApiWin->WaitForMultipleObjects  = (decltype(WaitForMultipleObjects)*)  GetSymbolAddress(hKernel32Module, HASH_FUNC_WAITFORMULTIPLEOBJECTS);
 		ApiWin->WaitNamedPipeA          = (decltype(WaitNamedPipeA)*)	       GetSymbolAddress(hKernel32Module, HASH_FUNC_WAITNAMEDPIPEA);
 		ApiWin->WideCharToMultiByte		= (decltype(WideCharToMultiByte)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_WIDECHARTOMULTIBYTE);
 		ApiWin->WriteFile				= (decltype(WriteFile)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_WRITEFILE);
@@ -237,6 +240,7 @@ BOOL ApiLoad()
 			ApiWin->WSACleanup      = (decltype(WSACleanup)*)      GetSymbolAddress(hWs2_32Module, HASH_FUNC_WSACLEANUP);
 			ApiWin->WSAGetLastError = (decltype(WSAGetLastError)*) GetSymbolAddress(hWs2_32Module, HASH_FUNC_WSAGETLASTERROR);
 			ApiWin->gethostbyname   = (decltype(gethostbyname)*)   GetSymbolAddress(hWs2_32Module, HASH_FUNC_GETHOSTBYNAME);
+			ApiWin->inet_addr       = (decltype(inet_addr)*)       GetSymbolAddress(hWs2_32Module, HASH_FUNC_INET_ADDR);
 			ApiWin->socket			= (decltype(socket)*)          GetSymbolAddress(hWs2_32Module, HASH_FUNC_SOCKET);
 			ApiWin->ioctlsocket		= (decltype(ioctlsocket)*)     GetSymbolAddress(hWs2_32Module, HASH_FUNC_IOCTLSOCKET);
 			ApiWin->connect			= (decltype(connect)*)         GetSymbolAddress(hWs2_32Module, HASH_FUNC_CONNECT);
@@ -253,6 +257,8 @@ BOOL ApiLoad()
 			ApiWin->accept     		= (decltype(accept)*)          GetSymbolAddress(hWs2_32Module, HASH_FUNC_ACCEPT);
 			ApiWin->listen     		= (decltype(listen)*)          GetSymbolAddress(hWs2_32Module, HASH_FUNC_LISTEN);
 			ApiWin->bind     		= (decltype(bind)*)            GetSymbolAddress(hWs2_32Module, HASH_FUNC_BIND);
+			ApiWin->getsockname     = (decltype(getsockname)*)     GetSymbolAddress(hWs2_32Module, HASH_FUNC_GETSOCKNAME);
+			ApiWin->getpeername     = (decltype(getpeername)*)     GetSymbolAddress(hWs2_32Module, HASH_FUNC_GETPEERNAME);
 		}
 	}
 	else {

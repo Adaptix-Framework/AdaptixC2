@@ -27,6 +27,13 @@ public:
     QString LastMark   = QString();
     QString LastUpdate = QString();
 
+    bool   IoActive     = false;
+    qint64 IoUpFilled   = 0;
+    qint64 IoUpTotal    = 0;
+    qint64 IoDownFilled = 0;
+    qint64 IoDownTotal  = 0;
+    qint64 IoStarted    = 0;
+
     QString connType     = QString();
     QString listenerType = QString();
     qint64  parentId     = 0;

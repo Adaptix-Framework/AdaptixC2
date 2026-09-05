@@ -62,12 +62,8 @@ func (ex *AdaptixExtender) ExListenerStop(listenerName string) error {
 	}
 
 	err = listener.Stop()
-	if err != nil {
-		return err
-	}
 	ex.activeListeners.Delete(listenerName)
-
-	return nil
+	return err
 }
 
 func (ex *AdaptixExtender) ExListenerPause(listenerName string) error {

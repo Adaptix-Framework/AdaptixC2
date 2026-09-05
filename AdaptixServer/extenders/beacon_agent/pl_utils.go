@@ -50,15 +50,16 @@ const (
 	COMMAND_UNLINK       = 39
 	COMMAND_UPLOAD       = 33
 
-	COMMAND_TUNNEL_START_TCP = 62
-	COMMAND_TUNNEL_START_UDP = 63
-	COMMAND_TUNNEL_WRITE_TCP = 64
-	COMMAND_TUNNEL_WRITE_UDP = 65
-	COMMAND_TUNNEL_CLOSE     = 66
-	COMMAND_TUNNEL_REVERSE   = 67
-	COMMAND_TUNNEL_ACCEPT    = 68
-	COMMAND_TUNNEL_PAUSE     = 69
-	COMMAND_TUNNEL_RESUME    = 70
+	COMMAND_TUNNEL_START_TCP  = 62
+	COMMAND_TUNNEL_START_UDP  = 63
+	COMMAND_TUNNEL_WRITE_TCP  = 64
+	COMMAND_TUNNEL_WRITE_UDP  = 65
+	COMMAND_TUNNEL_CLOSE      = 66
+	COMMAND_TUNNEL_REVERSE    = 67
+	COMMAND_TUNNEL_ACCEPT     = 68
+	COMMAND_TUNNEL_PAUSE      = 69
+	COMMAND_TUNNEL_RESUME     = 70
+	COMMAND_TUNNEL_BIND_REPLY = 75
 
 	COMMAND_SHELL_START  = 71
 	COMMAND_SHELL_WRITE  = 72
@@ -245,6 +246,51 @@ func RC4Crypt(data []byte, key []byte) ([]byte, error) {
 	decryptData := make([]byte, len(data))
 	rc4crypt.XORKeyStream(decryptData, data)
 	return decryptData, nil
+}
+
+func pivotFound(name string, parent, child int64) bool {
+	return name != "" || parent != 0 || child != 0
+}
+
+func resolveBeaconPivot(arg string) (string, error) {
+	arg = strings.TrimSpace(arg)
+	if arg == "" {
+		return "", errors.New("pivot id is required")
+	}
+	if pid, _, _ := Ts.TsGetPivotInfoByName(arg); pid != "" {
+		return pid, nil
+	}
+	if name, parent, child := Ts.TsGetPivotInfoById(arg); pivotFound(name, parent, child) {
+		return arg, nil
+	}
+
+	n, err := strconv.ParseInt(arg, 0, 64)
+	if err != nil {
+		n, err = strconv.ParseInt(arg, 16, 64)
+	}
+	if err != nil {
+		return "", fmt.Errorf("pivot %s does not exist", arg)
+	}
+	for _, cand := range []string{
+		fmt.Sprintf("%d", n),
+		fmt.Sprintf("%x", n),
+		fmt.Sprintf("%08x", n),
+		fmt.Sprintf("p%d", n),
+	} {
+		if pid, _, _ := Ts.TsGetPivotInfoByName(cand); pid != "" {
+			return pid, nil
+		}
+		if name, parent, child := Ts.TsGetPivotInfoById(cand); pivotFound(name, parent, child) {
+			return cand, nil
+		}
+	}
+	for i := 0; i <= 99; i++ {
+		pid, _, child := Ts.TsGetPivotInfoByName(fmt.Sprintf("p%d", i))
+		if pid != "" && child == n {
+			return pid, nil
+		}
+	}
+	return "", fmt.Errorf("pivot %s does not exist", arg)
 }
 
 func parseDurationToSeconds(input string) (int, error) {

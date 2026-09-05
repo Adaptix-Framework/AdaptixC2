@@ -6,7 +6,7 @@
 #define PING_INTERVAL_MS 15000
 
 class AuthProfile;
-
+class QEventLoop;
 
 class WebSocketWorker : public QThread
 {
@@ -16,6 +16,7 @@ Q_OBJECT
     QList<QByteArray> dataBuffer;
     bool handlerReady = false;
     QMutex bufferMutex;
+    QEventLoop* m_loop = nullptr;
 
 public:
     QWebSocket* webSocket = nullptr;

@@ -140,15 +140,15 @@ func (tm *TaskManager) executeServerHandler(taskData *adaptix.TaskData) {
 	taskData.HandlerId = ""
 }
 
-func (tm *TaskManager) Create(agentId int64, cmdline string, client string, taskData adaptix.TaskData) {
+func (tm *TaskManager) Create(agentId int64, cmdline string, client string, taskData adaptix.TaskData) int64 {
 	agent, ok := tm.ts.Agents.Get(agentId)
 	if !ok {
 		tm.ts.TsLogAdd(adaptix.LogStatusError, 0, "server", "task_manager", "TsTaskCreate: agent %v not found", agentId)
-		return
+		return 0
 	}
 
 	if !agent.IsActive() {
-		return
+		return 0
 	}
 
 	tm.prepareTaskData(agent, cmdline, client, &taskData)
@@ -161,14 +161,14 @@ func (tm *TaskManager) Create(agentId int64, cmdline string, client string, task
 		Client:  client,
 	}
 	if !tm.ts.EventManager.Emit(eventing.EventTaskCreate, eventing.HookPre, preEvent) {
-		return
+		return 0
 	}
 	// ----------------
 
 	handler, ok := tm.handlers[taskData.Type]
 	if !ok {
 		tm.ts.TsLogAdd(adaptix.LogStatusDebug, 0, "server", "task_manager", "Unknown task type: %d", taskData.Type)
-		return
+		return 0
 	}
 
 	if taskData.Sync && taskData.Type != adaptix.TASK_TYPE_BROWSER {
@@ -199,6 +199,7 @@ func (tm *TaskManager) Create(agentId int64, cmdline string, client string, task
 	}
 	tm.ts.EventManager.EmitAsync(eventing.EventTaskCreate, postEvent)
 	// -----------------
+	return taskData.TaskId
 }
 
 func (tm *TaskManager) Update(agentId int64, updateData adaptix.TaskData) {
@@ -214,6 +215,13 @@ func (tm *TaskManager) Update(agentId int64, updateData adaptix.TaskData) {
 	}
 
 	task.Data = []byte("")
+
+	if updateData.Client == "" {
+		updateData.Client = task.Client
+	}
+	if updateData.Type == adaptix.TASK_TYPE_TASK && task.Type != adaptix.TASK_TYPE_TASK {
+		updateData.Type = task.Type
+	}
 
 	handler, ok := tm.handlers[task.Type]
 	if !ok {
@@ -247,6 +255,31 @@ func (tm *TaskManager) PostHook(hookData adaptix.TaskData, jobIndex int) error {
 	return handler.PostHook(tm, agent, &task, &hookData, jobIndex)
 }
 
+func (tm *TaskManager) cancelTaskHooks(task adaptix.TaskData) {
+	if task.HookId != "" && tm.ts.TsAxScriptIsServerHook(task.HookId) {
+		tm.ts.TsAxScriptRemovePostHook(task.HookId)
+	}
+	if task.HandlerId != "" && tm.ts.TsAxScriptIsServerHook(task.HandlerId) {
+		tm.ts.TsAxScriptRemoveHandler(task.HandlerId)
+	}
+}
+
+func (tm *TaskManager) finalizeCanceled(agent *adaptix.Agent, task adaptix.TaskData) {
+	task.Completed = true
+	task.MessageType = CONSOLE_OUT_ERROR
+	task.Message = "Task canceled"
+	task.FinishDate = time.Now().Unix()
+	if task.OnComplete != nil {
+		tm.safeRunComplete(&task)
+	}
+	if task.Sync {
+		_ = tm.ts.DBMS.DbTaskUpdate(task)
+		tm.syncTaskUpdate(agent.GetData().Id, &task)
+	} else {
+		tm.ts.TsSyncAllClients(CreateSpAgentTaskRemove(task))
+	}
+}
+
 func (tm *TaskManager) Cancel(agentId int64, taskId int64) error {
 	agent, ok := tm.ts.Agents.Get(agentId)
 	if !ok {
@@ -261,25 +294,21 @@ func (tm *TaskManager) Cancel(agentId int64, taskId int64) error {
 	if found {
 		task, ok := retTask.(adaptix.TaskData)
 		if ok {
-			if task.HookId != "" && tm.ts.TsAxScriptIsServerHook(task.HookId) {
-				tm.ts.TsAxScriptRemovePostHook(task.HookId)
-			}
-			if task.HandlerId != "" && tm.ts.TsAxScriptIsServerHook(task.HandlerId) {
-				tm.ts.TsAxScriptRemoveHandler(task.HandlerId)
-			}
-			if task.Sync {
-				_ = tm.ts.DBMS.DbTaskDelete(task.TaskId, 0)
-			}
-			packet := CreateSpAgentTaskRemove(task)
-			tm.ts.TsSyncAllClients(packet)
+			tm.cancelTaskHooks(task)
+			tm.finalizeCanceled(agent, task)
 		}
 		return nil
 	}
 
 	if agent.RunningTasks.Contains(taskId) {
-		return fmt.Errorf("task %d already dispatched to agent — too late to cancel", taskId)
+		task, _ := agent.RunningTasks.Get(taskId)
+		agent.RunningTasks.Delete(taskId)
+		tm.ts.TsFrameResetDownstream(agentId)
+		tm.cancelTaskHooks(task)
+		tm.finalizeCanceled(agent, task)
+		return nil
 	}
-	return nil
+	return fmt.Errorf("task %d not found", taskId)
 }
 
 func (tm *TaskManager) Delete(agentId int64, taskId int64) error {

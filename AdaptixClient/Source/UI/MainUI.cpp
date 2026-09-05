@@ -277,8 +277,12 @@ bool MainUI::eventFilter(QObject *obj, QEvent *event)
 
 void MainUI::closeEvent(QCloseEvent* event)
 {
-    QCoreApplication::quit();
+    for (auto* adaptixWidget : AdaptixProjects) {
+        if (adaptixWidget)
+            adaptixWidget->Close();
+    }
     event->accept();
+    QCoreApplication::quit();
 }
 
 void MainUI::AddNewProject(AuthProfile* profile, QThread* channelThread, WebSocketWorker* channelWsWorker)

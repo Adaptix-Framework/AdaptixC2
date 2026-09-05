@@ -1,7 +1,12 @@
 #include <UI/Dialogs/DialogTarget.h>
 
-DialogTarget::DialogTarget()
+DialogTarget::DialogTarget(QWidget* parent) : QDialog(parent)
 {
+    setModal(false);
+    setWindowModality(Qt::NonModal);
+    setAttribute(Qt::WA_DeleteOnClose);
+    setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
+
     this->createUI();
 
     connect(createButton, &QPushButton::clicked, this, &DialogTarget::onButtonCreate);
@@ -75,6 +80,11 @@ void DialogTarget::createUI()
     systemGrid->addWidget(infoLabel,   3, 0);
     systemGrid->addWidget(infoInput,   3, 1);
 
+    errorLabel = new QLabel(this);
+    errorLabel->setWordWrap(true);
+    errorLabel->setVisible(false);
+    errorLabel->setStyleSheet(QStringLiteral("color: #d64545;"));
+
     createButton = new QPushButton("Create Target", this);
     createButton->setDefault(true);
     cancelButton = new QPushButton("Cancel", this);
@@ -87,6 +97,7 @@ void DialogTarget::createUI()
     mainLayout = new QVBoxLayout(this);
     mainLayout->addWidget(hostGroup);
     mainLayout->addWidget(systemGroup);
+    mainLayout->addWidget(errorLabel);
     mainLayout->addLayout(buttonLayout);
 
     this->setLayout(mainLayout);
@@ -96,10 +107,15 @@ void DialogTarget::StartDialog()
 {
     this->valid = false;
     this->message = "";
-    this->editMode = false;
-    this->setWindowTitle("Create Target");
-    createButton->setText("Create Target");
-    this->exec();
+    if (errorLabel)
+        errorLabel->setVisible(false);
+    if (!this->editMode) {
+        this->setWindowTitle("Create Target");
+        createButton->setText("Create Target");
+    }
+    this->show();
+    this->raise();
+    this->activateWindow();
 }
 
 void DialogTarget::SetEditmode(const TargetData &targetData)
@@ -108,7 +124,20 @@ void DialogTarget::SetEditmode(const TargetData &targetData)
     this->setWindowTitle("Edit Target");
     createButton->setText("Update Target");
     this->targetId = targetData.TargetId;
+    fillFields(targetData);
+}
 
+void DialogTarget::SetTemplate(const TargetData &targetData)
+{
+    this->editMode = false;
+    this->targetId = 0;
+    this->setWindowTitle("Create Target");
+    createButton->setText("Create Target");
+    fillFields(targetData);
+}
+
+void DialogTarget::fillFields(const TargetData &targetData)
+{
     computerInput->setText(targetData.Computer);
     domainInput->setText(targetData.Domain);
     addressInput->setText(targetData.Address);
@@ -139,10 +168,17 @@ void DialogTarget::onButtonCreate()
     if (data.Computer.isEmpty() && data.Address.isEmpty()) {
         this->valid = false;
         this->message = "Computer or Address must be set";
+        if (errorLabel) {
+            errorLabel->setText(this->message);
+            errorLabel->setVisible(true);
+        }
         return;
     }
 
     this->valid = true;
+    if (errorLabel)
+        errorLabel->setVisible(false);
+    Q_EMIT submitted(data);
     this->close();
 }
 

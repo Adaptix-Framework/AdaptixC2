@@ -587,6 +587,7 @@ void CredentialsFeedWidget::handleFeedMenu(const QPoint& pos)
                     credsStr.append(QString::number(credId));
 
                 ctxMenu.addAction(QIcon(":/icons/edit_note"), "Edit", this, &CredentialsFeedWidget::onEditCreds);
+                ctxMenu.addAction(QIcon(":/icons/plus"), "Create on template", this, &CredentialsFeedWidget::onCreateFromTemplate);
                 ctxMenu.addAction(QIcon(":/icons/delete"), "Remove", this, &CredentialsFeedWidget::onRemoveCreds);
                 ctxMenu.addSeparator();
 
@@ -627,27 +628,52 @@ void CredentialsFeedWidget::onCreateCreds()
     if (!m_adaptixWidget)
         return;
 
-    DialogCredential* dialogCreds = new DialogCredential();
-    while (true) {
-        dialogCreds->StartDialog();
-        if (dialogCreds->IsValid())
-            break;
+    auto* dialogCreds = new DialogCredential(this);
+    connect(dialogCreds, &DialogCredential::submitted, this, [this](const CredentialData& credData) {
+        this->CredentialsAdd({credData});
+    });
+    dialogCreds->StartDialog();
+}
 
-        QString msg = dialogCreds->GetMessage();
-        if (msg.isEmpty()) {
-            delete dialogCreds;
-            return;
+void CredentialsFeedWidget::onCreateFromTemplate()
+{
+    if (!m_adaptixWidget)
+        return;
+
+    CredInfo info = currentCredInfo();
+    if (!info.valid)
+        return;
+
+    CredentialData credentialData;
+    bool found = false;
+    {
+        QReadLocker locker(&m_adaptixWidget->CredentialsLock);
+        for (const auto& c : m_adaptixWidget->Credentials) {
+            if (c.CredId == info.credId) {
+                credentialData = c;
+                found = true;
+                break;
+            }
         }
-
-        MessageError(msg);
     }
+    if (!found) {
+        auto it = m_credCache.constFind(info.credId);
+        if (it != m_credCache.constEnd()) {
+            credentialData = it.value();
+            found = true;
+        }
+    }
+    if (!found)
+        return;
 
-    CredentialData credData = dialogCreds->GetCredData();
-    delete dialogCreds;
-
-    QList<CredentialData> credList;
-    credList.append(credData);
-    this->CredentialsAdd(credList);
+    auto* dialogCreds = new DialogCredential(this);
+    dialogCreds->SetTemplate(credentialData);
+    connect(dialogCreds, &DialogCredential::submitted, this, [this](CredentialData credData) {
+        credData.CredId = 0;
+        credData.AgentId = 0;
+        this->CredentialsAdd({credData});
+    });
+    dialogCreds->StartDialog();
 }
 
 void CredentialsFeedWidget::onEditCreds()
@@ -671,41 +697,26 @@ void CredentialsFeedWidget::onEditCreds()
     if (!found)
         return;
 
-    DialogCredential* dialogCreds = new DialogCredential();
+    auto* dialogCreds = new DialogCredential(this);
     dialogCreds->SetEditmode(credentialData);
-    while (true) {
-        dialogCreds->StartDialog();
-        if (dialogCreds->IsValid())
-            break;
+    connect(dialogCreds, &DialogCredential::submitted, this, [this](const CredentialData& credData) {
+        QJsonObject dataJson;
+        dataJson["cred_id"]  = credData.CredId;
+        dataJson["username"] = credData.Username;
+        dataJson["password"] = credData.Password;
+        dataJson["realm"]    = credData.Realm;
+        dataJson["type"]     = credData.Type;
+        dataJson["tag"]      = credData.Tag;
+        dataJson["storage"]  = credData.Storage;
+        dataJson["host"]     = credData.Host;
+        QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-        QString msg = dialogCreds->GetMessage();
-        if (msg.isEmpty()) {
-            delete dialogCreds;
-            return;
-        }
-
-        MessageError(msg);
-    }
-
-    CredentialData credData = dialogCreds->GetCredData();
-
-    QJsonObject dataJson;
-    dataJson["cred_id"]  = credData.CredId;
-    dataJson["username"] = credData.Username;
-    dataJson["password"] = credData.Password;
-    dataJson["realm"]    = credData.Realm;
-    dataJson["type"]     = credData.Type;
-    dataJson["tag"]      = credData.Tag;
-    dataJson["storage"]  = credData.Storage;
-    dataJson["host"]     = credData.Host;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    delete dialogCreds;
-
-    HttpReqCredentialsEditAsync(jsonData, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-        if (!success)
-            MessageError(message.isEmpty() ? "Server is not responding" : message);
+        HttpReqCredentialsEditAsync(jsonData, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Server is not responding" : message);
+        });
     });
+    dialogCreds->StartDialog();
 }
 
 void CredentialsFeedWidget::onRemoveCreds()

@@ -4,6 +4,7 @@
 #include <Client/Settings.h>
 #include <Client/AuthProfile.h>
 #include <MainAdaptix.h>
+#include <QEventLoop>
 
 LastTickWorker::LastTickWorker(AdaptixWidget *w)
 {
@@ -28,7 +29,10 @@ void LastTickWorker::run()
     QObject::connect( timer, &QTimer::timeout, this, &LastTickWorker::updateLastItems );
     timer->start( 500 );
 
-    exec();
+    QEventLoop loop;
+    m_loop = &loop;
+    loop.exec();
+    m_loop = nullptr;
 }
 
 void LastTickWorker::stopWorker()
@@ -39,6 +43,10 @@ void LastTickWorker::stopWorker()
         delete timer;
         timer = nullptr;
     }
+    if (m_loop && m_loop->isRunning())
+        m_loop->quit();
+    if (QThread* t = QThread::currentThread())
+        t->quit();
 }
 
 void LastTickWorker::updateLastItems()

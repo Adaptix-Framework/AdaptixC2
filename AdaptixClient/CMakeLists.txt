@@ -251,6 +251,7 @@ SET( HEADERS
         Headers/Utils/CustomElements/SegmentControl.h
         Headers/Utils/CustomElements/LogView.h
         Headers/Utils/CustomElements/LogViewTape.h
+        Headers/UI/Dialogs/DialogConsoleHelp.h
 )
 
 add_executable(AdaptixClient
@@ -374,6 +375,7 @@ add_executable(AdaptixClient
         Source/Utils/CustomElements/SegmentControl.cpp
         Source/Utils/CustomElements/LogView.cpp
         Source/Utils/CustomElements/LogViewTape.cpp
+        Source/UI/Dialogs/DialogConsoleHelp.cpp
 )
 
 target_compile_definitions(

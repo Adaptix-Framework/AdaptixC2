@@ -149,6 +149,7 @@ public:
 public Q_SLOTS:
     void handleTargetsMenu( const QPoint &pos ) const;
     void onCreateTarget();
+    void onCreateFromTemplate();
     void onImportTargets();
     void onEditTarget();
     void onRemoveTarget() const;

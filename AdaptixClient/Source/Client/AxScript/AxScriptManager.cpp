@@ -146,8 +146,13 @@ QStringList AxScriptManager::ListenerScriptList() { return configScriptListByTyp
 
 void AxScriptManager::ListenerScriptAdd(const QString &name, const QString &ax_script)
 {
-    if (config_scripts.contains(name))
-        return;
+    if (config_scripts.contains(name)) {
+        auto commanderList = adaptixWidget->GetCommandersAll();
+        for (auto* commander : commanderList)
+            commander->RemoveClientGroup(name);
+        delete config_scripts[name].engine;
+        config_scripts.remove(name);
+    }
 
     AxScriptEngine* script = new AxScriptEngine(this, name, this);
     script->execute(ax_script);
@@ -165,8 +170,13 @@ QStringList AxScriptManager::AgentScriptList() { return configScriptListByType(c
 
 void AxScriptManager::AgentScriptAdd(const QString &name, const QString &ax_script)
 {
-    if (config_scripts.contains(name))
-        return;
+    if (config_scripts.contains(name)) {
+        auto commanderList = adaptixWidget->GetCommandersAll();
+        for (auto* commander : commanderList)
+            commander->RemoveClientGroup(name);
+        delete config_scripts[name].engine;
+        config_scripts.remove(name);
+    }
 
     AxScriptEngine* script = new AxScriptEngine(this, name, this);
     script->execute(ax_script);
@@ -274,6 +284,9 @@ QStringList AxScriptManager::ScriptList() { return scripts.keys(); }
 
 bool AxScriptManager::ScriptAdd(ExtensionFile* ext)
 {
+    if (scripts.contains(ext->FilePath))
+        ScriptRemove(*ext);
+
     AxScriptEngine* script = new AxScriptEngine(this, ext->FilePath, this);
     scripts[ext->FilePath] = script;
     bool result = script->execute(ext->Code);
@@ -305,6 +318,12 @@ void AxScriptManager::ScriptRemove(const ExtensionFile &ext)
 
 void AxScriptManager::ServerScriptAdd(const ServerScriptData &data)
 {
+    if (adaptixWidget) {
+        auto commanderList = adaptixWidget->GetCommandersAll();
+        for (auto* commander : commanderList)
+            commander->RemoveServerGroup(data.name);
+    }
+
     if (server_scripts.contains(data.name)) {
         delete server_scripts.take(data.name);
     }
@@ -540,16 +559,12 @@ void AxScriptManager::RegisterCommandsGroup(const CommandsGroup &group, const QS
     }
 
     if (!conflictingGroups.isEmpty()) {
-        QString error = "Command group '" + group.groupName + "' is already registered by server script. Skipping registration.";
+        QString error = "Command group '" + group.groupName + "' is also registered by a server script; the local copy will overlay it for this client.";
         Q_EMIT consoleError(error);
-        return;
-    }
-
-    if (!conflictingCommands.isEmpty()) {
+    } else if (!conflictingCommands.isEmpty()) {
         QString cmdList = conflictingCommands.values().join("', '");
-        QString error = "Commands '" + cmdList + "' from group '" + group.groupName + "' are already registered by server script. Skipping registration.";
+        QString error = "Commands '" + cmdList + "' from group '" + group.groupName + "' also exist in a server script; the local copy will overlay them for this client.";
         Q_EMIT consoleError(error);
-        return;
     }
 
     adaptixWidget->AddCommandsToCommanders(group, listeners, agents, os);

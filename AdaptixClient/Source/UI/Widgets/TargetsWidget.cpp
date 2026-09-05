@@ -262,7 +262,9 @@ void TargetsWidget::createUI()
     tableView->setWordWrap(true);
     tableView->setCornerButtonEnabled(false);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
+    tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
     tableView->setFocusPolicy(Qt::ClickFocus);
+    installViewSelectAll(tableView);
     tableView->setAlternatingRowColors(true);
     tableView->setProperty("autoIconColor", QVariant::fromValue(oclero::qlementine::AutoIconColor::None));
     tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
@@ -615,6 +617,7 @@ void TargetsWidget::handleTargetsMenu(const QPoint &pos ) const
             ctxMenu.addSeparator();
 
         ctxMenu.addAction(QIcon(":/icons/edit_note"), "Edit", this, &TargetsWidget::onEditTarget );
+        ctxMenu.addAction(QIcon(":/icons/plus"), "Create on template", this, &TargetsWidget::onCreateFromTemplate );
         ctxMenu.addAction(QIcon(":/icons/delete"), "Remove", this, &TargetsWidget::onRemoveTarget );
         ctxMenu.addSeparator();
 
@@ -648,28 +651,44 @@ void TargetsWidget::onImportTargets()
 
 void TargetsWidget::onCreateTarget()
 {
-    DialogTarget* dialogTargets = new DialogTarget();
-    while (true) {
-        dialogTargets->StartDialog();
-        if (dialogTargets->IsValid())
-            break;
+    auto* dialogTargets = new DialogTarget(this);
+    connect(dialogTargets, &DialogTarget::submitted, this, [this](const TargetData& targetData) {
+        this->TargetsAdd({targetData});
+    });
+    dialogTargets->StartDialog();
+}
 
-        QString msg = dialogTargets->GetMessage();
-        if (msg.isEmpty()) {
-            delete dialogTargets;
-            return;
+void TargetsWidget::onCreateFromTemplate()
+{
+    auto idx = tableView->currentIndex();
+    if (!idx.isValid())
+        return;
+
+    qint64 targetId = proxyModel->index(idx.row(), TRC_Id).data(Qt::UserRole).toLongLong();
+
+    bool found = false;
+    TargetData targetData;
+    {
+        QReadLocker locker(&adaptixWidget->TargetsLock);
+        for (auto target : adaptixWidget->Targets) {
+            if (target.TargetId == targetId) {
+                targetData = target;
+                found = true;
+                break;
+            }
         }
-
-        MessageError(msg);
     }
+    if (!found)
+        return;
 
-    TargetData targetData = dialogTargets->GetTargetData();
-
-    delete dialogTargets;
-
-    QList<TargetData> targetList;
-    targetList.append(targetData);
-    this->TargetsAdd(targetList);
+    auto* dialogTargets = new DialogTarget(this);
+    dialogTargets->SetTemplate(targetData);
+    connect(dialogTargets, &DialogTarget::submitted, this, [this](TargetData newTargetData) {
+        newTargetData.TargetId = 0;
+        newTargetData.Agents.clear();
+        this->TargetsAdd({newTargetData});
+    });
+    dialogTargets->StartDialog();
 }
 
 void TargetsWidget::onEditTarget()
@@ -695,42 +714,27 @@ void TargetsWidget::onEditTarget()
     if (!found)
         return;
 
-    DialogTarget* dialogTarget = new DialogTarget();
+    auto* dialogTarget = new DialogTarget(this);
     dialogTarget->SetEditmode(targetData);
-    while (true) {
-        dialogTarget->StartDialog();
-        if (dialogTarget->IsValid())
-            break;
+    connect(dialogTarget, &DialogTarget::submitted, this, [this](const TargetData& newTargetData) {
+        QJsonObject dataJson;
+        dataJson["t_target_id"] = static_cast<qint64>(newTargetData.TargetId);
+        dataJson["t_computer"]  = newTargetData.Computer;
+        dataJson["t_domain"]    = newTargetData.Domain;
+        dataJson["t_address"]   = newTargetData.Address;
+        dataJson["t_os"]        = newTargetData.Os;
+        dataJson["t_os_desk"]   = newTargetData.OsDesc;
+        dataJson["t_tag"]       = newTargetData.Tag;
+        dataJson["t_info"]      = newTargetData.Info;
+        dataJson["t_alive"]     = newTargetData.Alive;
+        QByteArray jsonData = QJsonDocument(dataJson).toJson();
 
-        QString msg = dialogTarget->GetMessage();
-        if (msg.isEmpty()) {
-            delete dialogTarget;
-            return;
-        }
-
-        MessageError(msg);
-    }
-
-    TargetData newTargetData = dialogTarget->GetTargetData();
-
-    QJsonObject dataJson;
-    dataJson["t_target_id"] = static_cast<qint64>(newTargetData.TargetId);
-    dataJson["t_computer"]  = newTargetData.Computer;
-    dataJson["t_domain"]    = newTargetData.Domain;
-    dataJson["t_address"]   = newTargetData.Address;
-    dataJson["t_os"]        = newTargetData.Os;
-    dataJson["t_os_desk"]   = newTargetData.OsDesc;
-    dataJson["t_tag"]       = newTargetData.Tag;
-    dataJson["t_info"]      = newTargetData.Info;
-    dataJson["t_alive"]     = newTargetData.Alive;
-    QByteArray jsonData = QJsonDocument(dataJson).toJson();
-
-    delete dialogTarget;
-
-    HttpReqTargetEditAsync(jsonData, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-        if (!success)
-            MessageError(message.isEmpty() ? "Server is not responding" : message);
+        HttpReqTargetEditAsync(jsonData, *(adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success)
+                MessageError(message.isEmpty() ? "Server is not responding" : message);
+        });
     });
+    dialogTarget->StartDialog();
 }
 
 void TargetsWidget::onRemoveTarget() const

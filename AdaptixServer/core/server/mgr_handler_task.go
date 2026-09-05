@@ -8,6 +8,10 @@ func (h *TaskTaskHandler) Create(tm *TaskManager, agent *adaptix.Agent, taskData
 	if taskData.Sync {
 		tm.syncTaskCreate(taskData.AgentId, taskData)
 	}
+	if taskData.Completed {
+		tm.completeTask(taskData)
+		return
+	}
 	agent.HostedQueue.Push(taskData.Priority, *taskData)
 }
 

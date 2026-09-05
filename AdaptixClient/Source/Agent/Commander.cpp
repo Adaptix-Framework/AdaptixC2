@@ -140,7 +140,20 @@ void Commander::AddServerGroup(const QString &scriptName, const QString &descrip
 
 void Commander::RemoveServerGroup(const QString &scriptName)
 {
-    if (serverGroups.remove(scriptName) > 0)
+    if (scriptName.isEmpty())
+        return;
+
+    bool changed = serverGroups.remove(scriptName) > 0;
+    const QString fp = QStringLiteral("__server__:") + scriptName;
+    for (auto it = serverGroups.begin(); it != serverGroups.end(); ) {
+        if (it->scriptName == scriptName || it->group.filepath == fp || it->group.groupName == scriptName) {
+            it = serverGroups.erase(it);
+            changed = true;
+        } else {
+            ++it;
+        }
+    }
+    if (changed)
         Q_EMIT commandsUpdated();
 }
 
@@ -184,9 +197,12 @@ ServerCommandsGroup Commander::GetServerGroup(const QString &scriptName) const
 
 void Commander::AddClientGroup(const CommandsGroup &group)
 {
-    for (const auto &existing : clientGroups) {
-        if (existing.filepath == group.filepath && existing.groupName == group.groupName)
+    for (int i = 0; i < clientGroups.size(); ++i) {
+        if (clientGroups[i].filepath == group.filepath && clientGroups[i].groupName == group.groupName) {
+            clientGroups[i] = group;
+            Q_EMIT commandsUpdated();
             return;
+        }
     }
     clientGroups.append(group);
     Q_EMIT commandsUpdated();
@@ -632,12 +648,12 @@ void Commander::appendHelpCommandLines(QTextStream &output, const QList<Command>
 
 bool Commander::findCommand(const QString &commandName, Command *out, QString *groupIdOut, bool *enabledOut) const
 {
-    for (const auto &mg : mainGroups) {
-        for (const Command &cmd : mg.group.commands) {
+    for (const auto &cg : clientGroups) {
+        for (const Command &cmd : cg.commands) {
             if (cmd.name == commandName) {
                 if (out) *out = cmd;
-                if (groupIdOut) *groupIdOut = mg.groupId;
-                if (enabledOut) *enabledOut = mg.enabled;
+                if (groupIdOut) *groupIdOut = cg.groupName;
+                if (enabledOut) *enabledOut = true;
                 return true;
             }
         }
@@ -652,12 +668,12 @@ bool Commander::findCommand(const QString &commandName, Command *out, QString *g
             }
         }
     }
-    for (const auto &cg : clientGroups) {
-        for (const Command &cmd : cg.commands) {
+    for (const auto &mg : mainGroups) {
+        for (const Command &cmd : mg.group.commands) {
             if (cmd.name == commandName) {
                 if (out) *out = cmd;
-                if (groupIdOut) *groupIdOut = cg.groupName;
-                if (enabledOut) *enabledOut = true;
+                if (groupIdOut) *groupIdOut = mg.groupId;
+                if (enabledOut) *enabledOut = mg.enabled;
                 return true;
             }
         }
@@ -788,7 +804,7 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                 }
             }
         }
-        else if (commandParts.size() == 2) {
+        else if (commandParts.size() >= 2) {
             Command foundSubCommand;
             QString subCommandName = commandParts[1];
             for (Command subcmd : foundCommand.subcommands) {
@@ -827,9 +843,6 @@ CommanderResult Commander::ProcessHelp(QStringList commandParts)
                     output << "    " + fullarg + padding + "  : " + (arg.type + ".").leftJustified(9, ' ') + (arg.defaultUsed ? ".- (default: '" + arg.defaultValue.toString() + "'). " : " ") + arg.description + "\n";
                 }
             }
-        }
-        else {
-            return CommanderResult{true, true, "Error Help format: 'help [command [subcommand]]'", {}, false, {}};
         }
         return CommanderResult{false, true, output.readAll(), {}, false, {}};
     }
@@ -870,4 +883,32 @@ QStringList Commander::GetCommands()
 
     commandList << helpCommandList;
     return commandList;
+}
+
+QStringList Commander::GetHelpCatalog()
+{
+    QStringList catalog;
+
+    auto addGroup = [&](const QList<Command> &commands) {
+        for (const Command &cmd : commands) {
+            catalog << cmd.name;
+            for (const Command &subcmd : cmd.subcommands)
+                catalog << cmd.name + " " + subcmd.name;
+        }
+    };
+
+    for (const auto &mg : mainGroups) {
+        if (mg.enabled)
+            addGroup(mg.group.commands);
+    }
+    for (const auto &server_group : serverGroups) {
+        if (server_group.enabled)
+            addGroup(server_group.group.commands);
+    }
+    for (const auto &client_group : clientGroups)
+        addGroup(client_group.commands);
+
+    catalog.removeDuplicates();
+    catalog.sort(Qt::CaseInsensitive);
+    return catalog;
 }

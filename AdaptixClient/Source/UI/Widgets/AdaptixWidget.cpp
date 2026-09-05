@@ -215,6 +215,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
 
 AdaptixWidget::~AdaptixWidget()
 {
+    Close();
     QWriteLocker locker(&AgentsMapLock);
     for (auto agent : AgentsMap.values()) {
         delete agent;
@@ -810,12 +811,6 @@ void AdaptixWidget::PlaceWidget(const QString& widgetId, KDDockWidgets::QtWidget
 
 bool AdaptixWidget::AddExtension(ExtensionFile* ext)
 {
-    if (ScriptManager->ScriptList().contains(ext->FilePath)) {
-        ext->Enabled = false;
-        ext->Message = "Script already loaded";
-        return false;
-    }
-
     if( !synchronized ) {
         ext->Enabled = false;
         ext->Message = "C2 not synchronized";
@@ -835,30 +830,43 @@ void AdaptixWidget::RemoveExtension(const ExtensionFile &ext)
 
 bool AdaptixWidget::IsSynchronized() const { return this->synchronized; }
 
+namespace {
+void stopHostedWorker(QObject* worker, QThread* host)
+{
+    if (worker) {
+        const bool crossThread = host && host->isRunning() && worker->thread() == host && QThread::currentThread() != host;
+        QMetaObject::invokeMethod(worker, "stopWorker", crossThread ? Qt::QueuedConnection : Qt::DirectConnection);
+    }
+    if (host && host->isRunning()) {
+        host->quit();
+        if (!host->wait(3000)) {
+            host->terminate();
+            host->wait(1000);
+        }
+    }
+}
+}
+
 void AdaptixWidget::Close()
 {
-    if (TickWorker) {
+    if (m_closed)
+        return;
+    m_closed = true;
+
+    if (TickWorker)
         disconnect(TickWorker, nullptr, this, nullptr);
-        QMetaObject::invokeMethod(TickWorker, "stopWorker", Qt::BlockingQueuedConnection);
-        TickWorker = nullptr;
-    }
-    if (TickThread) {
-        TickThread->quit();
-        TickThread->wait();
-        TickThread = nullptr;
-    }
+    stopHostedWorker(TickWorker, TickThread);
+    TickWorker = nullptr;
+    TickThread = nullptr;
 
     if (ChannelWsWorker) {
         disconnect(ChannelWsWorker, nullptr, this, nullptr);
-        disconnect(ChannelWsWorker, nullptr, ScriptManager, nullptr);
-        QMetaObject::invokeMethod(ChannelWsWorker, "stopWorker", Qt::BlockingQueuedConnection);
-        ChannelWsWorker = nullptr;
+        if (ScriptManager)
+            disconnect(ChannelWsWorker, nullptr, ScriptManager, nullptr);
     }
-    if (ChannelThread) {
-        ChannelThread->quit();
-        ChannelThread->wait();
-        ChannelThread = nullptr;
-    }
+    stopHostedWorker(ChannelWsWorker, ChannelThread);
+    ChannelWsWorker = nullptr;
+    ChannelThread = nullptr;
 
     this->ClearAdaptix();
 
@@ -1242,11 +1250,28 @@ void AdaptixWidget::RegisterAgentConfig(const QString &agentName, const QString 
 
     for (const auto &listener : listeners) {
         for (int os : {OS_WINDOWS, OS_LINUX, OS_MAC}) {
-            Commander* commander = new Commander();
-            commander->SetAgentType(agentName);
+            Commander* commander = nullptr;
+            for (auto &regAgent : this->RegisterAgents) {
+                if (regAgent.name == agentName && regAgent.listenerType == listener && regAgent.os == os) {
+                    commander = regAgent.commander;
+                    break;
+                }
+            }
+            if (!commander) {
+                commander = new Commander();
+                commander->SetAgentType(agentName);
+                RegisterAgents.push_back({agentName, listener, os, commander, true});
+            } else {
+                commander->ClearMainGroups();
+            }
+        }
+    }
 
-            RegAgentConfig config = {agentName, listener, os, commander, true};
-            RegisterAgents.push_back(config);
+    {
+        QReadLocker locker(&AgentsMapLock);
+        for (auto* agent : AgentsMap) {
+            if (agent && agent->commander && agent->data.Name == agentName)
+                agent->commander->ClearMainGroups();
         }
     }
 
@@ -1352,6 +1377,7 @@ void AdaptixWidget::registerServerCommandGroups(const QString &scriptName, const
             if (cg.commands.isEmpty())
                 continue;
 
+            cg.filepath = QStringLiteral("__server__:") + scriptName;
             cg.engine = engine;
 
             for (auto &regAgent : this->RegisterAgents) {
@@ -1504,11 +1530,31 @@ RegAgentConfig AdaptixWidget::GetRegAgent(const QString &agentName, const QStrin
 QList<Commander*> AdaptixWidget::GetCommanders(const QStringList &listeners, const QStringList &agents, const QList<int> &os) const
 {
     QList<Commander*> commanders;
-    for (auto regAgent : this->RegisterAgents) {
-        if ( !agents.contains(regAgent.name) ) continue;
-        if ( !listeners.empty() && !regAgent.listenerType.isEmpty() && !listeners.contains(regAgent.listenerType)) continue;
-        if ( !os.empty() && !os.contains(regAgent.os) ) continue;
-        commanders.append(regAgent.commander);
+    auto matches = [&](const QString &name, const QString &listenerType, int agentOs) {
+        if (!agents.contains(name))
+            return false;
+        if (!listeners.empty() && !listenerType.isEmpty() && !listeners.contains(listenerType))
+            return false;
+        if (!os.empty() && !os.contains(agentOs))
+            return false;
+        return true;
+    };
+
+    for (const auto &regAgent : this->RegisterAgents) {
+        if (!regAgent.commander || !matches(regAgent.name, regAgent.listenerType, regAgent.os))
+            continue;
+        if (!commanders.contains(regAgent.commander))
+            commanders.append(regAgent.commander);
+    }
+
+    QReadLocker locker(&AgentsMapLock);
+    for (auto agent : AgentsMap) {
+        if (!agent || !agent->commander)
+            continue;
+        if (!matches(agent->data.Name, agent->listenerType, agent->data.Os))
+            continue;
+        if (!commanders.contains(agent->commander))
+            commanders.append(agent->commander);
     }
     return commanders;
 }
@@ -1516,8 +1562,15 @@ QList<Commander*> AdaptixWidget::GetCommanders(const QStringList &listeners, con
 QList<Commander*> AdaptixWidget::GetCommandersAll() const
 {
     QList<Commander*> commanders;
-    for (auto regAgent : this->RegisterAgents)
-        commanders.append(regAgent.commander);
+    for (const auto &regAgent : this->RegisterAgents) {
+        if (regAgent.commander && !commanders.contains(regAgent.commander))
+            commanders.append(regAgent.commander);
+    }
+    QReadLocker locker(&AgentsMapLock);
+    for (auto agent : AgentsMap) {
+        if (agent && agent->commander && !commanders.contains(agent->commander))
+            commanders.append(agent->commander);
+    }
     return commanders;
 }
 
@@ -2059,8 +2112,10 @@ void AdaptixWidget::LoadListenersUI() const
 
 void AdaptixWidget::LoadPayloadsUI() const
 {
-    if (PayloadsDock)
+    if (PayloadsDock) {
         this->PlaceWidget(QStringLiteral("payloads"), PayloadsDock->dock());
+        PayloadsDock->SetUpdatesEnabled(true);
+    }
 }
 
 void AdaptixWidget::LoadTunnelsUI() const

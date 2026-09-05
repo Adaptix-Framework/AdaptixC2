@@ -11,11 +11,14 @@ struct AgentMarkInfo {
     QString lastMark;
 };
 
+class QEventLoop;
+
 class LastTickWorker : public QThread
 {
 Q_OBJECT
     AdaptixWidget* mainWidget = nullptr;
     QTimer*        timer      = nullptr;
+    QEventLoop*    m_loop     = nullptr;
 
 public:
     explicit LastTickWorker(AdaptixWidget* w);

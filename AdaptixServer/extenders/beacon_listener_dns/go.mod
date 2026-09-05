@@ -3,7 +3,7 @@ module beacon_listener_dns
 go 1.26.5
 
 require (
-	github.com/Adaptix-Framework/axc2/v2 v2.0.13
+	github.com/Adaptix-Framework/axc2/v2 v2.0.14
 	github.com/miekg/dns v1.1.72
 )
 

@@ -94,9 +94,12 @@ struct WINAPIFUNC
 	DECL_API(VirtualAlloc);
 	DECL_API(VirtualFree);
 	DECL_API(WaitForSingleObject);
+	DECL_API(WaitForMultipleObjects);
 	DECL_API(WaitNamedPipeA);
 	DECL_API(WideCharToMultiByte);
 	DECL_API(WriteFile);
+	DECL_API(GetOverlappedResult);
+	DECL_API(CancelIo);
 	
 	// iphlpapi
 	DECL_API(GetAdaptersInfo);
@@ -124,6 +127,7 @@ struct WINAPIFUNC
 	DECL_API(WSACleanup);
 	DECL_API(socket);
 	DECL_API(gethostbyname);
+	DECL_API(inet_addr);
 	DECL_API(ioctlsocket);
 	DECL_API(connect);
 	DECL_API(setsockopt);
@@ -140,6 +144,8 @@ struct WINAPIFUNC
 	DECL_API(accept);
 	DECL_API(listen);
 	DECL_API(bind);
+	DECL_API(getsockname);
+	DECL_API(getpeername);
 };
 
 struct NTAPIFUNC

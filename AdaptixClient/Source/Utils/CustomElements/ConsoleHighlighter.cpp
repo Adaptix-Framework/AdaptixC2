@@ -4,7 +4,6 @@
 #include <QTimer>
 #include <QTextBlock>
 #include <QPainter>
-#include <QKeyEvent>
 #include <oclero/qlementine/widgets/Menu.hpp>
 #include <Utils/NonBlockingDialogs.h>
 #include <Client/Settings.h>
@@ -88,6 +87,9 @@ void TextEditConsole::createContextMenu(const QPoint &pos) {
 
     QAction *showHistory = menu->addAction("Show history (Ctrl + H)");
     connect(showHistory, &QAction::triggered, this, [this]() { Q_EMIT ctx_history(); });
+
+    QAction *showHelp = menu->addAction("Command help (Ctrl + Shift + H)");
+    connect(showHelp, &QAction::triggered, this, [this]() { Q_EMIT ctx_help(); });
 
     QAction *setBufferSizeAction = menu->addAction("Set buffer size...");
     connect(setBufferSizeAction, &QAction::triggered, this, [this]() {

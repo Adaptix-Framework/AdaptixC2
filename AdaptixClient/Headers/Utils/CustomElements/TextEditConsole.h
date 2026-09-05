@@ -117,6 +117,7 @@ Q_SIGNALS:
     void ctx_find();
     void ctx_history();
     void ctx_clear();
+    void ctx_help();
     void ctx_bgToggled(bool showImage);
 };
 

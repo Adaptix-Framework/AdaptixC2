@@ -113,15 +113,23 @@ private:
                                                         }))
                              + shadowWidth * 2 + hMargin * 2 + borderWidth * 2;
 
-          // Height - always show full content, only limit by screen size.
+          // Height: show full content, cap by free space above or below the combo
+          // (qlementine PR-180) while keeping local shadow/border padding.
           const auto contentHeight = viewMinimumSizeHint().height();
-          const auto screen = view->screen();
-          const auto viewGlobalY = view->mapToGlobal(QPoint(0, 0)).y();
-          const auto absoluteMaxHeight = screen != nullptr ?
-                                             screen->geometry().height() - 64 - viewGlobalY :
-                                             _qlementineStyle->theme().controlHeightLarge * 20;
-          // Add padding for borders and shadow
           const auto totalHeight = contentHeight + shadowWidth * 2 + borderWidth * 2;
+          const auto screen = view->screen();
+          int absoluteMaxHeight;
+          if (screen != nullptr) {
+            const auto screenGeom = screen->availableGeometry();
+            const auto comboGlobalY = _comboBox->mapToGlobal(QPoint(0, 0)).y();
+            constexpr auto screenPadding = 64;
+            const auto spaceBelow =
+              screenGeom.bottom() - comboGlobalY - _comboBox->height() - screenPadding;
+            const auto spaceAbove = comboGlobalY - screenGeom.top() - screenPadding;
+            absoluteMaxHeight = std::max(1, std::max(spaceBelow, spaceAbove));
+          } else {
+            absoluteMaxHeight = _qlementineStyle->theme().controlHeightLarge * 20;
+          }
           const auto height = std::min(absoluteMaxHeight, totalHeight);
 
           view->setFixedWidth(width);

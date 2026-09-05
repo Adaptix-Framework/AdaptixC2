@@ -33,6 +33,7 @@
 #include <QGuiApplication>
 #include <QWindow>
 #include <QCursor>
+#include <QSizePolicy>
 
 namespace {
 
@@ -659,6 +660,18 @@ void AxTextMultiWrapper::setPlaceholder(const QString& text) const { textedit->s
 
 void AxTextMultiWrapper::setReadOnly(const bool &readonly) const { textedit->setReadOnly(readonly); }
 
+void AxTextMultiWrapper::setMinimumHeight(int h) const
+{
+    if (textedit && h > 0)
+        textedit->setMinimumHeight(h);
+}
+
+void AxTextMultiWrapper::setMaximumHeight(int h) const
+{
+    if (textedit && h > 0)
+        textedit->setMaximumHeight(h);
+}
+
 
 
 /// LOGVIEW
@@ -786,6 +799,21 @@ void AxLabelWrapper::setWordWrap(bool on) const
         label->setWordWrap(on);
 }
 
+void AxLabelWrapper::setAlignment(const QString& align) const
+{
+    if (!label)
+        return;
+    if (align == QLatin1String("right")) {
+        label->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    } else if (align == QLatin1String("center")) {
+        label->setAlignment(Qt::AlignCenter);
+        label->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    } else {
+        label->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    }
+}
+
 void AxLabelWrapper::applyIcon() const
 {
     if (!label)
@@ -877,12 +905,14 @@ AxTableWidgetWrapper::AxTableWidgetWrapper(const QJSValue &headers, QTableView* 
     table->setWordWrap( true );
     table->setCornerButtonEnabled( true );
     table->setSelectionBehavior( QAbstractItemView::SelectRows );
-    table->setFocusPolicy( Qt::NoFocus );
+    table->setSelectionMode( QAbstractItemView::ExtendedSelection );
+    table->setFocusPolicy( Qt::ClickFocus );
     table->horizontalHeader()->setSectionResizeMode( QHeaderView::Stretch );
     table->horizontalHeader()->setCascadingSectionResizes( true );
     table->horizontalHeader()->setHighlightSections( false );
     table->verticalHeader()->setVisible( false );
     table->setItemDelegate(new PaddingDelegate(table));
+    installViewSelectAll(table);
 
     this->setColumns(headers);
 }
@@ -1010,7 +1040,7 @@ void AxTableWidgetWrapper::setReadOnly(const bool read)
     this->readonly = read;
     if (table) {
         if (read) {
-            table->setFocusPolicy(Qt::NoFocus);
+            table->setFocusPolicy(Qt::ClickFocus);
             table->setEditTriggers(QAbstractItemView::NoEditTriggers);
             table->setSelectionBehavior(QAbstractItemView::SelectRows);
         } else {
@@ -1996,7 +2026,8 @@ AxDialogCreds::AxDialogCreds(const QJSValue &headers, AuthProfile* profile, QWid
     tableView->setWordWrap(true);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->setFocusPolicy(Qt::ClickFocus);
+    installViewSelectAll(tableView);
     tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tableView->horizontalHeader()->setCascadingSectionResizes(true);
     tableView->horizontalHeader()->setHighlightSections(false);
@@ -2248,7 +2279,8 @@ AxDialogAgents::AxDialogAgents(const QJSValue &headers, const QVector<AgentData>
     tableView->setWordWrap(true);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->setFocusPolicy(Qt::ClickFocus);
+    installViewSelectAll(tableView);
     tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tableView->horizontalHeader()->setCascadingSectionResizes(true);
     tableView->horizontalHeader()->setHighlightSections(false);
@@ -2419,7 +2451,8 @@ AxDialogListeners::AxDialogListeners(const QJSValue &headers, const QVector<List
     tableView->setWordWrap(true);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->setFocusPolicy(Qt::ClickFocus);
+    installViewSelectAll(tableView);
     tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tableView->horizontalHeader()->setCascadingSectionResizes(true);
     tableView->horizontalHeader()->setHighlightSections(false);
@@ -2567,7 +2600,8 @@ AxDialogTargets::AxDialogTargets(const QJSValue &headers, AuthProfile* profile, 
     tableView->setWordWrap(true);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->setFocusPolicy(Qt::ClickFocus);
+    installViewSelectAll(tableView);
     tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tableView->horizontalHeader()->setCascadingSectionResizes(true);
     tableView->horizontalHeader()->setHighlightSections(false);
@@ -2829,7 +2863,8 @@ AxDialogDownloads::AxDialogDownloads(const QJSValue &headers, AuthProfile* profi
     tableView->setWordWrap(true);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
-    tableView->setFocusPolicy(Qt::NoFocus);
+    tableView->setFocusPolicy(Qt::ClickFocus);
+    installViewSelectAll(tableView);
     tableView->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tableView->horizontalHeader()->setCascadingSectionResizes(true);
     tableView->horizontalHeader()->setHighlightSections(false);
@@ -3127,6 +3162,8 @@ AxDialogPayloads::AxDialogPayloads(const QJSValue &headers, AuthProfile* profile
     tableView->setWordWrap(true);
     tableView->setSelectionBehavior(QAbstractItemView::SelectRows);
     tableView->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    tableView->setFocusPolicy(Qt::ClickFocus);
+    installViewSelectAll(tableView);
     tableView->verticalHeader()->setVisible(false);
     tableView->setItemDelegate(new PaddingDelegate(tableView));
     tableView->horizontalHeader()->setStretchLastSection(true);

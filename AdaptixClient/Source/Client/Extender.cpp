@@ -91,29 +91,27 @@ bool Extender::IsLoaded(const QString &path) const
 
 void Extender::SetExtension(ExtensionFile extFile)
 {
-    if(extenderFiles.contains(extFile.FilePath)) {
-        if(extFile.Enabled) {
-            mainAdaptix->mainUI->RemoveExtension(extFile);
-            bool success = mainAdaptix->mainUI->AddNewExtension(&extFile);
-            if (!success) {
-                mainAdaptix->mainUI->RemoveExtension(extFile);
-            }
-        }
-        mainAdaptix->storage->UpdateExtension(extFile);
-    }
-    else {
-        if( extFile.Enabled ) {
-            bool success = mainAdaptix->mainUI->AddNewExtension(&extFile);
-            if (!success) {
-                mainAdaptix->mainUI->RemoveExtension(extFile);
-            }
-        }
+    parseMetadata(extFile.Code, &extFile);
 
-        if (!extFile.NoSave) {
-            extenderFiles[extFile.FilePath] = extFile;
-            if( !mainAdaptix->storage->ExistsExtension(extFile.FilePath))
-                mainAdaptix->storage->AddExtension(extFile);
-        }
+    const bool existed = extenderFiles.contains(extFile.FilePath);
+
+    if (existed || extFile.Enabled)
+        mainAdaptix->mainUI->RemoveExtension(extFile);
+
+    if (extFile.Enabled) {
+        bool success = mainAdaptix->mainUI->AddNewExtension(&extFile);
+        if (!success)
+            mainAdaptix->mainUI->RemoveExtension(extFile);
+    }
+
+    if (!extFile.NoSave) {
+        extenderFiles[extFile.FilePath] = extFile;
+        if (mainAdaptix->storage->ExistsExtension(extFile.FilePath))
+            mainAdaptix->storage->UpdateExtension(extFile);
+        else
+            mainAdaptix->storage->AddExtension(extFile);
+    } else if (existed) {
+        extenderFiles[extFile.FilePath] = extFile;
     }
 
     Q_EMIT extensionChanged();
@@ -121,19 +119,10 @@ void Extender::SetExtension(ExtensionFile extFile)
 
 void Extender::EnableExtension(const QString &path)
 {
-    if( !extenderFiles.contains(path) )
+    if (!extenderFiles.contains(path))
         return;
 
-    if( !extenderFiles[path].Enabled && extenderFiles[path].Message.isEmpty()) {
-        extenderFiles[path].Enabled = true;
-        bool success = mainAdaptix->mainUI->AddNewExtension(&(extenderFiles[path]));
-        if (!success) {
-            mainAdaptix->mainUI->RemoveExtension(extenderFiles[path]);
-        }
-
-        mainAdaptix->storage->UpdateExtension(extenderFiles[path]);
-        Q_EMIT extensionChanged();
-    }
+    LoadFromFile(path, true);
 }
 
 void Extender::DisableExtension(const QString &path)
@@ -164,6 +153,13 @@ void Extender::RemoveExtension(const QString &path)
 void Extender::syncedOnReload(const QString &project)
 {
     for (auto path : extenderFiles.keys()) {
+        QFile file(path);
+        if (file.open(QIODevice::ReadOnly)) {
+            extenderFiles[path].Code = QTextStream(&file).readAll();
+            file.close();
+            parseMetadata(extenderFiles[path].Code, &extenderFiles[path]);
+        }
+
         if(extenderFiles[path].Enabled) {
             bool success = mainAdaptix->mainUI->SyncExtension(project, &(extenderFiles[path]));
             if (!success) {

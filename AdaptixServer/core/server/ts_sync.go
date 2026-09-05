@@ -25,7 +25,7 @@ func getPacketCategory(packet interface{}) string {
 		return SyncCategoryScripts
 	case SyncPackerListenerStart:
 		return "listeners"
-	case SyncPackerAgentNew, SyncPackerAgentUpdate:
+	case SyncPackerAgentNew, SyncPackerAgentUpdate, SyncPackerAgentIo:
 		return "agents"
 	case SyncPackerAgentConsoleOutput, SyncPackerAgentConsoleTaskSync, SyncPackerAgentConsoleTaskUpd:
 		return SyncCategoryConsoleHistory

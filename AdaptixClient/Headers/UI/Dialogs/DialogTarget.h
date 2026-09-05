@@ -7,6 +7,7 @@
 
 class DialogTarget : public QDialog
 {
+Q_OBJECT
     QVBoxLayout* mainLayout     = nullptr;
     QGroupBox*   hostGroup      = nullptr;
     QGridLayout* hostGrid       = nullptr;
@@ -15,6 +16,7 @@ class DialogTarget : public QDialog
     QHBoxLayout* buttonLayout   = nullptr;
     QPushButton* createButton   = nullptr;
     QPushButton* cancelButton   = nullptr;
+    QLabel*      errorLabel     = nullptr;
 
     QLineEdit*   computerInput  = nullptr;
     QLineEdit*   domainInput    = nullptr;
@@ -33,16 +35,21 @@ class DialogTarget : public QDialog
     bool editMode = false;
 
     void createUI();
+    void fillFields(const TargetData &targetData);
 
 public:
-    explicit DialogTarget();
+    explicit DialogTarget(QWidget* parent = nullptr);
     ~DialogTarget() override;
 
     void StartDialog();
     void SetEditmode(const TargetData &targetData);
+    void SetTemplate(const TargetData &targetData);
     bool IsValid() const;
     QString    GetMessage() const;
     TargetData GetTargetData() const;
+
+Q_SIGNALS:
+    void submitted(const TargetData &data);
 
 protected Q_SLOTS:
     void onButtonCreate();

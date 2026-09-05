@@ -50,6 +50,7 @@ func (p *PluginAgent) AgentRestore(agentData adaptix.AgentData) adaptix.AgentFun
 			Resume:     TunnelMessageResume,
 			Close:      TunnelMessageClose,
 			Reverse:    TunnelMessageReverse,
+			BindTCP:    TunnelMessageBindTCP,
 		},
 		TerminalCB: adaptix.TerminalCallbacks{
 			Start: TerminalMessageStart,
@@ -135,6 +136,15 @@ func TunnelMessageReverse(tunnelId int64, port int) adaptix.TaskData {
 	var packData []byte
 	/// START CODE HERE
 	array := []interface{}{COMMAND_TUNNEL_REVERSE, int(uint32(tunnelId)), port}
+	packData, _ = PackArray(array)
+	/// END CODE HERE
+	return adaptix.MakeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
+}
+
+func TunnelMessageBindTCP(channelId int64, addressType int, address string, port int) adaptix.TaskData {
+	var packData []byte
+	/// START CODE HERE
+	array := []interface{}{COMMAND_TUNNEL_START_TCP, int(uint32(channelId)), adaptix.TUNNEL_TYPE_SOCKS_BIND, address, port}
 	packData, _ = PackArray(array)
 	/// END CODE HERE
 	return adaptix.MakeProxyTask(packData, PRIORITY_TUNNEL_CREATE)
@@ -1362,9 +1372,8 @@ func CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.Ta
 			goto RET
 		}
 
-		pivotId, _, _ := Ts.TsGetPivotInfoByName(pivotName)
-		if pivotId == "" {
-			err = fmt.Errorf("pivot %s does not exist", pivotName)
+		pivotId, err := resolveBeaconPivot(pivotName)
+		if err != nil {
 			goto RET
 		}
 		id, _ := strconv.ParseInt(pivotId, 16, 64)
@@ -1912,7 +1921,7 @@ func ProcessData(agentData adaptix.AgentData, decryptedData []byte) error {
 			beat := packer.ParseBytes()
 
 			childAgentId, _ := Ts.TsListenerInteralHandler(watermark, beat)
-			_ = Ts.TsPivotCreate(fmt.Sprintf("%08x", task.TaskId), agentData.Id, childAgentId, "", false)
+			_ = Ts.TsPivotCreate(fmt.Sprintf("%08x", task.TaskId), agentData.Id, childAgentId, fmt.Sprintf("%d", childAgentId), false)
 
 			if linkType == 1 {
 				task.Message = fmt.Sprintf("----- New SMB pivot agent: [%d]===[%d] -----", agentData.Id, childAgentId)
@@ -2302,6 +2311,17 @@ func ProcessData(agentData adaptix.AgentData, decryptedData []byte) error {
 				Ts.TsTunnelConnectionHalt(channelId, errorCode)
 			}
 
+		case COMMAND_TUNNEL_BIND_REPLY:
+			if false == packer.CheckPacker([]string{"int", "int", "array", "int"}) {
+				goto HANDLER
+			}
+			channelId := int64(uint32(TaskId))
+			phase := int(packer.ParseInt32())
+			atyp := int(packer.ParseInt32())
+			addr := packer.ParseBytes()
+			port := int(packer.ParseInt32())
+			Ts.TsTunnelConnectionBindReply(channelId, phase, atyp, addr, port)
+
 		case COMMAND_TUNNEL_WRITE_TCP:
 			if false == packer.CheckPacker([]string{"array"}) {
 				goto HANDLER
@@ -2319,11 +2339,8 @@ func ProcessData(agentData adaptix.AgentData, decryptedData []byte) error {
 			tunnelId := int64(uint32(TaskId))
 			_ = packer.ParseInt32()
 			result := packer.ParseInt32()
-			if result == 0 {
-				task.TaskId, task.Message, err = Ts.TsTunnelUpdateRportfwd(tunnelId, false)
-			} else {
-				task.TaskId, task.Message, err = Ts.TsTunnelUpdateRportfwd(tunnelId, true)
-			}
+			ok := result == 0 || result == 2
+			task.TaskId, task.Message, err = Ts.TsTunnelUpdateRportfwd(tunnelId, ok)
 
 			if err != nil {
 				task.MessageType = adaptix.MESSAGE_ERROR

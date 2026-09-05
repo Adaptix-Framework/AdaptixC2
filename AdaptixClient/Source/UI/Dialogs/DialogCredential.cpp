@@ -1,7 +1,12 @@
 #include <UI/Dialogs/DialogCredential.h>
 
-DialogCredential::DialogCredential()
+DialogCredential::DialogCredential(QWidget* parent) : QDialog(parent)
 {
+    setModal(false);
+    setWindowModality(Qt::NonModal);
+    setAttribute(Qt::WA_DeleteOnClose);
+    setWindowFlags(Qt::Tool | Qt::WindowTitleHint | Qt::WindowSystemMenuHint | Qt::WindowCloseButtonHint);
+
     this->createUI();
 
     connect(createButton, &QPushButton::clicked, this, &DialogCredential::onButtonCreate);
@@ -74,6 +79,11 @@ void DialogCredential::createUI()
     sourceGrid->addWidget(tagLabel,     2, 0);
     sourceGrid->addWidget(tagInput,     2, 1);
 
+    errorLabel = new QLabel(this);
+    errorLabel->setWordWrap(true);
+    errorLabel->setVisible(false);
+    errorLabel->setStyleSheet(QStringLiteral("color: #d64545;"));
+
     createButton = new QPushButton("Create Credential", this);
     createButton->setDefault(true);
     cancelButton = new QPushButton("Cancel", this);
@@ -86,6 +96,7 @@ void DialogCredential::createUI()
     mainLayout = new QVBoxLayout(this);
     mainLayout->addWidget(credGroup);
     mainLayout->addWidget(sourceGroup);
+    mainLayout->addWidget(errorLabel);
     mainLayout->addLayout(buttonLayout);
 
     this->setLayout(mainLayout);
@@ -95,10 +106,15 @@ void DialogCredential::StartDialog()
 {
     this->valid = false;
     this->message = "";
-    this->editMode = false;
-    this->setWindowTitle("Create Credential");
-    createButton->setText("Create Credential");
-    this->exec();
+    if (errorLabel)
+        errorLabel->setVisible(false);
+    if (!this->editMode) {
+        this->setWindowTitle("Create Credential");
+        createButton->setText("Create Credential");
+    }
+    this->show();
+    this->raise();
+    this->activateWindow();
 }
 
 void DialogCredential::SetEditmode(const CredentialData &credentialData)
@@ -107,7 +123,20 @@ void DialogCredential::SetEditmode(const CredentialData &credentialData)
     this->setWindowTitle("Edit Credential");
     createButton->setText("Update Credential");
     this->credsId = credentialData.CredId;
+    fillFields(credentialData);
+}
 
+void DialogCredential::SetTemplate(const CredentialData &credentialData)
+{
+    this->editMode = false;
+    this->credsId = 0;
+    this->setWindowTitle("Create Credential");
+    createButton->setText("Create Credential");
+    fillFields(credentialData);
+}
+
+void DialogCredential::fillFields(const CredentialData &credentialData)
+{
     usernameInput->setText(credentialData.Username);
     passwordInput->setText(credentialData.Password);
     realmInput->setText(credentialData.Realm);
@@ -136,10 +165,17 @@ void DialogCredential::onButtonCreate()
     if (data.Username.isEmpty() && data.Password.isEmpty()) {
         this->valid = false;
         this->message = "Username or Password must be set";
+        if (errorLabel) {
+            errorLabel->setText(this->message);
+            errorLabel->setVisible(true);
+        }
         return;
     }
 
     this->valid = true;
+    if (errorLabel)
+        errorLabel->setVisible(false);
+    Q_EMIT submitted(data);
     this->close();
 }
 

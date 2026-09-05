@@ -20,6 +20,7 @@
 class Agent;
 class AdaptixWidget;
 class DialogConsoleSearch;
+class DialogConsoleHelp;
 
 #define CONSOLE_OUT_LOCAL         1
 #define CONSOLE_OUT_LOCAL_INFO    2
@@ -73,6 +74,7 @@ class ConsoleWidget : public DockTab
     qint64 oldestLoadedId = 0;
 
     QPointer<DialogConsoleSearch> searchDialog;
+    QPointer<DialogConsoleHelp>   helpDialog;
 
     void loadInitialPage();
     void loadMorePage();
@@ -81,7 +83,7 @@ class ConsoleWidget : public DockTab
     void jumpToLatest();
     void reloadLatestPage();
     void loadAroundHit(qint64 centerId, int limit = 0);
-    void applyConsolePacket(const QJsonObject& obj, bool fromHistory = false);
+    void applyConsolePacket(const QJsonObject& obj, bool seedHistory = false);
     void updateHistoryBar();
     void applyPageItems(const QJsonArray& items, bool prepend);
     void openHistorySearch();
@@ -145,6 +147,7 @@ public Q_SLOTS:
     void processInput();
     void onCompletionSelected(const QString &selectedText);
     void handleShowHistory();
+    void handleShowHelp();
 };
 
 #endif

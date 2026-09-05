@@ -12,6 +12,12 @@
 #define COMMAND_TUNNEL_ACCEPT    68
 #define COMMAND_TUNNEL_PAUSE     69
 #define COMMAND_TUNNEL_RESUME    70
+#define COMMAND_TUNNEL_BIND_REPLY 75
+
+#define TUNNEL_TYPE_SOCKS_BIND 6
+#define TUNNEL_BIND_LISTENING  2
+#define TUNNEL_BIND_ACCEPTED   3
+#define ADDRESS_TYPE_IPV4      1
 
 #define TUNNEL_CREATE_SUCCESS 0
 #define TUNNEL_CREATE_ERROR 1
@@ -23,6 +29,7 @@
 #define TUNNEL_MODE_SEND_TCP 0
 #define TUNNEL_MODE_SEND_UDP 1
 #define TUNNEL_MODE_REVERSE_TCP 2
+#define TUNNEL_MODE_BIND_TCP 3
 
 #define TUNNEL_BUFFER_HIGH_WATERMARK 0x400000  // 4MB: stop reading
 #define TUNNEL_BUFFER_LOW_WATERMARK  0x100000  // 1MB: resume reading
@@ -58,6 +65,7 @@ public:
 	void  CloseProxy();
 
 	void ConnectMessageTCP(ULONG channelId, ULONG type, CHAR* address, WORD port, Packer* outPacker);
+	void ConnectMessageBind(ULONG channelId, ULONG type, Packer* outPacker);
 	void ConnectMessageUDP(ULONG channelId, CHAR* address, WORD port, Packer* outPacker);
 	void ConnectWriteTCP(ULONG channelId, CHAR* data, ULONG dataSize, Packer* outPacker);
 

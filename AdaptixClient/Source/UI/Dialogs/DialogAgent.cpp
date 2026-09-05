@@ -1044,47 +1044,59 @@ void DialogAgent::onButtonBuild()
         fileChipButton->setText(QString());
     }
     showBuildLogView();
+    buildLogOutput->append(QString("<span style='color: #569cd6;'>[*]</span> Listeners: %1").arg(selectedListeners.join(QStringLiteral(", ")).toHtmlEscaped()));
 
     buildButton->setText("Stop");
-
-    QString urlTemplate = "wss://%1:%2%3/channel";
-    QString sUrl = urlTemplate.arg(authProfile.GetHost()).arg(authProfile.GetPort()).arg(authProfile.GetEndpoint());
 
     QJsonArray listenersArray;
     for (const QString &listener : selectedListeners)
         listenersArray.append(listener);
 
     QJsonObject otpData;
-    otpData["agent_name"] = agentName;
-    otpData["listeners_name"] = listenersArray;
+    otpData.insert(QStringLiteral("agent_name"), agentName);
+    otpData.insert(QStringLiteral("listeners_name"), listenersArray);
     const bool saveToStore = storeCheck && storeCheck->isChecked();
-    otpData["save_to_store"] = saveToStore;
+    otpData.insert(QStringLiteral("save_to_store"), saveToStore);
     if (saveToStore && inputDescription) {
         const QString desc = inputDescription->text().trimmed();
         if (!desc.isEmpty())
-            otpData["description"] = desc;
+            otpData.insert(QStringLiteral("description"), desc);
+    }
+
+    QJsonObject body;
+    body.insert(QStringLiteral("agent"), agentName);
+    body.insert(QStringLiteral("listener_name"), listenersArray);
+    body.insert(QStringLiteral("config"), configData);
+    body.insert(QStringLiteral("save_to_store"), saveToStore);
+    if (saveToStore && inputDescription) {
+        const QString desc = inputDescription->text().trimmed();
+        if (!desc.isEmpty())
+            body.insert(QStringLiteral("description"), desc);
     }
 
     QString otp;
-    bool ok = false;
-    if (!HttpReqGetOTP("channel_agent_build", otpData, authProfile, &otp, &ok) || !ok) {
-        buildButton->setText(QStringLiteral("Generate"));
-        MessageError("Failed to generate OTP for build");
-        return;
-    }
+    bool otpOk = false;
+    if (!HttpReqGetOTP(QStringLiteral("channel_agent_build"), otpData, authProfile, &otp, &otpOk) || !otpOk)
+        otp.clear();
+
+    const QString wsTemplate = QStringLiteral("wss://%1:%2%3/channel");
+    const QUrl wsUrl(wsTemplate.arg(authProfile.GetHost()).arg(authProfile.GetPort()).arg(authProfile.GetEndpoint()));
+    const QUrl generateUrl(authProfile.GetURL() + QStringLiteral("/agent/generate"));
 
     buildThread = new QThread;
-    buildWorker = new BuildWorker(otp, sUrl, configData);
+    buildWorker = new BuildWorker(otp, wsUrl, configData, generateUrl, authProfile.GetAccessToken(), QJsonDocument(body).toJson(QJsonDocument::Compact));
     buildWorker->moveToThread(buildThread);
 
-    connect(buildThread, &QThread::started,              buildWorker, &BuildWorker::start);
-    connect(buildWorker, &BuildWorker::finished,         buildThread, &QThread::quit);
-    connect(buildWorker, &BuildWorker::finished,         buildWorker, &BuildWorker::deleteLater);
-    connect(buildThread, &QThread::finished,             buildThread, &QThread::deleteLater);
+    connect(buildThread, &QThread::started,  buildWorker, &BuildWorker::start);
+    connect(buildWorker, &BuildWorker::finished, buildThread, &QThread::quit, Qt::QueuedConnection);
+    connect(buildThread, &QThread::finished, buildWorker, &QObject::deleteLater);
+    connect(buildThread, &QThread::finished, buildThread, &QObject::deleteLater);
 
-    connect(buildWorker, &BuildWorker::connected,            this, &DialogAgent::onBuildConnected,  Qt::QueuedConnection);
-    connect(buildWorker, &BuildWorker::textMessageReceived,  this, &DialogAgent::onBuildMessage,    Qt::QueuedConnection);
-    connect(buildWorker, &BuildWorker::finished,             this, &DialogAgent::onBuildFinished,   Qt::QueuedConnection);
+    connect(buildWorker, &BuildWorker::connected,           this, &DialogAgent::onBuildConnected,  Qt::QueuedConnection);
+    connect(buildWorker, &BuildWorker::textMessageReceived, this, &DialogAgent::onBuildMessage,    Qt::QueuedConnection);
+    connect(buildWorker, &BuildWorker::fileReady,           this, &DialogAgent::onBuildFileReady,  Qt::QueuedConnection);
+    connect(buildWorker, &BuildWorker::errorOccurred,       this, &DialogAgent::onBuildError,      Qt::QueuedConnection);
+    connect(buildWorker, &BuildWorker::finished,            this, &DialogAgent::onBuildFinished,   Qt::QueuedConnection);
 
     buildThread->start();
 }
@@ -1184,11 +1196,43 @@ void DialogAgent::onBuildMessage(const QString &msg)
     scrollBar->setValue(scrollBar->maximum());
 }
 
+void DialogAgent::onBuildFileReady(const QString &filename, const QByteArray &content)
+{
+    if (filename.isEmpty() || content.isEmpty())
+        return;
+
+    buildFileName = filename;
+    buildFileContent = content;
+
+    if (fileChipButton) {
+        fileChipButton->setText(QStringLiteral("  %1").arg(filename));
+        fileChipButton->setVisible(true);
+    }
+
+    if (buildLogOutput) {
+        buildLogOutput->append(QString("<span style='color: #dcdcaa;'>[+]</span> File ready: %1").arg(filename.toHtmlEscaped()));
+        if (storeCheck && storeCheck->isChecked())
+            buildLogOutput->append(QString("<span style='color: #569cd6;'>[*]</span> Registered in Payload Store"));
+        else
+            buildLogOutput->append(QString("<span style='color: #569cd6;'>[*]</span> Not saved to Payload Store"));
+    }
+
+    onSaveBuildFile();
+}
+
+void DialogAgent::onBuildError(const QString &err)
+{
+    if (!err.isEmpty() && buildLogOutput)
+        buildLogOutput->append(QString("<span style='color: #f14c4c;'>[-]</span> %1").arg(err.toHtmlEscaped()));
+}
+
 void DialogAgent::onBuildFinished()
 {
-    buildLogOutput->append("----- Build process finished -----");
+    if (buildLogOutput)
+        buildLogOutput->append("----- Build process finished -----");
 
-    buildButton->setText(QStringLiteral("Generate"));
+    if (buildButton)
+        buildButton->setText(QStringLiteral("Generate"));
 
     buildWorker = nullptr;
     buildThread = nullptr;
@@ -1226,21 +1270,15 @@ void DialogAgent::onSaveBuildFile()
 
 void DialogAgent::stopBuild()
 {
-    if (!buildWorker || !buildThread)
+    if (!buildWorker)
         return;
 
-    auto worker = buildWorker;
-    auto thread = buildThread;
-
+    QPointer<BuildWorker> worker = buildWorker;
     buildWorker = nullptr;
     buildThread = nullptr;
 
-    QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
-
-    connect(thread, &QThread::finished, thread, [thread, worker]() {
-        worker->deleteLater();
-        thread->deleteLater();
-    });
+    if (worker)
+        QMetaObject::invokeMethod(worker.data(), "stop", Qt::QueuedConnection);
 }
 
 void DialogAgent::onListenerSelectionChanged(const QListWidgetItem *item)
@@ -1406,7 +1444,8 @@ void DialogAgent::regenerateAgentUI(const QString &agentName, const QStringList 
         }
     }
 
-    formElement->widget()->setMinimumSize(w, 0);
+    formElement->widget()->setMinimumSize(0, 0);
+    formElement->widget()->setMaximumWidth(QWIDGETSIZE_MAX);
     ax_uis[agentName] = { container, formElement->widget(), h, w };
     configStackWidget->addWidget(formElement->widget());
     configStackWidget->setCurrentWidget(formElement->widget());
@@ -1427,13 +1466,17 @@ void DialogAgent::packDialogSize(int scriptW, int scriptH)
     constexpr int kHeaderH    = 48 + 96;
     constexpr int kVChrome    = 5 * 2 + 10 * 2 + 5 * 2 + kHeaderH + kFooterH + 36;
 
-    int panelW = scriptW > 0 ? scriptW : 650;
-    int panelH = scriptH > 0 ? scriptH : 650;
+    int panelW = scriptW > 0 ? scriptW : 360;
+    int panelH = scriptH > 0 ? scriptH : 400;
     if (configStackWidget && configStackWidget->currentWidget()) {
         QWidget* cur = configStackWidget->currentWidget();
-        panelW = qMax(panelW, qMax(cur->sizeHint().width(), cur->minimumSizeHint().width()));
-        panelH = qMax(panelH, qMax(cur->sizeHint().height(), cur->minimumSizeHint().height()));
-        cur->setMinimumWidth(panelW);
+        cur->setMinimumWidth(0);
+        const int minW = cur->minimumSizeHint().width();
+        const int minH = cur->minimumSizeHint().height();
+        if (minW > 0)
+            panelW = qMax(panelW, minW);
+        if (minH > 0)
+            panelH = qMax(panelH, minH);
     }
 
     int w = panelW + kHChrome;

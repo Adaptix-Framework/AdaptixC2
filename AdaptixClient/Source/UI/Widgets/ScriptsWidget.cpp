@@ -350,7 +350,7 @@ static void styleTable(QTableView* tv)
     tv->setSortingEnabled(true);
     tv->setWordWrap(false);
     tv->setContextMenuPolicy(Qt::CustomContextMenu);
-    tv->setFocusPolicy(Qt::NoFocus);
+    tv->setFocusPolicy(Qt::ClickFocus);
     tv->setMouseTracking(true);
     tv->verticalHeader()->setVisible(false);
     tv->verticalHeader()->setDefaultSectionSize(FontManager::instance().typography().rowHeightCompact);
@@ -673,6 +673,7 @@ void ScriptsWidget::setupEventsTable()
     m_eventsTypeList->setObjectName(QStringLiteral("eventsTypeList"));
     m_eventsTypeList->setUniformItemSizes(true);
     m_eventsTypeList->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    installViewSelectAll(m_eventsTypeList);
     m_eventsTypeList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     m_eventsTypeList->setContextMenuPolicy(Qt::CustomContextMenu);
     m_eventsTypeList->setIconSize(QSize(16, 16));
@@ -1200,9 +1201,9 @@ void ScriptsWidget::onScriptsReload(const QList<ScriptRowSel>& rows)
     for (const auto& r : rows) {
         if (r.kind != QLatin1String("local"))
             continue;
-        GlobalClient->extender->RemoveExtension(r.id);
         GlobalClient->extender->LoadFromFile(r.id, true);
     }
+    refreshScripts();
 }
 
 void ScriptsWidget::onScriptsEnable(const QList<ScriptRowSel>& rows)

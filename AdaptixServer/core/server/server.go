@@ -74,6 +74,7 @@ func NewTeamserver(debug bool) *Teamserver {
 
 	ts.tickedAgents = axsafe.NewSet[int64]()
 	ts.tickNotify = make(chan struct{}, 1)
+	ts.ioProg = make(map[int64]ioProgressSent)
 
 	ts.IdGen = idgen.New("screen", "cred", "target", "task", "file", "agent", "listener", "payload")
 	_ = ts.IdGen.Bind(dbms.GetDB())

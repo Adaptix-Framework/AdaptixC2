@@ -205,7 +205,7 @@ static void stylePayloadTable(QTableView* tv)
     tv->setSortingEnabled(true);
     tv->setWordWrap(false);
     tv->setContextMenuPolicy(Qt::CustomContextMenu);
-    tv->setFocusPolicy(Qt::NoFocus);
+    tv->setFocusPolicy(Qt::ClickFocus);
     tv->setMouseTracking(true);
     tv->verticalHeader()->setVisible(false);
     tv->verticalHeader()->setDefaultSectionSize(FontManager::instance().typography().rowHeightCompact);

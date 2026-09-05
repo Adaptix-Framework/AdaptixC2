@@ -5,6 +5,7 @@
 
 class DialogCredential : public QDialog
 {
+Q_OBJECT
     QVBoxLayout* mainLayout     = nullptr;
     QGroupBox*   credGroup      = nullptr;
     QGridLayout* credGrid       = nullptr;
@@ -13,6 +14,7 @@ class DialogCredential : public QDialog
     QHBoxLayout* buttonLayout   = nullptr;
     QPushButton* createButton   = nullptr;
     QPushButton* cancelButton   = nullptr;
+    QLabel*      errorLabel     = nullptr;
 
     QLineEdit*   usernameInput  = nullptr;
     QLineEdit*   passwordInput  = nullptr;
@@ -30,16 +32,21 @@ class DialogCredential : public QDialog
     bool editMode = false;
 
     void createUI();
+    void fillFields(const CredentialData &credentialData);
 
 public:
-    explicit DialogCredential();
+    explicit DialogCredential(QWidget* parent = nullptr);
     ~DialogCredential() override;
 
     void StartDialog();
     void SetEditmode(const CredentialData &credentialData);
+    void SetTemplate(const CredentialData &credentialData);
     bool IsValid() const;
     QString GetMessage() const;
     CredentialData GetCredData() const;
+
+Q_SIGNALS:
+    void submitted(const CredentialData &data);
 
 protected Q_SLOTS:
     void onButtonCreate();

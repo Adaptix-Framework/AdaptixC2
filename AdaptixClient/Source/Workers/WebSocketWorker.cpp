@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QJsonParseError>
 #include <QUrlQuery>
+#include <QEventLoop>
 
 WebSocketWorker::WebSocketWorker(AuthProfile* authProfile)
 {
@@ -86,7 +87,10 @@ void WebSocketWorker::run()
 
     webSocket->open(request);
 
-    exec();
+    QEventLoop loop;
+    m_loop = &loop;
+    loop.exec();
+    m_loop = nullptr;
 }
 
 void WebSocketWorker::startPingTimer()
@@ -197,4 +201,8 @@ void WebSocketWorker::stopWorker()
         delete webSocket;
         webSocket = nullptr;
     }
+    if (m_loop && m_loop->isRunning())
+        m_loop->quit();
+    if (QThread* t = QThread::currentThread())
+        t->quit();
 }

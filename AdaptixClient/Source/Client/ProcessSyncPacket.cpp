@@ -287,6 +287,10 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
     case TYPE_AGENT_TICK:
         return checkField("a_id", isArr);
 
+    case TYPE_AGENT_IO:
+        return checkField("a_id", isNum) &&
+               checkField("io_active", isBl);
+
     case TYPE_AGENT_UPDATE:
         return checkField("a_id", isNum);
 
@@ -831,6 +835,27 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
                     agent->MarkItem("");
             }
         }
+        break;
+    }
+
+    case TYPE_AGENT_IO: {
+        qint64 agentId = parseI64(jsonObj, "a_id");
+        ConsoleWidget* console = nullptr;
+        {
+            QWriteLocker locker(&AgentsMapLock);
+            Agent* agent = AgentsMap.value(agentId, nullptr);
+            if (agent) {
+                agent->IoActive     = jsonObj["io_active"].toBool();
+                agent->IoUpFilled   = static_cast<qint64>(jsonObj["io_up_filled"].toDouble());
+                agent->IoUpTotal    = static_cast<qint64>(jsonObj["io_up_total"].toDouble());
+                agent->IoDownFilled = static_cast<qint64>(jsonObj["io_down_filled"].toDouble());
+                agent->IoDownTotal  = static_cast<qint64>(jsonObj["io_down_total"].toDouble());
+                agent->IoStarted    = static_cast<qint64>(jsonObj["io_started"].toDouble());
+                console = agent->Console;
+            }
+        }
+        if (console)
+            console->UpdateStatusLabel();
         break;
     }
 
@@ -1576,6 +1601,7 @@ void AdaptixWidget::setSyncUpdateUI(const bool enabled)
     if (LogsDock)          LogsDock->SetUpdatesEnabled(enabled);
     if (ChatDock)          ChatDock->SetUpdatesEnabled(enabled);
     if (ListenersDock)     ListenersDock->SetUpdatesEnabled(enabled);
+    if (PayloadsDock)      PayloadsDock->SetUpdatesEnabled(enabled);
     if (SessionsTableDock) SessionsTableDock->SetUpdatesEnabled(enabled);
     if (TunnelsDock)       TunnelsDock->SetUpdatesEnabled(enabled);
     if (DownloadsDock)     DownloadsDock->SetUpdatesEnabled(enabled);

@@ -142,6 +142,9 @@ type Teamserver struct {
 	tickedAgents axsafe.Set[int64] // agentIds pending tick broadcast
 	tickNotify   chan struct{}     // signal for tick
 
+	ioProgMu sync.Mutex
+	ioProg   map[int64]ioProgressSent
+
 	IdGen *idgen.Generator
 }
 
@@ -416,6 +419,18 @@ type SyncPackerAgentTick struct {
 	SpType int `json:"type"`
 
 	Id []int64 `json:"a_id"`
+}
+
+type SyncPackerAgentIo struct {
+	SpType int `json:"type"`
+
+	Id         int64  `json:"a_id"`
+	UpFilled   uint32 `json:"io_up_filled"`
+	UpTotal    uint32 `json:"io_up_total"`
+	DownFilled uint32 `json:"io_down_filled"`
+	DownTotal  uint32 `json:"io_down_total"`
+	Started    int64  `json:"io_started"`
+	Active     bool   `json:"io_active"`
 }
 
 type SyncPackerAgentTaskRemove struct {

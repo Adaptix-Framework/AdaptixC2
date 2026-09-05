@@ -219,6 +219,7 @@ func (ts *Teamserver) TsTasksGetPage(agentId int64, offset, limit int, filterExp
 
 	items := make([]TaskListItem, 0, len(tasks))
 	for _, task := range tasks {
+		overlayLiveJobText(ts, &task)
 		items = append(items, TaskListItem{
 			TaskType:   task.Type,
 			TaskId:     task.TaskId,

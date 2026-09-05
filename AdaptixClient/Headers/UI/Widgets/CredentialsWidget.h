@@ -154,6 +154,7 @@ public:
 public Q_SLOTS:
     void handleCredentialsMenu( const QPoint &pos ) const;
     void onCreateCreds();
+    void onCreateFromTemplate();
     void onImportCreds();
     void onEditCreds();
     void onRemoveCreds() const;

@@ -730,8 +730,10 @@ func CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.Ta
 	case "lportfwd":
 		taskData.Type = adaptix.TASK_TYPE_TUNNEL
 
-		lportNumber, _ := adaptix.GetFloatArg(args, "lport")
-		lport := int(lportNumber)
+		lport, err := adaptix.GetIntArg(args, "lport")
+		if err != nil {
+			goto RET
+		}
 		if lport < 1 || lport > 65535 {
 			err = errors.New("port must be from 1 to 65535")
 			goto RET
@@ -741,16 +743,18 @@ func CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.Ta
 			var lhost string
 			var fhost string
 			var tunnelId int64
-			lhost, err = adaptix.GetStringArg(args, "lhost")
-			if err != nil {
-				goto RET
+			lhost = adaptix.GetStringArgDefault(args, "lhost", "0.0.0.0")
+			if lhost == "" {
+				lhost = "0.0.0.0"
 			}
 			fhost, err = adaptix.GetStringArg(args, "fwdhost")
 			if err != nil {
 				goto RET
 			}
-			fportNumber, _ := adaptix.GetFloatArg(args, "fwdport")
-			fport := int(fportNumber)
+			fport, err := adaptix.GetIntArg(args, "fwdport")
+			if err != nil {
+				goto RET
+			}
 			if fport < 1 || fport > 65535 {
 				err = errors.New("port must be from 1 to 65535")
 				goto RET
@@ -857,18 +861,18 @@ func CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.Ta
 	case "socks":
 		taskData.Type = adaptix.TASK_TYPE_TUNNEL
 
-		portNumber, ok := args["port"].(float64)
-		port := int(portNumber)
-		if ok {
-			if port < 1 || port > 65535 {
-				err = errors.New("port must be from 1 to 65535")
-				goto RET
-			}
+		port, err := adaptix.GetIntArg(args, "port")
+		if err != nil {
+			goto RET
+		}
+		if port < 1 || port > 65535 {
+			err = errors.New("port must be from 1 to 65535")
+			goto RET
 		}
 		if subcommand == "start" {
-			address, err := adaptix.GetStringArg(args, "address")
-			if err != nil {
-				goto RET
+			address := adaptix.GetStringArgDefault(args, "address", "127.0.0.1")
+			if address == "" {
+				address = "127.0.0.1"
 			}
 
 			auth := adaptix.GetBoolArg(args, "-a")
@@ -967,17 +971,14 @@ func CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.Ta
 
 			chunk, gerr := tsi.TsUploadGetChunk(fileId, flowChunkSize, false)
 			if gerr != nil {
-				_ = tsi.TsUploadClose(fileId, adaptix.TRANSFER_STATE_CANCELED)
 				t.MessageType = adaptix.MESSAGE_ERROR
 				t.Message = fmt.Sprintf("Upload #%d canceled", fileId)
 				t.Completed = true
+				t.Repeat = false
 				return
 			}
 			if chunk == nil {
-				_ = tsi.TsUploadClose(fileId, adaptix.TRANSFER_STATE_FINISHED)
-				t.MessageType = adaptix.MESSAGE_SUCCESS
-				t.Message = fmt.Sprintf("Upload #%d finished", fileId)
-				t.Completed = true
+				t.Repeat = false
 				return
 			}
 
@@ -993,11 +994,20 @@ func CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.Ta
 			t.Data, _ = msgpack.Marshal(chunkCmd)
 
 			if finish {
-				_ = tsi.TsUploadClose(fileId, adaptix.TRANSFER_STATE_FINISHED)
-				t.MessageType = adaptix.MESSAGE_SUCCESS
-				t.Message = fmt.Sprintf("Upload #%d finished", fileId)
-				t.Completed = true
+				t.Repeat = false
+				t.Completed = false
+				t.MessageType = adaptix.MESSAGE_INFO
+				t.Message = fmt.Sprintf("Sending %d bytes to agent...", bufferSize)
 			}
+		}
+
+		taskData.OnComplete = func(ts any, t *adaptix.TaskData) {
+			tsi := ts.(adaptix.Teamserver)
+			reason := adaptix.TRANSFER_STATE_FINISHED
+			if t.MessageType == adaptix.MESSAGE_ERROR {
+				reason = adaptix.TRANSFER_STATE_CANCELED
+			}
+			_ = tsi.TsUploadClose(fileId, reason)
 		}
 
 		taskData.Repeat = true
@@ -1021,7 +1031,9 @@ func CreateCommand(agentData adaptix.AgentData, args map[string]any) (adaptix.Ta
 		goto RET
 	}
 
-	taskData.Data, _ = msgpack.Marshal(cmd)
+	if cmd.Code != 0 {
+		taskData.Data, _ = msgpack.Marshal(cmd)
+	}
 
 	/// END CODE
 

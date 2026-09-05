@@ -49,7 +49,7 @@ BOF_API BeaconFunctions[BEACON_FUNCTIONS_COUNT] = {
 
 	{ HASH_FUNC_BEACONOUTPUT,                 (LPVOID) BeaconOutput },
 	{ HASH_FUNC_BEACONPRINTF,                 (LPVOID) BeaconPrintf },
-	{ HASH_FUNC_BEACONDOWNLOAD,               (LPVOID)BeaconDownload },
+	{ HASH_FUNC_BEACONDOWNLOAD,               (LPVOID) BeaconDownload },
 
 	/// 7 - Format API
 

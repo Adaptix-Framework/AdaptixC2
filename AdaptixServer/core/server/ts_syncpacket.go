@@ -53,6 +53,7 @@ const (
 	TYPE_AGENT_REMOVE = 0x43
 	TYPE_AGENT_TICK   = 0x44
 	TYPE_AGENT_LINK   = 0x45
+	TYPE_AGENT_IO     = 0x46
 
 	TYPE_AGENT_TASK_SYNC   = 0x49
 	TYPE_AGENT_TASK_UPDATE = 0x4a
@@ -311,6 +312,20 @@ func CreateSpAgentTick(agents []int64) SyncPackerAgentTick {
 		SpType: TYPE_AGENT_TICK,
 
 		Id: agents,
+	}
+}
+
+func CreateSpAgentIo(agentId int64, upFilled, upTotal, downFilled, downTotal uint32, started int64, active bool) SyncPackerAgentIo {
+	return SyncPackerAgentIo{
+		SpType: TYPE_AGENT_IO,
+
+		Id:         agentId,
+		UpFilled:   upFilled,
+		UpTotal:    upTotal,
+		DownFilled: downFilled,
+		DownTotal:  downTotal,
+		Started:    started,
+		Active:     active,
 	}
 }
 

