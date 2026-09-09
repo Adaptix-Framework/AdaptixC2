@@ -130,7 +130,10 @@ private:
           } else {
             absoluteMaxHeight = _qlementineStyle->theme().controlHeightLarge * 20;
           }
-          const auto height = std::min(absoluteMaxHeight, totalHeight);
+          // A screen too short for even one row must not collapse the popup to
+          // nothing; Qt repositions the container when it does not fit.
+          const auto height = std::max(_qlementineStyle->theme().controlHeightLarge,
+                                       std::min(absoluteMaxHeight, totalHeight));
 
           view->setFixedWidth(width);
           view->setFixedHeight(height);
