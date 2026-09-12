@@ -1,8 +1,10 @@
+include $(dir $(abspath $(lastword $(MAKEFILE_LIST))))../../../go_ldflags.mk
+
 all: clean
 	@ echo "    * Building listener_beacon_smb plugin"
 	@ mkdir dist
 	@ cp config.yaml ax_config.axs ./dist/
-	@ go build -buildmode=plugin -ldflags="-s -w" -o ./dist/listener_beacon_smb.so pl_main.go pl_transport.go
+	@ go build -buildmode=plugin -ldflags="$(GO_LDFLAGS)" -o ./dist/listener_beacon_smb.so pl_main.go pl_transport.go
 	@ echo "      done..."
 
 clean:
