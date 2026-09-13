@@ -320,6 +320,7 @@ PayloadsFeedWidget::PayloadsFeedWidget(AdaptixWidget* w) : QWidget(w), m_adaptix
     root->addWidget(toolbarWidget);
 
     model = new QStandardItemModel(this);
+    model->setSortRole(Qt::UserRole);
     model->setHorizontalHeaderLabels({
         QStringLiteral("ID"), QStringLiteral("Name"), QStringLiteral("Description"),
         QStringLiteral("Type"), QStringLiteral("Artifact"), QStringLiteral("Listener(s)"),
@@ -345,6 +346,29 @@ PayloadsFeedWidget::PayloadsFeedWidget(AdaptixWidget* w) : QWidget(w), m_adaptix
     connect(uploadButton, &QPushButton::clicked, this, &PayloadsFeedWidget::actionImport);
     connect(table, &QTableView::customContextMenuRequested, this, &PayloadsFeedWidget::handleContextMenu);
     connect(table, &QTableView::doubleClicked, this, &PayloadsFeedWidget::onRowDoubleClicked);
+    connect(table->horizontalHeader(), &QHeaderView::sortIndicatorChanged, this, [this](int section, Qt::SortOrder order) {
+        if (section < 0)
+            return;
+        QString key;
+        switch (section) {
+            case ColId:       key = QStringLiteral("Id"); break;
+            case ColName:     key = QStringLiteral("Name"); break;
+            case ColType:     key = QStringLiteral("Type"); break;
+            case ColArtifact: key = QStringLiteral("Artifact"); break;
+            case ColSize:     key = QStringLiteral("Size"); break;
+            case ColCreator:  key = QStringLiteral("Creator"); break;
+            case ColCreated:  key = QStringLiteral("Created"); break;
+            case ColTag:      key = QStringLiteral("Tag"); break;
+            default:          return;
+        }
+        const QString newOrder = (order == Qt::AscendingOrder) ? QStringLiteral("asc") : QStringLiteral("desc");
+        if (key == m_sortCol && newOrder == m_sortOrder)
+            return;
+        m_sortCol = key;
+        m_sortOrder = newOrder;
+        m_offset = 0;
+        loadCurrentPage();
+    });
 
     dockWidget = new KDDockWidgets::QtWidgets::DockWidget("PayloadsFeed:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
     dockWidget->setTitle(QStringLiteral("Payload Store"));
@@ -525,7 +549,9 @@ QList<QStandardItem*> PayloadsFeedWidget::makeRow(const PayloadData& p)
     };
 
     auto makeCell = [&](const QString& t, bool bold = false, bool muted = false) {
-        return decorate(textItem(t, bold && !dim, muted && !dim, false));
+        auto* it = decorate(textItem(t, bold && !dim, muted && !dim, false));
+        it->setData(t, Qt::UserRole);
+        return it;
     };
 
     auto* idIt = makeCell(QString("#%1").arg(p.PayloadId), false, true);
@@ -558,6 +584,7 @@ QList<QStandardItem*> PayloadsFeedWidget::makeRow(const PayloadData& p)
         auto* it = decorate(textItem(full, false, false, true));
         it->setToolTip(full);
         it->setData(full, kFullHashRole);
+        it->setData(full, Qt::UserRole);
         it->setTextAlignment(Qt::AlignHCenter | Qt::AlignVCenter);
         return it;
     };

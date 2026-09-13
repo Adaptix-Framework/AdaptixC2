@@ -94,6 +94,8 @@ QVariant AgentsTableModel::data(const QModelIndex &index, const int role) const 
             switch (index.column()) {
                 case SC_Icon:
                 case SC_AgentID: return static_cast<qlonglong>(d.Id);
+                case SC_Pid:     return d.Pid.toLongLong();
+                case SC_Tid:     return d.Tid.toLongLong();
                 case SC_Last:    return d.LastTick;
                 case SC_Created: return d.DateTimestamp;
                 default:         return data(index, Qt::DisplayRole);

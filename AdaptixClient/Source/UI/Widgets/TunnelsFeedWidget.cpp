@@ -338,9 +338,9 @@ void TunnelsFeedWidget::onCardPrimary(const QVariant& id)
     if (!t || !canControlTunnel(*t, currentOperator(m_adaptixWidget)))
         return;
     if (t->Active)
-        actionPauseTunnel();
+        pauseTunnels({m_selectedId});
     else
-        actionResumeTunnel();
+        resumeTunnels({m_selectedId});
 }
 
 void TunnelsFeedWidget::onCardDelete(const QVariant& id)
@@ -349,7 +349,7 @@ void TunnelsFeedWidget::onCardDelete(const QVariant& id)
     const TunnelData* t = findById(m_selectedId);
     if (!t || !canControlTunnel(*t, currentOperator(m_adaptixWidget)))
         return;
-    actionStopTunnel();
+    stopTunnels({m_selectedId});
 }
 
 void TunnelsFeedWidget::onCardDoubleClick(const QVariant& id)
@@ -394,15 +394,11 @@ void TunnelsFeedWidget::onCardContextMenu(const QVariant& id, const QPoint& glob
     ctxMenu.exec(globalPos);
 }
 
-QList<qint64> TunnelsFeedWidget::controllableSelectedIds() const
+QList<qint64> TunnelsFeedWidget::controllableIds(const QList<qint64>& ids) const
 {
     QList<qint64> out;
     const QString me = currentOperator(m_adaptixWidget);
-    QList<QVariant> ids = m_cardList ? m_cardList->selectedIds() : QList<QVariant>{};
-    if (ids.isEmpty() && m_selectedId != 0)
-        ids.append(m_selectedId);
-    for (const QVariant& v : ids) {
-        const qint64 tid = v.toLongLong();
+    for (qint64 tid : ids) {
         if (tid == 0)
             continue;
         if (const TunnelData* t = findById(tid)) {
@@ -411,6 +407,18 @@ QList<qint64> TunnelsFeedWidget::controllableSelectedIds() const
         }
     }
     return out;
+}
+
+QList<qint64> TunnelsFeedWidget::controllableSelectedIds() const
+{
+    QList<QVariant> ids = m_cardList ? m_cardList->selectedIds() : QList<QVariant>{};
+    if (ids.isEmpty() && m_selectedId != 0)
+        ids.append(m_selectedId);
+    QList<qint64> raw;
+    raw.reserve(ids.size());
+    for (const QVariant& v : ids)
+        raw.append(v.toLongLong());
+    return controllableIds(raw);
 }
 
 void TunnelsFeedWidget::actionSetInfo()
@@ -438,9 +446,14 @@ void TunnelsFeedWidget::actionSetInfo()
 
 void TunnelsFeedWidget::actionPauseTunnel()
 {
+    pauseTunnels(controllableSelectedIds());
+}
+
+void TunnelsFeedWidget::pauseTunnels(const QList<qint64>& ids)
+{
     if (!m_adaptixWidget || !m_adaptixWidget->GetProfile())
         return;
-    for (qint64 tid : controllableSelectedIds()) {
+    for (qint64 tid : controllableIds(ids)) {
         HttpReqTunnelPauseAsync(tid, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? "Response timeout" : message);
@@ -450,9 +463,14 @@ void TunnelsFeedWidget::actionPauseTunnel()
 
 void TunnelsFeedWidget::actionResumeTunnel()
 {
+    resumeTunnels(controllableSelectedIds());
+}
+
+void TunnelsFeedWidget::resumeTunnels(const QList<qint64>& ids)
+{
     if (!m_adaptixWidget || !m_adaptixWidget->GetProfile())
         return;
-    for (qint64 tid : controllableSelectedIds()) {
+    for (qint64 tid : controllableIds(ids)) {
         HttpReqTunnelResumeAsync(tid, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? "Response timeout" : message);
@@ -462,18 +480,23 @@ void TunnelsFeedWidget::actionResumeTunnel()
 
 void TunnelsFeedWidget::actionStopTunnel()
 {
-    const QList<qint64> ids = controllableSelectedIds();
-    if (ids.isEmpty())
+    stopTunnels(controllableSelectedIds());
+}
+
+void TunnelsFeedWidget::stopTunnels(const QList<qint64>& ids)
+{
+    const QList<qint64> ctrl = controllableIds(ids);
+    if (ctrl.isEmpty())
         return;
 
-    QString prompt = (ids.size() == 1)
-        ? QStringLiteral("Remove tunnel #%1 permanently?").arg(ids.first())
-        : QStringLiteral("Remove %1 selected tunnels permanently?").arg(ids.size());
+    QString prompt = (ctrl.size() == 1)
+        ? QStringLiteral("Remove tunnel #%1 permanently?").arg(ctrl.first())
+        : QStringLiteral("Remove %1 selected tunnels permanently?").arg(ctrl.size());
     QMessageBox::StandardButton reply = QMessageBox::question( this, "Remove Tunnel", prompt, QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (reply != QMessageBox::Yes)
         return;
 
-    for (qint64 tid : ids) {
+    for (qint64 tid : ctrl) {
         HttpReqTunnelStopAsync(tid, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? "Response timeout" : message);

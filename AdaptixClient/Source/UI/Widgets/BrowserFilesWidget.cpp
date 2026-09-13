@@ -134,6 +134,7 @@ void BrowserFilesWidget::createUI()
     loadingSpinner->setVisible(false);
 
     tableModel = new QStandardItemModel(this);
+    tableModel->setSortRole(Qt::UserRole);
 
     tableView = new QTableView(this);
     tableView->setModel(tableModel);

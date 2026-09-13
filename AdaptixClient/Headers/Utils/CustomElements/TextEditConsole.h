@@ -64,6 +64,7 @@ Q_OBJECT
     int pendingSize = 0;
 
     void trimExcessLines();
+    void applyWrapMode();
     void createContextMenu(const QPoint &pos);
     void setBufferSize(int size);
     void appendChunk(const QString& text, const QTextCharFormat& fmt);

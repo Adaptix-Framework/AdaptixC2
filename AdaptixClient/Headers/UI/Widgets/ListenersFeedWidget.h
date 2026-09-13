@@ -32,6 +32,10 @@ Q_OBJECT
     bool matchesFilter(const ListenerData& l) const;
     ListenerData* findByName(const QString& name);
     const ListenerData* findByName(const QString& name) const;
+    QList<QVariant> selectedListenerIds() const;
+    void pauseListeners(const QList<QVariant>& ids);
+    void resumeListeners(const QList<QVariant>& ids);
+    void removeListeners(const QList<QVariant>& ids);
 
 public:
     explicit ListenersFeedWidget(AdaptixWidget* w);

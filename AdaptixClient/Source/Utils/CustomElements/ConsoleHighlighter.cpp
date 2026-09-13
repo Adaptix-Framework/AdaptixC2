@@ -1,4 +1,5 @@
 #include <Utils/CustomElements/TextEditConsole.h>
+#include <QTextOption>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QTimer>
@@ -28,10 +29,7 @@ TextEditConsole::TextEditConsole(QWidget* parent, int maxLines, bool noWrap, boo
     cachedCursor.movePosition(QTextCursor::End);
     prependCursor.movePosition(QTextCursor::Start);
 
-    if (noWrap)
-        setLineWrapMode(QPlainTextEdit::NoWrap);
-    else
-        setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    applyWrapMode();
 
     highlighter = new ConsoleHighlighter(this->document());
 
@@ -104,10 +102,7 @@ void TextEditConsole::createContextMenu(const QPoint &pos) {
     noWrapAction->setChecked(noWrap);
     connect(noWrapAction, &QAction::toggled, this, [this](bool checked) {
         noWrap = checked;
-        if (checked)
-            setLineWrapMode(QPlainTextEdit::NoWrap);
-        else
-            setLineWrapMode(QPlainTextEdit::WidgetWidth);
+        applyWrapMode();
     });
 
     QAction *autoScrollAction = menu->addAction("Auto scroll");
@@ -205,6 +200,17 @@ void TextEditConsole::paintEvent(QPaintEvent* event)
 
 bool TextEditConsole::isNoWrapEnabled() const {
     return noWrap;
+}
+
+void TextEditConsole::applyWrapMode()
+{
+    if (noWrap) {
+        setLineWrapMode(QPlainTextEdit::NoWrap);
+        setWordWrapMode(QTextOption::NoWrap);
+        return;
+    }
+    setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    setWordWrapMode(QTextOption::WrapAnywhere);
 }
 
 void TextEditConsole::appendChunk(const QString& text, const QTextCharFormat& fmt)

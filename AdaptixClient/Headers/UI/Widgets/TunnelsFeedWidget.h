@@ -29,6 +29,10 @@ Q_OBJECT
     TunnelData* findById(qint64 id);
     const TunnelData* findById(qint64 id) const;
     QList<qint64> controllableSelectedIds() const;
+    QList<qint64> controllableIds(const QList<qint64>& ids) const;
+    void pauseTunnels(const QList<qint64>& ids);
+    void resumeTunnels(const QList<qint64>& ids);
+    void stopTunnels(const QList<qint64>& ids);
 
 public:
     explicit TunnelsFeedWidget(AdaptixWidget* w);

@@ -55,6 +55,7 @@ void BrowserProcessWidget::createUI()
     loadingSpinner->setVisible(false);
 
     tableModel = new QStandardItemModel(this);
+    tableModel->setSortRole(Qt::UserRole);
 
     tableView = new QTableView(this );
     tableView->setModel(tableModel);
@@ -210,24 +211,30 @@ void BrowserProcessWidget::setTableProcessDataWin(const QMap<int, BrowserProcess
         auto item_Pid = new QStandardItem( QString::number(item.pid) );
         item_Pid->setTextAlignment( Qt::AlignCenter );
         item_Pid->setFlags(item_Pid->flags() & ~Qt::ItemIsEditable);
+        item_Pid->setData(item.pid, Qt::UserRole);
 
         auto item_Ppid = new QStandardItem( QString::number(item.ppid) );
         item_Ppid->setTextAlignment( Qt::AlignCenter );
         item_Ppid->setFlags(item_Ppid->flags() & ~Qt::ItemIsEditable);
+        item_Ppid->setData(item.ppid, Qt::UserRole);
 
         auto item_Arch = new QStandardItem( item.arch );
         item_Arch->setTextAlignment( Qt::AlignCenter );
         item_Arch->setFlags(item_Arch->flags() & ~Qt::ItemIsEditable);
+        item_Arch->setData(item.arch, Qt::UserRole);
 
         auto item_Session = new QStandardItem( QString::number(item.sessId) );
         item_Session->setTextAlignment( Qt::AlignCenter );
         item_Session->setFlags(item_Session->flags() & ~Qt::ItemIsEditable);
+        item_Session->setData(item.sessId, Qt::UserRole);
 
         auto item_Context = new QStandardItem( item.context );
         item_Context->setFlags(item_Context->flags() & ~Qt::ItemIsEditable);
+        item_Context->setData(item.context, Qt::UserRole);
 
         auto item_Process = new QStandardItem( item.process );
         item_Process->setFlags(item_Process->flags() & ~Qt::ItemIsEditable);
+        item_Process->setData(item.process, Qt::UserRole);
 
         if ( agent->data.Pid == QString::number(item.pid) ) {
             item_Pid->setForeground(QColor(COLOR_ChiliPepper));
@@ -269,20 +276,25 @@ void BrowserProcessWidget::setTableProcessDataUnix(const QMap<int, BrowserProces
         auto item_Pid = new QStandardItem( QString::number(item.pid) );
         item_Pid->setTextAlignment( Qt::AlignCenter );
         item_Pid->setFlags(item_Pid->flags() & ~Qt::ItemIsEditable);
+        item_Pid->setData(item.pid, Qt::UserRole);
 
         auto item_Ppid = new QStandardItem( QString::number(item.ppid) );
         item_Ppid->setTextAlignment( Qt::AlignCenter );
         item_Ppid->setFlags(item_Ppid->flags() & ~Qt::ItemIsEditable);
+        item_Ppid->setData(item.ppid, Qt::UserRole);
 
         auto item_Tty = new QStandardItem( item.tty );
         item_Tty->setTextAlignment( Qt::AlignCenter );
         item_Tty->setFlags(item_Tty->flags() & ~Qt::ItemIsEditable);
+        item_Tty->setData(item.tty, Qt::UserRole);
 
         auto item_Context = new QStandardItem( item.context );
         item_Context->setFlags(item_Context->flags() & ~Qt::ItemIsEditable);
+        item_Context->setData(item.context, Qt::UserRole);
 
         auto item_Process = new QStandardItem( item.process );
         item_Process->setFlags(item_Process->flags() & ~Qt::ItemIsEditable);
+        item_Process->setData(item.process, Qt::UserRole);
 
         if ( agent->data.Pid == QString::number(item.pid) ) {
             item_Pid->setForeground(QColor(COLOR_ChiliPepper));

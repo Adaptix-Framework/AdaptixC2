@@ -330,6 +330,14 @@ void ListenersFeedWidget::onCardSelected(const QVariant& id)
     m_selectedName = id.toString();
 }
 
+QList<QVariant> ListenersFeedWidget::selectedListenerIds() const
+{
+    QList<QVariant> ids = m_cardList ? m_cardList->selectedIds() : QList<QVariant>{};
+    if (ids.isEmpty() && !m_selectedName.isEmpty())
+        ids.append(m_selectedName);
+    return ids;
+}
+
 void ListenersFeedWidget::onCardPrimary(const QVariant& id)
 {
     m_selectedName = id.toString();
@@ -337,15 +345,15 @@ void ListenersFeedWidget::onCardPrimary(const QVariant& id)
     if (!l)
         return;
     if (listenerIsActive(*l))
-        onPauseListener();
+        pauseListeners({id});
     else
-        onResumeListener();
+        resumeListeners({id});
 }
 
 void ListenersFeedWidget::onCardDelete(const QVariant& id)
 {
     m_selectedName = id.toString();
-    onRemoveListener();
+    removeListeners({id});
 }
 
 void ListenersFeedWidget::onCardGenerate(const QVariant& id)
@@ -510,9 +518,45 @@ void ListenersFeedWidget::onEditListener()
 
 void ListenersFeedWidget::onRemoveListener()
 {
-    QList<QVariant> ids = m_cardList ? m_cardList->selectedIds() : QList<QVariant>{};
-    if (ids.isEmpty() && !m_selectedName.isEmpty())
-        ids.append(m_selectedName);
+    removeListeners(selectedListenerIds());
+}
+
+void ListenersFeedWidget::onPauseListener()
+{
+    pauseListeners(selectedListenerIds());
+}
+
+void ListenersFeedWidget::onResumeListener()
+{
+    resumeListeners(selectedListenerIds());
+}
+
+void ListenersFeedWidget::pauseListeners(const QList<QVariant>& ids)
+{
+    for (const QVariant& id : ids) {
+        const ListenerData* l = findByName(id.toString());
+        if (!l)
+            continue;
+        HttpReqListenerPauseAsync(l->Name, l->ListenerRegName, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success) MessageError(message.isEmpty() ? QStringLiteral("Response timeout") : message);
+        });
+    }
+}
+
+void ListenersFeedWidget::resumeListeners(const QList<QVariant>& ids)
+{
+    for (const QVariant& id : ids) {
+        const ListenerData* l = findByName(id.toString());
+        if (!l)
+            continue;
+        HttpReqListenerResumeAsync(l->Name, l->ListenerRegName, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
+            if (!success) MessageError(message.isEmpty() ? QStringLiteral("Response timeout") : message);
+        });
+    }
+}
+
+void ListenersFeedWidget::removeListeners(const QList<QVariant>& ids)
+{
     if (ids.isEmpty())
         return;
 
@@ -528,36 +572,6 @@ void ListenersFeedWidget::onRemoveListener()
         HttpReqListenerStopAsync(l->Name, l->ListenerRegName, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
             if (!success)
                 MessageError(message.isEmpty() ? QStringLiteral("Response timeout") : message);
-        });
-    }
-}
-
-void ListenersFeedWidget::onPauseListener()
-{
-    QList<QVariant> ids = m_cardList ? m_cardList->selectedIds() : QList<QVariant>{};
-    if (ids.isEmpty() && !m_selectedName.isEmpty())
-        ids.append(m_selectedName);
-    for (const QVariant& id : ids) {
-        const ListenerData* l = findByName(id.toString());
-        if (!l)
-            continue;
-        HttpReqListenerPauseAsync(l->Name, l->ListenerRegName, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-            if (!success) MessageError(message.isEmpty() ? QStringLiteral("Response timeout") : message);
-        });
-    }
-}
-
-void ListenersFeedWidget::onResumeListener()
-{
-    QList<QVariant> ids = m_cardList ? m_cardList->selectedIds() : QList<QVariant>{};
-    if (ids.isEmpty() && !m_selectedName.isEmpty())
-        ids.append(m_selectedName);
-    for (const QVariant& id : ids) {
-        const ListenerData* l = findByName(id.toString());
-        if (!l)
-            continue;
-        HttpReqListenerResumeAsync(l->Name, l->ListenerRegName, *(m_adaptixWidget->GetProfile()), [](bool success, const QString& message, const QJsonObject&) {
-            if (!success) MessageError(message.isEmpty() ? QStringLiteral("Response timeout") : message);
         });
     }
 }

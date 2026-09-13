@@ -73,15 +73,17 @@ func (dbms *DBMS) DbPayloadList(showHidden bool) ([]adaptix.PayloadData, error) 
 }
 
 var sortablePayloadColumns = map[string]string{
-	"Created":  "Created",
-	"Name":     "Name",
-	"Type":     "AgentType",
-	"Artifact": "Artifact",
-	"Arch":     "Arch",
-	"Size":     "Size",
-	"Creator":  "Creator",
-	"Filename": "Filename",
-	"Tag":      "Tag",
+	"Id":        "PayloadId",
+	"PayloadId": "PayloadId",
+	"Created":   "Created",
+	"Name":      "Name",
+	"Type":      "AgentType",
+	"Artifact":  "Artifact",
+	"Arch":      "Arch",
+	"Size":      "Size",
+	"Creator":   "Creator",
+	"Filename":  "Filename",
+	"Tag":       "Tag",
 }
 
 func (dbms *DBMS) DbPayloadGetPage(offset, limit int, showHidden bool, filterExpr, sortCol, sortOrder string) ([]adaptix.PayloadData, int, error) {
