@@ -32,8 +32,8 @@ public:
     void setQuery(const QString& text);
     void reloadCatalog();
 
-    Q_SIGNALS:
-        void insertCommand(const QString& command);
+Q_SIGNALS:
+    void insertCommand(const QString& command);
 };
 
 #endif

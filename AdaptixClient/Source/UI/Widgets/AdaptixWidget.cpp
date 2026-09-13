@@ -868,6 +868,19 @@ void AdaptixWidget::Close()
     ChannelWsWorker = nullptr;
     ChannelThread = nullptr;
 
+    auto destroyScriptDock = [](auto*& tab) {
+        if (!tab)
+            return;
+        auto* dock = tab->dock();
+        if (dock)
+            dock->setWidget(nullptr);
+        delete tab;
+        tab = nullptr;
+        delete dock;
+    };
+    destroyScriptDock(ScriptsDock);
+    destroyScriptDock(CodeEditorDock);
+
     this->ClearAdaptix();
 
     LogsDock->deleteLater();

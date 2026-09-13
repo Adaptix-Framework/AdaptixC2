@@ -89,7 +89,6 @@ void ConnectionStatusWidget::recolorFromTheme(bool fullUpdate)
     m_fgColor  = fg;
     m_dotColor = dot;
 
-
     if (fullUpdate) {
         m_label = label;
         const int h = FontManager::instance().typography().controlHeight;

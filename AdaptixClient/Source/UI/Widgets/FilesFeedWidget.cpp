@@ -444,7 +444,8 @@ void FilesFeedWidget::setSegment(int index)
     sync(m_segSync);
     if (index == 0 && m_adaptixWidget)
         m_adaptixWidget->clearDockUnread(AdaptixWidget::UnreadKind::Downloads);
-    loadCurrentPage();}
+    loadCurrentPage();
+}
 
 ListFeedWidget* FilesFeedWidget::activeFeed() const
 {

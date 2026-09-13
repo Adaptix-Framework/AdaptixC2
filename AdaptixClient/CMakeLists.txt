@@ -189,11 +189,16 @@ SET( HEADERS
         Headers/Client/AxScript/BridgeEvent.h
         Headers/Client/AxScript/BridgeForm.h
         Headers/Client/AxScript/BridgeMenu.h
+        Headers/Client/AxScript/BridgeProcess.h
         Headers/Client/AxScript/AxCommandWrappers.h
         Headers/Client/AxScript/AxElementWrappers.h
         Headers/UI/Dialogs/DialogCredential.h
         Headers/UI/Dialogs/DialogTarget.h
+        Headers/UI/Dialogs/DialogImportCreds.h
+        Headers/UI/Dialogs/DialogImportTargets.h
         Headers/UI/Dialogs/DialogSaveTask.h
+        Headers/Utils/Import/CredsImport.h
+        Headers/Utils/Import/TargetsImport.h
         Headers/UI/Widgets/ChatWidget.h
         Headers/UI/Widgets/AbstractDock.h
         Headers/Utils/NonBlockingDialogs.h
@@ -206,11 +211,16 @@ SET( HEADERS
         Headers/Utils/FilterExpression.h
         Headers/UI/Models/GroupingProxyModel.h
         Headers/Utils/CustomElements/BoldHeaderView.h
+        Headers/Utils/CustomElements/CardListWidget.h
+        Headers/Utils/CustomElements/ControlCard.h
         Headers/Utils/CustomElements/ClickableLabel.h
         Headers/Utils/CustomElements/Delegates.h
         Headers/Utils/CustomElements/GroupManagerPopup.h
         Headers/Utils/CustomElements/PageNavBar.h
         Headers/Utils/CustomElements/SearchPanel.h
+        Headers/Utils/CustomElements/SegmentControl.h
+        Headers/Utils/CustomElements/LogViewTape.h
+        Headers/Utils/CustomElements/LogView.h
         Headers/Utils/CustomElements/SpinTable.h
         Headers/Utils/CustomElements/TextEditConsole.h
         Headers/Utils/CustomElements/VerticalTabWidget.h
@@ -220,6 +230,7 @@ SET( HEADERS
         Headers/UI/Widgets/SessionWidgetIface.h
         Headers/UI/Widgets/TasksFeedWidget.h
         Headers/UI/Widgets/ListenersFeedWidget.h
+        Headers/UI/Widgets/PayloadsFeedWidget.h
         Headers/UI/Widgets/TunnelsFeedWidget.h
         Headers/UI/Widgets/ScreenshotsFeedWidget.h
         Headers/UI/Widgets/FilesFeedWidget.h
@@ -235,23 +246,10 @@ SET( HEADERS
         Headers/UI/Widgets/TargetsFeedWidget.h
         Headers/UI/Widgets/TargetWidgetIface.h
         Headers/UI/Dialogs/DialogConsoleSearch.h
+        Headers/UI/Dialogs/DialogConsoleHelp.h
+        Headers/UI/Dialogs/DialogPayload.h
         Headers/UI/Models/AgentsFilterProxyModel.h
         Headers/UI/Widgets/TaskOutputWidget.h
-        Headers/UI/Dialogs/DialogImportCreds.h
-        Headers/UI/Dialogs/DialogImportTargets.h
-        Headers/Utils/Import/CredsImport.h
-        Headers/Utils/Import/TargetsImport.h
-        Headers/Utils/ChatLayoutHelpers.h
-        Headers/Utils/CustomElements/ControlCard.h
-        Headers/Utils/CustomElements/CardListWidget.h
-        Headers/Client/AxScript/BridgeProcess.h
-        Headers/UI/Dialogs/DialogPayload.h
-        Headers/UI/Widgets/PayloadsFeedWidget.h
-        Headers/Client/DockLayoutEngine.h
-        Headers/Utils/CustomElements/SegmentControl.h
-        Headers/Utils/CustomElements/LogView.h
-        Headers/Utils/CustomElements/LogViewTape.h
-        Headers/UI/Dialogs/DialogConsoleHelp.h
 )
 
 add_executable(AdaptixClient
@@ -298,6 +296,7 @@ add_executable(AdaptixClient
         Source/Client/Extender.cpp
         Source/Client/CodeEditorProfileManager.cpp
         Source/Client/Settings.cpp
+        Source/Client/DockLayoutEngine.cpp
         Source/Client/ConsoleTheme.cpp
         Source/UI/Graph/SessionsGraph.cpp
         Source/UI/Graph/GraphItem.cpp
@@ -324,11 +323,17 @@ add_executable(AdaptixClient
         Source/Client/AxScript/BridgeEvent.cpp
         Source/Client/AxScript/BridgeForm.cpp
         Source/Client/AxScript/BridgeMenu.cpp
+        Source/Client/AxScript/BridgeProcess.cpp
         Source/Client/AxScript/AxCommandWrappers.cpp
         Source/Client/AxScript/AxElementWrappers.cpp
         Source/UI/Dialogs/DialogCredential.cpp
         Source/UI/Dialogs/DialogTarget.cpp
+        Source/UI/Dialogs/DialogPayload.cpp
+        Source/UI/Dialogs/DialogImportCreds.cpp
+        Source/UI/Dialogs/DialogImportTargets.cpp
         Source/UI/Dialogs/DialogSaveTask.cpp
+        Source/Utils/Import/CredsImport.cpp
+        Source/Utils/Import/TargetsImport.cpp
         Source/UI/Widgets/ChatWidget.cpp
         Source/Utils/NonBlockingDialogs.cpp
         Source/Utils/FontManager.cpp
@@ -338,9 +343,13 @@ add_executable(AdaptixClient
         Source/UI/Models/GroupingProxyModel.cpp
         Source/Utils/CustomElements/BoldHeaderView.cpp
         Source/Utils/CustomElements/CardListWidget.cpp
+        Source/Utils/CustomElements/ControlCard.cpp
         Source/Utils/CustomElements/GroupManagerPopup.cpp
         Source/Utils/CustomElements/PageNavBar.cpp
         Source/Utils/CustomElements/SearchPanel.cpp
+        Source/Utils/CustomElements/SegmentControl.cpp
+        Source/Utils/CustomElements/LogViewTape.cpp
+        Source/Utils/CustomElements/LogView.cpp
         Source/Utils/CustomElements/SpinTable.cpp
         Source/Utils/CustomElements/ConsoleHighlighter.cpp
         Source/Utils/CustomElements/VerticalTabWidget.cpp
@@ -349,6 +358,7 @@ add_executable(AdaptixClient
         Source/UI/Widgets/SessionsFeedWidget.cpp
         Source/UI/Widgets/TasksFeedWidget.cpp
         Source/UI/Widgets/ListenersFeedWidget.cpp
+        Source/UI/Widgets/PayloadsFeedWidget.cpp
         Source/UI/Widgets/TunnelsFeedWidget.cpp
         Source/UI/Widgets/ScreenshotsFeedWidget.cpp
         Source/UI/Widgets/FilesFeedWidget.cpp
@@ -362,20 +372,8 @@ add_executable(AdaptixClient
         Source/UI/Widgets/TargetsWidget.cpp
         Source/UI/Widgets/TargetsFeedWidget.cpp
         Source/UI/Dialogs/DialogConsoleSearch.cpp
-        Source/UI/Widgets/TaskOutputWidget.cpp
-        Source/UI/Dialogs/DialogImportCreds.cpp
-        Source/UI/Dialogs/DialogImportTargets.cpp
-        Source/Utils/Import/CredsImport.cpp
-        Source/Utils/Import/TargetsImport.cpp
-        Source/Utils/CustomElements/ControlCard.cpp
-        Source/Client/AxScript/BridgeProcess.cpp
-        Source/UI/Dialogs/DialogPayload.cpp
-        Source/UI/Widgets/PayloadsFeedWidget.cpp
-        Source/Client/DockLayoutEngine.cpp
-        Source/Utils/CustomElements/SegmentControl.cpp
-        Source/Utils/CustomElements/LogView.cpp
-        Source/Utils/CustomElements/LogViewTape.cpp
         Source/UI/Dialogs/DialogConsoleHelp.cpp
+        Source/UI/Widgets/TaskOutputWidget.cpp
 )
 
 target_compile_definitions(

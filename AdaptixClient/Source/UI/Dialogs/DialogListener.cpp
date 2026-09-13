@@ -642,8 +642,7 @@ void DialogListener::onProfileRename()
         return;
 
     bool ok;
-    QString newName = QInputDialog::getText(this, "Rename Profile", "New profile name:",
-                                             QLineEdit::Normal, oldName, &ok);
+    QString newName = QInputDialog::getText(this, "Rename Profile", "New profile name:", QLineEdit::Normal, oldName, &ok);
     if (!ok || newName.trimmed().isEmpty() || newName == oldName)
         return;
 

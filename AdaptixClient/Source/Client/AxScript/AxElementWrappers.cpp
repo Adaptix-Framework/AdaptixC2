@@ -1105,6 +1105,13 @@ QJSValue AxTableWidgetWrapper::selectedRows()
     return jsArray;
 }
 
+void AxTableWidgetWrapper::setCatalogMenuEnabled(const bool enabled)
+{
+    catalogMenu = enabled;
+    if (enabled)
+        setMenuEnabled(true);
+}
+
 void AxTableWidgetWrapper::setMenuEnabled(const bool enabled)
 {
     this->menuEnabled = enabled;
@@ -1147,12 +1154,26 @@ void AxTableWidgetWrapper::showContextMenu(const QPoint &pos)
     oclero::qlementine::Menu menu(table);
 
     QAction* addAction = menu.addAction(QStringLiteral("Add"));
+    QAction* configAction = nullptr;
+    if (catalogMenu)
+        configAction = menu.addAction(QStringLiteral("Config"));
     QAction* removeAction = menu.addAction(QStringLiteral("Remove"));
-    addAction->setEnabled(!readonly);
-    removeAction->setEnabled(!readonly && table->currentIndex().isValid());
-
-    connect(addAction, &QAction::triggered, this, &AxTableWidgetWrapper::onMenuAddRow);
-    connect(removeAction, &QAction::triggered, this, &AxTableWidgetWrapper::onMenuRemoveRow);
+    const bool hasRow = table->currentIndex().isValid();
+    if (catalogMenu) {
+        addAction->setEnabled(true);
+        if (configAction)
+            configAction->setEnabled(hasRow);
+        removeAction->setEnabled(hasRow);
+        connect(addAction, &QAction::triggered, this, [this]() { Q_EMIT addClicked(); });
+        if (configAction)
+            connect(configAction, &QAction::triggered, this, [this]() { Q_EMIT configClicked(); });
+        connect(removeAction, &QAction::triggered, this, [this]() { Q_EMIT removeClicked(); });
+    } else {
+        addAction->setEnabled(!readonly);
+        removeAction->setEnabled(!readonly && hasRow);
+        connect(addAction, &QAction::triggered, this, &AxTableWidgetWrapper::onMenuAddRow);
+        connect(removeAction, &QAction::triggered, this, &AxTableWidgetWrapper::onMenuRemoveRow);
+    }
 
     QWidget* origin = table->viewport() ? table->viewport() : table;
     menu.exec(origin->mapToGlobal(pos));
@@ -1381,6 +1402,15 @@ void AxListWidgetWrapper::showContextMenu(const QPoint &pos)
     oclero::qlementine::Menu menu(list);
 
     QAction* addAction = menu.addAction(QStringLiteral("Add"));
+    QAction* startAction = nullptr;
+    QAction* stopAction = nullptr;
+    if (startStopEnabled) {
+        startAction = menu.addAction(QStringLiteral("Start"));
+        stopAction = menu.addAction(QStringLiteral("Stop"));
+        const bool hasRow = list->currentRow() >= 0 || !list->selectedItems().isEmpty();
+        startAction->setEnabled(hasRow);
+        stopAction->setEnabled(hasRow);
+    }
     QAction* removeAction = menu.addAction(QStringLiteral("Remove"));
     removeAction->setEnabled(list->currentRow() >= 0 || !list->selectedItems().isEmpty());
 
@@ -1388,6 +1418,10 @@ void AxListWidgetWrapper::showContextMenu(const QPoint &pos)
         Q_EMIT addClicked();
         onAddClicked();
     });
+    if (startAction) {
+        connect(startAction, &QAction::triggered, this, [this]() { Q_EMIT startClicked(); });
+        connect(stopAction, &QAction::triggered, this, [this]() { Q_EMIT stopClicked(); });
+    }
     connect(removeAction, &QAction::triggered, this, [this]() {
         Q_EMIT removeClicked();
         onRemoveClicked();
@@ -1400,6 +1434,11 @@ void AxListWidgetWrapper::setButtonsEnabled(const bool enabled)
 {
     btnAdd->setVisible(enabled);
     btnRemove->setVisible(enabled);
+}
+
+void AxListWidgetWrapper::setStartStopEnabled(const bool enabled)
+{
+    startStopEnabled = enabled;
 }
 
 void AxListWidgetWrapper::setExpanding(bool enabled)
@@ -1978,6 +2017,14 @@ void AxSelectorFile::jsonUnmarshal(const QVariant& value)
 }
 
 QString AxSelectorFile::content() const { return fileContent; }
+
+QString AxSelectorFile::text() const { return lineEdit ? lineEdit->text() : QString(); }
+
+void AxSelectorFile::setText(const QString& text) const
+{
+    if (lineEdit)
+        lineEdit->setText(text);
+}
 
 void AxSelectorFile::setContent(const QString& value)
 {

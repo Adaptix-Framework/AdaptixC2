@@ -269,6 +269,7 @@ const char* kSettingsCardCss =
     "}";
 
 } // namespace
+
 void DialogSettings::createUI()
 {
     this->setWindowTitle("Adaptix Settings");
@@ -304,8 +305,7 @@ void DialogSettings::createUI()
             QMessageBox::warning(this, "Delete Theme", "Built-in themes cannot be deleted.");
             return;
         }
-        auto reply = QMessageBox::question(this, "Delete Theme", QString("Delete theme '%1'?").arg(name),
-                                           QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        auto reply = QMessageBox::question(this, "Delete Theme", QString("Delete theme '%1'?").arg(name), QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (reply != QMessageBox::Yes) return;
         if (deleteAppTheme(name)) {
             refreshAppThemeCombo();
@@ -439,8 +439,7 @@ void DialogSettings::createUI()
             QMessageBox::warning(this, "Delete Theme", "Built-in themes cannot be deleted.");
             return;
         }
-        auto reply = QMessageBox::question(this, "Delete Theme", QString("Delete theme '%1'?").arg(name),
-                                           QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        auto reply = QMessageBox::question(this, "Delete Theme", QString("Delete theme '%1'?").arg(name), QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
         if (reply != QMessageBox::Yes) return;
         if (ConsoleThemeManager::instance().deleteTheme(name)) {
             refreshConsoleThemeCombo();
@@ -1296,8 +1295,8 @@ void DialogSettings::createUI()
                 return;
             if (!codeEditorPanelScriptEdit->toPlainText().trimmed().isEmpty()) {
                 const auto reply = QMessageBox::question(this, QStringLiteral("Insert template"),
-                                                         QStringLiteral("Replace current panel script with the template?"),
-                                                         QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+                    QStringLiteral("Replace current panel script with the template?"),
+                    QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
                 if (reply != QMessageBox::Yes)
                     return;
             }
@@ -1330,8 +1329,8 @@ void DialogSettings::createUI()
             codeEditorActionsTable->setItem(row, 1, new QTableWidgetItem(QStringLiteral("Action")));
             codeEditorActionsTable->setItem(row, 2, new QTableWidgetItem(QStringLiteral("axscript")));
             codeEditorActionsTable->setItem(row, 3, new QTableWidgetItem(QStringLiteral(
-                                                "let p = editor.get_panel_data();\n"
-                                                "editor.eval(editor.content(), { main: !!p.mainEngine });\n")));
+                "let p = editor.get_panel_data();\n"
+                "editor.eval(editor.content(), { main: !!p.mainEngine });\n")));
             codeEditorActionsTable->selectRow(row);
             loadCodeEditorActionScriptFromRow(row);
             markDirty();
@@ -2250,7 +2249,6 @@ void DialogSettings::createUI()
     buttonApply->setFixedHeight(buttonHeight);
     buttonClose->setFixedHeight(buttonHeight);
 }
-
 
 void DialogSettings::onStackChange(int index) const
 {

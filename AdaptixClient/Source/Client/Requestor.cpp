@@ -616,7 +616,6 @@ void HttpReqGroupReparentAsync(int64_t groupId, int64_t newParentId, AuthProfile
     httpPost(profile, "/group/reparent", dataJson, callback);
 }
 
-
 void HttpReqPayloadListAsync(bool showHidden, AuthProfile& profile, const HttpCallback &callback)
 {
     QUrlQuery params;

@@ -274,7 +274,6 @@ void TunnelEndpoint::onHandshakeFailed()
 {
 }
 
-
 void TunnelEndpoint::nackReverseChannel(qint64 channelId)
 {
     if (!profile || tunnelId == 0 || channelId == 0)

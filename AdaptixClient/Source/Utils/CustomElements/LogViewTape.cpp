@@ -1,7 +1,6 @@
 #include <Utils/CustomElements/LogViewTape.h>
 
 #include <cctype>
-#include <string>
 
 std::string LogViewTape::normalizeRole(const std::string& role)
 {
