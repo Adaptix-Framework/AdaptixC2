@@ -1,0 +1,175 @@
+name: Build multilingual clients
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'AdaptixClient/**'
+      - 'scripts/**'
+      - '.github/workflows/build-multilingual.yml'
+  pull_request:
+    paths:
+      - 'AdaptixClient/**'
+      - 'scripts/**'
+      - '.github/workflows/build-multilingual.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: multilingual-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source:
+    name: Multilingual client source
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Package source and update baseline
+        run: python scripts/package_source.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AdaptixClient-multilingual-source
+          path: |
+            dist/AdaptixClient-multilingual-source.zip
+            dist/AdaptixClient-multilingual-source.zip.sha256
+          if-no-files-found: error
+
+  windows:
+    name: Windows x64
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install MinGW and Qt
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-python
+            mingw-w64-x86_64-openssl
+            mingw-w64-x86_64-qt6-base
+            mingw-w64-x86_64-qt6-declarative
+            mingw-w64-x86_64-qt6-svg
+            mingw-w64-x86_64-qt6-websockets
+            mingw-w64-x86_64-qt6-tools
+            mingw-w64-x86_64-qt6-translations
+      - name: Build, test and package
+        shell: msys2 {0}
+        run: python scripts/build_client.py --qt-prefix "$(cygpath -w /mingw64)" --jobs 4
+      - name: Upload Windows package
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdaptixClient-Windows-x64
+          path: |
+            dist/AdaptixClient-Windows-x64.zip
+            dist/AdaptixClient-Windows-x64.zip.sha256
+          if-no-files-found: error
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-windows
+          path: |
+            .build/windows-release/Testing/Temporary/*.log
+            .build/windows-release/ui-test.txt
+            .build/windows-release/ui-tests.xml
+            .build/windows-release/qa/*.png
+          if-no-files-found: ignore
+
+  linux:
+    name: Linux x64 (Ubuntu 22.04+)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install build and desktop dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++-12 ninja-build patchelf libssl-dev libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 libfontconfig1 libfreetype6 libdbus-1-3 libglib2.0-0 libsm6 libice6 libxrender1 libxext6 libxcb-shape0 libxcb-randr0 libxcb-sync1 libxcb-xfixes0 libxcb-glx0 libvulkan1 libgssapi-krb5-2 fonts-noto-cjk libwayland-cursor0 libwayland-egl1 libmtdev1 libinput10
+          python -m pip install 'cmake>=3.28,<4'
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: linux_gcc_64
+          modules: qtwebsockets
+          cache: true
+      - name: Build, test and package
+        env:
+          CC: gcc-12
+          CXX: g++-12
+        run: python scripts/build_client.py --qt-prefix "$QT_ROOT_DIR" --jobs 4
+      - name: Upload Linux package
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdaptixClient-Linux-x64
+          path: |
+            dist/AdaptixClient-Linux-x64.tar.gz
+            dist/AdaptixClient-Linux-x64.tar.gz.sha256
+          if-no-files-found: error
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-linux
+          path: |
+            .build/linux-release/Testing/Temporary/*.log
+            .build/linux-release/ui-test.txt
+            .build/linux-release/ui-tests.xml
+            .build/linux-release/qa/*.png
+          if-no-files-found: ignore
+
+  macos:
+    name: macOS universal (Apple Silicon + Intel)
+    runs-on: macos-14
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install build tools
+        run: python -m pip install 'cmake>=3.28,<4' ninja
+      - name: Install universal Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          arch: clang_64
+          modules: qtwebsockets
+          cache: true
+      - name: Build universal OpenSSL
+        run: bash scripts/build_openssl_macos.sh .build/openssl-macos-universal
+      - name: Build, test and package
+        run: python scripts/build_client.py --qt-prefix "$QT_ROOT_DIR" --macos-universal --openssl-root .build/openssl-macos-universal --jobs 4
+      - name: Upload macOS package
+        uses: actions/upload-artifact@v4
+        with:
+          name: AdaptixClient-macOS-universal
+          path: |
+            dist/AdaptixClient-macOS-universal.zip
+            dist/AdaptixClient-macOS-universal.zip.sha256
+          if-no-files-found: error
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-macos
+          path: |
+            .build/macos-release/Testing/Temporary/*.log
+            .build/macos-release/ui-test.txt
+            .build/macos-release/ui-tests.xml
+            .build/macos-release/qa/*.png
+          if-no-files-found: ignore
