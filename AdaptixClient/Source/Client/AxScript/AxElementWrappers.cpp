@@ -34,6 +34,10 @@
 #include <QWindow>
 #include <QCursor>
 #include <QSizePolicy>
+#include <QBuffer>
+#include <QDirIterator>
+#include <QFileInfo>
+#include <QtCore/private/qzipwriter_p.h>
 
 namespace {
 
@@ -1997,6 +2001,7 @@ void AxExtDialogWrapper::setButtonsText(const QString &ok_text, const QString &c
     }
 }
 
+
 /// FILE SELECTOR
 
 AxSelectorFile::AxSelectorFile(QLineEdit* edit, QObject* parent) : QObject(parent), lineEdit(edit)
@@ -2057,6 +2062,103 @@ void AxSelectorFile::onSelectFile()
             file.close();
 
             fileContent = QString::fromUtf8(fileData.toBase64());
+        });
+}
+
+/// FOLDER SELECTOR
+
+namespace {
+bool zipFolderToData(const QString& folderPath, QByteArray& outZipData)
+{
+    const QFileInfo folderInfo(folderPath);
+    if (!folderInfo.exists() || !folderInfo.isDir())
+        return false;
+
+    QBuffer zipBuffer;
+    if (!zipBuffer.open(QIODevice::WriteOnly))
+        return false;
+
+    QZipWriter zipWriter(&zipBuffer);
+    zipWriter.setCompressionPolicy(QZipWriter::AutoCompress);
+
+    QDir rootDir(folderInfo.absoluteFilePath());
+    const QString rootName = rootDir.dirName();
+    zipWriter.addDirectory(rootName + "/");
+
+    QDirIterator it(
+        folderInfo.absoluteFilePath(),
+        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
+        QDirIterator::Subdirectories
+    );
+
+    while (it.hasNext()) {
+        it.next();
+        const QFileInfo entryInfo = it.fileInfo();
+        const QString relPath = rootDir.relativeFilePath(entryInfo.absoluteFilePath());
+        QString zipPath = rootName + "/" + relPath;
+        zipPath.replace('\\', '/');
+
+        if (entryInfo.isDir()) {
+            if (!zipPath.endsWith('/'))
+                zipPath += '/';
+            zipWriter.addDirectory(zipPath);
+            continue;
+        }
+
+        if (entryInfo.isFile()) {
+            QFile file(entryInfo.absoluteFilePath());
+            if (!file.open(QIODevice::ReadOnly))
+                return false;
+
+            zipWriter.addFile(zipPath, file.readAll());
+
+            if (zipWriter.status() != QZipWriter::NoError)
+                return false;
+        }
+    }
+
+    zipWriter.close();
+    if (zipWriter.status() != QZipWriter::NoError)
+        return false;
+
+    outZipData = zipBuffer.data();
+    return !outZipData.isEmpty();
+}
+}
+
+AxSelectorFolder::AxSelectorFolder(QLineEdit* edit, QObject* parent) : QObject(parent), lineEdit(edit)
+{
+    lineEdit->setReadOnly(true);
+
+    auto action = lineEdit->addAction(QIcon(":/icons/folder"), QLineEdit::TrailingPosition);
+    connect(action, &QAction::triggered, this, &AxSelectorFolder::onSelectFolder);
+}
+
+QLineEdit* AxSelectorFolder::widget() const { return lineEdit; }
+
+QVariant AxSelectorFolder::jsonMarshal() const { return content; }
+
+void AxSelectorFolder::jsonUnmarshal(const QVariant& value)
+{
+    content = value.toString();
+    lineEdit->setText("Selected...");
+}
+
+void AxSelectorFolder::setPlaceholder(const QString& text) const { lineEdit->setPlaceholderText(text); }
+
+void AxSelectorFolder::onSelectFolder()
+{
+    NonBlockingDialogs::getExistingDirectory(lineEdit, "Select a folder", "",
+        [this](const QString& selectedFolder) {
+            if (selectedFolder.isEmpty())
+                return;
+
+            QByteArray zipData;
+            if (!zipFolderToData(selectedFolder, zipData))
+                return;
+
+            lineEdit->setText(selectedFolder);
+            content = QString::fromUtf8(zipData.toBase64());
         });
 }
 
