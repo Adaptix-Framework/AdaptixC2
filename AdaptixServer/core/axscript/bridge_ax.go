@@ -579,8 +579,18 @@ func registerAxBridge(engine *ScriptEngine) {
 					data = append(data, rb...)
 				}
 			case "bytes":
-				// Accept ArrayBuffer / Uint8Array / string (UTF-8 bytes).
-				raw, _ := jsBytes(val)
+				var raw []byte
+				if s, ok := val.Export().(string); ok {
+					// Scripts pass base64 text; FILE args arrive base64-encoded from clients
+					dec, err := base64.StdEncoding.DecodeString(s)
+					if err != nil {
+						panic(rt.NewTypeError(fmt.Sprintf("bof_pack: cannot base64-decode argument at index %d", i)))
+					}
+					raw = dec
+				} else {
+					// Accept ArrayBuffer / Uint8Array
+					raw, _ = jsBytes(val)
+				}
 				l := uint32(len(raw))
 				lb := make([]byte, 4)
 				binary.LittleEndian.PutUint32(lb, l)
