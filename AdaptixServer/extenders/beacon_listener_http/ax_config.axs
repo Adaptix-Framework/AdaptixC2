@@ -76,6 +76,7 @@ function ListenerUI(mode_create)
     layoutMain.addWidget(textlineEncryptKey, 6, 1, 1, 1);
     layoutMain.addWidget(buttonEncryptKey,   6, 2, 1, 1);
     layoutMain.addWidget(ssl_group,          7, 0, 1, 3);
+    layoutMain.setColumnStretch(1, 1);
 
     let panelMain = form.create_panel();
     panelMain.setLayout(layoutMain);
@@ -169,6 +170,6 @@ function ListenerUI(mode_create)
         ui_panel: panel,
         ui_container: container,
         ui_height: 680,
-        ui_width: 860
+        ui_width: 640
     }
 }

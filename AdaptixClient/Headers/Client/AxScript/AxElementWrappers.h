@@ -754,6 +754,9 @@ public:
     Q_INVOKABLE void     setStartStopEnabled(bool enabled);
     Q_INVOKABLE void     setExpanding(bool enabled);
 
+private:
+    void startEditRow(int row);
+
 private Q_SLOTS:
     void showContextMenu(const QPoint &pos);
     void onAddClicked();

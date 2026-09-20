@@ -56,7 +56,7 @@ void DialogListener::createUI()
     stackGridLayout->setHorizontalSpacing(0);
     stackGridLayout->setVerticalSpacing(0);
     stackGridLayout->setContentsMargins(8, 8, 8, 8);
-    stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1, Qt::AlignTop);
+    stackGridLayout->addWidget(configStackWidget, 0, 0, 1, 1);
     stackGridLayout->setRowStretch(0, 0);
     stackGridLayout->setColumnStretch(0, 1);
 
@@ -294,6 +294,7 @@ void DialogListener::changeConfig(const QString &fn)
             continue;
         if (page == ax_ui->widget) {
             page->setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+            page->setMinimumWidth(0);
             page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
         } else {
             page->setMaximumSize(0, 0);
@@ -301,6 +302,7 @@ void DialogListener::changeConfig(const QString &fn)
     }
 
     configStackWidget->setCurrentWidget(ax_ui->widget);
+    ax_ui->widget->setMinimumWidth(0);
     ax_ui->widget->adjustSize();
     configStackWidget->updateGeometry();
     if (listenerConfigGroupbox)
@@ -319,9 +321,7 @@ void DialogListener::changeConfig(const QString &fn)
 
     int panelW = scriptW;
     int panelH = scriptH;
-    panelW = qMax(panelW, qMax(ax_ui->widget->sizeHint().width(), ax_ui->widget->minimumSizeHint().width()));
     panelH = qMax(panelH, qMax(ax_ui->widget->sizeHint().height(), ax_ui->widget->minimumSizeHint().height()));
-    ax_ui->widget->setMinimumWidth(panelW);
 
     int w = panelW + kHChrome;
     int h = panelH + kVChrome;

@@ -6,13 +6,29 @@
 
 #include <QApplication>
 #include <QEvent>
+#include <QFontMetrics>
+#include <QResizeEvent>
 #include <QShowEvent>
 #include <QSignalBlocker>
+
+namespace {
+class SegmentButton : public QPushButton {
+public:
+    explicit SegmentButton(const QString& text, QWidget* parent = nullptr) : QPushButton(text, parent) {}
+
+    QSize minimumSizeHint() const override
+    {
+        QSize s = QPushButton::minimumSizeHint();
+        s.setWidth(minimumWidth() > 0 ? minimumWidth() : 0);
+        return s;
+    }
+};
+}
 
 SegmentControl::SegmentControl(QWidget* parent) : QFrame(parent)
 {
     setObjectName(QStringLiteral("SegmentControl"));
-    setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
 
     m_layout = new QHBoxLayout(this);
     m_layout->setSpacing(2);
@@ -65,6 +81,7 @@ void SegmentControl::showEvent(QShowEvent* event)
         return;
     connectThemeSignals();
     applyTheme();
+    elideButtons();
 }
 
 void SegmentControl::updateMetrics()
@@ -89,7 +106,7 @@ QPushButton* SegmentControl::makeButton(const QString& text)
     const int ctrlH = FontManager::instance().typography().controlHeight;
     const int btnH = qMax(18, ctrlH - 4);
 
-    auto* btn = new QPushButton(text, this);
+    auto* btn = new SegmentButton(text, this);
     btn->setCheckable(true);
     btn->setAutoExclusive(true);
     btn->setFocusPolicy(Qt::NoFocus);
@@ -97,7 +114,10 @@ QPushButton* SegmentControl::makeButton(const QString& text)
     btn->setFixedHeight(btnH);
     btn->setMinimumWidth(m_minButtonWidth);
     btn->setObjectName(QStringLiteral("SegmentControlBtn"));
-    btn->setSizePolicy(QSizePolicy::Minimum, QSizePolicy::Fixed);
+    QSizePolicy sp(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    sp.setHorizontalStretch(1);
+    btn->setSizePolicy(sp);
+    btn->setToolTip(text);
     return btn;
 }
 
@@ -114,15 +134,40 @@ void SegmentControl::reindexButtons()
     }
 }
 
+void SegmentControl::resizeEvent(QResizeEvent* event)
+{
+    QFrame::resizeEvent(event);
+    elideButtons();
+}
+
+void SegmentControl::elideButtons()
+{
+    for (int i = 0; i < m_buttons.size(); ++i) {
+        QPushButton* btn = m_buttons[i];
+        if (!btn)
+            continue;
+        const QString full = (i < m_fullTexts.size()) ? m_fullTexts[i] : btn->text();
+        const int inner = qMax(8, btn->width() - 16);
+        const QString elided = QFontMetrics(btn->font()).elidedText(full, Qt::ElideRight, inner);
+        if (btn->text() != elided) {
+            QSignalBlocker b(btn);
+            btn->setText(elided);
+        }
+        btn->setToolTip(full);
+    }
+}
+
 int SegmentControl::addItem(const QString& text)
 {
     auto* btn = makeButton(text);
     m_buttons.append(btn);
-    m_layout->addWidget(btn);
+    m_fullTexts.append(text);
+    m_layout->addWidget(btn, 1);
     const int index = m_buttons.size() - 1;
     m_group->addButton(btn, index);
 
     applyTheme();
+    elideButtons();
 
     if (m_currentIndex < 0) {
         m_currentIndex = 0;
@@ -145,6 +190,8 @@ void SegmentControl::removeItem(int index)
         return;
 
     QPushButton* btn = m_buttons.takeAt(index);
+    if (index >= 0 && index < m_fullTexts.size())
+        m_fullTexts.removeAt(index);
     if (btn) {
         m_group->removeButton(btn);
         m_layout->removeWidget(btn);
@@ -184,11 +231,18 @@ void SegmentControl::setItemText(int index, const QString& text)
 {
     if (index < 0 || index >= m_buttons.size() || !m_buttons[index])
         return;
+    if (index >= m_fullTexts.size())
+        m_fullTexts.resize(index + 1);
+    m_fullTexts[index] = text;
     m_buttons[index]->setText(text);
+    m_buttons[index]->setToolTip(text);
+    elideButtons();
 }
 
 QString SegmentControl::itemText(int index) const
 {
+    if (index >= 0 && index < m_fullTexts.size())
+        return m_fullTexts[index];
     if (index < 0 || index >= m_buttons.size() || !m_buttons[index])
         return {};
     return m_buttons[index]->text();
@@ -277,7 +331,8 @@ void SegmentControl::applyTheme()
         "  border-radius: 4px;"
         "  color: %3;"
         "  font-weight: 600;"
-        "  padding: 2px 12px;"
+        "  padding: 2px 8px;"
+        "  min-width: 0px;"
         "}"
         "QFrame#SegmentControl > QPushButton#SegmentControlBtn:hover:!checked {"
         "  background: %4;"

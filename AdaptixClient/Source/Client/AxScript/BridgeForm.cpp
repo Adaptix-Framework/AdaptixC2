@@ -9,6 +9,7 @@
 #include <QJsonDocument>
 #include <QThread>
 #include <QApplication>
+#include <QAbstractScrollArea>
 #include <QJSEngine>
 #include <oclero/qlementine/widgets/Switch.hpp>
 #include <Utils/CustomElements/SegmentControl.h>
@@ -174,6 +175,9 @@ QObject* BridgeForm::create_textline(const QString &text)
 QObject* BridgeForm::create_combo()
 {
     auto* combo = new QComboBox(getParentWidget());
+    combo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+    combo->setMinimumContentsLength(8);
+    combo->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     auto* wrapper = new AxComboBoxWrapper(combo, this);
     scriptEngine->registerObject(wrapper);
     return wrapper;
@@ -264,8 +268,10 @@ QObject* BridgeForm::create_list()
     const int listH = rowH * visibleRows + 6;
     list->setFixedHeight(listH);
     list->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    list->setSizeAdjustPolicy(QAbstractScrollArea::AdjustIgnored);
+    list->setTextElideMode(Qt::ElideRight);
     list->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-    list->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    list->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 
     btnAdd->setFixedSize(28, 28);
     btnRemove->setFixedSize(28, 28);
@@ -359,6 +365,8 @@ QObject* BridgeForm::create_panel()
 QObject* BridgeForm::create_stack()
 {
     auto* stack = new QStackedWidget(getParentWidget());
+    stack->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    stack->setMinimumWidth(0);
     auto* wrapper = new AxStackedWidgetWrapper(stack, this);
     scriptEngine->registerObject(wrapper);
     return wrapper;

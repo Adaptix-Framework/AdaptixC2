@@ -7,6 +7,8 @@
 #include <QPushButton>
 #include <QButtonGroup>
 #include <QHBoxLayout>
+#include <QResizeEvent>
+#include <QStringList>
 #include <QVector>
 
 class SegmentControl : public QFrame
@@ -17,8 +19,9 @@ Q_OBJECT
     QHBoxLayout*          m_layout = nullptr;
     QButtonGroup*         m_group  = nullptr;
     QVector<QPushButton*> m_buttons;
+    QStringList           m_fullTexts;
     int                   m_currentIndex = -1;
-    int                   m_minButtonWidth = 88;
+    int                   m_minButtonWidth = 64;
     bool                  m_applyingTheme = false;
     QMetaObject::Connection m_themeConn;
 
@@ -26,10 +29,12 @@ Q_OBJECT
     void reindexButtons();
     void updateMetrics();
     void connectThemeSignals();
+    void elideButtons();
 
 protected:
     void changeEvent(QEvent* event) override;
     void showEvent(QShowEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
 public:
     explicit SegmentControl(QWidget* parent = nullptr);
