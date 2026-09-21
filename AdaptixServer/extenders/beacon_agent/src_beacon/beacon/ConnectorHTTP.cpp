@@ -392,22 +392,24 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 				this->server_index = (this->server_index + 1) % this->server_count;
 			}
 
-			// Rotate indices for next callback (active round-robin)
-			if (this->rotation_mode == 1) {
-				this->uri_index = GenerateRandom32() % this->uri_count;
-				this->ua_index = GenerateRandom32() % this->ua_count;
-				this->server_index = GenerateRandom32() % this->server_count;
-				if (this->hh_count > 0)
-					this->hh_index = GenerateRandom32() % this->hh_count;
-			}
-			else {
-				this->uri_index = (this->uri_index + 1) % this->uri_count;
-				this->ua_index = (this->ua_index + 1) % this->ua_count;
-				this->server_index = (this->server_index + 1) % this->server_count;
-				if (this->hh_count > 0)
-					this->hh_index = (this->hh_index + 1) % this->hh_count;
-			}
 		}
+	}
+
+	// Rotate indices for next callback (active round-robin) — once per call,
+	// after the retry loop, so the failover increment above is not undone.
+	if (this->rotation_mode == 1) {
+		this->uri_index = GenerateRandom32() % this->uri_count;
+		this->ua_index = GenerateRandom32() % this->ua_count;
+		this->server_index = GenerateRandom32() % this->server_count;
+		if (this->hh_count > 0)
+			this->hh_index = GenerateRandom32() % this->hh_count;
+	}
+	else {
+		this->uri_index = (this->uri_index + 1) % this->uri_count;
+		this->ua_index = (this->ua_index + 1) % this->ua_count;
+		this->server_index = (this->server_index + 1) % this->server_count;
+		if (this->hh_count > 0)
+			this->hh_index = (this->hh_index + 1) % this->hh_count;
 	}
 }
 
