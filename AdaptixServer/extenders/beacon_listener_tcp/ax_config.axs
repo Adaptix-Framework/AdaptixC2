@@ -27,6 +27,7 @@ function ListenerUI(mode_create)
     layout.addWidget(labelEncryptKey,    3, 0, 1, 1);
     layout.addWidget(textlineEncryptKey, 3, 1, 1, 1);
     layout.addWidget(buttonEncryptKey,   3, 2, 1, 1);
+    layout.setColumnStretch(1, 1);
 
     let container = form.create_container();
     container.put("port_bind", spinPortBind);
@@ -40,6 +41,6 @@ function ListenerUI(mode_create)
         ui_panel: panel,
         ui_container: container,
         ui_height: 300,
-        ui_width: 800
+        ui_width: 640
     }
 }

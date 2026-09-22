@@ -40,6 +40,9 @@
 #include <quazip/quazip.h>
 #include <quazip/quazipfile.h>
 #include <quazip/quazipnewinfo.h>
+#include <QTimer>
+#include <QAbstractItemView>
+#include <QPersistentModelIndex>
 
 namespace {
 
@@ -1226,13 +1229,33 @@ public:
     using QStyledItemDelegate::QStyledItemDelegate;
 
     QWidget* createEditor(QWidget* parent, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
-        QLineEdit* editor = new QLineEdit(parent);
+        Q_UNUSED(option);
+        Q_UNUSED(index);
+        auto* editor = new QLineEdit(parent);
+        editor->setFrame(true);
         editor->setContentsMargins(0, 0, 0, 0);
         return editor;
     }
 
+    void updateEditorGeometry(QWidget* editor, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+        Q_UNUSED(index);
+        if (!editor)
+            return;
+        QRect r = option.rect;
+        if (r.width() < 8) {
+            if (auto* view = qobject_cast<QAbstractItemView*>(parent())) {
+                const QRect vp = view->viewport()->rect();
+                r.setLeft(vp.left());
+                r.setWidth(vp.width());
+            }
+        }
+        editor->setGeometry(r);
+    }
+
     QSize sizeHint(const QStyleOptionViewItem& option, const QModelIndex& index) const override {
-        return QStyledItemDelegate::sizeHint(option, index);
+        Q_UNUSED(index);
+        const int h = qMax(option.fontMetrics.height() + 8, 22);
+        return QSize(80, h);
     }
 };
 
@@ -1252,7 +1275,13 @@ AxListWidgetWrapper::AxListWidgetWrapper(QWidget* container, QListWidget* widget
     connect(list, &QListWidget::currentTextChanged, this, &AxListWidgetWrapper::currentTextChanged);
     connect(list, &QListWidget::currentRowChanged,  this, &AxListWidgetWrapper::currentRowChanged);
     connect(list, &QListWidget::itemClicked,        this, [this](const QListWidgetItem* item) { if (item) Q_EMIT itemClickedText(item->text()); });
-    connect(list, &QListWidget::itemDoubleClicked,  this, [this](const QListWidgetItem* item) { if (item) Q_EMIT itemDoubleClickedText(item->text()); });
+    connect(list, &QListWidget::itemDoubleClicked,  this, [this](QListWidgetItem* item) {
+        if (!item)
+            return;
+        Q_EMIT itemDoubleClickedText(item->text());
+        if (!readonly)
+            startEditRow(list->row(item));
+    });
 
     btnAdd->setVisible(false);
     btnRemove->setVisible(false);
@@ -1275,9 +1304,8 @@ void AxListWidgetWrapper::jsonUnmarshal(const QVariant& value)
 {
     list->clear();
     const QVariantList items = value.toList();
-    for (const QVariant& v : items) {
-        list->addItem(v.toString());
-    }
+    for (const QVariant& v : items)
+        addItem(v.toString());
 }
 
 QWidget* AxListWidgetWrapper::widget() const { return container; }
@@ -1295,11 +1323,14 @@ QJSValue AxListWidgetWrapper::items()
 
 void AxListWidgetWrapper::addItem(const QString& text)
 {
-    QListWidgetItem* item = new QListWidgetItem(text);
+    auto* item = new QListWidgetItem(text);
+    Qt::ItemFlags flags = item->flags() | Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+    flags &= ~Qt::ItemIsDragEnabled;
     if (readonly)
-        item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+        flags &= ~Qt::ItemIsEditable;
     else
-        item->setFlags(item->flags() | Qt::ItemIsEditable);
+        flags |= Qt::ItemIsEditable;
+    item->setFlags(flags);
     list->addItem(item);
 }
 
@@ -1312,12 +1343,7 @@ void AxListWidgetWrapper::addItems(const QJSValue &items)
     for (int i = 0; i < length; i++ ) {
         QString text = items.property(i).toString();
 
-        QListWidgetItem* item = new QListWidgetItem(text);
-        if (readonly)
-            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-        else
-            item->setFlags(item->flags() | Qt::ItemIsEditable);
-        list->addItem(item);
+        addItem(text);
     }
 }
 
@@ -1359,10 +1385,13 @@ void AxListWidgetWrapper::setReadOnly(const bool readonly)
     this->readonly = readonly;
     for (int i = 0; i < list->count(); ++i) {
         QListWidgetItem* item = list->item(i);
+        Qt::ItemFlags flags = item->flags() | Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+        flags &= ~Qt::ItemIsDragEnabled;
         if (this->readonly)
-            item->setFlags(item->flags() & ~Qt::ItemIsEditable);
+            flags &= ~Qt::ItemIsEditable;
         else
-            item->setFlags(item->flags() | Qt::ItemIsEditable);
+            flags |= Qt::ItemIsEditable;
+        item->setFlags(flags);
     }
 }
 
@@ -1463,17 +1492,33 @@ void AxListWidgetWrapper::setExpanding(bool enabled)
     }
 }
 
+void AxListWidgetWrapper::startEditRow(int row)
+{
+    if (readonly || !list || row < 0 || row >= list->count())
+        return;
+    QListWidgetItem* item = list->item(row);
+    if (!item)
+        return;
+    list->scrollToItem(item);
+    list->setCurrentItem(item);
+    const QPersistentModelIndex idx = list->indexFromItem(item);
+    QTimer::singleShot(0, this, [this, idx]() {
+        if (!list || !idx.isValid())
+            return;
+        QListWidgetItem* it = list->item(idx.row());
+        if (!it)
+            return;
+        list->setFocus(Qt::OtherFocusReason);
+        list->editItem(it);
+    });
+}
+
 void AxListWidgetWrapper::onAddClicked()
 {
     if (readonly)
         return;
     addItem(QString());
-    const int row = list->count() - 1;
-    if (row < 0)
-        return;
-    list->setCurrentRow(row);
-    if (QListWidgetItem* item = list->item(row))
-        list->editItem(item);
+    startEditRow(list->count() - 1);
 }
 
 void AxListWidgetWrapper::onRemoveClicked()

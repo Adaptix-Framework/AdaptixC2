@@ -78,6 +78,7 @@ function ListenerUI(mode_create)
     layout.addWidget(spinBurstSleep,    7, 1, 1, 2);
     layout.addWidget(labelBurstJitter,  8, 0, 1, 1);
     layout.addWidget(spinBurstJitter,   8, 1, 1, 2);
+    layout.setColumnStretch(1, 1);
 
     let container = form.create_container();
     container.put("host_bind",     comboHostBind);
@@ -97,6 +98,6 @@ function ListenerUI(mode_create)
         ui_panel: panel,
         ui_container: container,
         ui_height: 500,
-        ui_width: 820
+        ui_width: 640
     }
 }

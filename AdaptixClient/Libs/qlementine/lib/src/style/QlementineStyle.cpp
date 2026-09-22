@@ -5077,8 +5077,6 @@ void QlementineStyle::polish(QWidget* w) {
   }
 
   if (auto* comboBox = qobject_cast<QComboBox*>(w)) {
-    comboBox->setSizeAdjustPolicy(QComboBox::SizeAdjustPolicy::AdjustToContents);
-
     if (!comboBox->property("_qlementine_polished").toBool()) {
       comboBox->setProperty("_qlementine_polished", true);
       // Only replace the delegate if the combobox doesn't already have a custom one.
