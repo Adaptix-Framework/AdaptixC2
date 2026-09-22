@@ -37,7 +37,9 @@
 #include <QBuffer>
 #include <QDirIterator>
 #include <QFileInfo>
-#include <QtCore/private/qzipwriter_p.h>
+#include <quazip/quazip.h>
+#include <quazip/quazipfile.h>
+#include <quazip/quazipnewinfo.h>
 
 namespace {
 
@@ -2078,12 +2080,26 @@ bool zipFolderToData(const QString& folderPath, QByteArray& outZipData)
     if (!zipBuffer.open(QIODevice::WriteOnly))
         return false;
 
-    QZipWriter zipWriter(&zipBuffer);
-    zipWriter.setCompressionPolicy(QZipWriter::AutoCompress);
+    QuaZip zip(&zipBuffer);
+    zip.setUtf8Enabled(true);
+    if (!zip.open(QuaZip::mdCreate))
+        return false;
 
     QDir rootDir(folderInfo.absoluteFilePath());
     const QString rootName = rootDir.dirName();
-    zipWriter.addDirectory(rootName + "/");
+    auto addDirectory = [&zip](const QString& path) {
+        QuaZipFile zipFile(&zip);
+        QuaZipNewInfo info(path);
+        if (!zipFile.open(QIODevice::WriteOnly, info))
+            return false;
+        zipFile.close();
+        return zip.getZipError() == UNZ_OK;
+    };
+
+    if (!addDirectory(rootName + "/")) {
+        zip.close();
+        return false;
+    }
 
     QDirIterator it(
         folderInfo.absoluteFilePath(),
@@ -2101,24 +2117,44 @@ bool zipFolderToData(const QString& folderPath, QByteArray& outZipData)
         if (entryInfo.isDir()) {
             if (!zipPath.endsWith('/'))
                 zipPath += '/';
-            zipWriter.addDirectory(zipPath);
+            if (!addDirectory(zipPath)) {
+                zip.close();
+                return false;
+            }
             continue;
         }
 
         if (entryInfo.isFile()) {
             QFile file(entryInfo.absoluteFilePath());
-            if (!file.open(QIODevice::ReadOnly))
+            if (!file.open(QIODevice::ReadOnly)) {
+                zip.close();
                 return false;
+            }
 
-            zipWriter.addFile(zipPath, file.readAll());
-
-            if (zipWriter.status() != QZipWriter::NoError)
+            QuaZipFile zipFile(&zip);
+            QuaZipNewInfo info(zipPath, entryInfo.absoluteFilePath());
+            if (!zipFile.open(QIODevice::WriteOnly, info)) {
+                zip.close();
                 return false;
+            }
+
+            const QByteArray data = file.readAll();
+            const bool written = zipFile.write(data) == data.size();
+            zipFile.close();
+            if (!written || zip.getZipError() != UNZ_OK) {
+                zip.close();
+                return false;
+            }
+
+            if (zip.getZipError() != UNZ_OK) {
+                zip.close();
+                return false;
+            }
         }
     }
 
-    zipWriter.close();
-    if (zipWriter.status() != QZipWriter::NoError)
+    zip.close();
+    if (zip.getZipError() != UNZ_OK)
         return false;
 
     outZipData = zipBuffer.data();

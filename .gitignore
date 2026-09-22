@@ -25,6 +25,9 @@ AdaptixClient/Libs/kddockwidgets/*_autogen/
 AdaptixClient/Libs/kddockwidgets/*.a
 AdaptixClient/Libs/kddockwidgets/*_export.h
 
+# CMake generated files in quazip build
+AdaptixClient/_deps/
+
 # CMake generated files in qlementine
 AdaptixClient/Libs/qlementine/CMakeFiles/
 AdaptixClient/Libs/qlementine/Makefile

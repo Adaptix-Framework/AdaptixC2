@@ -40,7 +40,6 @@ endif()
 find_package(Qt6
         REQUIRED COMPONENTS
         Core
-        CorePrivate
         Gui
         Widgets
         Network
@@ -48,6 +47,22 @@ find_package(Qt6
         Sql
         Qml
 )
+
+include(FetchContent)
+
+set(QUAZIP_QT_MAJOR_VERSION 6 CACHE STRING "" FORCE)
+set(QUAZIP_ENABLE_QTEXTCODEC OFF CACHE BOOL "" FORCE)
+set(QUAZIP_BZIP2 OFF CACHE BOOL "" FORCE)
+set(QUAZIP_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+set(QUAZIP_INSTALL OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF)
+FetchContent_Declare(
+        QuaZip
+        GIT_REPOSITORY https://github.com/stachenov/quazip.git
+        GIT_TAG v1.7.2
+)
+FetchContent_MakeAvailable(QuaZip)
+unset(BUILD_SHARED_LIBS)
 
 include_directories(
         Headers
@@ -393,7 +408,6 @@ endif()
 target_link_libraries( AdaptixClient
         PRIVATE
         Qt6::Core
-        Qt6::CorePrivate
         Qt6::Gui
         Qt6::Widgets
         Qt6::Network
@@ -401,6 +415,7 @@ target_link_libraries( AdaptixClient
         Qt6::Sql
         Qt6::Qml
         OpenSSL::Crypto
+        QuaZip::QuaZip
 
         kddockwidgets
         qlementine
