@@ -37,7 +37,7 @@ func (l Layout) BuildServer(ctx context.Context, out io.Writer, opts BuildOption
 	prog.StartStep(1, 2, "go build adaptixserver")
 	pw := &ui.ProgressWriter{Progress: prog}
 	runner := &build.Runner{Dir: l.ServerDir, Out: out, Progress: pw}
-	cmd := `go build -buildvcs=false -ldflags="-s -w" -o adaptixserver .`
+	cmd := fmt.Sprintf("go build -buildvcs=false -ldflags=%q -o adaptixserver .", build.GoLdflags("-s -w"))
 	if err := runner.RunOne(ctx, cmd); err != nil {
 		prog.Fail("server build failed")
 		return fmt.Errorf("server build: %w", err)

@@ -1,8 +1,10 @@
+include $(dir $(abspath $(lastword $(MAKEFILE_LIST))))../../../go_ldflags.mk
+
 all: clean
 	@ echo "    * Building agent_beacon plugin"
 	@ mkdir dist
 	@ cp config.yaml ax_config.axs ./dist/
-	@ go build -buildmode=plugin -ldflags="-s -w" -o ./dist/agent_beacon.so pl_main.go pl_packer.go pl_utils.go pl_sideloading.go
+	@ go build -buildmode=plugin -ldflags="$(GO_LDFLAGS)" -o ./dist/agent_beacon.so pl_main.go pl_packer.go pl_utils.go pl_sideloading.go
 	@ echo "      done..."
 
 	@ echo "    * Building agent"

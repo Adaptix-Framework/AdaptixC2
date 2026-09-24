@@ -89,10 +89,19 @@ func runInit(c *cobra.Command, args []string) error {
       dir: dist/
 `, name, typ)
 
-	makefileBody := fmt.Sprintf(`all: clean
+	makefileBody := fmt.Sprintf(`GO_LDFLAGS ?= -s -w
+ifeq ($(shell uname -s),Linux)
+ifneq ($(filter aarch64 arm64,$(shell uname -m)),)
+ifeq ($(shell command -v ld.gold 2>/dev/null),)
+GO_LDFLAGS += -extldflags=-fuse-ld=bfd
+endif
+endif
+endif
+
+all: clean
 	@ mkdir -p dist
 	@ cp config.yaml ax_config.axs ./dist/ 2>/dev/null || true
-	@ GOEXPERIMENT=jsonv2,greenteagc go build -buildmode=plugin -ldflags="-s -w" -o ./dist/%s .
+	@ GOEXPERIMENT=jsonv2,greenteagc go build -buildmode=plugin -ldflags="$(GO_LDFLAGS)" -o ./dist/%s .
 	@ echo "    -> dist/%s"
 
 clean:

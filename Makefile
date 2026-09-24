@@ -4,6 +4,8 @@ DIST_DIR := dist
 
 UNAME_S := $(shell uname -s)
 
+include $(dir $(abspath $(lastword $(MAKEFILE_LIST))))go_ldflags.mk
+
 ifeq ($(UNAME_S),Linux)
   NPROC := $(shell nproc)
 endif
@@ -69,7 +71,7 @@ extenders: prepare
 
 server: prepare
 	@ echo "[*] Building adaptixserver..."
-	@ cd AdaptixServer && go build -buildvcs=false -ldflags="-s -w" -o adaptixserver > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixServer:"; cat build_error.log >&2; exit 1; }     # for static build use CGO_ENABLED=0
+	@ cd AdaptixServer && go build -buildvcs=false -ldflags="$(GO_LDFLAGS)" -o adaptixserver > /dev/null 2>build_error.log || { echo "[ERROR] Failed to build AdaptixServer:"; cat build_error.log >&2; exit 1; }     # for static build use CGO_ENABLED=0
 	@ mv AdaptixServer/adaptixserver ./$(DIST_DIR)/
 	@ cp AdaptixServer/ssl_gen.sh AdaptixServer/profile.yaml AdaptixServer/404page.html ./$(DIST_DIR)/
 	@ echo "[+] done"

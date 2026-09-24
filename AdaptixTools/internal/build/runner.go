@@ -43,7 +43,8 @@ func (r *Runner) Run(ctx context.Context, commands []string) error {
 func (r *Runner) RunOne(ctx context.Context, command string) error {
 	c := exec.CommandContext(ctx, "sh", "-c", command)
 	c.Dir = r.Dir
-	c.Env = mergeEnv(os.Environ(), r.Env)
+	env := mergeEnv(os.Environ(), r.Env)
+	c.Env = mergeEnv(env, extraGoLinkEnvFrom(env))
 
 	var buf bytes.Buffer
 	writers := []io.Writer{&buf}
