@@ -7,6 +7,21 @@ NC=$(printf '\033[0m')
 
 GO_VERSION='1.26.5'
 
+# Map uname -m to the Go download filename (linux-<arch>.tar.gz).
+go_arch_from_uname() {
+    case "$(uname -m)" in
+        x86_64|amd64)  echo amd64 ;;
+        aarch64|arm64) echo arm64 ;;
+        armv7l|armv6l) echo armv6l ;;
+        i386|i686)     echo 386 ;;
+        ppc64le)       echo ppc64le ;;
+        s390x)         echo s390x ;;
+        riscv64)       echo riscv64 ;;
+        loongarch64)   echo loong64 ;;
+        *)             return 1 ;;
+    esac
+}
+
 ERROR_FILE="$(date "+%d.%m.%Y_%H-%M-%S")-error.log"
 
 SERVER_DEPENDENCIES=(
@@ -77,32 +92,49 @@ server_packets_install() {
 }
 
 actual_go_version_install() {
-    report_step "Downloading the latest version of Go"
+    report_step "Downloading Go $GO_VERSION for this architecture"
 
-    DOWNLOAD_PATH="/tmp/go$GO_VERSION.linux-amd64.tar.gz"
+    if ! GO_ARCH="$(go_arch_from_uname)"; then
+        report_fail "Unsupported architecture: $(uname -m)"
+        exit 1
+    fi
 
-    if wget https://go.dev/dl/go$GO_VERSION.linux-amd64.tar.gz -O $DOWNLOAD_PATH; then
-        report_success "The Go distribution for version $GO_VERSION has been successfully downloaded to \"$DOWNLOAD_PATH\""
+    DOWNLOAD_PATH="/tmp/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+    DOWNLOAD_URL="https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz"
+
+    if wget "$DOWNLOAD_URL" -O "$DOWNLOAD_PATH"; then
+        report_success "The Go distribution for version $GO_VERSION ($GO_ARCH) has been successfully downloaded to \"$DOWNLOAD_PATH\""
     else
         report_fail "An error occurred while downloading the Go distribution version $GO_VERSION to \"$DOWNLOAD_PATH\""
+        exit 1
     fi
 
     if rm -rf /usr/local/go /usr/local/bin/go; then
         report_success "The old version of Go has been successfully removed"
     else
         report_fail "An error occurred while deleting the old version of Go"
+        exit 1
     fi
 
-    if tar -xzf $DOWNLOAD_PATH -C /usr/local; then
+    if tar -xzf "$DOWNLOAD_PATH" -C /usr/local; then
         report_success "The downloaded Go distribution version $GO_VERSION has been successfully extracted to \"/usr/local/go\""
     else
         report_fail "An error occurred while extracting the Go distribution of version $GO_VERSION to \"/usr/local/go\""
+        exit 1
     fi
 
-    if ln -s /usr/local/go/bin/go /usr/local/bin/go; then
+    if ln -sf /usr/local/go/bin/go /usr/local/bin/go; then
         report_success "A symbolic link to the PATH directory for Go version $GO_VERSION has been created successfully"
     else
         report_fail "An error occurred while creating a symbolic link to the PATH directory for Go version $GO_VERSION"
+        exit 1
+    fi
+
+    if /usr/local/go/bin/go version; then
+        report_success "Go $GO_VERSION ($GO_ARCH) is executable on this host"
+    else
+        report_fail "Installed Go binary is not executable on this architecture ($(uname -m))"
+        exit 1
     fi
 
     report_step "Downloading the latest version of Go, which includes Windows 7 support for Gopher Agent"
