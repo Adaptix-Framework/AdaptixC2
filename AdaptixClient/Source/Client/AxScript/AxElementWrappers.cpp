@@ -34,6 +34,12 @@
 #include <QWindow>
 #include <QCursor>
 #include <QSizePolicy>
+#include <QBuffer>
+#include <QDirIterator>
+#include <QFileInfo>
+#include <quazip/quazip.h>
+#include <quazip/quazipfile.h>
+#include <quazip/quazipnewinfo.h>
 #include <QTimer>
 #include <QAbstractItemView>
 #include <QPersistentModelIndex>
@@ -2042,6 +2048,7 @@ void AxExtDialogWrapper::setButtonsText(const QString &ok_text, const QString &c
     }
 }
 
+
 /// FILE SELECTOR
 
 AxSelectorFile::AxSelectorFile(QLineEdit* edit, QObject* parent) : QObject(parent), lineEdit(edit)
@@ -2102,6 +2109,137 @@ void AxSelectorFile::onSelectFile()
             file.close();
 
             fileContent = QString::fromUtf8(fileData.toBase64());
+        });
+}
+
+/// FOLDER SELECTOR
+
+namespace {
+bool zipFolderToData(const QString& folderPath, QByteArray& outZipData)
+{
+    const QFileInfo folderInfo(folderPath);
+    if (!folderInfo.exists() || !folderInfo.isDir())
+        return false;
+
+    QBuffer zipBuffer;
+    if (!zipBuffer.open(QIODevice::WriteOnly))
+        return false;
+
+    QuaZip zip(&zipBuffer);
+    zip.setUtf8Enabled(true);
+    if (!zip.open(QuaZip::mdCreate))
+        return false;
+
+    QDir rootDir(folderInfo.absoluteFilePath());
+    const QString rootName = rootDir.dirName();
+    auto addDirectory = [&zip](const QString& path) {
+        QuaZipFile zipFile(&zip);
+        QuaZipNewInfo info(path);
+        if (!zipFile.open(QIODevice::WriteOnly, info))
+            return false;
+        zipFile.close();
+        return zip.getZipError() == UNZ_OK;
+    };
+
+    if (!addDirectory(rootName + "/")) {
+        zip.close();
+        return false;
+    }
+
+    QDirIterator it(
+        folderInfo.absoluteFilePath(),
+        QDir::AllEntries | QDir::NoDotAndDotDot | QDir::Hidden | QDir::System,
+        QDirIterator::Subdirectories
+    );
+
+    while (it.hasNext()) {
+        it.next();
+        const QFileInfo entryInfo = it.fileInfo();
+        const QString relPath = rootDir.relativeFilePath(entryInfo.absoluteFilePath());
+        QString zipPath = rootName + "/" + relPath;
+        zipPath.replace('\\', '/');
+
+        if (entryInfo.isDir()) {
+            if (!zipPath.endsWith('/'))
+                zipPath += '/';
+            if (!addDirectory(zipPath)) {
+                zip.close();
+                return false;
+            }
+            continue;
+        }
+
+        if (entryInfo.isFile()) {
+            QFile file(entryInfo.absoluteFilePath());
+            if (!file.open(QIODevice::ReadOnly)) {
+                zip.close();
+                return false;
+            }
+
+            QuaZipFile zipFile(&zip);
+            QuaZipNewInfo info(zipPath, entryInfo.absoluteFilePath());
+            if (!zipFile.open(QIODevice::WriteOnly, info)) {
+                zip.close();
+                return false;
+            }
+
+            const QByteArray data = file.readAll();
+            const bool written = zipFile.write(data) == data.size();
+            zipFile.close();
+            if (!written || zip.getZipError() != UNZ_OK) {
+                zip.close();
+                return false;
+            }
+
+            if (zip.getZipError() != UNZ_OK) {
+                zip.close();
+                return false;
+            }
+        }
+    }
+
+    zip.close();
+    if (zip.getZipError() != UNZ_OK)
+        return false;
+
+    outZipData = zipBuffer.data();
+    return !outZipData.isEmpty();
+}
+}
+
+AxSelectorFolder::AxSelectorFolder(QLineEdit* edit, QObject* parent) : QObject(parent), lineEdit(edit)
+{
+    lineEdit->setReadOnly(true);
+
+    auto action = lineEdit->addAction(QIcon(":/icons/folder"), QLineEdit::TrailingPosition);
+    connect(action, &QAction::triggered, this, &AxSelectorFolder::onSelectFolder);
+}
+
+QLineEdit* AxSelectorFolder::widget() const { return lineEdit; }
+
+QVariant AxSelectorFolder::jsonMarshal() const { return content; }
+
+void AxSelectorFolder::jsonUnmarshal(const QVariant& value)
+{
+    content = value.toString();
+    lineEdit->setText("Selected...");
+}
+
+void AxSelectorFolder::setPlaceholder(const QString& text) const { lineEdit->setPlaceholderText(text); }
+
+void AxSelectorFolder::onSelectFolder()
+{
+    NonBlockingDialogs::getExistingDirectory(lineEdit, "Select a folder", "",
+        [this](const QString& selectedFolder) {
+            if (selectedFolder.isEmpty())
+                return;
+
+            QByteArray zipData;
+            if (!zipFolderToData(selectedFolder, zipData))
+                return;
+
+            lineEdit->setText(selectedFolder);
+            content = QString::fromUtf8(zipData.toBase64());
         });
 }
 

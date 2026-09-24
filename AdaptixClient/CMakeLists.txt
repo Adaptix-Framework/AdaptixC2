@@ -48,6 +48,22 @@ find_package(Qt6
         Qml
 )
 
+include(FetchContent)
+
+set(QUAZIP_QT_MAJOR_VERSION 6 CACHE STRING "" FORCE)
+set(QUAZIP_ENABLE_QTEXTCODEC OFF CACHE BOOL "" FORCE)
+set(QUAZIP_BZIP2 OFF CACHE BOOL "" FORCE)
+set(QUAZIP_ENABLE_TESTS OFF CACHE BOOL "" FORCE)
+set(QUAZIP_INSTALL OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF)
+FetchContent_Declare(
+        QuaZip
+        GIT_REPOSITORY https://github.com/stachenov/quazip.git
+        GIT_TAG v1.7.2
+)
+FetchContent_MakeAvailable(QuaZip)
+unset(BUILD_SHARED_LIBS)
+
 include_directories(
         Headers
         Libs
@@ -383,6 +399,12 @@ target_compile_definitions(
         #        QT_NO_SIGNALS_SLOTS_KEYWORDS
 )
 
+if(MSVC)
+        target_compile_options(AdaptixClient PRIVATE /wd4996)
+else()
+        target_compile_options(AdaptixClient PRIVATE -Wno-deprecated-declarations)
+endif()
+
 target_link_libraries( AdaptixClient
         PRIVATE
         Qt6::Core
@@ -393,6 +415,7 @@ target_link_libraries( AdaptixClient
         Qt6::Sql
         Qt6::Qml
         OpenSSL::Crypto
+        QuaZip::QuaZip
 
         kddockwidgets
         qlementine
