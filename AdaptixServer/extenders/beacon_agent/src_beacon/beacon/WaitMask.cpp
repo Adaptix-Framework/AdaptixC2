@@ -14,7 +14,7 @@ void WaitMask(ULONG worktime, ULONG sleepTime, ULONG jitter)
             if (minTime)
                 deltaTime = GenerateRandom32() % minTime;
             if (deltaTime < maxSleepTime)
-                maxSleepTime -= deltaTime;
+                maxSleepTime -= deltaTime * 1000; // deltaTime is seconds, maxSleepTime is milliseconds
         }
     }
     mySleep(maxSleepTime);
@@ -34,7 +34,7 @@ void WaitMaskWithEvent(HANDLE hEvent, ULONG worktime, ULONG sleepTime, ULONG jit
             if (minTime)
                 deltaTime = GenerateRandom32() % minTime;
             if (deltaTime < maxSleepTime)
-                maxSleepTime -= deltaTime;
+                maxSleepTime -= deltaTime * 1000; // deltaTime is seconds, maxSleepTime is milliseconds
         }
     }
     
