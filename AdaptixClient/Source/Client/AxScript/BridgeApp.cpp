@@ -403,8 +403,14 @@ QString BridgeApp::bof_pack(const QString &types, const QJSValue &args)
             data.append(strData);
         }
         else if (items[i] == "bytes") {
-            // Accept ArrayBuffer / Uint8Array (QByteArray after Qt marshal)
-            const QByteArray valueData = value.toByteArray();
+            QByteArray valueData;
+            if (value.typeId() == QMetaType::QString) {
+                // Scripts pass base64 text; FILE args arrive base64-encoded (Commander::ProcessCommand)
+                valueData = QByteArray::fromBase64(value.toString().toUtf8());
+            } else {
+                // Accept ArrayBuffer / Uint8Array (QByteArray after Qt marshal)
+                valueData = value.toByteArray();
+            }
             int strLength = valueData.size();
 
             QByteArray valueLengthData;
