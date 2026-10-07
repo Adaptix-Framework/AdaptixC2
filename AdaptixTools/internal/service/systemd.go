@@ -58,6 +58,8 @@ Type=simple
 {{if .User}}User={{.User}}
 {{end}}{{if .Group}}Group={{.Group}}
 {{end}}WorkingDirectory={{.WorkingDir}}
+Environment=HOME={{.Home}}
+Environment=XDG_CACHE_HOME={{.Home}}/.cache
 ExecStart={{.ExecStart}}
 Restart=on-failure
 RestartSec=3
@@ -90,10 +92,12 @@ func RenderUnit(o Options) (string, error) {
 	if o.UserMode {
 		wanted = "default.target"
 	}
+	home := strings.TrimSpace(serviceHome(o))
 	data := map[string]string{
 		"User":       o.User,
 		"Group":      o.Group,
 		"WorkingDir": o.WorkingDir,
+		"Home":       home,
 		"ExecStart":  execStart,
 		"UnitName":   o.ResolvedUnitName(),
 		"WantedBy":   wanted,
@@ -230,6 +234,21 @@ func shellQuote(s string) string {
 		return s
 	}
 	return `"` + strings.ReplaceAll(s, `"`, `\"`) + `"`
+}
+
+func serviceHome(o Options) string {
+	if o.User != "" {
+		if u, err := user.Lookup(o.User); err == nil && u.HomeDir != "" {
+			return u.HomeDir
+		}
+	}
+	if h, err := os.UserHomeDir(); err == nil && h != "" {
+		return h
+	}
+	if o.WorkingDir != "" {
+		return o.WorkingDir
+	}
+	return "/tmp"
 }
 
 func WhichSystemctl() error {

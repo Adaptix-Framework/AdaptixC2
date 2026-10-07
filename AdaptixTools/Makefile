@@ -1,6 +1,6 @@
 .PHONY: all clean
 
-include $(dir $(abspath $(lastword $(MAKEFILE_LIST))))../go_ldflags.mk
+GO_LDFLAGS ?= -s -w
 
 all:
 	@mkdir -p dist

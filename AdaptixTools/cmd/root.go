@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -118,10 +117,6 @@ func loadProject() (root, srvDir string, srv spec.ServerSpec, err error) {
 		projectRoot = rootDir
 		projectSpec = s
 		serverDir = s.ResolvedServerDir(rootDir)
-		if _, e := os.Stat(serverDir); e != nil {
-			projectErr = fmt.Errorf("server_dir %s: %w", serverDir, e)
-			return
-		}
 	})
 	return projectRoot, serverDir, projectSpec, projectErr
 }

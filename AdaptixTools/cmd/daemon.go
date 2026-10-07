@@ -119,7 +119,11 @@ func init() {
 }
 
 func daemonOptsFromLayout() (service.Options, project.Layout, error) {
-	layout, err := resolveLayout()
+	root, err := resolveProjectRoot()
+	if err != nil {
+		return service.Options{}, project.Layout{}, err
+	}
+	layout, err := project.ResolveRuntime(root)
 	if err != nil {
 		return service.Options{}, layout, err
 	}

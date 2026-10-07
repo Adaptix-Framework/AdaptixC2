@@ -90,13 +90,6 @@ func runInit(c *cobra.Command, args []string) error {
 `, name, typ)
 
 	makefileBody := fmt.Sprintf(`GO_LDFLAGS ?= -s -w
-ifeq ($(shell uname -s),Linux)
-ifneq ($(filter aarch64 arm64,$(shell uname -m)),)
-ifeq ($(shell command -v ld.gold 2>/dev/null),)
-GO_LDFLAGS += -extldflags=-fuse-ld=bfd
-endif
-endif
-endif
 
 all: clean
 	@ mkdir -p dist
