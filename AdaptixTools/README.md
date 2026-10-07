@@ -40,6 +40,10 @@ axtool adaptix.spec client build
 # Install systemd unit and start (needs root for a system unit)
 axtool adaptix.spec server daemon install --start
 
+# Run the daemon from a deployed tree without copying adaptix.spec there:
+# relative paths from the spec (dist_dir, profile, …) resolve against --workdir
+axtool adaptix.spec --workdir /opt server daemon install --start
+
 # List installed plugins
 axtool adaptix.spec ext list
 
@@ -154,7 +158,7 @@ Editable keys: `interface`, `port`, `endpoint`, `password`, `only_password`, `ce
 
 ### server daemon
 
-Uses `systemd:` from `adaptix.spec`. Working directory = `dist_dir`, binary = `dist_dir/adaptixserver`.
+Uses `systemd:` from `adaptix.spec`. Working directory = `dist_dir`, binary = `dist_dir/adaptixserver`. Does not need `AdaptixServer` sources — `adaptix.spec` + `dist/` is enough (e.g. copied to `/opt`).
 
 ```bash
 axtool adaptix.spec server daemon install [--start] [--debug] [--user] …

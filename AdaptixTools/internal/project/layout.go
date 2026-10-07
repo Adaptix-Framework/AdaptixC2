@@ -32,12 +32,19 @@ func ResolveRuntime(projectRootOrSpec string) (Layout, error) {
 	return resolveLayout(projectRootOrSpec)
 }
 
+func LayoutForSpec(srv spec.ServerSpec, root string) (Layout, error) {
+	return layoutFor(srv, root)
+}
+
 func resolveLayout(projectRootOrSpec string) (Layout, error) {
 	srv, root, err := spec.LoadProject(projectRootOrSpec)
 	if err != nil {
 		return Layout{}, err
 	}
+	return layoutFor(srv, root)
+}
 
+func layoutFor(srv spec.ServerSpec, root string) (Layout, error) {
 	serverDir := srv.ResolvedServerDir(root)
 
 	repoRoot := root

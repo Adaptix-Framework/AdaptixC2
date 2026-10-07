@@ -45,11 +45,18 @@ func init() {
 }
 
 func resolveLayout() (project.Layout, error) {
-	root, err := resolveProjectRoot()
+	root, _, srv, err := loadProject()
 	if err != nil {
 		return project.Layout{}, err
 	}
-	return project.Resolve(root)
+	layout, err := project.LayoutForSpec(srv, root)
+	if err != nil {
+		return project.Layout{}, err
+	}
+	if _, err := os.Stat(layout.ServerDir); err != nil {
+		return project.Layout{}, fmt.Errorf("server_dir %s: %w", layout.ServerDir, err)
+	}
+	return layout, nil
 }
 
 func runServerBuild(c *cobra.Command, _ []string) error {
