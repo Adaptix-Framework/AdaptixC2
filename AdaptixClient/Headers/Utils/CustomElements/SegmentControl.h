@@ -23,12 +23,14 @@ Q_OBJECT
     int                   m_currentIndex = -1;
     int                   m_minButtonWidth = 64;
     bool                  m_applyingTheme = false;
+    bool                  m_syncingWidths = false;
     QMetaObject::Connection m_themeConn;
 
     QPushButton* makeButton(const QString& text);
     void reindexButtons();
     void updateMetrics();
     void connectThemeSignals();
+    void syncButtonWidths();
     void elideButtons();
 
 protected:

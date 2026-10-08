@@ -13,7 +13,6 @@
 #include <QLayoutItem>
 #include <QSizePolicy>
 #include <QButtonGroup>
-#include <QCheckBox>
 #include <QSignalBlocker>
 #include <QSet>
 #include <QDateTime>
@@ -394,7 +393,6 @@ void DialogAgent::createUI()
     leftPanelLayout->setRowStretch(3, 1);
     leftPanelLayout->setColumnStretch(0, 0);
     leftPanelLayout->setColumnStretch(1, 1);
-    leftPanelLayout->setColumnMinimumWidth(0, agentLabel->width());
 
     connect(viewButtonGroup, &QButtonGroup::idClicked, this, [this](int id) {
         if (leftContentStack)
@@ -1463,7 +1461,7 @@ void DialogAgent::packDialogSize(int scriptW, int scriptH)
     constexpr int kSeparatorW = 1;
     constexpr int kHChrome    = 5 * 2 + 10 * 2 + 5 * 2 + kProfilesW + kSeparatorW;
     constexpr int kFooterH    = 50;
-    constexpr int kHeaderH    = 48 + 96;
+    constexpr int kHeaderH    = 72;
     constexpr int kVChrome    = 5 * 2 + 10 * 2 + 5 * 2 + kHeaderH + kFooterH + 36;
 
     int panelW = scriptW > 0 ? scriptW : 360;

@@ -114,12 +114,14 @@ func (ts *Teamserver) TsPivotCreate(pivotId string, pAgentId int64, chAgentId in
 	childAgent, ok := ts.Agents.Get(pivotData.ChildAgentId)
 	if ok {
 		childAgent.SetPivotParent(pivotData)
+		switch childAgent.GetData().Mark {
+		case "Unlink", "Disconnect":
+			empty := ""
+			_ = ts.TsAgentUpdateDataPartial(pivotData.ChildAgentId, struct {
+				Mark *string `json:"mark"`
+			}{Mark: &empty})
+		}
 	}
-
-	//emptyMark := ""
-	//_ = ts.TsAgentUpdateDataPartial(pivotData.ChildAgentId, struct {
-	//	Mark *string `json:"mark"`
-	//}{Mark: &emptyMark})
 
 	ts.pivots.Put(pivotData)
 

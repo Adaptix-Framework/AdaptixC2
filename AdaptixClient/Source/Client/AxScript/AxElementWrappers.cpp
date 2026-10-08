@@ -1705,6 +1705,18 @@ void AxPanelWrapper::setLayout(QObject* layoutWrapper) const
         panel->setLayout(box->layout());
 }
 
+void AxPanelWrapper::setObjectName(const QString& name) const
+{
+    if (panel)
+        panel->setObjectName(name);
+}
+
+void AxPanelWrapper::setStyleSheet(const QString& css) const
+{
+    if (panel)
+        panel->setStyleSheet(css);
+}
+
 void AxPanelWrapper::setExpanding(bool enabled) const
 {
     if (!panel)

@@ -11,7 +11,6 @@
 #include <oclero/qlementine/widgets/Menu.hpp>
 
 #include <QButtonGroup>
-#include <QCheckBox>
 
 class AxContainerWrapper;
 class BuildWorker;

@@ -35,6 +35,9 @@ func NewScriptEngine(name string, manager *ScriptManager) *ScriptEngine {
 		manager:   manager,
 		functions: make(map[string]goja.Callable),
 	}
+	if manager != nil {
+		engine.allowedRoots = append([]string{}, manager.globalAllowedRoots...)
+	}
 
 	consoleObj := rt.NewObject()
 	consoleObj.Set("log", func(call goja.FunctionCall) goja.Value { return goja.Undefined() })

@@ -28,7 +28,7 @@ public:
 SegmentControl::SegmentControl(QWidget* parent) : QFrame(parent)
 {
     setObjectName(QStringLiteral("SegmentControl"));
-    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
 
     m_layout = new QHBoxLayout(this);
     m_layout->setSpacing(2);
@@ -97,8 +97,8 @@ void SegmentControl::updateMetrics()
         if (!btn)
             continue;
         btn->setFixedHeight(btnH);
-        btn->setMinimumWidth(m_minButtonWidth);
     }
+    syncButtonWidths();
 }
 
 QPushButton* SegmentControl::makeButton(const QString& text)
@@ -112,11 +112,8 @@ QPushButton* SegmentControl::makeButton(const QString& text)
     btn->setFocusPolicy(Qt::NoFocus);
     btn->setCursor(Qt::PointingHandCursor);
     btn->setFixedHeight(btnH);
-    btn->setMinimumWidth(m_minButtonWidth);
     btn->setObjectName(QStringLiteral("SegmentControlBtn"));
-    QSizePolicy sp(QSizePolicy::Expanding, QSizePolicy::Fixed);
-    sp.setHorizontalStretch(1);
-    btn->setSizePolicy(sp);
+    btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     btn->setToolTip(text);
     return btn;
 }
@@ -140,18 +137,61 @@ void SegmentControl::resizeEvent(QResizeEvent* event)
     elideButtons();
 }
 
-void SegmentControl::elideButtons()
+void SegmentControl::syncButtonWidths()
 {
+    if (m_syncingWidths || m_buttons.isEmpty())
+        return;
+    m_syncingWidths = true;
+
+    int natural = m_minButtonWidth;
     for (int i = 0; i < m_buttons.size(); ++i) {
         QPushButton* btn = m_buttons[i];
         if (!btn)
             continue;
         const QString full = (i < m_fullTexts.size()) ? m_fullTexts[i] : btn->text();
-        const int inner = qMax(8, btn->width() - 16);
-        const QString elided = QFontMetrics(btn->font()).elidedText(full, Qt::ElideRight, inner);
-        if (btn->text() != elided) {
+        if (btn->text() != full) {
+            QSignalBlocker blocker(btn);
+            btn->setText(full);
+        }
+        btn->setMinimumWidth(0);
+        btn->setMaximumWidth(QWIDGETSIZE_MAX);
+        btn->ensurePolished();
+        natural = qMax(natural, btn->sizeHint().width());
+    }
+
+    for (auto* btn : m_buttons) {
+        if (!btn)
+            continue;
+        btn->setFixedWidth(natural);
+        btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    }
+
+    const int frameW = m_layout ? m_layout->sizeHint().width() : 0;
+    if (frameW > 0)
+        setFixedWidth(frameW);
+
+    m_syncingWidths = false;
+}
+
+void SegmentControl::elideButtons()
+{
+    if (m_syncingWidths)
+        return;
+    for (int i = 0; i < m_buttons.size(); ++i) {
+        QPushButton* btn = m_buttons[i];
+        if (!btn)
+            continue;
+        const QString full = (i < m_fullTexts.size()) ? m_fullTexts[i] : btn->text();
+        const int inner = btn->width() - 16;
+        if (inner < 8)
+            continue;
+        const QFontMetrics fm(btn->font());
+        const QString shown = fm.horizontalAdvance(full) <= inner
+            ? full
+            : fm.elidedText(full, Qt::ElideRight, inner);
+        if (btn->text() != shown) {
             QSignalBlocker b(btn);
-            btn->setText(elided);
+            btn->setText(shown);
         }
         btn->setToolTip(full);
     }
@@ -162,7 +202,7 @@ int SegmentControl::addItem(const QString& text)
     auto* btn = makeButton(text);
     m_buttons.append(btn);
     m_fullTexts.append(text);
-    m_layout->addWidget(btn, 1);
+    m_layout->addWidget(btn, 0);
     const int index = m_buttons.size() - 1;
     m_group->addButton(btn, index);
 
@@ -198,6 +238,7 @@ void SegmentControl::removeItem(int index)
         btn->deleteLater();
     }
     reindexButtons();
+    syncButtonWidths();
 
     int newIndex = m_currentIndex;
     if (m_buttons.isEmpty()) {
@@ -236,6 +277,7 @@ void SegmentControl::setItemText(int index, const QString& text)
     m_fullTexts[index] = text;
     m_buttons[index]->setText(text);
     m_buttons[index]->setToolTip(text);
+    syncButtonWidths();
     elideButtons();
 }
 
@@ -290,10 +332,7 @@ QString SegmentControl::currentText() const
 void SegmentControl::setMinimumButtonWidth(int width)
 {
     m_minButtonWidth = qMax(0, width);
-    for (auto* btn : m_buttons) {
-        if (btn)
-            btn->setMinimumWidth(m_minButtonWidth);
-    }
+    syncButtonWidths();
 }
 
 void SegmentControl::applyTheme()
@@ -354,4 +393,5 @@ void SegmentControl::applyTheme()
           t.secondaryColorDisabled.name(QColor::HexRgb)));
 
     m_applyingTheme = false;
+    syncButtonWidths();
 }

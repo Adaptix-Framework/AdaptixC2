@@ -936,6 +936,29 @@ func (sm *ScriptManager) SetGlobalAllowedRoots(roots []string) {
 		out = append(out, abs)
 	}
 	sm.globalAllowedRoots = out
+	add := func(engines map[string]*ScriptEngine) {
+		for _, e := range engines {
+			if e == nil {
+				continue
+			}
+			for _, root := range out {
+				have := false
+				for _, cur := range e.allowedRoots {
+					if cur == root {
+						have = true
+						break
+					}
+				}
+				if !have {
+					e.allowedRoots = append(e.allowedRoots, root)
+				}
+			}
+		}
+	}
+	add(sm.agentEngines)
+	add(sm.userEngines)
+	add(sm.axscriptEngines)
+	add(sm.serviceEngines)
 }
 
 func (sm *ScriptManager) AddGlobalAllowedRoot(root string) {

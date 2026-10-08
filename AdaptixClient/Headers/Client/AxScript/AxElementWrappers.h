@@ -942,6 +942,8 @@ public:
 
     Q_INVOKABLE void setLayout(QObject* layoutWrapper) const;
     Q_INVOKABLE void setExpanding(bool enabled) const;
+    Q_INVOKABLE void setObjectName(const QString& name) const;
+    Q_INVOKABLE void setStyleSheet(const QString& css) const;
 };
 
 
