@@ -1,0 +1,100 @@
+# Building AdaptixC2 on Fedora
+
+The upstream host installer targets Debian-family distributions and uses
+`apt`. On Fedora, use the repository's container build through Podman instead.
+This keeps the required Go, MinGW, CMake, and Qt versions isolated from the
+host and does not require Docker Compose.
+
+## Prerequisite
+
+```bash
+sudo dnf install podman
+```
+
+For rootless Podman, log out and back in after a fresh installation if the
+user namespace configuration was changed by the package installation.
+
+## Build
+
+From the repository root:
+
+```bash
+# Qt client packaged as an AppImage
+make fedora-client
+
+# Teamserver and all standard extenders
+make fedora-server-ext
+
+# Both
+make fedora-all
+```
+
+## Easy install and launch
+
+Build and create a self-contained local installation:
+
+```bash
+./install-fedora.sh
+```
+
+The installer creates a local-only profile, unique password, TLS certificate,
+and `connection.txt` under `./install`. Existing profile credentials and data
+are preserved when the installer is run again.
+
+Start the server and client together:
+
+```bash
+./run-adaptix.sh
+```
+
+The server is stopped automatically when the client closes. The installed
+copy can also be launched directly:
+
+```bash
+./install/run-adaptix.sh
+```
+
+Additional launcher modes are available:
+
+```bash
+./run-adaptix.sh server
+./run-adaptix.sh client
+./run-adaptix.sh status
+./run-adaptix.sh stop
+```
+
+Outputs are written to:
+
+- `AdaptixClient/client-dist/AdaptixClient-x86_64.AppImage`
+- `AdaptixServer/server-dist/`
+
+The wrapper can also be invoked directly:
+
+```bash
+scripts/build-fedora.sh client
+scripts/build-fedora.sh server
+scripts/build-fedora.sh extenders
+scripts/build-fedora.sh server-ext
+scripts/build-fedora.sh all
+```
+
+Set `CONTAINER_ENGINE=docker` to use Docker instead. The Podman path includes
+the SELinux volume label and rootless user mapping needed on a standard Fedora
+installation.
+
+## Run the client
+
+```bash
+chmod +x AdaptixClient/client-dist/AdaptixClient-x86_64.AppImage
+QT_QPA_PLATFORM=xcb AdaptixClient/client-dist/AdaptixClient-x86_64.AppImage
+```
+
+The package uses XCB through Fedora's XWayland compatibility layer. Setting
+`QT_QPA_PLATFORM=xcb` avoids a harmless warning about the Wayland Qt plugin.
+
+If FUSE is unavailable, AppImage supports extraction:
+
+```bash
+AdaptixClient/client-dist/AdaptixClient-x86_64.AppImage --appimage-extract
+QT_QPA_PLATFORM=xcb ./squashfs-root/AppRun
+```
