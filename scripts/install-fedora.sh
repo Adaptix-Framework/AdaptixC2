@@ -104,6 +104,8 @@ else
     printf '[*] Preserving existing profile and password.\n'
 fi
 
+only_password="$(awk '/^[[:space:]]*only_password:/ {print $2; exit}' "$server_dir/profile.yaml")"
+
 if [[ "$extension_kit_installed" == true ]] &&
    ! grep -Eq '^[[:space:]]*-[[:space:]]*"Extension-Kit/extension-kit\.axs"[[:space:]]*$' "$server_dir/profile.yaml"; then
     if grep -Eq '^[[:space:]]*axscripts:[[:space:]]*$' "$server_dir/profile.yaml"; then
@@ -134,13 +136,29 @@ Adaptix local connection
 Host: 127.0.0.1
 Port: 4321
 Endpoint: /endpoint
+EOF
+if [[ "$only_password" == true ]]; then
+    cat >> "$install_dir/connection.txt" <<EOF
+Authentication: password-only
+Nickname: any value
 Password: $password
 EOF
+else
+    cat >> "$install_dir/connection.txt" <<'EOF'
+Authentication: operator credentials from server/profile.yaml
+EOF
+fi
 chmod 0600 "$install_dir/connection.txt"
 
 printf '\n[+] Adaptix installation completed: %s\n' "$install_dir"
 printf '[+] Connection details: %s\n' "$install_dir/connection.txt"
 if [[ "$profile_created" == true ]]; then
     printf '[+] A unique password and local-only server profile were created.\n'
+fi
+if [[ "$only_password" == true ]]; then
+    printf '[+] Login: use any nickname and the password stored in connection.txt.\n'
+    printf '[+] The upstream example operator credentials are not active in password-only mode.\n'
+else
+    printf '[+] Login: use an operator name and password from server/profile.yaml.\n'
 fi
 printf '\nRun both server and client with:\n  %s/run-adaptix.sh\n' "$install_dir"

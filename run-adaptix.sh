@@ -31,8 +31,7 @@ Usage: ./run-adaptix.sh [both|server|client|stop|status] [-profile PATH]
 
 Server options:
   -profile PATH   Use a specific Adaptix YAML profile with `both` or `server`.
-                   Relative paths are checked from the current directory and
-                   then from the installed server directory.
+                   Relative paths are resolved only from the current directory.
 
 Environment:
   ADAPTIX_INSTALL_DIR=/path   Use a non-default installation directory.
@@ -173,13 +172,7 @@ if [[ -n "${requested_profile:-}" ]]; then
         *) fail "-profile can only be used with 'both' or 'server'" ;;
     esac
 
-    if [[ "$requested_profile" = /* ]]; then
-        profile="$requested_profile"
-    elif [[ -f "$requested_profile" ]]; then
-        profile="$(realpath -m -- "$requested_profile")"
-    else
-        profile="$server_dir/$requested_profile"
-    fi
+    profile="$(realpath -m -- "$requested_profile")"
 fi
 
 case "$action" in

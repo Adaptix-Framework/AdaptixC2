@@ -41,6 +41,18 @@ The installer creates a local-only profile, unique password, TLS certificate,
 and `connection.txt` under `./install`. Existing profile credentials and data
 are preserved when the installer is run again.
 
+Before the first login, display the generated connection details:
+
+```bash
+cat install/connection.txt
+```
+
+The generated profile uses `only_password: true`. Enter any operator nickname
+in the client and use the generated password shown in `connection.txt`. The
+upstream example credentials such as `operator1` / `pass1` are inactive in
+this mode, and the default `pass` is replaced. Re-running the installer
+preserves the generated password.
+
 If a built `Extension-Kit` checkout exists in the repository root, the
 installer also copies its `.axs` scripts and `_bin` runtime artifacts into the
 installation and enables `Extension-Kit/extension-kit.axs` in the server
@@ -78,9 +90,11 @@ Use another server profile with the same `-profile` argument accepted by
 ./run-adaptix.sh both -profile profile-lab.yaml
 ```
 
-Relative profile paths are resolved from the current directory first, then
-from the installed server directory. The selected profile is also used for
-the launcher's server readiness check.
+Relative profile paths are resolved strictly from the current directory. A
+missing explicit path is reported as an error and never falls back to the
+generated profile. To select that profile explicitly from the repository root,
+use `-profile install/server/profile.yaml`. The selected profile is also used
+for the launcher's server readiness check.
 
 Outputs are written to:
 

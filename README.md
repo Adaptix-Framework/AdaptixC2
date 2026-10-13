@@ -18,6 +18,14 @@ This tool is designed for AUTHORIZED security testing and red team operations ON
 
 Please checkout the [wiki](https://adaptix-framework.gitbook.io/adaptix-framework/adaptix-c2/getting-starting/installation).
 
+### Fedora
+
+See [FEDORA.md](FEDORA.md) for the Fedora build, installation, and launcher
+workflow. The Fedora installer replaces the upstream example password with a
+unique generated password. Before logging in, read the connection details with
+`cat install/connection.txt`; with the generated password-only profile, the
+client nickname may be any value.
+
 
 
 ## Features
