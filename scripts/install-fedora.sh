@@ -7,7 +7,9 @@ usage() {
 Usage: ./install-fedora.sh [--no-build] [--prefix PATH]
 
 Build and install the Adaptix client, server, and standard extenders into a
-self-contained local directory. The default is ./install.
+self-contained local directory. The default is ./install. If a built
+Extension-Kit checkout is present, its runtime files are installed and loaded
+through the server profile as well.
 
 Options:
   --no-build      Install existing build artifacts without rebuilding.
@@ -23,6 +25,7 @@ fail() {
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
 install_dir="${ADAPTIX_INSTALL_DIR:-$repo_root/install}"
+extension_kit_source="${ADAPTIX_EXTENSION_KIT_DIR:-$repo_root/Extension-Kit}"
 build=true
 
 while (($#)); do
@@ -70,6 +73,23 @@ install -m 0755 "$server_source/adaptixserver" "$server_dir/adaptixserver"
 install -m 0644 "$server_source/404page.html" "$server_dir/404page.html"
 cp -a "$server_source/extenders/." "$server_dir/extenders/"
 
+extension_kit_installed=false
+if [[ -f "$extension_kit_source/extension-kit.axs" ]]; then
+    if ! find "$extension_kit_source" -type f -path '*/_bin/*.o' -print -quit | grep -q .; then
+        fail "Extension Kit is present but not built; run make in $extension_kit_source"
+    fi
+
+    printf '[*] Installing the built Extension Kit...\n'
+    while IFS= read -r -d '' source_file; do
+        relative_path="${source_file#"$extension_kit_source"/}"
+        install -D -m 0644 "$source_file" "$server_dir/Extension-Kit/$relative_path"
+    done < <(
+        find "$extension_kit_source" -type f \
+            \( -name '*.axs' -o -path '*/_bin/*' \) -print0
+    )
+    extension_kit_installed=true
+fi
+
 if [[ ! -f "$server_dir/profile.yaml" ]]; then
     password="$(openssl rand -hex 24)"
     sed \
@@ -82,6 +102,16 @@ else
     profile_created=false
     password="$(awk -F'"' '/^[[:space:]]*password:/ {print $2; exit}' "$server_dir/profile.yaml")"
     printf '[*] Preserving existing profile and password.\n'
+fi
+
+if [[ "$extension_kit_installed" == true ]] &&
+   ! grep -Eq '^[[:space:]]*-[[:space:]]*"Extension-Kit/extension-kit\.axs"[[:space:]]*$' "$server_dir/profile.yaml"; then
+    if grep -Eq '^[[:space:]]*axscripts:[[:space:]]*$' "$server_dir/profile.yaml"; then
+        sed -i '/^[[:space:]]*axscripts:[[:space:]]*$/a\    - "Extension-Kit/extension-kit.axs"' "$server_dir/profile.yaml"
+    else
+        sed -i '/^[[:space:]]*access_token_live_hours:/i\  axscripts:\n    - "Extension-Kit/extension-kit.axs"' "$server_dir/profile.yaml"
+    fi
+    printf '[+] Extension Kit enabled in the server profile.\n'
 fi
 
 if [[ ! -f "$server_dir/server.rsa.crt" || ! -f "$server_dir/server.rsa.key" ]]; then
