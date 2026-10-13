@@ -12,14 +12,15 @@ fi
 
 server_dir="$install_dir/server"
 server_bin="$server_dir/adaptixserver"
-profile="$server_dir/profile.yaml"
+default_profile="$server_dir/profile.yaml"
+profile="$default_profile"
 client_bin="$install_dir/client/AdaptixClient-x86_64.AppImage"
 pid_file="$server_dir/server.pid"
 log_file="$server_dir/server.log"
 
 usage() {
     cat <<'EOF'
-Usage: ./run-adaptix.sh [both|server|client|stop|status]
+Usage: ./run-adaptix.sh [both|server|client|stop|status] [-profile PATH]
 
   both    Start the server, open the client, and stop the server when the
           client closes (default).
@@ -27,6 +28,11 @@ Usage: ./run-adaptix.sh [both|server|client|stop|status]
   client  Open only the client.
   stop    Stop a server previously started by this launcher.
   status  Show whether that server is running.
+
+Server options:
+  -profile PATH   Use a specific Adaptix YAML profile with `both` or `server`.
+                   Relative paths are checked from the current directory and
+                   then from the installed server directory.
 
 Environment:
   ADAPTIX_INSTALL_DIR=/path   Use a non-default installation directory.
@@ -108,9 +114,14 @@ start_server_background() {
     local pid=$!
     printf '%s\n' "$pid" > "$pid_file"
 
-    local port
+    local interface port readiness_host
+    interface="$(awk '/^[[:space:]]*interface:/ {gsub(/"/, "", $2); print $2; exit}' "$profile")"
     port="$(awk '/^[[:space:]]*port:/ {gsub(/[^0-9]/, "", $2); print $2; exit}' "$profile")"
     [[ -n "$port" ]] || port=4321
+    case "$interface" in
+        ""|0.0.0.0|::) readiness_host=127.0.0.1 ;;
+        *) readiness_host="$interface" ;;
+    esac
 
     for _ in {1..100}; do
         if ! kill -0 "$pid" 2>/dev/null; then
@@ -120,10 +131,10 @@ start_server_background() {
             fail "Adaptix server exited during startup"
         fi
         if openssl s_client \
-            -connect "127.0.0.1:$port" \
+            -connect "$readiness_host:$port" \
             -servername localhost \
             </dev/null >/dev/null 2>&1; then
-            printf '[+] Adaptix server is ready on 127.0.0.1:%s (PID %s).\n' "$port" "$pid"
+            printf '[+] Adaptix server is ready on %s:%s (PID %s).\n' "$readiness_host" "$port" "$pid"
             return 0
         fi
         sleep 0.1
@@ -133,7 +144,44 @@ start_server_background() {
     fail "timed out waiting for the Adaptix server; see $log_file"
 }
 
-action="${1:-both}"
+action=both
+if (($#)) && [[ "$1" != -* ]]; then
+    action="$1"
+    shift
+fi
+
+while (($#)); do
+    case "$1" in
+        -profile|--profile)
+            (($# >= 2)) || fail "$1 requires a path"
+            requested_profile="$2"
+            shift 2
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            fail "unknown argument: $1"
+            ;;
+    esac
+done
+
+if [[ -n "${requested_profile:-}" ]]; then
+    case "$action" in
+        both|server) ;;
+        *) fail "-profile can only be used with 'both' or 'server'" ;;
+    esac
+
+    if [[ "$requested_profile" = /* ]]; then
+        profile="$requested_profile"
+    elif [[ -f "$requested_profile" ]]; then
+        profile="$(realpath -m -- "$requested_profile")"
+    else
+        profile="$server_dir/$requested_profile"
+    fi
+fi
+
 case "$action" in
     -h|--help) usage ;;
     both)
