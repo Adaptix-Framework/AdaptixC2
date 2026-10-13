@@ -70,6 +70,18 @@ Additional launcher modes are available:
 ./run-adaptix.sh stop
 ```
 
+Use another server profile with the same `-profile` argument accepted by
+`adaptixserver`:
+
+```bash
+./run-adaptix.sh server -profile /path/to/profile.yaml
+./run-adaptix.sh both -profile profile-lab.yaml
+```
+
+Relative profile paths are resolved from the current directory first, then
+from the installed server directory. The selected profile is also used for
+the launcher's server readiness check.
+
 Outputs are written to:
 
 - `AdaptixClient/client-dist/AdaptixClient-x86_64.AppImage`
