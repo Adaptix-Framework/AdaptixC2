@@ -41,6 +41,13 @@ The installer creates a local-only profile, unique password, TLS certificate,
 and `connection.txt` under `./install`. Existing profile credentials and data
 are preserved when the installer is run again.
 
+If a built `Extension-Kit` checkout exists in the repository root, the
+installer also copies its `.axs` scripts and `_bin` runtime artifacts into the
+installation and enables `Extension-Kit/extension-kit.axs` in the server
+profile. Set `ADAPTIX_EXTENSION_KIT_DIR=/path/to/Extension-Kit` when the kit is
+stored elsewhere. The Extension Kit repository itself is not added to this
+repository or committed by the installer.
+
 Start the server and client together:
 
 ```bash
