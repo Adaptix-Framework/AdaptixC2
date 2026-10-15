@@ -112,6 +112,11 @@ func (p *AdaptixProfile) IsValid() error {
 			valid = false
 		}
 
+		p.Server.Endpoint = strings.TrimRight(p.Server.Endpoint, "/")
+		if p.Server.Endpoint == "" {
+			p.Server.Endpoint = "/"
+		}
+
 		if isvalid.ValidUriString(p.Server.Endpoint) == false {
 			logs.Error("'Teamserver.endpoint' must be valid URI value (current is %v)", p.Server.Endpoint)
 			valid = false
