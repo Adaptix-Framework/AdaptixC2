@@ -684,7 +684,7 @@ void DialogConnect::onButton_Save()
     QString initialPath = QDir(baseDir).filePath(projectName + ".adaptixProfile");
 
     NonBlockingDialogs::getSaveFileName(this, "Save Profile", initialPath, "Adaptix Profile files (*.adaptixProfile)",
-        [json](const QString& filePath) {
+        [this, json](const QString& filePath) {
             if (filePath.isEmpty())
                 return;
 
@@ -696,6 +696,27 @@ void DialogConnect::onButton_Save()
 
             file.write(QJsonDocument(json).toJson(QJsonDocument::Indented));
             file.close();
+
+            const QString project = json["project"].toString();
+            AuthProfile savedProfile(project, json["username"].toString(), json["password"].toString(),
+                                     json["host"].toString(), json["port"].toString(), json["endpoint"].toString(),
+                                     json["projectDir"].toString());
+            if (GlobalClient->storage->ExistsProject(project))
+                GlobalClient->storage->UpdateProject(savedProfile);
+            else
+                GlobalClient->storage->AddProject(savedProfile);
+
+            isNewProject = false;
+            loadProjects();
+
+            for (int i = 0; i < cardWidget->count(); ++i) {
+                if (cardWidget->item(i)->data(CardListWidget::TitleRole).toString() == project) {
+                    cardWidget->setCurrentRow(i);
+                    onProfileSelected();
+                    break;
+                }
+            }
+
             MessageSuccess("Profile saved successfully");
         });
 }
