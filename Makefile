@@ -129,6 +129,31 @@ docker-build-all: docker-build-server-ext
 
 
 
+### FEDORA / PODMAN BUILD ###
+
+fedora-client:
+	@ ./scripts/build-fedora.sh client
+
+fedora-server:
+	@ ./scripts/build-fedora.sh server
+
+fedora-extenders:
+	@ ./scripts/build-fedora.sh extenders
+
+fedora-server-ext:
+	@ ./scripts/build-fedora.sh server-ext
+
+fedora-all:
+	@ ./scripts/build-fedora.sh all
+
+fedora-install:
+	@ ./install-fedora.sh
+
+fedora-run:
+	@ ./run-adaptix.sh
+
+
+
 ### DOCKER RUNTIME ###
 
 docker-up:
@@ -178,8 +203,17 @@ help:
 	@ echo "  docker-clean            - Remove Docker containers and images (builders only)"
 	@ echo "  docker-clean-all        - Remove all Docker artifacts (containers, images, volumes, networks)"
 	@ echo ""
+	@ echo "Fedora/Podman commands:"
+	@ echo "  fedora-client         - Build the client AppImage with Podman"
+	@ echo "  fedora-server         - Build the server with Podman"
+	@ echo "  fedora-extenders      - Build extenders with Podman"
+	@ echo "  fedora-server-ext     - Build server and extenders with Podman"
+	@ echo "  fedora-all            - Build server, extenders, and client with Podman"
+	@ echo "  fedora-install        - Build and create a local installation"
+	@ echo "  fedora-run            - Start the local server and client"
+	@ echo ""
 	@ echo "  help             - Show this help message"
 	@ echo ""
 	@ echo "Platform: $(UNAME_S) [$(NPROC) proc]"
 
-.PHONY: all extenders server-ext server client clean clean-all docker-build-server docker-build-extenders docker-build-server-ext docker-build-all docker-up docker-down docker-logs docker-restart docker-clean docker-clean-all help prepare
+.PHONY: all extenders server-ext server client clean clean-all docker-build-server docker-build-extenders docker-build-server-ext docker-build-all docker-up docker-down docker-logs docker-restart docker-clean docker-clean-all fedora-client fedora-server fedora-extenders fedora-server-ext fedora-all fedora-install fedora-run help prepare

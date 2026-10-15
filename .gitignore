@@ -8,6 +8,8 @@ objects_tcp/
 *.so
 dist/
 AdaptixServer/server-dist/
+AdaptixClient/client-dist/
+install/
 AdaptixClient/CMakeFiles/
 AdaptixClient/AdaptixClient_autogen/
 AdaptixClient/CMakeCache.txt
