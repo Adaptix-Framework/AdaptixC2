@@ -3,6 +3,7 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -308,11 +309,6 @@ func parseDurationToSeconds(input string) (int, error) {
 	re := regexp.MustCompile(`(\d+)(h|m|s)`)
 	matches := re.FindAllStringSubmatch(input, -1)
 
-	if matches == nil {
-		input = input + "s"
-		matches = re.FindAllStringSubmatch(input, -1)
-	}
-
 	totalSeconds := 0
 	for _, match := range matches {
 		value, err := strconv.Atoi(match[1])
@@ -327,6 +323,16 @@ func parseDurationToSeconds(input string) (int, error) {
 			totalSeconds += value * 60
 		case "s":
 			totalSeconds += value
+		}
+	}
+
+	if totalSeconds == 0 {
+		trimmed := strings.TrimSpace(input)
+		if seconds, err := strconv.Atoi(trimmed); err == nil && seconds > 0 {
+			return seconds, nil
+		}
+		if trimmed != "" && matches == nil {
+			return 0, errors.New("invalid duration format: " + input)
 		}
 	}
 

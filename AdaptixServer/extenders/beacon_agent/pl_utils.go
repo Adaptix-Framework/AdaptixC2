@@ -235,6 +235,16 @@ func parseDurationToSeconds(input string) (int, error) {
 		}
 	}
 
+	if totalSeconds == 0 {
+		trimmed := strings.TrimSpace(input)
+		if seconds, err := strconv.Atoi(trimmed); err == nil && seconds > 0 {
+			return seconds, nil
+		}
+		if trimmed != "" && matches == nil {
+			return 0, errors.New("invalid duration format: " + input)
+		}
+	}
+
 	return totalSeconds, nil
 }
 
