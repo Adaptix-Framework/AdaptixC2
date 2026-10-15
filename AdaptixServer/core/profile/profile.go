@@ -118,7 +118,7 @@ func (p *AdaptixProfile) IsValid() error {
 		}
 
 		if isvalid.ValidUriString(p.Server.Endpoint) == false {
-			logs.Error("'Teamserver.endpoint' must be valid URI value (current is %v)", p.Server.Endpoint)
+			logs.Error("", "'Teamserver.endpoint' must be valid URI value (current is %v)", p.Server.Endpoint)
 			valid = false
 		}
 
