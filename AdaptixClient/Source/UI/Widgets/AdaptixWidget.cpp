@@ -1786,28 +1786,7 @@ void AdaptixWidget::LoadConsoleUI(qint64 AgentId)
 
 void AdaptixWidget::LoadTasksOutput() const
 {
-    if (!mainDockWidget || !TasksDock)
-        return;
-
-    auto* tasksDock  = TasksDock->dockTasks();
-    auto* outputDock = TasksDock->dockTasksOutput();
-    if (!tasksDock || !outputDock)
-        return;
-
     SetTasksUI();
-
-    if (outputDock->isOpen()) {
-        outputDock->open();
-        return;
-    }
-
-    if (tasksDock->isOpen() && mainDockWidget) {
-        mainDockWidget->addDockWidget(outputDock, KDDockWidgets::Location_OnBottom, tasksDock);
-        TasksOutputDockPlaced = true;
-    } else {
-        this->PlaceWidget(QStringLiteral("tasks_output"), outputDock);
-        TasksOutputDockPlaced = true;
-    }
 }
 
 void AdaptixWidget::LoadFileBrowserUI(qint64 AgentId, const QString& zoneOverride)
@@ -1909,6 +1888,28 @@ void AdaptixWidget::LoadShellUI(qint64 AgentId, const QString& zoneOverride)
     locker.unlock();
     if (agent)
         this->PlaceWidget(QStringLiteral("shell"), agent->GetShell()->dock(), zoneOverride);
+}
+
+void AdaptixWidget::ensureClientTunnel(const TunnelData& data)
+{
+    if (!profile || data.TunnelId == 0)
+        return;
+
+    const QString owner = data.Client.trimmed();
+    if (owner.isEmpty() || owner.compare(profile->GetUsername().trimmed(), Qt::CaseSensitive) != 0)
+        return;
+
+    if (TunnelEndpoint* existing = ClientTunnels.value(data.TunnelId, nullptr)) {
+        existing->SetActive(true);
+        return;
+    }
+
+    auto* endpoint = new TunnelEndpoint();
+    if (!endpoint->Restore(profile, data)) {
+        delete endpoint;
+        return;
+    }
+    ClientTunnels.insert(data.TunnelId, endpoint);
 }
 
 void AdaptixWidget::ShowTunnelCreator(qint64 AgentId, const bool socks4, const bool socks5, const bool lportfwd, const bool rportfwd)

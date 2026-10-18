@@ -3,6 +3,7 @@
 #include <UI/Widgets/AdaptixWidget.h>
 #include <Client/AuthProfile.h>
 #include <Client/Requestor.h>
+#include <Client/TunnelEndpoint.h>
 #include <Utils/CustomElements/ControlCard.h>
 #include <Utils/FontManager.h>
 #include <Utils/Convert.h>
@@ -295,15 +296,28 @@ void TunnelsFeedWidget::EditTunnelItem(qint64 tunnelId, const QString& info)
 
 void TunnelsFeedWidget::SetTunnelActive(qint64 tunnelId, bool active)
 {
+    TunnelData* found = nullptr;
     for (int i = 0; i < m_items.size(); ++i) {
         if (m_items[i].TunnelId == tunnelId) {
             m_items[i].Active = active;
-            if (m_cardList && matchesFilter(m_items[i]))
+            found = &m_items[i];
+            if (m_cardList && matchesFilter(m_items[i])) {
                 m_cardList->upsertCard(toCard(m_items[i]));
-            else
+            }
+            else {
                 rebuildVisible();
-            return;
+            }
+            break;
         }
+    }
+    if (!found || !m_adaptixWidget)
+        return;
+
+    if (active) {
+        m_adaptixWidget->ensureClientTunnel(*found);
+    }
+    else if (TunnelEndpoint* endpoint = m_adaptixWidget->ClientTunnels.value(tunnelId, nullptr)) {
+        endpoint->SetActive(false);
     }
 }
 

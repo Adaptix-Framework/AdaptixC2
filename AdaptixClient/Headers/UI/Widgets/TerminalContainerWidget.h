@@ -66,6 +66,7 @@ Q_OBJECT
     void SetFont();
     void SetSettings();
     void SetKeys();
+    bool eventFilter(QObject *watched, QEvent *event) override;
     void clearSessionState();
     void bindWorkerLifecycle(TerminalWorker* worker, QThread* thread);
     void armStartTimeout(TerminalWorker* worker);

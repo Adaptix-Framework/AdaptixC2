@@ -6,6 +6,8 @@
 #include <UI/MainUI.h>
 #include <Client/AuthProfile.h>
 #include <QAbstractItemView>
+#include <QPlainTextEdit>
+#include <QTextCursor>
 
 class KPH_SearchInput : public QObject
 {
@@ -38,8 +40,10 @@ protected:
 class KPH_ConsoleInput : public QObject
 {
 Q_OBJECT
-    QLineEdit* inputLineEdit;
+    QPlainTextEdit* inputLineEdit;
     QPlainTextEdit* outputTextEdit;
+    QCompleter* completer = nullptr;
+    bool expanded = false;
     QStringListModel* commandModel = nullptr;
     QString    tmpCommandLine;
 
@@ -53,11 +57,31 @@ Q_OBJECT
     QString completionSuffix;
 
 public:
-    KPH_ConsoleInput(QLineEdit *input, QPlainTextEdit *output, QObject *parent = nullptr) : QObject(parent), inputLineEdit(input), outputTextEdit(output), historyIndex(-1) {
+    KPH_ConsoleInput(QPlainTextEdit *input, QPlainTextEdit *output, QObject *parent = nullptr) : QObject(parent), inputLineEdit(input), outputTextEdit(output), historyIndex(-1) {
         inputLineEdit->installEventFilter(this);
     }
 
     void setCommandModel(QStringListModel* model) { commandModel = model; }
+    void setCompleter(QCompleter* c) { completer = c; }
+    void setExpanded(bool on) { expanded = on; }
+
+    QString editText() const { return inputLineEdit->toPlainText(); }
+    void setEditText(const QString& s) { inputLineEdit->setPlainText(s); }
+    int editCursor() const { return inputLineEdit->textCursor().position(); }
+    void setEditCursor(int pos) {
+        QTextCursor c = inputLineEdit->textCursor();
+        c.setPosition(qBound(0, pos, editText().size()));
+        inputLineEdit->setTextCursor(c);
+    }
+    void setEditSelection(int start, int len) {
+        QTextCursor c = inputLineEdit->textCursor();
+        const int n = editText().size();
+        start = qBound(0, start, n);
+        const int end = qBound(start, start + len, n);
+        c.setPosition(start);
+        c.setPosition(end, QTextCursor::KeepAnchor);
+        inputLineEdit->setTextCursor(c);
+    }
 
     void setCompleterPopup(QAbstractItemView* popup) {
         if (popup)
@@ -75,6 +99,8 @@ public:
 Q_SIGNALS:
     void showHistory();
     void showHelp();
+    void toggleExpand();
+    void submitInput();
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override {
@@ -82,13 +108,12 @@ protected:
         if (watched != inputLineEdit && event->type() == QEvent::KeyPress) {
             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
             if (keyEvent->key() == Qt::Key_Tab || keyEvent->key() == Qt::Key_Backtab) {
-                QCompleter* completer = inputLineEdit->completer();
                 if (completer && completer->popup() && completer->popup()->isVisible()) {
                     QModelIndex idx = completer->popup()->currentIndex();
                     if (idx.isValid()) {
                         inputLineEdit->blockSignals(true);
-                        inputLineEdit->setText(idx.data().toString());
-                        inputLineEdit->setCursorPosition(inputLineEdit->text().length());
+                        setEditText(idx.data().toString());
+                        setEditCursor(editText().size());
                         inputLineEdit->blockSignals(false);
                     }
                     completer->popup()->hide();
@@ -118,6 +143,24 @@ protected:
 
         if (watched == inputLineEdit && event->type() == QEvent::KeyPress) {
             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+            const Qt::KeyboardModifiers mods = keyEvent->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier);
+
+            if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
+                if (completer && completer->popup() && completer->popup()->isVisible()) {
+                    QModelIndex idx = completer->popup()->currentIndex();
+                    if (idx.isValid()) {
+                        inputLineEdit->blockSignals(true);
+                        setEditText(idx.data().toString());
+                        setEditCursor(editText().size());
+                        inputLineEdit->blockSignals(false);
+                    }
+                    completer->popup()->hide();
+                    completionIndex = -1;
+                    return true;
+                }
+                Q_EMIT submitInput();
+                return true;
+            }
 
             if (keyEvent->key() == Qt::Key_Up) {
                 if ( history.size() == 0 )
@@ -125,12 +168,12 @@ protected:
 
                 if (historyIndex < history.size() - 1) {
                     if (historyIndex == -1)
-                        tmpCommandLine = inputLineEdit->text();
+                        tmpCommandLine = editText();
                     historyIndex++;
-                    inputLineEdit->setText(history[historyIndex]);
+                    setEditText(history[historyIndex]);
                 } else {
                     historyIndex = history.size() - 1;
-                    inputLineEdit->setText(history[history.size() - 1]);
+                    setEditText(history[history.size() - 1]);
                 }
                 return true;
             }
@@ -140,10 +183,10 @@ protected:
                     return true;
                 if (historyIndex > 0) {
                     historyIndex--;
-                    inputLineEdit->setText(history[historyIndex]);
+                    setEditText(history[historyIndex]);
                 } else {
                     historyIndex = -1;
-                    inputLineEdit->setText(tmpCommandLine);
+                    setEditText(tmpCommandLine);
                 }
                 return true;
             }
@@ -157,17 +200,17 @@ protected:
                     }
                     QString filePath = QFileDialog::getOpenFileName(nullptr, "Select file", baseDir);
                     if (!filePath.isEmpty()) {
-                        int cursorPos = inputLineEdit->cursorPosition();
-                        QString text = inputLineEdit->text();
+                        int cursorPos = editCursor();
+                        QString text = editText();
                         text.insert(cursorPos, "\"" + filePath + "\"");
-                        inputLineEdit->setText(text);
-                        inputLineEdit->setCursorPosition(cursorPos + filePath.length());
+                        setEditText(text);
+                        setEditCursor(cursorPos + filePath.length());
                     }
                     return true;
                 }
                 else {
-                    QString text = inputLineEdit->text();
-                    int cursorPos = inputLineEdit->cursorPosition();
+                    QString text = editText();
+                    int cursorPos = editCursor();
                     QString leftOfCursor = text.left(cursorPos).trimmed();
                     bool isFirstWord = !leftOfCursor.contains(' ');
 
@@ -196,10 +239,10 @@ protected:
                             QString newText = chosen + completionSuffix;
 
                             inputLineEdit->blockSignals(true);
-                            inputLineEdit->setText(newText);
+                            setEditText(newText);
                             int selStart = completionBase.length();
                             int selLen = chosen.length() - selStart;
-                            inputLineEdit->setSelection(selStart, selLen);
+                            setEditSelection(selStart, selLen);
                             inputLineEdit->blockSignals(false);
 
                             completionIndex = (completionIndex + 1) % completions.size();
@@ -266,12 +309,12 @@ protected:
                         QString newText = completionPrefix + chosen + completionSuffix;
 
                         inputLineEdit->blockSignals(true);
-                        inputLineEdit->setText(newText);
+                        setEditText(newText);
                         int selBaseOffset = completionPrefix.length();
                         int selOffset = completionBase.length();
                         int selStart = selBaseOffset + selOffset;
                         int selLen = chosen.length() - selOffset;
-                        inputLineEdit->setSelection(selStart, selLen);
+                        setEditSelection(selStart, selLen);
                         inputLineEdit->blockSignals(false);
 
                         completionIndex = (completionIndex + 1) % completions.size();

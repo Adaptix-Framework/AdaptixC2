@@ -1380,10 +1380,11 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         TunnelData tunnelData = parseTunnelData(jsonObj);
         TunnelsDock->AddTunnelItem(tunnelData);
 
-        if (!tunnelData.Active && ClientTunnels.contains(tunnelData.TunnelId)) {
-            auto* endpoint = ClientTunnels.value(tunnelData.TunnelId, nullptr);
-            if (endpoint)
-                endpoint->Stop();
+        if (tunnelData.Active) {
+            ensureClientTunnel(tunnelData);
+        }
+        else if (auto* endpoint = ClientTunnels.value(tunnelData.TunnelId, nullptr)) {
+            endpoint->SetActive(false);
         }
 
         if (!GraphTunnelMarks.contains(tunnelData.TunnelId)) {

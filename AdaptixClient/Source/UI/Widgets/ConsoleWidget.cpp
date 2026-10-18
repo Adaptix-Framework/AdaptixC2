@@ -25,6 +25,127 @@
 #include <QToolButton>
 #include <QTimer>
 #include <QEvent>
+#include <QTextCursor>
+#include <QTextLayout>
+#include <QPainter>
+#include <cmath>
+
+class PromptStrip : public QWidget
+{
+    QString m_text;
+    QColor  m_color;
+
+public:
+    explicit PromptStrip(QWidget* parent = nullptr) : QWidget(parent)
+    {
+        setAttribute(Qt::WA_TransparentForMouseEvents);
+        setAttribute(Qt::WA_NoSystemBackground);
+        setAttribute(Qt::WA_TranslucentBackground);
+        setAutoFillBackground(false);
+    }
+
+    void setText(const QString& text)
+    {
+        if (m_text == text)
+            return;
+        m_text = text;
+        update();
+    }
+
+    void setColor(const QColor& color)
+    {
+        if (m_color == color)
+            return;
+        m_color = color;
+        update();
+    }
+
+protected:
+    void paintEvent(QPaintEvent*) override
+    {
+        if (m_text.isEmpty())
+            return;
+        QPainter painter(this);
+        painter.setFont(font());
+        painter.setPen(m_color.isValid() ? m_color : palette().color(QPalette::Text));
+        const int gap = 8;
+        const int x = qMax(0, width() - gap - fontMetrics().horizontalAdvance(m_text));
+        painter.drawText(x, fontMetrics().ascent(), m_text);
+    }
+};
+
+class ConsoleInputEdit : public QPlainTextEdit
+{
+    PromptStrip* m_promptStrip = nullptr;
+    QString      m_prompt;
+    int          m_promptPx = 0;
+
+public:
+    explicit ConsoleInputEdit(QWidget* parent = nullptr) : QPlainTextEdit(parent)
+    {
+        m_promptStrip = new PromptStrip(this);
+        connect(verticalScrollBar(), &QScrollBar::valueChanged, this, [this](int) { positionPrompt(); });
+    }
+
+    void setPrompt(const QString& text, int widthPx)
+    {
+        const int px = qMax(0, widthPx);
+        const bool changed = m_prompt != text || m_promptPx != px;
+        m_prompt = text;
+        m_promptPx = px;
+        if (changed) {
+            setViewportMargins(px, 0, 0, 0);
+        }
+        if (m_promptStrip) {
+            m_promptStrip->setText(text);
+        }
+        positionPrompt();
+    }
+
+    void setPromptColor(const QColor& color)
+    {
+        if (m_promptStrip)
+            m_promptStrip->setColor(color);
+    }
+
+    int promptWidth() const { return m_promptPx; }
+
+protected:
+    void resizeEvent(QResizeEvent* event) override
+    {
+        QPlainTextEdit::resizeEvent(event);
+        positionPrompt();
+    }
+
+    void showEvent(QShowEvent* event) override
+    {
+        QPlainTextEdit::showEvent(event);
+        positionPrompt();
+    }
+
+private:
+    void positionPrompt()
+    {
+        if (!m_promptStrip) {
+            return;
+        }
+        if (m_promptPx <= 0 || m_prompt.isEmpty()) {
+            m_promptStrip->hide();
+            return;
+        }
+
+        m_promptStrip->setFont(font());
+        const QRect viewportRect = viewport()->geometry();
+        QTextCursor start(document());
+        start.movePosition(QTextCursor::Start);
+        const QRect caret = cursorRect(start);
+        const int lineTop = (caret.isValid() && caret.height() >= 2) ? caret.top() : 0;
+        const int lineH = (caret.isValid() && caret.height() >= 2) ? caret.height() : fontMetrics().lineSpacing();
+        m_promptStrip->setGeometry(0, viewportRect.top() + lineTop, m_promptPx, qMax(lineH, fontMetrics().lineSpacing()));
+        m_promptStrip->show();
+        m_promptStrip->raise();
+    }
+};
 
 REGISTER_DOCK_WIDGET(ConsoleWidget, "Agent Console", false)
 
@@ -41,7 +162,6 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
     this->upgradeCompleter();
 
     connect(CommandCompleter, QOverload<const QString &>::of(&QCompleter::activated), this, &ConsoleWidget::onCompletionSelected, Qt::DirectConnection);
-    connect(InputLineEdit,    &QLineEdit::returnPressed,                              this, &ConsoleWidget::processInput,         Qt::QueuedConnection );
     connect(adaptixWidget,    &AdaptixWidget::agentTickUpdated, this, [this](qint64 agentId) {
         if (agent && agent->data.Id == agentId)
             this->UpdateStatusLabel();
@@ -78,10 +198,12 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
 
     kphInputLineEdit = new KPH_ConsoleInput(InputLineEdit, OutputTextEdit, this);
     kphInputLineEdit->setCommandModel(completerModel);
+    kphInputLineEdit->setCompleter(CommandCompleter);
     kphInputLineEdit->setCompleterPopup(CommandCompleter->popup());
     InputLineEdit->installEventFilter(kphInputLineEdit);
     connect(kphInputLineEdit, &KPH_ConsoleInput::showHistory, this, &ConsoleWidget::handleShowHistory);
     connect(kphInputLineEdit, &KPH_ConsoleInput::showHelp, this, &ConsoleWidget::handleShowHelp);
+    connect(kphInputLineEdit, &KPH_ConsoleInput::submitInput, this, &ConsoleWidget::processInput, Qt::QueuedConnection);
 
     connect(&ConsoleThemeManager::instance(), &ConsoleThemeManager::themeChanged, this, [this]() {
         applyTheme();
@@ -91,6 +213,7 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
         const QFont mono = FontManager::instance().appMonoFont();
         if (InputLineEdit)
             InputLineEdit->setFont(mono);
+        refitInputHeight();
         if (OutputTextEdit)
             OutputTextEdit->setFont(mono);
         applyHistoryBarMetrics();
@@ -156,14 +279,33 @@ void ConsoleWidget::createUI()
     const QString borderColor = t.borderColor.name();
     const QString inputBg     = t.backgroundColorMain4.name();
 
-    QString prompt = QString("%1 >").arg(agent->data.Name);
-    CmdLabel = new QLabel(this );
-    CmdLabel->setStyleSheet(QStringLiteral("padding: 4px; color: %1; background-color: transparent;").arg(textColor));
-    CmdLabel->setText( prompt );
+    inputFrame = new QFrame(this);
+    inputFrame->setObjectName(QStringLiteral("ConsoleInputFrame"));
+    inputFrame->setAttribute(Qt::WA_StyledBackground, true);
+    inputFrame->setStyleSheet(QStringLiteral("QFrame#ConsoleInputFrame { background-color: %1; border: 1px solid %2; border-radius: 4px; }").arg(inputBg, borderColor));
 
-    InputLineEdit = new QLineEdit(this);
-    InputLineEdit->setStyleSheet(QStringLiteral("background-color: %1; color: %2; border: 1px solid %3; padding: 4px; border-radius: 4px;").arg(inputBg, textColor, borderColor));
+    InputLineEdit = new ConsoleInputEdit(inputFrame);
+    InputLineEdit->setFrameShape(QFrame::NoFrame);
+    InputLineEdit->setStyleSheet(QStringLiteral("QPlainTextEdit { background: transparent; color: %1; border: none; padding: 0px; }").arg(textColor));
     InputLineEdit->setFont( FontManager::instance().getFont("Hack") );
+    InputLineEdit->document()->setDocumentMargin(0);
+    InputLineEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    InputLineEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    InputLineEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    InputLineEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    InputLineEdit->setFixedHeight(inputLineHeight());
+    InputLineEdit->setToolTip(tr("The command stays one line and wraps when it does not fit"));
+    InputLineEdit->setPromptColor(QColor(textColor));
+    InputLineEdit->installEventFilter(this);
+    connect(InputLineEdit, &QPlainTextEdit::textChanged, this, &ConsoleWidget::refitInputHeight);
+    connect(InputLineEdit, &QPlainTextEdit::textChanged, this, &ConsoleWidget::syncCompleter);
+
+    auto* inputLayout = new QHBoxLayout(inputFrame);
+    inputLayout->setContentsMargins(8, 2, 6, 2);
+    inputLayout->setSpacing(0);
+    inputLayout->addWidget(InputLineEdit, 1);
+    inputFrame->installEventFilter(this);
+    placeInputPrompt();
 
     InfoLabel = new QLabel(this);
     InfoLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
@@ -303,18 +445,18 @@ void ConsoleWidget::createUI()
     MainGridLayout = new QGridLayout(this );
     MainGridLayout->setVerticalSpacing(4 );
     MainGridLayout->setContentsMargins(0, 1, 0, 4 );
-    MainGridLayout->addWidget( consoleHost,   0, 0, 1, 2 );
-    MainGridLayout->addLayout( infoLayout,    1, 0, 1, 2 );
-    MainGridLayout->addWidget( CmdLabel,      2, 0, 1, 1 );
-    MainGridLayout->addWidget( InputLineEdit, 2, 1, 1, 1 );
+    MainGridLayout->addWidget( consoleHost,   0, 0, 1, 1 );
+    MainGridLayout->addLayout( infoLayout,    1, 0, 1, 1 );
+    MainGridLayout->addWidget( inputFrame, 2, 0, 1, 1 );
+    MainGridLayout->setRowStretch(0, 1);
+    MainGridLayout->setColumnStretch(0, 1);
 
     completerModel = new QStringListModel();
     CommandCompleter = new QCompleter(completerModel, this);
     CommandCompleter->popup()->setObjectName("Completer");
     CommandCompleter->setCaseSensitivity(Qt::CaseInsensitive);
     CommandCompleter->setCompletionMode(QCompleter::PopupCompletion);
-
-    InputLineEdit->setCompleter(CommandCompleter);
+    CommandCompleter->setWidget(InputLineEdit);
 }
 
 
@@ -327,11 +469,120 @@ void ConsoleWidget::upgradeCompleter() const
 
 void ConsoleWidget::InputFocus() const { InputLineEdit->setFocus(); }
 
+int ConsoleWidget::inputLineHeight() const
+{
+    if (!InputLineEdit)
+        return 28;
+    return InputLineEdit->fontMetrics().lineSpacing() + 4;
+}
+
+void ConsoleWidget::refitInputHeight()
+{
+    if (!InputLineEdit)
+        return;
+
+    const QString raw = InputLineEdit->toPlainText();
+    QString flat = raw;
+    flat.replace(QLatin1Char('\r'), QLatin1Char(' '));
+    flat.replace(QLatin1Char('\n'), QLatin1Char(' '));
+    if (flat != raw) {
+        const int pos = qMin(InputLineEdit->textCursor().position(), flat.size());
+        InputLineEdit->blockSignals(true);
+        InputLineEdit->setPlainText(flat);
+        QTextCursor cursor = InputLineEdit->textCursor();
+        cursor.setPosition(pos);
+        InputLineEdit->setTextCursor(cursor);
+        InputLineEdit->blockSignals(false);
+    }
+
+    placeInputPrompt();
+
+    const int one = inputLineHeight();
+    const QFontMetrics fm = InputLineEdit->fontMetrics();
+    const int lineH = qMax(fm.lineSpacing(), fm.height());
+    int textWidth = InputLineEdit->viewport()->width();
+    if (textWidth < 40)
+        textWidth = qMax(40, InputLineEdit->width() - InputLineEdit->promptWidth() - 8);
+
+    int lines = 0;
+    const QString text = InputLineEdit->toPlainText();
+    if (!text.isEmpty() && textWidth > 0) {
+        QTextLayout layout(text, InputLineEdit->font());
+        QTextOption option;
+        option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+        layout.setTextOption(option);
+        layout.beginLayout();
+        while (true) {
+            QTextLine line = layout.createLine();
+            if (!line.isValid())
+                break;
+            line.setLineWidth(textWidth);
+            ++lines;
+        }
+        layout.endLayout();
+    }
+    lines = qMax(1, lines);
+
+    const int want = qMax(one, lines * lineH + 4);
+    const int maxH = qMax(one, height() - 160);
+    const int next = qBound(one, want, maxH);
+    const bool wrapped = next > one + 2;
+    if (InputLineEdit->verticalScrollBarPolicy() != (wrapped && want > next ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff))
+        InputLineEdit->setVerticalScrollBarPolicy(wrapped && want > next ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
+    if (InputLineEdit->height() != next)
+        InputLineEdit->setFixedHeight(next);
+}
+
+void ConsoleWidget::placeInputPrompt()
+{
+    if (!InputLineEdit)
+        return;
+    const QFontMetrics fm(InputLineEdit->font());
+    const QString suffix = QStringLiteral(" >");
+    const QString fullName = agent ? agent->data.Name : QString();
+    const int gap = 8;
+    const int fieldW = qMax(160, InputLineEdit->width());
+    const int maxPrompt = qBound(72, fieldW / 3, 160);
+    const int nameBudget = qMax(24, maxPrompt - fm.horizontalAdvance(suffix) - gap);
+    const QString shown = fm.elidedText(fullName, Qt::ElideRight, nameBudget) + suffix;
+    InputLineEdit->setPrompt(shown, fm.horizontalAdvance(shown) + gap);
+    InputLineEdit->setToolTip(fullName.isEmpty() ? QString() : fullName + suffix);
+}
+
+void ConsoleWidget::syncCompleter()
+{
+    if (!CommandCompleter || !InputLineEdit)
+        return;
+    const QString text = InputLineEdit->toPlainText();
+    const int pos = InputLineEdit->textCursor().position();
+    const QString left = text.left(pos);
+    if (left.contains(QLatin1Char(' ')) || left.contains(QLatin1Char('\n'))) {
+        CommandCompleter->popup()->hide();
+        return;
+    }
+    CommandCompleter->setCompletionPrefix(left);
+    if (left.isEmpty() || CommandCompleter->completionCount() == 0) {
+        CommandCompleter->popup()->hide();
+        return;
+    }
+    QRect cr = InputLineEdit->cursorRect();
+    cr.moveTopLeft(InputLineEdit->viewport()->mapTo(InputLineEdit, cr.topLeft()));
+    cr.setWidth(qMax(180, CommandCompleter->popup()->sizeHintForColumn(0) + 24));
+    cr.translate(0, 4);
+    CommandCompleter->complete(cr);
+}
+
 void ConsoleWidget::LoadInitialPage() { loadInitialPage(); }
 
 void ConsoleWidget::AddToHistory(const QString &command) { kphInputLineEdit->AddToHistory(command); }
 
-void ConsoleWidget::SetInput(const QString &command) { InputLineEdit->setText(command); }
+void ConsoleWidget::SetInput(const QString &command)
+{
+    if (!InputLineEdit)
+        return;
+    InputLineEdit->setPlainText(command);
+    refitInputHeight();
+}
 
 void ConsoleWidget::resetViewState()
 {
@@ -777,7 +1028,17 @@ bool ConsoleWidget::eventFilter(QObject* watched, QEvent* event)
 {
     if (watched == consoleHost && (event->type() == QEvent::Resize || event->type() == QEvent::Show || event->type() == QEvent::LayoutRequest)) {
         positionConsoleOverlays();
+        refitInputHeight();
     }
+    if (watched == InputLineEdit && event->type() == QEvent::Show)
+        refitInputHeight();
+    if (watched == InputLineEdit && event->type() == QEvent::Resize) {
+        auto* resizeEvent = static_cast<QResizeEvent*>(event);
+        if (resizeEvent && resizeEvent->oldSize().width() != resizeEvent->size().width())
+            refitInputHeight();
+    }
+    if (watched == inputFrame && event->type() == QEvent::MouseButtonPress && InputLineEdit)
+        InputLineEdit->setFocus();
     if (watched == searchPanel && (event->type() == QEvent::Show || event->type() == QEvent::Hide || event->type() == QEvent::Resize)) {
         QTimer::singleShot(0, this, [this]() { positionConsoleOverlays(); });
     }
@@ -1202,6 +1463,13 @@ void ConsoleWidget::applyTheme()
     OutputTextEdit->setStyleSheet(
         QStringLiteral("QPlainTextEdit { background-color: transparent; color: %1; border: 1px solid %2; border-radius: 4px; }")
             .arg(theme.textColor.name(), at.borderColor.name()));
+    if (inputFrame) {
+        inputFrame->setStyleSheet(QStringLiteral("QFrame#ConsoleInputFrame { background-color: %1; border: 1px solid %2; border-radius: 4px; }").arg(at.backgroundColorMain4.name(), at.borderColor.name()));
+    }
+    if (InputLineEdit) {
+        InputLineEdit->setPromptColor(at.secondaryColor);
+        InputLineEdit->setStyleSheet(QStringLiteral("QPlainTextEdit { background: transparent; color: %1; border: none; padding: 0px; }").arg(at.secondaryColor.name()));
+    }
 }
 
 
@@ -1446,7 +1714,7 @@ void ConsoleWidget::processInput()
     if (!agent || !commander)
         return;
 
-    QString commandLine = TrimmedEnds(InputLineEdit->text());
+    QString commandLine = TrimmedEnds(InputLineEdit->toPlainText());
 
     if ( this->userSelectedCompletion ) {
         this->userSelectedCompletion = false;
@@ -1454,6 +1722,7 @@ void ConsoleWidget::processInput()
     }
 
     InputLineEdit->clear();
+    refitInputHeight();
     if (commandLine.isEmpty())
         return;
 
@@ -1508,7 +1777,8 @@ void ConsoleWidget::handleShowHistory()
     connect(closeButton, &QPushButton::clicked, historyDialog, &QDialog::accept);
 
     connect(historyList, &QListWidget::itemDoubleClicked, this, [this, historyDialog](const QListWidgetItem *item) {
-        InputLineEdit->setText(item->text());
+        InputLineEdit->setPlainText(item->text());
+        refitInputHeight();
         historyDialog->accept();
         InputLineEdit->setFocus();
     });
@@ -1525,7 +1795,7 @@ void ConsoleWidget::handleShowHelp()
     if (!commander)
         return;
 
-    const QString seed = InputLineEdit ? InputLineEdit->text() : QString();
+    const QString seed = InputLineEdit ? InputLineEdit->toPlainText() : QString();
     const qint64 agentId = agent ? agent->data.Id : 0;
 
     if (helpDialog) {
@@ -1539,7 +1809,8 @@ void ConsoleWidget::handleShowHelp()
     helpDialog = new DialogConsoleHelp(commander, agentId, this);
     connect(helpDialog, &DialogConsoleHelp::insertCommand, this, [this](const QString& command) {
         if (InputLineEdit)
-            InputLineEdit->setText(command);
+            InputLineEdit->setPlainText(command);
+            refitInputHeight();
         InputFocus();
     });
     helpDialog->setQuery(seed);
@@ -1547,4 +1818,15 @@ void ConsoleWidget::handleShowHelp()
     helpDialog->show();
 }
 
-void ConsoleWidget::onCompletionSelected(const QString &selectedText) { userSelectedCompletion = true; }
+void ConsoleWidget::onCompletionSelected(const QString &selectedText)
+{
+    if (!InputLineEdit)
+        return;
+    InputLineEdit->blockSignals(true);
+    InputLineEdit->setPlainText(selectedText);
+    QTextCursor cursor = InputLineEdit->textCursor();
+    cursor.movePosition(QTextCursor::End);
+    InputLineEdit->setTextCursor(cursor);
+    InputLineEdit->blockSignals(false);
+    refitInputHeight();
+}

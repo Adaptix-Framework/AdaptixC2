@@ -1279,6 +1279,28 @@ void DialogAgent::stopBuild()
         QMetaObject::invokeMethod(worker.data(), "stop", Qt::QueuedConnection);
 }
 
+static QStringList checkedListenerTypes(QListWidget *list)
+{
+    QStringList out;
+    if (!list) {
+        return out;
+    }
+    for (int i = 0; i < list->count(); ++i) {
+        auto *item = list->item(i);
+        if (!item || item->checkState() != Qt::Checked) {
+            continue;
+        }
+        QString reg = item->data(Qt::UserRole + 1).toString();
+        if (reg.isEmpty()) {
+            reg = item->data(Qt::UserRole).toString();
+        }
+        if (!reg.isEmpty()) {
+            out.append(reg);
+        }
+    }
+    return out;
+}
+
 void DialogAgent::onListenerSelectionChanged(const QListWidgetItem *item)
 {
     Q_UNUSED(item);
@@ -1293,12 +1315,7 @@ void DialogAgent::onListenerSelectionChanged(const QListWidgetItem *item)
     if (agentName.isEmpty())
         return;
 
-    QStringList selectedListeners;
-    for (int i = 0; i < listenerListWidget->count(); ++i) {
-        auto *listItem = listenerListWidget->item(i);
-        if (listItem->checkState() == Qt::Checked)
-            selectedListeners.append(listItem->data(Qt::UserRole).toString());
-    }
+    QStringList selectedListeners = checkedListenerTypes(listenerListWidget);
     if (selectedListeners.isEmpty())
         return;
 
@@ -1336,14 +1353,7 @@ void DialogAgent::onMoveListenerUp()
 
     QString agentName = agentCombobox->currentText();
     if (!agentName.isEmpty()) {
-        QStringList selectedListeners;
-        for (int i = 0; i < listenerListWidget->count(); ++i) {
-            auto *listItem = listenerListWidget->item(i);
-            if (listItem->checkState() == Qt::Checked) {
-                selectedListeners.append(listItem->data(Qt::UserRole).toString());
-            }
-        }
-        regenerateAgentUI(agentName, selectedListeners);
+        regenerateAgentUI(agentName, checkedListenerTypes(listenerListWidget));
     }
 }
 
@@ -1363,14 +1373,7 @@ void DialogAgent::onMoveListenerDown()
 
     QString agentName = agentCombobox->currentText();
     if (!agentName.isEmpty()) {
-        QStringList selectedListeners;
-        for (int i = 0; i < listenerListWidget->count(); ++i) {
-            auto *listItem = listenerListWidget->item(i);
-            if (listItem->checkState() == Qt::Checked) {
-                selectedListeners.append(listItem->data(Qt::UserRole).toString());
-            }
-        }
-        regenerateAgentUI(agentName, selectedListeners);
+        regenerateAgentUI(agentName, checkedListenerTypes(listenerListWidget));
     }
 }
 

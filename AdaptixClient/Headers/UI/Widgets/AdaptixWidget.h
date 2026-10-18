@@ -213,8 +213,7 @@ public:
     TargetWidgetIface*     TargetsDock       = nullptr;
 
     mutable bool CodeEditorDockPlaced = false;
-    mutable bool TasksDockPlaced      = false;
-    mutable bool TasksOutputDockPlaced = false;
+    mutable bool TasksDockPlaced = false;
 
     QVector<RegListenerConfig>       RegisterListeners;
     QVector<RegAgentConfig>          RegisterAgents;
@@ -313,6 +312,7 @@ public:
     void LoadTerminalUI(qint64 AgentId, const QString& zoneOverride = QString());
     void LoadShellUI(qint64 AgentId, const QString& zoneOverride = QString());
     void ShowTunnelCreator(qint64 AgentId, bool socks4, bool socks5, bool lportfwd, bool rportfwd);
+    void ensureClientTunnel(const TunnelData& data);
 
 Q_SIGNALS:
     void SyncedSignal();

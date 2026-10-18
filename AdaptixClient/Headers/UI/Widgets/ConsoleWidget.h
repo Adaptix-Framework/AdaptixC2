@@ -21,6 +21,7 @@ class Agent;
 class AdaptixWidget;
 class DialogConsoleSearch;
 class DialogConsoleHelp;
+class ConsoleInputEdit;
 
 #define CONSOLE_OUT_LOCAL         1
 #define CONSOLE_OUT_LOCAL_INFO    2
@@ -36,10 +37,10 @@ class ConsoleWidget : public DockTab
     AdaptixWidget* adaptixWidget = nullptr;
 
     QGridLayout*      MainGridLayout   = nullptr;
-    QLabel*           CmdLabel         = nullptr;
     QLabel*           InfoLabel        = nullptr;
     QLabel*           StatusLabel      = nullptr;
-    QLineEdit*        InputLineEdit    = nullptr;
+    ConsoleInputEdit* InputLineEdit    = nullptr;
+    QFrame*           inputFrame       = nullptr;
     TextEditConsole*  OutputTextEdit   = nullptr;
     QCompleter*       CommandCompleter = nullptr;
     QStringListModel* completerModel   = nullptr;
@@ -109,6 +110,10 @@ class ConsoleWidget : public DockTab
     void positionHistoryBar();
     void positionSearchPanel();
     void positionConsoleOverlays();
+    void refitInputHeight();
+    void placeInputPrompt();
+    void syncCompleter();
+    int  inputLineHeight() const;
     ConsoleThemeData getActiveTheme() const;
 
 protected:

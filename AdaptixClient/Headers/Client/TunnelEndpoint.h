@@ -3,6 +3,9 @@
 
 #include <main.h>
 
+#include <QPointer>
+#include <QSet>
+
 class AuthProfile;
 class TunnelWorker;
 class SocksHandshakeWorker;
@@ -25,26 +28,35 @@ Q_OBJECT
     AuthProfile* profile   = nullptr;
 
     quint64 endpointGeneration = 0;
+    bool    paused = false;
+    QSet<qint64> pendingReverse;
 
     struct ChannelHandle {
-        QThread*      thread;
-        TunnelWorker* worker;
-        qint64        channelId;
+        QPointer<QThread>      thread;
+        QPointer<TunnelWorker> worker;
+        qint64                 channelId = 0;
     };
     QMap<qint64, ChannelHandle> tunnelChannels;
 
     void startWorker(QTcpSocket* clientSock, const QJsonObject& otpData, qint64 channelId);
     void startReverseWorker(QTcpSocket* clientSock, const QJsonObject& otpData, qint64 channelId);
     void launchChannelWorker(QTcpSocket* clientSock, const QString& otp, qint64 channelId);
+    void bindChannel(QThread* thread, TunnelWorker* worker, qint64 channelId);
     void startHandshakeWorker(QTcpSocket* clientSock, const QString& type);
     void nackReverseChannel(qint64 channelId);
+    void abortOwnedSockets();
+    void discardWorker(TunnelWorker* worker);
+    void Pause();
+    void Resume();
 
 public:
     TunnelEndpoint(QObject* parent = nullptr);
     ~TunnelEndpoint() override;
 
     bool StartTunnel(AuthProfile* profile, const QString &type, const QByteArray &jsonData);
+    bool Restore(AuthProfile* profile, const TunnelData& data);
     void SetTunnelId(qint64 tunnelId);
+    void SetActive(bool active);
 
     bool Listen(const QJsonObject &obj);
     void Stop();

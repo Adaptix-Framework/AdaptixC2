@@ -15,6 +15,8 @@
 #include <QRandomGenerator>
 #include <QTimer>
 #include <QPointer>
+#include <QKeyEvent>
+#include <QApplication>
 
 REGISTER_DOCK_WIDGET(TerminalContainerWidget, "Remote Terminal", false)
 
@@ -47,6 +49,8 @@ TerminalTab::TerminalTab(Agent* a, AdaptixWidget* w, TerminalMode mode, QWidget*
 
 TerminalTab::~TerminalTab()
 {
+    if (qApp)
+        qApp->removeEventFilter(this);
     ++otpGeneration;
     cancelStartTimeout();
 
@@ -57,15 +61,20 @@ TerminalTab::~TerminalTab()
 
     if (worker) {
         disconnect(worker, nullptr, this, nullptr);
-        if (thread)
+        if (thread) {
             disconnect(thread, nullptr, this, nullptr);
-        QMetaObject::invokeMethod(worker, "stop", Qt::QueuedConnection);
+            disconnect(worker, &TerminalWorker::finished, thread, &QThread::quit);
+        }
+        if (thread && thread->isRunning() && worker->thread() == thread) {
+            QMetaObject::invokeMethod(worker, "stop", Qt::BlockingQueuedConnection);
+        }
     }
 
     if (thread && thread->isRunning()) {
-        if (!thread->wait(5000)) {
-            thread->quit();
-            thread->wait(2000);
+        thread->quit();
+        if (!thread->wait(3000)) {
+            thread->terminate();
+            thread->wait(1000);
         }
     }
 }
@@ -328,17 +337,46 @@ void TerminalTab::handleTerminalMenu(const QPoint &pos)
 
 void TerminalTab::SetKeys()
 {
-    QShortcut *copyShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_C), this->termWidget);
-    connect(copyShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::copyClipboard);
+    qApp->installEventFilter(this);
+}
 
-    QShortcut *pasteShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_V), this->termWidget);
-    connect(pasteShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::pasteClipboard);
+bool TerminalTab::eventFilter(QObject *watched, QEvent *event)
+{
+    if (!termWidget || !watched->inherits("TerminalDisplay")) {
+        return QWidget::eventFilter(watched, event);
+    }
+    auto *display = qobject_cast<QWidget *>(watched);
+    if (!display || !termWidget->isAncestorOf(display)) {
+        return QWidget::eventFilter(watched, event);
+    }
+    if (event->type() != QEvent::ShortcutOverride && event->type() != QEvent::KeyPress) {
+        return QWidget::eventFilter(watched, event);
+    }
 
-    QShortcut *findShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F), this->termWidget);
-    connect(findShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::toggleShowSearchBar);
+    auto *ke = static_cast<QKeyEvent *>(event);
+    const Qt::KeyboardModifiers mods = ke->modifiers();
+    const bool ctrlShift = (mods & Qt::ControlModifier) && (mods & Qt::ShiftModifier) && !(mods & (Qt::AltModifier | Qt::MetaModifier));
+    if (!ctrlShift) {
+        return QWidget::eventFilter(watched, event);
+    }
 
-    QShortcut *clearShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_L), this->termWidget);
-    connect(clearShortcut, &QShortcut::activated, this->termWidget, &QTermWidget::clear);
+    const int key = ke->key();
+    if (key != Qt::Key_C && key != Qt::Key_V && key != Qt::Key_F && key != Qt::Key_L) {
+        return QWidget::eventFilter(watched, event);
+    }
+
+    if (event->type() == QEvent::KeyPress && !ke->isAutoRepeat()) {
+        if (key == Qt::Key_C)
+            termWidget->copyClipboard();
+        else if (key == Qt::Key_V)
+            termWidget->pasteClipboard();
+        else if (key == Qt::Key_F)
+            termWidget->toggleShowSearchBar();
+        else
+            termWidget->clear();
+    }
+    event->accept();
+    return true;
 }
 
 void TerminalTab::clearSessionState()

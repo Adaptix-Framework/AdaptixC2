@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Adaptix-Framework/axc2/v2"
+	adaptix "github.com/Adaptix-Framework/axc2/v2"
 	"github.com/miekg/dns"
 )
 
@@ -409,8 +409,8 @@ func (t *TransportDNS) handlePUT(req *dnsRequest) putAckInfo {
 	complete, nextExpectedOff, filled, _, assembled := Ts.TsFramePut(agentId, offset, chunk, total, 0)
 
 	if complete && assembled != nil {
-		_ = Ts.TsAgentProcessData(agentId, assembled)
 		adaptix.NoteFrameRecv(Ts, agentId)
+		_ = Ts.TsAgentProcessData(agentId, assembled)
 	}
 
 	ack.total = total

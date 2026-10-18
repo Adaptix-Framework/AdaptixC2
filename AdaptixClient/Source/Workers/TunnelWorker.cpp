@@ -79,23 +79,7 @@ void TunnelWorker::start()
 
 void TunnelWorker::stop()
 {
-    if (stopped.exchange(true))
-        return;
-
-    bool waiting = false;
-
-    if (tcpSocket && tcpSocket->state() != QAbstractSocket::UnconnectedState) {
-        tcpSocket->disconnectFromHost();
-        waiting = true;
-    }
-
-    if (websocket && websocket->state() != QAbstractSocket::UnconnectedState) {
-        websocket->close();
-        waiting = true;
-    }
-
-    if (!waiting)
-        finishWorker();
+    finishWorker();
 }
 
 void TunnelWorker::onTcpReadyRead()

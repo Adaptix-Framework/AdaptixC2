@@ -12,6 +12,9 @@
 #include <QSignalBlocker>
 
 namespace {
+constexpr int kSegmentTextInset = 16;
+constexpr int kSegmentWidthSlack = 2;
+
 class SegmentButton : public QPushButton {
 public:
     explicit SegmentButton(const QString& text, QWidget* parent = nullptr) : QPushButton(text, parent) {}
@@ -23,6 +26,13 @@ public:
         return s;
     }
 };
+
+QFont segmentFont(const QWidget* widget)
+{
+    QFont font = widget ? widget->font() : QFont();
+    font.setWeight(QFont::DemiBold);
+    return font;
+}
 }
 
 SegmentControl::SegmentControl(QWidget* parent) : QFrame(parent)
@@ -141,36 +151,39 @@ void SegmentControl::syncButtonWidths()
 {
     if (m_syncingWidths || m_buttons.isEmpty())
         return;
+
     m_syncingWidths = true;
 
+    const QFontMetrics fm(segmentFont(this));
     int natural = m_minButtonWidth;
+    for (int i = 0; i < m_fullTexts.size(); ++i) {
+        natural = qMax(natural, fm.horizontalAdvance(m_fullTexts.at(i)) + kSegmentTextInset + kSegmentWidthSlack);
+    }
+
     for (int i = 0; i < m_buttons.size(); ++i) {
         QPushButton* btn = m_buttons[i];
-        if (!btn)
+        if (!btn) {
             continue;
+        }
         const QString full = (i < m_fullTexts.size()) ? m_fullTexts[i] : btn->text();
         if (btn->text() != full) {
             QSignalBlocker blocker(btn);
             btn->setText(full);
         }
-        btn->setMinimumWidth(0);
-        btn->setMaximumWidth(QWIDGETSIZE_MAX);
-        btn->ensurePolished();
-        natural = qMax(natural, btn->sizeHint().width());
-    }
-
-    for (auto* btn : m_buttons) {
-        if (!btn)
-            continue;
         btn->setFixedWidth(natural);
         btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     }
 
-    const int frameW = m_layout ? m_layout->sizeHint().width() : 0;
-    if (frameW > 0)
+    const QMargins margins = m_layout ? m_layout->contentsMargins() : QMargins();
+    const int spacing = m_layout ? m_layout->spacing() : 0;
+    const int count = m_buttons.size();
+    const int frameW = margins.left() + margins.right() + count * natural + qMax(0, count - 1) * spacing;
+    if (frameW > 0) {
         setFixedWidth(frameW);
+    }
 
     m_syncingWidths = false;
+    elideButtons();
 }
 
 void SegmentControl::elideButtons()
@@ -182,7 +195,7 @@ void SegmentControl::elideButtons()
         if (!btn)
             continue;
         const QString full = (i < m_fullTexts.size()) ? m_fullTexts[i] : btn->text();
-        const int inner = btn->width() - 16;
+        const int inner = btn->width() - kSegmentTextInset;
         if (inner < 8)
             continue;
         const QFontMetrics fm(btn->font());

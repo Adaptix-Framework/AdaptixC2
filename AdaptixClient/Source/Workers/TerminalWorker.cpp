@@ -65,14 +65,6 @@ void TerminalWorker::start()
 
 void TerminalWorker::stop()
 {
-    if (stopped.exchange(true))
-        return;
-
-    if (websocket && websocket->state() != QAbstractSocket::UnconnectedState) {
-        websocket->close();
-        return;
-    }
-
     finishWorker();
 }
 

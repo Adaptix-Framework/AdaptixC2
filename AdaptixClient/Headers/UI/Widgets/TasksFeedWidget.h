@@ -16,8 +16,7 @@ class TasksFeedWidget : public ListFeedWidget
 {
 Q_OBJECT
     AdaptixWidget* m_adaptixWidget = nullptr;
-    KDDockWidgets::QtWidgets::DockWidget* dockWidgetFeed   = nullptr;
-    KDDockWidgets::QtWidgets::DockWidget* dockWidgetOutput = nullptr;
+    KDDockWidgets::QtWidgets::DockWidget* dockWidgetFeed = nullptr;
 
     FeedListModel*    feedBlockModel = nullptr;
     PagedTableHelper* pageHelper     = nullptr;
@@ -35,6 +34,7 @@ Q_OBJECT
 
     struct TaskInfo { qint64 taskId = 0; qint64 agentId = 0; QString cmdline; bool valid = false; };
     TaskInfo currentTaskInfo() const;
+    QList<TaskInfo> selectedTaskInfos() const;
 
 public:
     TaskOutputWidget* taskOutputConsole = nullptr;
@@ -43,7 +43,6 @@ public:
     ~TasksFeedWidget() override;
 
     KDDockWidgets::QtWidgets::DockWidget* dockTasks();
-    KDDockWidgets::QtWidgets::DockWidget* dockTasksOutput();
     void SetUpdatesEnabled(bool enabled);
     void AddTaskItem(TaskData newTask);
     void UpdateTaskItem(qint64 taskId, const TaskData& task) const;

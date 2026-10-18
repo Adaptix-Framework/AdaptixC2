@@ -16,6 +16,7 @@
 #include <QDateTime>
 #include <QToolTip>
 #include <QHelpEvent>
+#include <QSplitter>
 
 
 
@@ -177,15 +178,23 @@ TasksFeedWidget::TasksFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), m_adapti
 
     taskOutputConsole = new TaskOutputWidget();
 
+    m_mainLayout->removeWidget(m_treeView);
+    auto* split = new QSplitter(Qt::Vertical, this);
+    split->setChildrenCollapsible(false);
+    split->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    split->addWidget(m_treeView);
+    split->addWidget(taskOutputConsole);
+    split->setStretchFactor(0, 3);
+    split->setStretchFactor(1, 1);
+    m_treeView->setMinimumHeight(120);
+    taskOutputConsole->setMinimumHeight(100);
+    m_mainLayout->addWidget(split, 1, 0, 1, 1);
+    m_mainLayout->setRowStretch(1, 1);
+
     dockWidgetFeed = new KDDockWidgets::QtWidgets::DockWidget( "TasksFeed:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
     dockWidgetFeed->setTitle("Tasks");
     dockWidgetFeed->setWidget(this);
     dockWidgetFeed->setIcon(QIcon(":/icons/job"), KDDockWidgets::IconPlace::TabBar);
-
-    dockWidgetOutput = new KDDockWidgets::QtWidgets::DockWidget( "TaskOutput:Dock-" + w->GetProfile()->GetProject(), KDDockWidgets::DockWidgetOption_None, KDDockWidgets::LayoutSaverOption::None);
-    dockWidgetOutput->setTitle("Task Output");
-    dockWidgetOutput->setWidget(taskOutputConsole);
-    dockWidgetOutput->setIcon(QIcon(":/icons/job"), KDDockWidgets::IconPlace::TabBar);
 
     setupPagination();
 
@@ -197,7 +206,6 @@ TasksFeedWidget::TasksFeedWidget(AdaptixWidget* w) : ListFeedWidget(w), m_adapti
 TasksFeedWidget::~TasksFeedWidget() = default;
 
 KDDockWidgets::QtWidgets::DockWidget* TasksFeedWidget::dockTasks() { return dockWidgetFeed; }
-KDDockWidgets::QtWidgets::DockWidget* TasksFeedWidget::dockTasksOutput() { return dockWidgetOutput; }
 
 void TasksFeedWidget::setupPagination()
 {
@@ -488,14 +496,18 @@ void TasksFeedWidget::handleFeedMenu(const QPoint& pos)
     if (!index.isValid())
         return;
 
+    const int selectedCount = selectedTaskInfos().size();
+    const QString cancelLabel = selectedCount > 1 ? QString("Cancel %1").arg(selectedCount) : QString("Cancel");
+    const QString deleteLabel = selectedCount > 1 ? QString("Delete %1").arg(selectedCount) : QString("Delete");
+
     oclero::qlementine::Menu ctxMenu;
     ctxMenu.addAction("Copy Task ID", this, &TasksFeedWidget::actionCopyTaskId);
     ctxMenu.addAction("Copy Command", this, &TasksFeedWidget::actionCopyCmd);
     ctxMenu.addSeparator();
     ctxMenu.addAction("Open Console", this, &TasksFeedWidget::actionOpenConsole);
     ctxMenu.addSeparator();
-    ctxMenu.addAction("Cancel", this, &TasksFeedWidget::actionCancel);
-    ctxMenu.addAction("Delete", this, &TasksFeedWidget::actionDelete);
+    ctxMenu.addAction(cancelLabel, this, &TasksFeedWidget::actionCancel);
+    ctxMenu.addAction(deleteLabel, this, &TasksFeedWidget::actionDelete);
 
     ctxMenu.exec(treeView()->viewport()->mapToGlobal(pos));
 }
@@ -503,15 +515,11 @@ void TasksFeedWidget::handleFeedMenu(const QPoint& pos)
 void TasksFeedWidget::onItemSelection(const QModelIndex& current) const
 {
     showTaskOutput(current);
-    if (m_adaptixWidget && current.isValid())
-        m_adaptixWidget->LoadTasksOutput();
 }
 
 void TasksFeedWidget::onItemDoubleClicked(const QModelIndex& index)
 {
     showTaskOutput(index);
-    if (m_adaptixWidget)
-        m_adaptixWidget->LoadTasksOutput();
 }
 
 void TasksFeedWidget::onPageReady(const QJsonObject& response)
@@ -611,6 +619,36 @@ TasksFeedWidget::TaskInfo TasksFeedWidget::currentTaskInfo() const
     return info;
 }
 
+QList<TasksFeedWidget::TaskInfo> TasksFeedWidget::selectedTaskInfos() const
+{
+    QList<TaskInfo> out;
+    if (!treeView() || !treeView()->selectionModel())
+        return out;
+
+    QModelIndexList rows = treeView()->selectionModel()->selectedRows();
+    if (rows.isEmpty()) {
+        const QModelIndex current = treeView()->currentIndex();
+        if (current.isValid())
+            rows.append(current);
+    }
+
+    QSet<qint64> seen;
+    for (const QModelIndex& idx : rows) {
+        TaskData task;
+        if (!taskDataFromIndex(idx, &task) || task.TaskId <= 0 || task.AgentId <= 0)
+            continue;
+        if (seen.contains(task.TaskId))
+            continue;
+        seen.insert(task.TaskId);
+        TaskInfo info;
+        info.taskId = task.TaskId;
+        info.agentId = task.AgentId;
+        info.valid = true;
+        out.append(info);
+    }
+    return out;
+}
+
 void TasksFeedWidget::actionCopyTaskId() const
 {
     TaskInfo info = currentTaskInfo();
@@ -634,14 +672,28 @@ void TasksFeedWidget::actionOpenConsole() const
 
 void TasksFeedWidget::actionCancel() const
 {
-    TaskInfo info = currentTaskInfo();
-    if (info.valid && info.agentId > 0)
-        HttpReqTaskCancelAsync(info.agentId, {info.taskId}, *(m_adaptixWidget->GetProfile()), [](bool, const QString&, const QJsonObject&) {});
+    if (!m_adaptixWidget)
+        return;
+
+    QHash<qint64, QList<qint64>> byAgent;
+    for (const TaskInfo& info : selectedTaskInfos()) {
+        byAgent[info.agentId].append(info.taskId);
+    }
+    for (auto it = byAgent.cbegin(); it != byAgent.cend(); ++it) {
+        HttpReqTaskCancelAsync(it.key(), it.value(), *(m_adaptixWidget->GetProfile()), [](bool, const QString&, const QJsonObject&) {});
+    }
 }
 
 void TasksFeedWidget::actionDelete() const
 {
-    TaskInfo info = currentTaskInfo();
-    if (info.valid && info.agentId > 0)
-        HttpReqTasksDeleteAsync(info.agentId, {info.taskId}, *(m_adaptixWidget->GetProfile()), [](bool, const QString&, const QJsonObject&) {});
+    if (!m_adaptixWidget)
+        return;
+
+    QHash<qint64, QList<qint64>> byAgent;
+    for (const TaskInfo& info : selectedTaskInfos()) {
+        byAgent[info.agentId].append(info.taskId);
+    }
+    for (auto it = byAgent.cbegin(); it != byAgent.cend(); ++it) {
+        HttpReqTasksDeleteAsync(it.key(), it.value(), *(m_adaptixWidget->GetProfile()), [](bool, const QString&, const QJsonObject&) {});
+    }
 }

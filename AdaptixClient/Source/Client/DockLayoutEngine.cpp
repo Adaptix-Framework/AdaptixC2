@@ -115,7 +115,6 @@ QStringList DockLayoutEngine::widgetIds()
         QStringLiteral("scripts"),
         QStringLiteral("code_editor"),
         QStringLiteral("tasks"),
-        QStringLiteral("tasks_output"),
         QStringLiteral("console"),
         QStringLiteral("files"),
         QStringLiteral("processes"),
@@ -141,7 +140,6 @@ QString DockLayoutEngine::widgetLabel(const QString& widgetId)
         { QStringLiteral("scripts"), QStringLiteral("Scripts") },
         { QStringLiteral("code_editor"), QStringLiteral("Code editor") },
         { QStringLiteral("tasks"), QStringLiteral("Tasks") },
-        { QStringLiteral("tasks_output"), QStringLiteral("Task output") },
         { QStringLiteral("console"), QStringLiteral("Agent console") },
         { QStringLiteral("files"), QStringLiteral("File browser") },
         { QStringLiteral("processes"), QStringLiteral("Process browser") },
@@ -158,7 +156,6 @@ QString DockLayoutEngine::widgetIconPath(const QString& widgetId)
         { QStringLiteral("sessions"), QStringLiteral(":/icons/format_list") },
         { QStringLiteral("graph"), QStringLiteral(":/icons/graph") },
         { QStringLiteral("tasks"), QStringLiteral(":/icons/job") },
-        { QStringLiteral("tasks_output"), QStringLiteral(":/icons/job") },
         { QStringLiteral("listeners"), QStringLiteral(":/icons/listeners") },
         { QStringLiteral("payloads"), QStringLiteral(":/icons/kill") },
         { QStringLiteral("tunnels"), QStringLiteral(":/icons/vpn") },
@@ -213,7 +210,7 @@ DockLayoutSettings DockLayoutEngine::defaultsForLayout(const QString& layoutId)
         for (const QString& id : widgetIds()) {
             if (id == QLatin1String("sessions") || id == QLatin1String("graph"))
                 s.openIn[id] = leftTop;
-            else if (id == QLatin1String("code_editor") || id == QLatin1String("tasks") || id == QLatin1String("tasks_output") || id == QLatin1String("listeners") || id == QLatin1String("tunnels"))
+            else if (id == QLatin1String("code_editor") || id == QLatin1String("tasks") || id == QLatin1String("listeners") || id == QLatin1String("tunnels"))
                 s.openIn[id] = right;
             else
                 s.openIn[id] = leftBottom;
@@ -228,7 +225,7 @@ DockLayoutSettings DockLayoutEngine::defaultsForLayout(const QString& layoutId)
     for (const QString& id : widgetIds()) {
         if (id == QLatin1String("sessions") || id == QLatin1String("graph"))
             s.openIn[id] = primary;
-        else if (id == QLatin1String("tasks") || id == QLatin1String("code_editor") || id == QLatin1String("tasks_output") || id == QLatin1String("listeners") || id == QLatin1String("tunnels"))
+        else if (id == QLatin1String("tasks") || id == QLatin1String("code_editor") || id == QLatin1String("listeners") || id == QLatin1String("tunnels"))
             s.openIn[id] = side;
         else
             s.openIn[id] = secondary;
