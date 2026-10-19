@@ -312,6 +312,14 @@ QObject* BridgeForm::create_selector_file()
     return wrapper;
 }
 
+QObject* BridgeForm::create_selector_folder()
+{
+    auto* lineEdit = new QLineEdit(getParentWidget());
+    auto* wrapper = new AxSelectorFolder(lineEdit, this);
+    scriptEngine->registerObject(wrapper);
+    return wrapper;
+}
+
 QObject* BridgeForm::create_tabs()
 {
     auto* tabWidget = new QTabWidget(getParentWidget());

@@ -92,6 +92,7 @@ void NonBlockingDialogs::getExistingDirectory(QWidget* parent, const QString& ca
     dialog->setAcceptMode(QFileDialog::AcceptOpen);
     dialog->setFileMode(QFileDialog::Directory);
     dialog->setOption(QFileDialog::ShowDirsOnly, true);
+    dialog->setOption(QFileDialog::DontUseNativeDialog, true);
     dialog->setWindowTitle(caption);
     dialog->setDirectory(dir);
     dialog->setAttribute(Qt::WA_DeleteOnClose);
