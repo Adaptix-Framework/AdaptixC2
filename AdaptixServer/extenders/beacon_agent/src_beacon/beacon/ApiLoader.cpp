@@ -1,5 +1,6 @@
 #include "ApiLoader.h"
 #include "ProcLoader.h"
+#include "Syscalls.h"
 
 #pragma intrinsic(memset)
 #pragma function(memset)
@@ -135,7 +136,11 @@ BOOL ApiLoad()
 		ApiWin->Sleep					= (decltype(Sleep)*)				   GetSymbolAddress(hKernel32Module, HASH_FUNC_SLEEP);
 		ApiWin->VirtualAlloc			= (decltype(VirtualAlloc)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALALLOC);
 		ApiWin->VirtualFree				= (decltype(VirtualFree)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALFREE);
+		ApiWin->VirtualProtect			= (decltype(VirtualProtect)*)		   GetSymbolAddress(hKernel32Module, HASH_FUNC_VIRTUALPROTECT);
 		ApiWin->WaitForSingleObject     = (decltype(WaitForSingleObject)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_WAITFORSINGLEOBJECT);
+		ApiWin->CreateTimerQueue        = (decltype(CreateTimerQueue)*)         GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATETIMERQUEUE);
+		ApiWin->CreateTimerQueueTimer   = (decltype(CreateTimerQueueTimer)*)    GetSymbolAddress(hKernel32Module, HASH_FUNC_CREATETIMERQUEUETIMER);
+		ApiWin->DeleteTimerQueue        = (decltype(DeleteTimerQueue)*)         GetSymbolAddress(hKernel32Module, HASH_FUNC_DELETETIMERQUEUE);
 		ApiWin->WaitNamedPipeA          = (decltype(WaitNamedPipeA)*)	       GetSymbolAddress(hKernel32Module, HASH_FUNC_WAITNAMEDPIPEA);
 		ApiWin->WideCharToMultiByte		= (decltype(WideCharToMultiByte)*)	   GetSymbolAddress(hKernel32Module, HASH_FUNC_WIDECHARTOMULTIBYTE);
 		ApiWin->WriteFile				= (decltype(WriteFile)*)			   GetSymbolAddress(hKernel32Module, HASH_FUNC_WRITEFILE);
@@ -181,6 +186,7 @@ BOOL ApiLoad()
 		HMODULE hAdvapi32Module = ApiWin->LoadLibraryA(advapi32_c);
 		SysModules->Advapi32 = hAdvapi32Module;
 		if (hAdvapi32Module) {
+			ApiWin->SystemFunction032       = GetSymbolAddress(hAdvapi32Module, HASH_FUNC_SYSTEMFUNCTION032);
 			ApiWin->GetTokenInformation		= (decltype(GetTokenInformation)*)     GetSymbolAddress(hAdvapi32Module, HASH_FUNC_GETTOKENINFORMATION);
 			ApiWin->GetUserNameA			= (decltype(GetUserNameA)*)		       GetSymbolAddress(hAdvapi32Module, HASH_FUNC_GETUSERNAMEA);
 			ApiWin->LookupAccountSidA		= (decltype(LookupAccountSidA)*)       GetSymbolAddress(hAdvapi32Module, HASH_FUNC_LOOKUPACCOUNTSIDA);
@@ -265,6 +271,7 @@ BOOL ApiLoad()
 		if ( hNtdllModule ) {
 			ApiNt->NtClose                   = (decltype(NtClose)*)					  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTCLOSE);
 			ApiNt->NtContinue                = (decltype(NtContinue)*)				  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTCONTINUE);
+			ApiNt->NtWaitForSingleObject     = (decltype(NtWaitForSingleObject)*)	  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTWAITFORSINGLEOBJECT);
 			ApiNt->NtFreeVirtualMemory       = (decltype(NtFreeVirtualMemory)*)		  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTFREEVIRTUALMEMORY);
 			ApiNt->NtQueryInformationProcess = (decltype(NtQueryInformationProcess)*) GetSymbolAddress(hNtdllModule, HASH_FUNC_NTQUERYINFORMATIONPROCESS);
 			ApiNt->NtQuerySystemInformation  = (decltype(NtQuerySystemInformation)*)  GetSymbolAddress(hNtdllModule, HASH_FUNC_NTQUERYSYSTEMINFORMATION);
@@ -279,13 +286,22 @@ BOOL ApiLoad()
 			ApiNt->RtlIpv4StringToAddressA   = (decltype(RtlIpv4StringToAddressA)*)	  GetSymbolAddress(hNtdllModule, HASH_FUNC_RTLIPV4STRINGTOADDRESSA);
 			ApiNt->RtlRandomEx               = (decltype(RtlRandomEx)*)				  GetSymbolAddress(hNtdllModule, HASH_FUNC_RTLRANDOMEX);
 			ApiNt->RtlNtStatusToDosError     = (decltype(RtlNtStatusToDosError)*)	  GetSymbolAddress(hNtdllModule, HASH_FUNC_RTLNTSTATUSTODOSERROR);
+			ApiNt->NtFlushInstructionCache   = (decltype(NtFlushInstructionCache)*)    GetSymbolAddress(hNtdllModule, HASH_FUNC_NTFLUSHINSTRUCTIONCACHE);
+			ApiNt->EtwEventWrite             = GetSymbolAddress(hNtdllModule, HASH_FUNC_ETWEVENTWRITE);
+			ApiNt->RtlUserThreadStart        = GetSymbolAddress(hNtdllModule, HASH_FUNC_RTLUSERTHREADSTART);
 		}
 		else {
 			return FALSE;
 		}
+
+		ApiNt->BaseThreadInitThunk = GetSymbolAddress(hKernel32Module, HASH_FUNC_BASETHREADINITTHUNK);
 	}
 	else {
 		return FALSE;
 	}
+
+	if (!SyscallsInit())
+		return FALSE;
+
 	return TRUE;
 }

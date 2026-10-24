@@ -27,15 +27,15 @@ function ListenerUI(mode_create)
     let labelUri = form.create_label("URIs:");
     let textUri = form.create_list();
     textUri.setButtonsEnabled(true);
-    textUri.addItems(["/api/v1/status", "/updates/check.php", "/content.html"]);
+    textUri.addItems(["/api/v2/events", "/cdn/assets/analytics.js", "/portal/auth/session"]);
 
     let labelUserAgent = form.create_label("User-Agents:");
     let textUserAgent = form.create_list();
     textUserAgent.setButtonsEnabled(true);
-    textUserAgent.addItem("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
+    textUserAgent.addItem("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
 
     let labelHB = form.create_label("Heartbeat Header:");
-    let textlineHB = form.create_textline("X-Beacon-Id");
+    let textlineHB = form.create_textline("X-Request-ID");
 
     let labelEncryptKey = form.create_label("Encryption key:");
     let textlineEncryptKey = form.create_textline(ax.random_string(32, "hex"));
@@ -117,7 +117,8 @@ function ListenerUI(mode_create)
     panelError.setLayout(layoutError);
 
     // PAYLOAD
-    let textPayload = form.create_textmulti("{\"status\": \"ok\", \"data\": \"<<<PAYLOAD_DATA>>>\", \"metrics\": \"sync\"}");
+    let textPayload = form.create_textmulti("{\"result\":\"<<<PAYLOAD_DATA>>>\"}");
+
 
     let layoutPayload = form.create_gridlayout();
     layoutPayload.addWidget(textPayload, 0, 0, 1, 1);

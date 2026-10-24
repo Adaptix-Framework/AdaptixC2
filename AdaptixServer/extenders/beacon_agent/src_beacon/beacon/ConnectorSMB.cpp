@@ -3,6 +3,7 @@
 #include "ApiDefines.h"
 #include "ProcLoader.h"
 #include "Crypt.h"
+#include "Syscalls.h"
 #include "utils.h"
 
 void* ConnectorSMB::operator new(size_t sz) 
@@ -236,5 +237,5 @@ void ConnectorSMB::CloseConnector()
         this->beat = nullptr;
         this->beatSize = 0;
     }
-    this->functions->NtClose(this->hChannel);
+    SysNtClose(this->hChannel);
 }

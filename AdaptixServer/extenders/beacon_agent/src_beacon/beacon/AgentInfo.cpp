@@ -1,5 +1,6 @@
 #include "ApiLoader.h"
 #include "AgentInfo.h"
+#include "Syscalls.h"
 #include "utils.h"
 
 void* AgentInfo::operator new(size_t sz) 
@@ -19,7 +20,7 @@ AgentInfo::AgentInfo()
 	OSVERSIONINFOEXW OSVersion = { 0 };
 	OSVersion.dwOSVersionInfoSize = sizeof(OSVERSIONINFOEXW);
 
-	ApiNt->NtQuerySystemInformation(SystemProcessorInformation, &SystemInfo, sizeof(SYSTEM_PROCESSOR_INFORMATION), 0);
+	SysNtQuerySystemInformation(SystemProcessorInformation, &SystemInfo, sizeof(SYSTEM_PROCESSOR_INFORMATION), 0);
 	ApiNt->RtlGetVersion((PRTL_OSVERSIONINFOW) &OSVersion);
 
 	BOOL isWow64 = FALSE;

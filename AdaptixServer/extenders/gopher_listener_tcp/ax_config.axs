@@ -10,12 +10,12 @@ function ListenerUI(mode_create)
     for (let item of addrs) { comboHostBind.addItem(item); }
     let spinPort = form.create_spin();
     spinPort.setRange(1, 65535);
-    spinPort.setValue(4444);
+    spinPort.setValue(8443);
     spinPort.setEnabled(mode_create)
 
     let labelCallback = form.create_label("Callback addresses:");
     let texteditCallback = form.create_textmulti();
-    texteditCallback.setPlaceholder("192.168.1.1:4444\nserver2.com:5555");
+    texteditCallback.setPlaceholder("192.168.1.1:8443\nserver2.com:8443");
 
     let labelTimeout = form.create_label("Timeout (sec):");
     let spinTimeout = form.create_spin();
@@ -23,10 +23,10 @@ function ListenerUI(mode_create)
     spinTimeout.setValue(10);
 
     let labelBanner = form.create_label("TCP banner:");
-    let texteditBanner = form.create_textmulti("AdaptixC2 server\n");
+    let texteditBanner = form.create_textmulti("");
 
     let labelAnswer = form.create_label("Error answer:");
-    let texteditAnswer = form.create_textmulti("Connection error...\n");
+    let texteditAnswer = form.create_textmulti("");
 
     let labelEncryptKey = form.create_label("Encryption key:");
     let textlineEncryptKey = form.create_textline(ax.random_string(32, "hex"));

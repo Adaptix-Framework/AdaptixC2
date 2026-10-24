@@ -24,7 +24,15 @@
 #define HASH_FUNC_RTLIPV4STRINGTOADDRESSA            0x87cc3a9a
 #define HASH_FUNC_RTLRANDOMEX                        0x5b052214
 #define HASH_FUNC_RTLNTSTATUSTODOSERROR              0x7701adaf
+#define HASH_FUNC_NTWAITFORSINGLEOBJECT              0x25d5f15b
 #define HASH_FUNC_NTFLUSHINSTRUCTIONCACHE            0x91a1659e
+#define HASH_FUNC_NTOPENSECTION                      0xb7f59f2d
+#define HASH_FUNC_NTMAPVIEWOFSECTION                 0x25b394e9
+#define HASH_FUNC_NTUNMAPVIEWOFSECTION               0xc995d3ec
+#define HASH_FUNC_NTPROTECTVIRTUALMEMORY             0x334fb1a7
+#define HASH_FUNC_ETWEVENTWRITE                      0xfd85c001
+#define HASH_FUNC_BASETHREADINITTHUNK                0x1b7735b5
+#define HASH_FUNC_RTLUSERTHREADSTART                 0x52a2729b
 
 //kernel32
 #define HASH_FUNC_CONNECTNAMEDPIPE                   0xda6c7d81
@@ -100,7 +108,14 @@
 // iphlpapi
 #define HASH_FUNC_GETADAPTERSINFO                    0xa1376764
 
+// kernel32 (sleep obfuscation)
+#define HASH_FUNC_VIRTUALPROTECT                     0x21d6b92c
+#define HASH_FUNC_CREATETIMERQUEUE                   0x1440037e
+#define HASH_FUNC_CREATETIMERQUEUETIMER              0xea126d9f
+#define HASH_FUNC_DELETETIMERQUEUE                    0xb2124ffd
+
 // advapi32
+#define HASH_FUNC_SYSTEMFUNCTION032                  0x5c5050c4
 #define HASH_FUNC_ALLOCATEANDINITIALIZESID           0xbf449b6e
 #define HASH_FUNC_GETTOKENINFORMATION                0x49639a4b
 #define HASH_FUNC_INITIALIZESECURITYDESCRIPTOR       0x529256ed

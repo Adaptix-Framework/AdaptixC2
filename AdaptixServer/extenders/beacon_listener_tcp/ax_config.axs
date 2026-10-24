@@ -7,11 +7,11 @@ function ListenerUI(mode_create)
     let labelPortBind = form.create_label("Bind port:");
     let spinPortBind = form.create_spin();
     spinPortBind.setRange(1, 65535);
-    spinPortBind.setValue(9000);
+    spinPortBind.setValue(8443);
     spinPortBind.setEnabled(mode_create)
 
     let labelPrepend = form.create_label("Prepend data:");
-    let textlinePrepend = form.create_textline("\\x12\\xabSimple\\x20word\\xa");
+    let textlinePrepend = form.create_textline("");
     textlinePrepend.setEnabled(mode_create)
 
     let labelEncryptKey = form.create_label("Encryption key:");

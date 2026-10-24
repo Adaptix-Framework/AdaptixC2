@@ -1,30 +1,36 @@
 #include "ApiLoader.h"
+#include "Syscalls.h"
+#include "HeapCrypt.h"
 
 //////////
 
-LPVOID MemAllocLocal(DWORD bufferSize) 
+LPVOID MemAllocLocal(DWORD bufferSize)
 {
-	return ApiWin->LocalAlloc(LPTR, bufferSize);
-	//return ApiWin->HeapAlloc(GetProcessHeap(), 0, bufferSize);
+	LPVOID p = ApiWin->LocalAlloc(LPTR, bufferSize);
+	if (p && bufferSize > 0)
+		HeapTrack(p, bufferSize);
+	return p;
 }
 
-LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize) 
+LPVOID MemReallocLocal(LPVOID buffer, DWORD bufferSize)
 {
-    LPVOID mem = ApiWin->LocalReAlloc( buffer, bufferSize, LMEM_MOVEABLE);
-    //LPVOID mem = ApiWin->HeapReAlloc(GetProcessHeap(), 0, buffer, bufferSize);
+    if (buffer)
+        HeapUntrack(buffer);
+    LPVOID mem = ApiWin->LocalReAlloc(buffer, bufferSize, LMEM_MOVEABLE);
+    if (mem && bufferSize > 0)
+        HeapTrack(mem, bufferSize);
     return mem;
 }
 
-void MemFreeLocal(LPVOID* buffer, DWORD bufferSize) 
+void MemFreeLocal(LPVOID* buffer, DWORD bufferSize)
 {
     if (*buffer == NULL)
         return;
 
+    HeapUntrack(*buffer);
     memset((PBYTE)*buffer, 0, bufferSize);
 	ApiWin->LocalFree(*buffer);
 	*buffer = NULL;
-    //ApiWin->HeapFree(GetProcessHeap(), 0, *buffer);
-    //*buffer = NULL;
 }
 
 //////////
@@ -293,7 +299,7 @@ BOOL IsElevate()
     TOKEN_ELEVATION Elevation = { 0 };
     DWORD           cbSize    = sizeof(TOKEN_ELEVATION);
 
-    NTSTATUS NtStatus = ApiNt->NtOpenProcessToken(NtCurrentProcess(), TOKEN_QUERY, &hToken);
+    NTSTATUS NtStatus = SysNtOpenProcessToken(NtCurrentProcess(), TOKEN_QUERY, &hToken);
     if (NT_SUCCESS(NtStatus)) {
         success = ApiWin->GetTokenInformation(hToken, TokenElevation, &Elevation, sizeof(Elevation), &cbSize);
         if (success) 
@@ -301,7 +307,7 @@ BOOL IsElevate()
     }
 
     if (hToken) {
-        ApiNt->NtClose(hToken);
+        SysNtClose(hToken);
         hToken = NULL;
     }
     return high;
@@ -382,9 +388,9 @@ HANDLE TokenCurrentHandle()
 {
     HANDLE TokenHandle = NULL;
 
-    if (!NT_SUCCESS(ApiNt->NtOpenThreadToken(NtCurrentThread(), TOKEN_QUERY, FALSE, &TokenHandle))) {
-        if (!NT_SUCCESS(ApiNt->NtOpenThreadToken(NtCurrentThread(), TOKEN_QUERY, TRUE, &TokenHandle))) {
-            if (!NT_SUCCESS(ApiNt->NtOpenProcessToken(NtCurrentProcess(), TOKEN_QUERY, &TokenHandle)))
+    if (!NT_SUCCESS(SysNtOpenThreadToken(NtCurrentThread(), TOKEN_QUERY, FALSE, &TokenHandle))) {
+        if (!NT_SUCCESS(SysNtOpenThreadToken(NtCurrentThread(), TOKEN_QUERY, TRUE, &TokenHandle))) {
+            if (!NT_SUCCESS(SysNtOpenProcessToken(NtCurrentProcess(), TOKEN_QUERY, &TokenHandle)))
                 return NULL;
         }
     }

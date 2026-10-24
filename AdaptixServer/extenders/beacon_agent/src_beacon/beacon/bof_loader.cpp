@@ -1,4 +1,5 @@
 #include "bof_loader.h"
+#include "EtwPatch.h"
 #include "ProcLoader.h"
 #include "utils.h"
 #include "Boffer.h"
@@ -346,7 +347,9 @@ Packer* ObjectExecute(ULONG taskId, char* targetFuncName, unsigned char* coffFil
 		goto RET;
 	}
 
+	EtwPatch();
 	ExecuteProc(entryFuncName, args, argsSize, pSymbolTable, pHeader, mapSections);
+	EtwRestore();
 
 RET:
 	if (mapFunctions) {

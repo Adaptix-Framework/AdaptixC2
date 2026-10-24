@@ -310,11 +310,11 @@ function GenerateUI(listeners_type)
     comboAgentFormat.addItems(["Exe", "Service Exe", "DLL", "Shellcode"]);
 
     let labelSleep = form.create_label("Sleep (Jitter %):");
-    let textSleep = form.create_textline("4s");
+    let textSleep = form.create_textline("1m30s");
     textSleep.setPlaceholder("1h 2m 5s")
     let spinJitter = form.create_spin();
     spinJitter.setRange(0, 100);
-    spinJitter.setValue(0);
+    spinJitter.setValue(25);
 
     if( !listeners_type.includes("BeaconHTTP") && !listeners_type.includes("BeaconDNS") ) {
         labelSleep.setVisible(false);
@@ -332,7 +332,7 @@ function GenerateUI(listeners_type)
 
     let labelSvcName = form.create_label("Service Name:");
     labelSvcName.setVisible(false)
-    let textSvcName = form.create_textline("AgentService");
+    let textSvcName = form.create_textline("WinUpdateSvc");
     textSvcName.setVisible(false);
 
     let checkSideloading = form.create_check("Legit-DLL:");
@@ -359,7 +359,7 @@ function GenerateUI(listeners_type)
     let textDohResolvers = form.create_textline("https://dns.google/dns-query,https://cloudflare-dns.com/dns-query,https://dns.quad9.net/dns-query");
 
     let labelUserAgent = form.create_label("User-Agent:");
-    let textUserAgent = form.create_textline("Mozilla/5.0 (Windows NT 6.2; rv:20.0) Gecko/20121202 Firefox/20.0");
+    let textUserAgent = form.create_textline("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36");
 
     let layout_group_dns = form.create_gridlayout();
     layout_group_dns.addWidget(labelDnsMode,      0, 0, 1, 1);

