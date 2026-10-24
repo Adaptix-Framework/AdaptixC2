@@ -22,13 +22,23 @@ Teamserver:
   access_token_live_hours: 12
   refresh_token_live_hours: 168
 
+Advisor:
+  enabled: false
+  provider: "claude"
+  api_key: "${ANTHROPIC_API_KEY}"
+  model: "claude-opus-4-6"
+  scope: ""
+  endpoint: ""
+  max_history: 10
+  redact_creds: true
+  max_output_len: 4000
+
 HttpServer:
   error:
     status: 404
     headers:
       Content-Type: "text/html; charset=UTF-8"
-      Server: "AdaptixC2"
-      Adaptix-Version: "v1.2"
+      Server: "nginx"
     page: "404page.html"
   http:
     max_header_bytes: 8192

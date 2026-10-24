@@ -14,6 +14,7 @@
 #include <UI/Widgets/SessionsTableWidget.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ChatWidget.h>
+#include <UI/Widgets/AdvisorWidget.h>
 #include <UI/Widgets/ListenersWidget.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/ScreenshotsWidget.h>
@@ -53,6 +54,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
     AxConsoleDock     = new AxConsoleWidget(ScriptManager, this);
     LogsDock          = new LogsWidget(this);
     ChatDock          = new ChatWidget(this);
+    AdvisorDock       = new AdvisorWidget(this);
     ListenersDock     = new ListenersWidget(this);
     SessionsTableDock = new SessionsTableWidget(this);
     SessionsGraphDock = new SessionsGraph(this);
@@ -77,6 +79,7 @@ AdaptixWidget::AdaptixWidget(AuthProfile* authProfile, QThread* channelThread, W
 
     connect( logsButton,      &QPushButton::clicked, this, &AdaptixWidget::LoadLogsUI);
     connect( chatButton,      &QPushButton::clicked, this, &AdaptixWidget::LoadChatUI);
+    connect( advisorButton,   &QPushButton::clicked, this, &AdaptixWidget::LoadAdvisorUI);
     connect( listenersButton, &QPushButton::clicked, this, &AdaptixWidget::LoadListenersUI);
     connect( sessionsButton,  &QPushButton::clicked, this, &AdaptixWidget::SetSessionsTableUI);
     connect( graphButton,     &QPushButton::clicked, this, &AdaptixWidget::SetGraphUI);
@@ -294,6 +297,11 @@ void AdaptixWidget::createUI()
     chatButton->setFixedSize(37, 28);
     chatButton->setToolTip("Chat");
 
+    advisorButton = new QPushButton(QIcon(":/icons/extension"), "", this );
+    advisorButton->setIconSize( QSize( 24,24 ));
+    advisorButton->setFixedSize(37, 28);
+    advisorButton->setToolTip("AI Advisor");
+
     tunnelButton = new QPushButton( QIcon(":/icons/vpn"), "", this );
     tunnelButton->setIconSize( QSize( 24,24 ));
     tunnelButton->setFixedSize(37, 28);
@@ -381,6 +389,7 @@ void AdaptixWidget::createUI()
     topHLayout->addWidget(tasksButton);
     topHLayout->addWidget(line_2);
     topHLayout->addWidget(chatButton);
+    topHLayout->addWidget(advisorButton);
     topHLayout->addWidget(tunnelButton);
     topHLayout->addWidget(line_3);
     topHLayout->addWidget(downloadsButton);
@@ -521,6 +530,7 @@ void AdaptixWidget::Close()
     delete AxConsoleDock;
     delete LogsDock;
     delete ChatDock;
+    delete AdvisorDock;
     delete ListenersDock;
     delete SessionsTableDock;
     delete SessionsGraphDock;
@@ -547,6 +557,7 @@ void AdaptixWidget::ClearAdaptix()
     AxConsoleDock->OutputClear();
     LogsDock->Clear();
     ChatDock->Clear();
+    AdvisorDock->Clear();
     DownloadsDock->Clear();
     ScreenshotsDock->Clear();
     TasksDock->Clear();
@@ -1261,6 +1272,8 @@ void AdaptixWidget::LoadAxConsoleUI() const { this->PlaceDock(dockBottom, AxCons
 void AdaptixWidget::LoadLogsUI() const { this->PlaceDock(dockBottom, LogsDock->dock() ); }
 
 void AdaptixWidget::LoadChatUI() const { this->PlaceDock(dockBottom, ChatDock->dock() ); }
+
+void AdaptixWidget::LoadAdvisorUI() const { this->PlaceDock(dockBottom, AdvisorDock->dock() ); }
 
 void AdaptixWidget::LoadListenersUI() const { this->PlaceDock(dockBottom, ListenersDock->dock() ); }
 

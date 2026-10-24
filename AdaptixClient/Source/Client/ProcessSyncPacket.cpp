@@ -9,6 +9,7 @@
 #include <UI/Widgets/TasksWidget.h>
 #include <UI/Widgets/LogsWidget.h>
 #include <UI/Widgets/ChatWidget.h>
+#include <UI/Widgets/AdvisorWidget.h>
 #include <UI/Widgets/DownloadsWidget.h>
 #include <UI/Widgets/ScreenshotsWidget.h>
 #include <UI/Widgets/TunnelsWidget.h>
@@ -501,6 +502,15 @@ bool AdaptixWidget::isValidSyncPacket(QJsonObject jsonObj)
         return checkField("name", isStr) &&
                checkField("content", isStr) &&
                checkField("groups", isArr);
+
+    case TYPE_ADVISOR_RECOMMENDATION:
+        return checkField("adv_agent_id", isStr) &&
+               checkField("adv_command", isStr) &&
+               checkField("adv_rationale", isStr) &&
+               checkField("adv_look_for", isStr) &&
+               checkField("adv_priority", isStr) &&
+               checkField("adv_category", isStr) &&
+               checkField("adv_date", isNum);
 
     default:
         qWarning() << "[SyncPacket] Unknown packet type:" << spType;
@@ -1057,6 +1067,27 @@ void AdaptixWidget::processSyncPacket(QJsonObject jsonObj)
         this->ProcessAxScriptPacket(jsonObj["name"].toString(), jsonObj["content"].toString(), jsonObj["groups"].toArray());
         break;
 
+    case TYPE_ADVISOR_RECOMMENDATION: {
+        QStringList alts;
+        if (jsonObj.contains("adv_alternatives")) {
+            for (const QJsonValue &val : jsonObj["adv_alternatives"].toArray()) {
+                if (val.isString()) alts.append(val.toString());
+            }
+        }
+        AdvisorDock->AddRecommendation(
+            jsonObj["adv_date"].toDouble(),
+            jsonObj["adv_agent_id"].toString(),
+            jsonObj["adv_command"].toString(),
+            jsonObj["adv_rationale"].toString(),
+            jsonObj["adv_look_for"].toString(),
+            jsonObj["adv_priority"].toString(),
+            jsonObj["adv_category"].toString(),
+            alts,
+            jsonObj["adv_opsec_note"].toString()
+        );
+        break;
+    }
+
     case SP_TYPE_EVENT:
         LogsDock->AddLogs( jsonObj["event_type"].toDouble(), jsonObj["date"].toDouble(), jsonObj["message"].toString() );
         break;
@@ -1071,6 +1102,7 @@ void AdaptixWidget::setSyncUpdateUI(const bool enabled)
     if (AxConsoleDock)     AxConsoleDock->SetUpdatesEnabled(enabled);
     if (LogsDock)          LogsDock->SetUpdatesEnabled(enabled);
     if (ChatDock)          ChatDock->SetUpdatesEnabled(enabled);
+    if (AdvisorDock)       AdvisorDock->SetUpdatesEnabled(enabled);
     if (ListenersDock)     ListenersDock->SetUpdatesEnabled(enabled);
     if (SessionsTableDock) SessionsTableDock->SetUpdatesEnabled(enabled);
     if (TunnelsDock)       TunnelsDock->SetUpdatesEnabled(enabled);

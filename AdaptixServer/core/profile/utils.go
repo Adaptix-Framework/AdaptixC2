@@ -1,8 +1,21 @@
 package profile
 
 type AdaptixProfile struct {
-	Server     *TsProfile    `yaml:"Teamserver"`
-	HttpServer *TsHttpServer `yaml:"HttpServer"`
+	Server     *TsProfile      `yaml:"Teamserver"`
+	HttpServer *TsHttpServer   `yaml:"HttpServer"`
+	Advisor    *TsAdvisorConfig `yaml:"Advisor"`
+}
+
+type TsAdvisorConfig struct {
+	Enabled      bool   `yaml:"enabled"`
+	Provider     string `yaml:"provider"`
+	ApiKey       string `yaml:"api_key"`
+	Model        string `yaml:"model"`
+	Scope        string `yaml:"scope"`
+	Endpoint     string `yaml:"endpoint"`
+	MaxHistory   int    `yaml:"max_history"`
+	RedactCreds  bool   `yaml:"redact_creds"`
+	MaxOutputLen int    `yaml:"max_output_len"`
 }
 
 type TsProfile struct {

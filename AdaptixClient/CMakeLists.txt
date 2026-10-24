@@ -163,6 +163,7 @@ SET( HEADERS
         Headers/UI/Dialogs/DialogTarget.h
         Headers/UI/Dialogs/DialogSaveTask.h
         Headers/UI/Widgets/ChatWidget.h
+        Headers/UI/Widgets/AdvisorWidget.h
         Headers/UI/Widgets/AbstractDock.h
         Headers/Utils/NonBlockingDialogs.h
         Headers/UI/Dialogs/DialogSubscriptions.h
@@ -254,6 +255,7 @@ add_executable(AdaptixClient
         Source/UI/Dialogs/DialogTarget.cpp
         Source/UI/Dialogs/DialogSaveTask.cpp
         Source/UI/Widgets/ChatWidget.cpp
+        Source/UI/Widgets/AdvisorWidget.cpp
         Source/Utils/NonBlockingDialogs.cpp
         Source/Utils/FontManager.cpp
         Source/Utils/TitleBarStyle.cpp

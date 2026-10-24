@@ -1,6 +1,7 @@
 package server
 
 import (
+	"AdaptixServer/core/advisor"
 	"AdaptixServer/core/axscript"
 	"AdaptixServer/core/connector"
 	"AdaptixServer/core/database"
@@ -45,6 +46,7 @@ type Teamserver struct {
 	TunnelManager *TunnelManager
 	EventManager  *eventing.EventManager
 	ScriptManager *axscript.ScriptManager
+	Advisor       *advisor.Advisor
 
 	listener_configs safe.Map // listenerFullName string : listenerInfo extender.ListenerInfo
 	agent_configs    safe.Map // agentName string        : agentInfo extender.AgentInfo

@@ -217,6 +217,8 @@ func (ts *Teamserver) Start() {
 
 	ts.TsAxScriptLoadFromProfile()
 
+	ts.InitAdvisor()
+
 	go ts.AdaptixServer.Start(&stopped)
 	logs.Success("", "Starting server -> https://%s:%v%s", ts.Profile.Server.Interface, ts.Profile.Server.Port, ts.Profile.Server.Endpoint)
 

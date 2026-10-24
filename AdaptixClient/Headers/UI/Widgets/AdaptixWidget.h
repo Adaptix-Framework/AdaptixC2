@@ -24,6 +24,7 @@ class SessionsGraph;
 class AxConsoleWidget;
 class LogsWidget;
 class ChatWidget;
+class AdvisorWidget;
 class ListenersWidget;
 class DownloadsWidget;
 class ScreenshotsWidget;
@@ -70,6 +71,7 @@ Q_OBJECT
     QPushButton*    listenersButton   = nullptr;
     QPushButton*    logsButton        = nullptr;
     QPushButton*    chatButton        = nullptr;
+    QPushButton*    advisorButton     = nullptr;
     QPushButton*    sessionsButton    = nullptr;
     QPushButton*    graphButton       = nullptr;
     QPushButton*    tasksButton       = nullptr;
@@ -131,6 +133,7 @@ public:
     AxConsoleWidget*     AxConsoleDock     = nullptr;
     LogsWidget*          LogsDock          = nullptr;
     ChatWidget*          ChatDock          = nullptr;
+    AdvisorWidget*       AdvisorDock       = nullptr;
     ListenersWidget*     ListenersDock     = nullptr;
     SessionsTableWidget* SessionsTableDock = nullptr;
     SessionsGraph*       SessionsGraphDock = nullptr;
@@ -246,6 +249,7 @@ public Q_SLOTS:
     void LoadAxConsoleUI() const;
     void LoadLogsUI() const;
     void LoadChatUI() const;
+    void LoadAdvisorUI() const;
     void LoadListenersUI() const;
     void LoadTunnelsUI() const;
     void LoadDownloadsUI() const;
