@@ -1311,11 +1311,12 @@ ControlCardList::ControlCardList(QWidget* parent) : QScrollArea(parent)
 
     m_host = new QWidget(this);
     m_host->setObjectName(QStringLiteral("ControlCardHost"));
+    m_host->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     m_grid = new QGridLayout(m_host);
     m_grid->setContentsMargins(12, 12, 12, 12);
     m_grid->setHorizontalSpacing(12);
     m_grid->setVerticalSpacing(12);
-    m_grid->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+    m_grid->setAlignment(Qt::AlignTop);
     setWidget(m_host);
 
     const CardTheme th = resolveCardTheme(this);

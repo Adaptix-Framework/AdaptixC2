@@ -22,7 +22,7 @@ Switch::Switch(QWidget* parent)
   setChecked(false);
   setAutoRepeat(false);
   setupAnimation();
-  setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed); // Like QCheckBox
+  setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
   const auto* style = this->style();
   const auto* qlementineStyle = qobject_cast<const QlementineStyle*>(style);
   _fullHandlePadding = qlementineStyle ? qlementineStyle->theme().borderWidth * 2 : 2;

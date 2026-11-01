@@ -650,11 +650,65 @@ QFont MainBlock::mainTextFont(const QFont& smallFont, const QFont& /*primaryFont
     return f;
 }
 
+int MainBlock::structuredFieldWidth(int field, const QVariant& data, const QFont& smallFont, const QFont& primaryFont) const {
+    auto map = data.toMap();
+    QFont f;
+    if (primaryFont.pointSizeF() > 0.0) {
+        f = primaryFont;
+        if (!qFuzzyIsNull(m_mainTextPointOffset)) {
+            const qreal ps = f.pointSizeF() > 0.0 ? f.pointSizeF() : qreal(f.pointSize());
+            f.setPointSizeF(qMax(6.0, ps + m_mainTextPointOffset));
+        }
+    } else {
+        f = mainTextFont(smallFont);
+    }
+    if (field == 0) {
+        const QString user = map["user"].toString();
+        const QString imp = map["imp"].toString();
+        int w = user.isEmpty() ? 0 : QFontMetrics(f).horizontalAdvance(user) + 4;
+        if (!imp.isEmpty()) {
+            w = qMax(w, QFontMetrics(smallFont).horizontalAdvance(imp) + 4);
+        }
+        return w;
+    }
+    const QString host = map["host"].toString();
+    const QString domain = map["domain"].toString();
+    int hw = host.isEmpty() ? 0 : QFontMetrics(f).horizontalAdvance(host) + 4;
+    if (!domain.isEmpty()) {
+        hw += QFontMetrics(smallFont).horizontalAdvance("." + domain) + 2;
+    }
+    return hw;
+}
+
 int MainBlock::measureWidth(const QVariant& data, const QFont&, const QFont& smallFont, const QFont&) const {
     auto map = data.toMap();
     QFont bold = mainTextFont(smallFont);
     QFontMetrics fmBold(bold);
     QFontMetrics fmSmall(smallFont);
+
+    if (m_structured) {
+        QString user = map["user"].toString();
+        QString host = map["host"].toString();
+        QString domain = map["domain"].toString();
+        QString imp = map["imp"].toString();
+        QString os = map["os"].toString();
+
+        int line1W = 0;
+        if (!user.isEmpty()) line1W += fmBold.horizontalAdvance(user) + 4;
+        if (!host.isEmpty()) line1W += (line1W > 0 ? 12 : 0) + fmBold.horizontalAdvance(host) + 4;
+        if (!domain.isEmpty()) line1W += fmSmall.horizontalAdvance("." + domain) + 2;
+
+        int line2W = 0;
+        if (!imp.isEmpty()) {
+            line2W = fmSmall.horizontalAdvance(imp) + 4;
+        }
+        if (!os.isEmpty()) {
+            int osX = (!host.isEmpty() && !user.isEmpty()) ? fmBold.horizontalAdvance(user) + 4 + 12 : 0;
+            line2W = qMax(line2W, osX + fmSmall.horizontalAdvance(os) + 4);
+        }
+
+        return qMax(line1W, line2W);
+    }
 
     QString mainText = map["main"].toString();
     QString subMain = map["submain"].toString();
@@ -697,6 +751,65 @@ void MainBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, cons
     QFontMetrics fmSmall(smallFont);
     int x = rect.left();
 
+    if (m_structured) {
+        QString user = map["user"].toString();
+        QString host = map["host"].toString();
+        QString domain = map["domain"].toString();
+        QString imp = map["imp"].toString();
+        QString os = map["os"].toString();
+
+        const int colGap = 12;
+        int userColW = ctx.structUserColW > 0 ? ctx.structUserColW : (fmBold.horizontalAdvance(user) + 4);
+        int hostColW = ctx.structHostColW > 0 ? ctx.structHostColW : (fmBold.horizontalAdvance(host) + 4);
+
+        int anchorEnd = x;
+        if (!user.isEmpty()) {
+            p->setFont(bold);
+            p->setPen(colText);
+            p->drawText(x, y1, userColW, lh1, Qt::AlignLeft | Qt::AlignVCenter, fmBold.elidedText(user, Qt::ElideRight, userColW));
+            anchorEnd = x + userColW;
+        }
+        const int hostX = anchorEnd > x ? anchorEnd + colGap : x;
+        if (!host.isEmpty() || !domain.isEmpty()) {
+            int hx = hostX;
+            if (!host.isEmpty()) {
+                p->setFont(bold);
+                p->setPen(colText);
+                int hostWdraw = qMin(fmBold.horizontalAdvance(host) + 4, hostColW);
+                p->drawText(hx, y1, hostWdraw, lh1, Qt::AlignLeft | Qt::AlignVCenter, fmBold.elidedText(host, Qt::ElideRight, hostWdraw));
+                hx += hostWdraw;
+            }
+            if (!domain.isEmpty()) {
+                int rem = hostX + hostColW - hx;
+                if (rem > 0) {
+                    p->setFont(smallFont);
+                    p->setPen(colMuted);
+                    QString domPart = host.isEmpty() ? domain : ("." + domain);
+                    p->drawText(hx, y1, rem, lh1, Qt::AlignLeft | Qt::AlignVCenter, fmSmall.elidedText(domPart, Qt::ElideRight, rem));
+                }
+            }
+            anchorEnd = hostX + hostColW;
+        }
+
+        if (!compact) {
+            if (!imp.isEmpty()) {
+                p->setFont(smallFont);
+                p->setPen(colMuted);
+                p->drawText(x, y2, userColW, lh2, Qt::AlignLeft | Qt::AlignVCenter, fmSmall.elidedText(imp, Qt::ElideRight, userColW));
+            }
+            if (!os.isEmpty()) {
+                const int osX = !host.isEmpty() ? hostX : x;
+                int osW = rect.right() - osX - 4;
+                if (osW > 0) {
+                    p->setFont(smallFont);
+                    p->setPen(colMuted);
+                    p->drawText(osX, y2, osW, lh2, Qt::AlignLeft | Qt::AlignVCenter, fmSmall.elidedText(os, Qt::ElideRight, osW));
+                }
+            }
+        }
+        return;
+    }
+
     if (!mainText.isEmpty()) {
         p->setFont(bold);
         p->setPen(colText);
@@ -733,6 +846,32 @@ int MainBlock::measureCompactDivision(int division, const QVariant& data, const 
     QFontMetrics fmBold(bold);
     QFontMetrics fmSmall(smallFont);
 
+    if (m_structured) {
+        QString s;
+        bool small = false;
+        if (division == 0) {
+            s = map["user"].toString();
+        }
+        else if (division == 1) {
+            s = map["imp"].toString();
+            small = true;
+        } else if (division == 2) {
+            QString host = map["host"].toString();
+            QString domain = map["domain"].toString();
+            int w = host.isEmpty() ? 0 : fmBold.horizontalAdvance(host) + 4;
+            if (!domain.isEmpty())
+                w += fmSmall.horizontalAdvance((host.isEmpty() ? QString() : ".") + domain) + 2;
+            return w == 0 ? 0 : w + 2;
+        } else {
+            s = map["os"].toString();
+            small = true;
+        }
+        if (s.isEmpty()) {
+            return 0;
+        }
+        return (small ? fmSmall : fmBold).horizontalAdvance(s) + 6;
+    }
+
     if (division == 0) {
         QString mainText = map["main"].toString();
         return mainText.isEmpty() ? 0 : fmBold.horizontalAdvance(mainText) + 6;
@@ -754,6 +893,56 @@ void MainBlock::paintCompactDivision(QPainter* p, const QRect& subRect, int divi
     QFont bold = mainTextFont(smallFont);
     QFontMetrics fmBold(bold);
     QFontMetrics fmSmall(smallFont);
+
+    if (m_structured) {
+        if (division == 2) {
+            QString host = map["host"].toString();
+            QString domain = map["domain"].toString();
+            int hx = subRect.left();
+            int mw = subRect.width() - 4;
+            if (mw < 4) mw = 4;
+            if (!host.isEmpty()) {
+                p->setFont(bold);
+                p->setPen(colText);
+                int hostWdraw = qMin(fmBold.horizontalAdvance(host) + 4, mw);
+                p->drawText(hx, subRect.top(), hostWdraw, subRect.height(), Qt::AlignLeft | Qt::AlignVCenter, fmBold.elidedText(host, Qt::ElideRight, hostWdraw));
+                hx += hostWdraw;
+            }
+            if (!domain.isEmpty()) {
+                int rem = subRect.left() + mw - hx;
+                if (rem > 0) {
+                    p->setFont(smallFont);
+                    p->setPen(colMuted);
+                    QString domPart = host.isEmpty() ? domain : ("." + domain);
+                    p->drawText(hx, subRect.top(), rem, subRect.height(), Qt::AlignLeft | Qt::AlignVCenter, fmSmall.elidedText(domPart, Qt::ElideRight, rem));
+                }
+            }
+            return;
+        }
+        QString s;
+        bool small = false;
+        if (division == 0) {
+            s = map["user"].toString();
+        }
+        else if (division == 1) {
+            s = map["imp"].toString();
+            small = true;
+        } else {
+            s = map["os"].toString();
+            small = true;
+        }
+        if (s.isEmpty()) {
+            return;
+        }
+        QFont f = small ? smallFont : bold;
+        QFontMetrics fm(f);
+        p->setFont(f);
+        p->setPen(small ? colMuted : colText);
+        int mw = subRect.width() - 4;
+        if (mw < 4) mw = 4;
+        p->drawText(subRect.left(), subRect.top(), mw, subRect.height(), Qt::AlignLeft | Qt::AlignVCenter, fm.elidedText(s, Qt::ElideRight, mw));
+        return;
+    }
 
     if (division == 0) {
         QString mainText = map["main"].toString();
@@ -927,15 +1116,39 @@ void ProgressBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, 
 }
 
 
+QPair<QStringList, QStringList> TagsBlock::splitTwoLine(const QStringList& tags) const {
+    QStringList clean;
+    for (const QString& t : tags) {
+        const QString trimmed = t.trimmed();
+        if (!trimmed.isEmpty()) {
+            clean << trimmed;
+        }
+    }
+    const int mid = (clean.size() + 1) / 2;
+    return { clean.mid(0, mid), clean.mid(mid) };
+}
+
 int TagsBlock::measureWidth(const QVariant& data, const QFont&, const QFont& smallFont, const QFont&) const {
     QStringList tags = data.toStringList();
     if (tags.isEmpty())
         return 0;
     QFontMetrics fm(smallFont);
     int w = 0;
-    for (const QString& t : tags) {
-        QString trimmed = t.trimmed();
-        if (!trimmed.isEmpty()) w += fm.horizontalAdvance(trimmed) + 12 + 6;
+    if (m_twoLine) {
+        const auto rows = splitTwoLine(tags);
+        const QStringList rowLists[2] = { rows.first, rows.second };
+        for (const QStringList& row : rowLists) {
+            int rowW = 0;
+            for (const QString& t : row) {
+                rowW += fm.horizontalAdvance(t) + 12 + 6;
+            }
+            w = qMax(w, rowW > 0 ? rowW - 6 : 0);
+        }
+    } else {
+        for (const QString& t : tags) {
+            QString trimmed = t.trimmed();
+            if (!trimmed.isEmpty()) w += fm.horizontalAdvance(trimmed) + 12 + 6;
+        }
     }
     return w > 0 ? w + 4 : 0;
 }
@@ -956,6 +1169,34 @@ void TagsBlock::paint(QPainter* p, const QRect& rect, const QVariant& data, cons
     if (ctx.compact) {
         badgeH = qMin(badgeH, rect.height() - 4);
         y = rect.top() + 1;
+    } else if (m_twoLine && tags.size() > 1) {
+        const int rowGap = 3;
+        const int chipH = qMin(badgeH, (rect.height() - rowGap) / 2);
+        const int totalH = 2 * chipH + rowGap;
+        const int y0 = rect.top() + (rect.height() - totalH) / 2;
+        const auto rows = splitTwoLine(tags);
+        const FeedColors fc = FeedColors::fromTheme();
+        const QColor accentCol = fc.accent.isValid() ? fc.accent : fc.rowSelectedBg;
+        const QStringList rowLists[2] = { rows.first, rows.second };
+        const int rowY[2] = { y0, y0 + chipH + rowGap };
+        for (int r = 0; r < 2; ++r) {
+            int rx = x;
+            for (const QString& tag : rowLists[r]) {
+                int tw = fm.horizontalAdvance(tag) + 10;
+                QRect tagRect(rx, rowY[r], tw, chipH);
+                QColor tagCol = accentCol;
+                if (selected) {
+                    tagCol = colText;
+                }
+                p->setPen(tagCol);
+                p->setBrush(Qt::NoBrush);
+                p->drawRoundedRect(tagRect, 3, 3);
+                p->setPen(selected ? colText : colMuted);
+                p->drawText(tagRect, Qt::AlignCenter, tag);
+                rx += tw + 5;
+            }
+        }
+        return;
     } else {
         y = rect.top() + (rect.height() - badgeH) / 2;
     }
@@ -1529,8 +1770,9 @@ void ListFeedDelegate::updateMaxWidths(const FeedListModel* model) const {
     for (int i = 0; i < m_blocks.size(); ++i) {
         FeedBlock::Policy pol = m_blocks[i]->policy();
         bool needCache = (pol == FeedBlock::Fixed || pol == FeedBlock::RightAlign);
-        if (pol == FeedBlock::LeftFill && !m_blocks[i]->stretch())
+        if (pol == FeedBlock::LeftFill) {
             needCache = true;
+        }
         if (needCache) {
             int maxW = 0;
             for (int r = 0; r < rows; ++r) {
@@ -1571,6 +1813,22 @@ void ListFeedDelegate::updateMaxWidths(const FeedListModel* model) const {
                 auto map = row.blockData[i].toMap();
                 int idTextW = fmId.horizontalAdvance(map["id"].toString()) + 4;
                 if (idTextW > maxIdTextW) maxIdTextW = idTextW;
+            }
+        }
+
+        if (m_blocks[i]->name() == "main") {
+            auto* mb = dynamic_cast<MainBlock*>(m_blocks[i]);
+            if (mb && mb->structured()) {
+                int maxU = 0;
+                int maxH = 0;
+                for (int r = 0; r < rows; ++r) {
+                    const FeedRow& row = model->rowAt(r);
+                    if (row.isGroup || i >= row.size()) continue;
+                    maxU = qMax(maxU, mb->structuredFieldWidth(0, row.blockData[i], smallFont(), primaryFont()));
+                    maxH = qMax(maxH, mb->structuredFieldWidth(1, row.blockData[i], smallFont(), primaryFont()));
+                }
+                m_cachedStructUserW = maxU;
+                m_cachedStructHostW = maxH;
             }
         }
     }
@@ -1909,7 +2167,9 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
     int nSeq = 0;
     int sumFixedSeq = 0;
     int nStretch = 0;
-    for (int i : seqBlocks) {
+    QVector<int> seqW(seqBlocks.size(), 0);
+    for (int k = 0; k < seqBlocks.size(); ++k) {
+        const int i = seqBlocks[k];
         bool isStr = (m_blocks[i]->policy() == FeedBlock::LeftFill && m_blocks[i]->stretch());
         int w = 0;
         if (compact && m_cachedSubBlockW.size() > i && !m_cachedSubBlockW[i].isEmpty()) {
@@ -1925,8 +2185,10 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
             nSeq++;
             if (isStr)
                 nStretch++;
-            else
+            else {
                 sumFixedSeq += w;
+                seqW[k] = w;
+            }
         }
     }
 
@@ -1936,6 +2198,54 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
     int gapsSpace = gapsInSeq * blockGap;
     int spaceForStretches = qMax(0, seqAvailable - gapsSpace - sumFixedSeq);
     int stretchW = (nStretch > 0) ? (spaceForStretches / nStretch) : 0;
+
+    if (nStretch > 0) {
+        int stretchContentMin = 0;
+        for (int k = 0; k < seqBlocks.size(); ++k) {
+            const int i = seqBlocks[k];
+            if (m_blocks[i]->policy() != FeedBlock::LeftFill || !m_blocks[i]->stretch())
+                continue;
+
+            int cw = 0;
+            if (compact && m_cachedSubBlockW.size() > i && !m_cachedSubBlockW[i].isEmpty()) {
+                for (int sw : m_cachedSubBlockW[i]) {
+                    cw += sw;
+                }
+                if (m_cachedSubBlockW[i].size() > 1) {
+                    cw += (m_cachedSubBlockW[i].size() - 1) * blockGap;
+                }
+            } else if (m_cachedBlockW.size() > i) {
+                cw = m_cachedBlockW[i];
+            }
+            stretchContentMin = qMax(stretchContentMin, cw);
+        }
+        const int deficit = stretchContentMin * nStretch - spaceForStretches;
+        if (deficit > 0) {
+            int freeable = 0;
+            for (int k = 0; k < seqBlocks.size(); ++k) {
+                const int i = seqBlocks[k];
+                if (seqW[k] > 0 && m_blocks[i]->shrinkable()) {
+                    freeable += qMax(0, seqW[k] - m_blocks[i]->shrinkFloor());
+                }
+            }
+            if (freeable > 0) {
+                const int freed = qMin(deficit, freeable);
+                const double keep = double(freeable - freed) / double(freeable);
+                sumFixedSeq = 0;
+                for (int k = 0; k < seqBlocks.size(); ++k) {
+                    const int i = seqBlocks[k];
+                    const int floorW = m_blocks[i]->shrinkFloor();
+                    if (seqW[k] > 0 && m_blocks[i]->shrinkable() && seqW[k] > floorW) {
+                        seqW[k] = floorW + qRound((seqW[k] - floorW) * keep);
+                    }
+                    sumFixedSeq += seqW[k];
+                }
+                spaceForStretches = qMax(0, seqAvailable - gapsSpace - sumFixedSeq);
+                stretchW = spaceForStretches / nStretch;
+            }
+        }
+    }
+
     int stretchRemainder = (nStretch > 0) ? (spaceForStretches - stretchW * nStretch) : 0;
 
     int x = ml;
@@ -1949,33 +2259,10 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
     }
     bool isFirstSeq = true;
     int stretchesSeen = 0;
-    for (int i : seqBlocks) {
-        FeedBlock::Policy pol = m_blocks[i]->policy();
-        bool isStr = (pol == FeedBlock::LeftFill && m_blocks[i]->stretch());
-        int bw = 0;
-        if (pol == FeedBlock::Fixed) {
-            if (compact && m_cachedSubBlockW.size() > i && !m_cachedSubBlockW[i].isEmpty()) {
-                for (int sw : m_cachedSubBlockW[i])
-                    bw += sw;
-                int divs = m_cachedSubBlockW[i].size();
-                if (divs > 1)
-                    bw += (divs - 1) * blockGap;
-            } else {
-                bw = (m_cachedBlockW.size() > i) ? m_cachedBlockW[i] : 0;
-            }
-        } else if (pol == FeedBlock::LeftFill) {
-            if (isStr) {
-                bw = stretchW;
-            } else if (compact && m_cachedSubBlockW.size() > i && !m_cachedSubBlockW[i].isEmpty()) {
-                for (int sw : m_cachedSubBlockW[i]) bw += sw;
-                int divs = m_cachedSubBlockW[i].size();
-                if (divs > 1) bw += (divs - 1) * blockGap;
-            } else {
-                bw = (m_cachedBlockW.size() > i) ? m_cachedBlockW[i] : 0;
-            }
-        } else {
-            continue;
-        }
+    for (int k = 0; k < seqBlocks.size(); ++k) {
+        const int i = seqBlocks[k];
+        bool isStr = (m_blocks[i]->policy() == FeedBlock::LeftFill && m_blocks[i]->stretch());
+        int bw = isStr ? stretchW : seqW[k];
         if (bw <= 0)
             continue;
 
@@ -2026,6 +2313,8 @@ void ListFeedDelegate::paint(QPainter* painter, const QStyleOptionViewItem& opti
     ctx.lineH2 = m_lineH2;
     ctx.lineH1Compact = m_lineH1Compact;
     ctx.lineGap = m_lineGap;
+    ctx.structUserColW = m_cachedStructUserW;
+    ctx.structHostColW = m_cachedStructHostW;
     ctx.primaryFont = primaryFont();
     ctx.microFont = microFont();
     ctx.tagFont = tagFont();

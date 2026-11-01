@@ -17,7 +17,7 @@
 #include <QPainter>
 #include <QMouseEvent>
 
-namespace SessionsBlock { enum { Icon = 0, Id = 1, Main = 2, Tags = 3, Right = 4, Count = 5 }; }
+namespace SessionsBlock { enum { Icon = 0, Id = 1, Main = 2, Net = 3, Proc = 4, Tags = 5, Right = 6, Count = 7 }; }
 
 static bool sessionsCol(int col)
 {
@@ -50,18 +50,11 @@ static FeedRow agentToFeedRow(const Agent* agent) {
     };
 
     QString user = d.Username.trimmed();
-    if (d.Elevated)
-        user = user.isEmpty() ? QStringLiteral("*") : (QStringLiteral("* ") + user);
-    if (!d.Impersonated.isEmpty())
-        user += " [" + d.Impersonated + "]";
+    QString imp = d.Impersonated.trimmed();
+    if (!imp.isEmpty()) {
+        imp = QStringLiteral("[%1]").arg(imp);
+    }
 
-    QStringList mainParts;
-    if (sessionsCol(SC_User) && !(d.Username.trimmed().isEmpty() && !d.Elevated))
-        mainParts << user;
-    if (sessionsCol(SC_Computer) && !d.Computer.isEmpty())
-        mainParts << d.Computer;
-
-    QString mainText = mainParts.join(QString(" \u00B7 "));
     QString domain = d.Domain.trimmed();
     if (!domain.isEmpty() && !d.Computer.isEmpty()) {
         QString host = d.Computer;
@@ -70,58 +63,39 @@ static FeedRow agentToFeedRow(const Agent* agent) {
         if (QString::compare(domain, host, Qt::CaseInsensitive) == 0 || QString::compare(domain, hostShort, Qt::CaseInsensitive) == 0)
             domain.clear();
     }
-    if (sessionsCol(SC_Domain) && !domain.isEmpty()) {
-        if (!mainText.isEmpty())
-            mainText += " @ " + domain;
-        else
-            mainText = domain;
-    }
 
-    const QString submain = sessionsCol(SC_Internal) ? d.InternalIP : QString();
-
-    QStringList secondParts;
+    QString netSecond;
     if (sessionsCol(SC_Listener) || sessionsCol(SC_External)) {
-        QString part;
-        if (sessionsCol(SC_Listener) && !d.Listener.isEmpty())
-            part = d.Listener;
+        if (sessionsCol(SC_Listener) && !d.Listener.isEmpty()) {
+            netSecond = d.Listener;
+        }
         if (sessionsCol(SC_External) && !d.ExternalIP.isEmpty()) {
-            if (!part.isEmpty())
-                part += QString(" (%1)").arg(d.ExternalIP);
-            else
-                part = d.ExternalIP;
+            netSecond = netSecond.isEmpty() ? d.ExternalIP : netSecond + QString(" (%1)").arg(d.ExternalIP);
         }
-        if (!part.isEmpty())
-            secondParts << part;
     }
-    if (sessionsCol(SC_Os) && !d.OsDesc.isEmpty())
-        secondParts << d.OsDesc;
+    row[SessionsBlock::Net] = QVariantMap{
+        {"main", sessionsCol(SC_Internal) ? d.InternalIP : QString()},
+        {"second", netSecond}
+    };
 
-    if (sessionsCol(SC_Process) || sessionsCol(SC_Pid) || sessionsCol(SC_Tid)) {
-        QString procPart;
-        if (sessionsCol(SC_Process) && !d.Process.isEmpty()) {
-            procPart = d.Process;
-            QStringList extras;
-            if (!d.Arch.isEmpty())
-                extras << d.Arch;
-            if (sessionsCol(SC_Pid) && !d.Pid.isEmpty())
-                extras << d.Pid;
-            if (sessionsCol(SC_Tid) && !d.Tid.isEmpty())
-                extras << d.Tid;
-            if (!extras.isEmpty())
-                procPart += QString(" (%1)").arg(extras.join(", "));
-        } else {
-            QStringList ids;
-            if (sessionsCol(SC_Pid) && !d.Pid.isEmpty())
-                ids << d.Pid;
-            if (sessionsCol(SC_Tid) && !d.Tid.isEmpty())
-                ids << d.Tid;
-            procPart = ids.join(", ");
+    QString procMain;
+    if (sessionsCol(SC_Process) && !d.Process.isEmpty()) {
+        procMain = d.Process;
+        if (!d.Arch.isEmpty()) {
+            procMain += QString(" %1").arg(d.Arch);
         }
-        if (!procPart.isEmpty())
-            secondParts << procPart;
     }
-
-    const QString secondText = secondParts.join(" | ");
+    QStringList procIds;
+    if (sessionsCol(SC_Pid) && !d.Pid.isEmpty()) {
+        procIds << QString("pid %1").arg(d.Pid);
+    }
+    if (sessionsCol(SC_Tid) && !d.Tid.isEmpty()) {
+        procIds << QString("tid %1").arg(d.Tid);
+    }
+    row[SessionsBlock::Proc] = QVariantMap{
+        {"main", procMain},
+        {"second", procIds.join(" \u00B7 ")}
+    };
 
     quint32 ipNum = 0;
     if (!d.InternalIP.isEmpty()) {
@@ -131,13 +105,15 @@ static FeedRow agentToFeedRow(const Agent* agent) {
     }
 
     row[SessionsBlock::Main] = QVariantMap{
-        {"main", mainText},
-        {"submain", submain},
-        {"second", secondText},
+        {"user", sessionsCol(SC_User) ? user : QString()},
+        {"imp", (sessionsCol(SC_User) && !imp.isEmpty()) ? imp : QString()},
+        {"host", sessionsCol(SC_Computer) ? d.Computer : QString()},
+        {"domain", (sessionsCol(SC_Domain) && !domain.isEmpty()) ? domain : QString()},
+        {"os", sessionsCol(SC_Os) ? d.OsDesc : QString()},
         {"agentType", d.Name.toLower()},
-        {"user", user.toLower()},
+        {"userSort", user.toLower()},
         {"computer", d.Computer.toLower()},
-        {"domain", d.Domain.toLower()},
+        {"domainSort", d.Domain.toLower()},
         {"listener", d.Listener.toLower()},
         {"process", d.Process.toLower()},
         {"ipNum", ipNum}
@@ -197,8 +173,18 @@ static ListFeedDelegate* createSessionsDelegate(QObject* parent) {
     auto* d = new ListFeedDelegate(parent);
     d->addBlock(new IconBlock());
     d->addBlock(new IdBadgeBlock());
-    d->addBlock(new MainBlock());
-    d->addBlock(new TagsBlock());
+    auto* main = new MainBlock();
+    main->setStructured(true);
+    d->addBlock(main);
+    auto* net = new TextBlock();
+    net->setShrinkable(true);
+    d->addBlock(net);
+    auto* proc = new TextBlock();
+    proc->setShrinkable(true);
+    d->addBlock(proc);
+    auto* tags = new TagsBlock();
+    tags->setTwoLine(true);
+    d->addBlock(tags);
     d->addBlock(new StatusBlock());
     d->addBlock(new GroupHeaderBlock());
     return d;
@@ -428,9 +414,9 @@ void SessionsFeedWidget::onSortingChanged(int index)
         case 4:  feedBlockModel->sortByFieldNumeric(SessionsBlock::Id, "idNum", order); break;
         case 5:  feedBlockModel->sortByField(SessionsBlock::Main, "agentType", order); break;
         case 6:  feedBlockModel->sortByField(SessionsBlock::Main, "listener", order); break;
-        case 7:  feedBlockModel->sortByField(SessionsBlock::Main, "user", order); break;
+        case 7:  feedBlockModel->sortByField(SessionsBlock::Main, "userSort", order); break;
         case 8:  feedBlockModel->sortByField(SessionsBlock::Main, "computer", order); break;
-        case 9:  feedBlockModel->sortByField(SessionsBlock::Main, "domain", order); break;
+        case 9:  feedBlockModel->sortByField(SessionsBlock::Main, "domainSort", order); break;
         case 10: feedBlockModel->sortByFieldNumeric(SessionsBlock::Main, "ipNum", order); break;
         case 11: feedBlockModel->sortByField(SessionsBlock::Main, "process", order); break;
     }
