@@ -603,7 +603,7 @@ func (sm *ScriptManager) ResolveAndExecutePreHook(agentName string, agentId int6
 	cmdDef := resolved.GetEffectiveCommand()
 
 	if cmdDef.HasPreHook && cmdDef.PreHookFunc != nil && resolved.Engine != nil {
-		preHookErr := sm.executePreHook(resolved.Engine, cmdDef.PreHookFunc, agentId, cmdline, args, client)
+		preHookErr := sm.executePreHook(resolved.Engine, cmdDef.PreHookFunc, agentId, cmdline, args, client, cmdDef)
 		if preHookErr != nil {
 			return "", "", true, preHookErr
 		}
@@ -626,8 +626,8 @@ func (sm *ScriptManager) ParseCommandPublic(cmdline string, resolved *ResolvedCo
 }
 
 // /---
-func (sm *ScriptManager) ExecutePreHookPublic(engine *ScriptEngine, fn goja.Callable, agentId int64, cmdline string, args map[string]interface{}, client string) error {
-	return sm.executePreHook(engine, fn, agentId, cmdline, args, client)
+func (sm *ScriptManager) ExecutePreHookPublic(engine *ScriptEngine, fn goja.Callable, agentId int64, cmdline string, args map[string]interface{}, client string, cmdDef *CommandDef) error {
+	return sm.executePreHook(engine, fn, agentId, cmdline, args, client, cmdDef)
 }
 
 // /---
@@ -635,7 +635,26 @@ func (sm *ScriptManager) ResolveFileArgsPublic(engine *ScriptEngine, parsed *Par
 	return sm.resolveFileArgs(engine, parsed)
 }
 
-func (sm *ScriptManager) executePreHook(engine *ScriptEngine, fn goja.Callable, agentId int64, cmdline string, args map[string]interface{}, client string) error {
+func fileArgNames(cmdDef *CommandDef) []string {
+	if cmdDef == nil {
+		return nil
+	}
+	var names []string
+	for _, a := range cmdDef.Args {
+		if a.Type != ArgTypeFile {
+			continue
+		}
+		if a.Name != "" {
+			names = append(names, a.Name)
+		}
+		if a.Flag && a.Mark != "" && a.Mark != a.Name {
+			names = append(names, a.Mark)
+		}
+	}
+	return names
+}
+
+func (sm *ScriptManager) executePreHook(engine *ScriptEngine, fn goja.Callable, agentId int64, cmdline string, args map[string]interface{}, client string, cmdDef *CommandDef) error {
 	argsCopy := make(map[string]interface{}, len(args))
 	for k, v := range args {
 		argsCopy[k] = v
@@ -644,7 +663,7 @@ func (sm *ScriptManager) executePreHook(engine *ScriptEngine, fn goja.Callable, 
 	_, err := engine.CallCallableAs(client, fn,
 		engine.ToValue(agentId),
 		engine.ToValue(cmdline),
-		engine.ToValue(argsCopy),
+		engine.HookArgsValue(argsCopy, fileArgNames(cmdDef)),
 	)
 	return err
 }
@@ -783,7 +802,7 @@ func (sm *ScriptManager) ExecuteAlias(fromEngine *ScriptEngine, agentId int64, a
 	cmdDef := ctx.resolved.GetEffectiveCommand()
 
 	if cmdDef.HasPreHook && cmdDef.PreHookFunc != nil && ctx.resolved.Engine != nil {
-		preHookErr := sm.executePreHook(ctx.resolved.Engine, cmdDef.PreHookFunc, agentId, aliasCmdline, ctx.parsed.Args, clientName)
+		preHookErr := sm.executePreHook(ctx.resolved.Engine, cmdDef.PreHookFunc, agentId, aliasCmdline, ctx.parsed.Args, clientName, cmdDef)
 		if preHookErr != nil {
 			return preHookErr
 		}
@@ -818,7 +837,7 @@ func (sm *ScriptManager) ExecuteAliasWithHooks(fromEngine *ScriptEngine, agentId
 	cmdDef := ctx.resolved.GetEffectiveCommand()
 
 	if cmdDef.HasPreHook && cmdDef.PreHookFunc != nil && ctx.resolved.Engine != nil {
-		preHookErr := sm.executePreHook(ctx.resolved.Engine, cmdDef.PreHookFunc, agentId, aliasCmdline, ctx.parsed.Args, clientName)
+		preHookErr := sm.executePreHook(ctx.resolved.Engine, cmdDef.PreHookFunc, agentId, aliasCmdline, ctx.parsed.Args, clientName, cmdDef)
 		if preHookErr != nil {
 			return preHookErr
 		}

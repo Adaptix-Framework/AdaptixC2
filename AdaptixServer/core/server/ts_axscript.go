@@ -268,7 +268,7 @@ func (ts *Teamserver) TsAxScriptParseAndExecuteResult(agentId int64, username st
 	}
 
 	if cmdDef.HasPreHook && cmdDef.PreHookFunc != nil && resolved.Engine != nil {
-		preHookErr := ts.ScriptManager.ExecutePreHookPublic(resolved.Engine, cmdDef.PreHookFunc, agentId, cmdline, parsed.Args, username)
+		preHookErr := ts.ScriptManager.ExecutePreHookPublic(resolved.Engine, cmdDef.PreHookFunc, agentId, cmdline, parsed.Args, username, cmdDef)
 		if preHookErr != nil {
 			ts.TsAgentConsoleOutputClient(agentId, username, CONSOLE_OUT_LOCAL_ERROR, cmdline, std.ExtractJsErrorMessage(preHookErr))
 			return 0, true, nil

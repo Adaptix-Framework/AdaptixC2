@@ -2,6 +2,7 @@ package axscript
 
 import (
 	"AdaptixServer/core/utils/fsystem"
+	"encoding/base64"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -254,6 +255,20 @@ func (e *ScriptEngine) RemoveFunctionRef(id string) {
 
 func (e *ScriptEngine) ToValue(v interface{}) goja.Value {
 	return e.runtime.ToValue(v)
+}
+
+func (e *ScriptEngine) HookArgsValue(args map[string]interface{}, fileArgNames []string) goja.Value {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	for _, name := range fileArgNames {
+		if s, ok := args[name].(string); ok && s != "" {
+			if raw, err := base64.StdEncoding.DecodeString(s); err == nil {
+				args[name] = e.runtime.NewArrayBuffer(raw)
+			}
+		}
+	}
+	return e.runtime.ToValue(args)
 }
 
 // /---

@@ -2,6 +2,8 @@
 #include <main.h>
 
 #include <QJSEngine>
+#include <QMetaType>
+#include <QVariant>
 #include <QRegularExpression>
 #include <QTextStream>
 
@@ -432,10 +434,35 @@ QString Commander::ProcessPreHook(QJSEngine *engine, const Command &command, qin
     if (!engine)
         return "Ax Engine is not available";
 
+    QVariantMap parsedMap = jsonObj.toVariantMap();
+    for (const Argument& commandArg : command.args) {
+        if (commandArg.type != "FILE")
+            continue;
+
+        const QString argKeys[2] = { commandArg.name, commandArg.mark };
+        for (const QString& key : argKeys) {
+            if (key.isEmpty())
+                continue;
+
+            const auto it = parsedMap.constFind(key);
+            if (it == parsedMap.constEnd() || it->typeId() != QMetaType::QString)
+                continue;
+
+            const QString b64 = it->toString();
+            if (b64.isEmpty())
+                continue;
+
+            const auto dec = QByteArray::fromBase64Encoding(b64.toUtf8(), QByteArray::AbortOnBase64DecodingErrors);
+            if (dec.decodingStatus == QByteArray::Base64DecodingStatus::Ok) {
+                parsedMap[key] = QVariant(dec.decoded);
+            }
+        }
+    }
+
     QList<QJSValue> jsArgs;
     jsArgs << engine->toScriptValue(agentId);
     jsArgs << engine->toScriptValue(cmdline);
-    jsArgs << engine->toScriptValue(jsonObj.toVariantMap());
+    jsArgs << engine->toScriptValue(parsedMap);
     for (const QString& arg : args) {
         jsArgs << engine->toScriptValue(arg);
     }
