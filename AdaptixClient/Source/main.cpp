@@ -1,6 +1,7 @@
 #include <main.h>
 #include <MainAdaptix.h>
 
+#include <QGuiApplication>
 #include <QLoggingCategory>
 #include <QSslSocket>
 
@@ -26,8 +27,9 @@ void messageFilter(QtMsgType type, const QMessageLogContext &context, const QStr
 static void applyLinuxQpaDefaults()
 {
 #if defined(Q_OS_LINUX)
-    if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORMTHEME"))
-        qputenv("QT_QPA_PLATFORMTHEME", QByteArray());
+    qunsetenv("QT_QPA_PLATFORMTHEME");
+    qunsetenv("QT_STYLE_OVERRIDE");
+    QGuiApplication::setDesktopSettingsAware(false);
 
     if (!qEnvironmentVariableIsSet("QT_QPA_PLATFORM"))
         qputenv("QT_QPA_PLATFORM", "xcb");
