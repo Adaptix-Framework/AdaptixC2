@@ -137,8 +137,9 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 		return err
 	}
 
-	if err = ts.tsListenerBringUp(listenerName); err != nil {
-		ts.TsLogAdd(adaptix.LogStatusError, 0, "listener", "", "Listener %s created but failed to start: %s", listenerName, err.Error())
+	startErr := ts.tsListenerBringUp(listenerName)
+	if startErr != nil {
+		ts.TsLogAdd(adaptix.LogStatusError, 0, "listener", "", "Listener %s created but failed to start: %s", listenerName, startErr.Error())
 	} else {
 		listenerData, _ = ts.listeners.Get(listenerName)
 	}
@@ -159,7 +160,7 @@ func (ts *Teamserver) TsListenerStart(listenerName string, listenerRegName strin
 	ts.EventManager.EmitAsync(eventing.EventListenerStart, postEvent)
 	// -----------------
 
-	return nil
+	return startErr
 }
 
 func (ts *Teamserver) TsListenerEdit(listenerName string, listenerRegName string, listenerConfig string, tags string) error {

@@ -178,6 +178,7 @@ func NewTsConnector(ts adaptix.Teamserver, tsProfile profile.TsProfile, httpServ
 
 	var connector = new(TsConnector)
 	connector.Engine = gin.New()
+	connector.Engine.Use(gin.Recovery())
 	// connector.Engine.Use(gin.LoggerWithWriter(ts.TsLogWriter(adaptix.LogStatusInfo, "server", "gin"))) /// ToDo
 	connector.teamserver = ts
 	connector.Interface = tsProfile.Interface
