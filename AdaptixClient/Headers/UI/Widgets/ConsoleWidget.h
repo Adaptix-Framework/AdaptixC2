@@ -73,6 +73,7 @@ class ConsoleWidget : public DockTab
     bool historyWindow   = false;
     quint64 loadGen      = 0;
     qint64 oldestLoadedId = 0;
+    bool completerFlagMode = false;
 
     QPointer<DialogConsoleSearch> searchDialog;
     QPointer<DialogConsoleHelp>   helpDialog;
@@ -92,8 +93,6 @@ class ConsoleWidget : public DockTab
     int  effectiveLoadLimit() const;
     void resetViewState();
 
-    bool userSelectedCompletion = false;
-
     mutable QSet<QString> m_consoleTaskPrompted;  // taskId or local key → prompt printed
     mutable QSet<QString> m_consoleTaskClosed;    // taskId → completed footer already printed
     mutable QSet<QString> m_consoleTaskMsgKeys;   // taskId|type|message|text → body already printed
@@ -104,6 +103,7 @@ class ConsoleWidget : public DockTab
 
     void createUI();
     void applyTheme();
+    void applyCompleterStyle();
     void applyHistoryBarStyle();
     void applyHistoryBarMetrics();
     void setHistoryBarExpanded(bool on);
@@ -112,6 +112,7 @@ class ConsoleWidget : public DockTab
     void positionConsoleOverlays();
     void refitInputHeight();
     void placeInputPrompt();
+    void setInputText(const QString& text);
     void syncCompleter();
     int  inputLineHeight() const;
     ConsoleThemeData getActiveTheme() const;
@@ -137,6 +138,7 @@ public:
     void InputFocus() const;
     void LoadInitialPage();
     void AddToHistory(const QString& command);
+    void SeedHistory(const QString& command);
     void SetInput(const QString &command);
     void Clear();
     void UpdateInfoLabel();

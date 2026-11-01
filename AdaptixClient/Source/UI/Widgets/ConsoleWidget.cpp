@@ -79,6 +79,8 @@ class ConsoleInputEdit : public QPlainTextEdit
     PromptStrip* m_promptStrip = nullptr;
     QString      m_prompt;
     int          m_promptPx = 0;
+    QString      m_ghost;
+    QColor       m_ghostColor;
 
 public:
     explicit ConsoleInputEdit(QWidget* parent = nullptr) : QPlainTextEdit(parent)
@@ -110,7 +112,51 @@ public:
 
     int promptWidth() const { return m_promptPx; }
 
+    void setGhostSuffix(const QString& text)
+    {
+        if (m_ghost == text) {
+            return;
+        }
+        m_ghost = text;
+        viewport()->update();
+    }
+
+    QString ghostSuffix() const { return m_ghost; }
+
+    void setGhostColor(const QColor& color)
+    {
+        if (m_ghostColor == color) {
+            return;
+        }
+        m_ghostColor = color;
+        viewport()->update();
+    }
+
 protected:
+    void paintEvent(QPaintEvent* event) override
+    {
+        QPlainTextEdit::paintEvent(event);
+        if (m_ghost.isEmpty()) {
+            return;
+        }
+        if (textCursor().position() != toPlainText().size()) {
+            return;
+        }
+
+        QTextCursor end(document());
+        end.movePosition(QTextCursor::End);
+        const QRect caret = cursorRect(end);
+        const int avail = viewport()->width() - caret.left();
+        if (avail <= 4) {
+            return;
+        }
+
+        QPainter painter(viewport());
+        painter.setFont(font());
+        painter.setPen(m_ghostColor.isValid() ? m_ghostColor : palette().color(QPalette::Text));
+        painter.drawText(QRect(caret.left(), caret.top(), avail, caret.height()), Qt::AlignVCenter | Qt::TextSingleLine, m_ghost);
+    }
+
     void resizeEvent(QResizeEvent* event) override
     {
         QPlainTextEdit::resizeEvent(event);
@@ -204,6 +250,11 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
     connect(kphInputLineEdit, &KPH_ConsoleInput::showHistory, this, &ConsoleWidget::handleShowHistory);
     connect(kphInputLineEdit, &KPH_ConsoleInput::showHelp, this, &ConsoleWidget::handleShowHelp);
     connect(kphInputLineEdit, &KPH_ConsoleInput::submitInput, this, &ConsoleWidget::processInput, Qt::QueuedConnection);
+    connect(kphInputLineEdit, &KPH_ConsoleInput::textChangedProgrammatic, this, [this]() {
+        CommandCompleter->popup()->hide();
+        InputLineEdit->setGhostSuffix(QString());
+        refitInputHeight();
+    });
 
     connect(&ConsoleThemeManager::instance(), &ConsoleThemeManager::themeChanged, this, [this]() {
         applyTheme();
@@ -218,6 +269,7 @@ ConsoleWidget::ConsoleWidget( AdaptixWidget* w, Agent* a, Commander* c) : DockTa
             OutputTextEdit->setFont(mono);
         applyHistoryBarMetrics();
         applyHistoryBarStyle();
+        applyCompleterStyle();
         positionConsoleOverlays();
     });
     connect(OutputTextEdit, &TextEditConsole::ctx_bgToggled, this, [this](bool){ applyTheme(); });
@@ -290,11 +342,12 @@ void ConsoleWidget::createUI()
     InputLineEdit->setFont( FontManager::instance().getFont("Hack") );
     InputLineEdit->document()->setDocumentMargin(0);
     InputLineEdit->setLineWrapMode(QPlainTextEdit::WidgetWidth);
+    InputLineEdit->setWordWrapMode(QTextOption::WrapAnywhere);
     InputLineEdit->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     InputLineEdit->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     InputLineEdit->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     InputLineEdit->setFixedHeight(inputLineHeight());
-    InputLineEdit->setToolTip(tr("The command stays one line and wraps when it does not fit"));
+    InputLineEdit->setToolTip(tr("The command wraps character-wise, filling each line"));
     InputLineEdit->setPromptColor(QColor(textColor));
     InputLineEdit->installEventFilter(this);
     connect(InputLineEdit, &QPlainTextEdit::textChanged, this, &ConsoleWidget::refitInputHeight);
@@ -456,7 +509,10 @@ void ConsoleWidget::createUI()
     CommandCompleter->popup()->setObjectName("Completer");
     CommandCompleter->setCaseSensitivity(Qt::CaseInsensitive);
     CommandCompleter->setCompletionMode(QCompleter::PopupCompletion);
+    CommandCompleter->setMaxVisibleItems(8);
     CommandCompleter->setWidget(InputLineEdit);
+    CommandCompleter->popup()->setItemDelegate(new QStyledItemDelegate(CommandCompleter->popup()));
+    applyCompleterStyle();
 }
 
 
@@ -509,7 +565,7 @@ void ConsoleWidget::refitInputHeight()
     if (!text.isEmpty() && textWidth > 0) {
         QTextLayout layout(text, InputLineEdit->font());
         QTextOption option;
-        option.setWrapMode(QTextOption::WrapAtWordBoundaryOrAnywhere);
+        option.setWrapMode(QTextOption::WrapAnywhere);
         layout.setTextOption(option);
         layout.beginLayout();
         while (true) {
@@ -526,9 +582,9 @@ void ConsoleWidget::refitInputHeight()
     const int want = qMax(one, lines * lineH + 4);
     const int maxH = qMax(one, height() - 160);
     const int next = qBound(one, want, maxH);
-    const bool wrapped = next > one + 2;
-    if (InputLineEdit->verticalScrollBarPolicy() != (wrapped && want > next ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff))
-        InputLineEdit->setVerticalScrollBarPolicy(wrapped && want > next ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
+    const bool needsVBar = want > next;
+    if (InputLineEdit->verticalScrollBarPolicy() != (needsVBar ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff))
+        InputLineEdit->setVerticalScrollBarPolicy(needsVBar ? Qt::ScrollBarAsNeeded : Qt::ScrollBarAlwaysOff);
     if (InputLineEdit->height() != next)
         InputLineEdit->setFixedHeight(next);
 }
@@ -556,32 +612,71 @@ void ConsoleWidget::syncCompleter()
     const QString text = InputLineEdit->toPlainText();
     const int pos = InputLineEdit->textCursor().position();
     const QString left = text.left(pos);
-    if (left.contains(QLatin1Char(' ')) || left.contains(QLatin1Char('\n'))) {
+    if (left.contains(QLatin1Char('\n')) || left.isEmpty()) {
         CommandCompleter->popup()->hide();
+        InputLineEdit->setGhostSuffix(QString());
         return;
     }
+    const int lastSpace = left.lastIndexOf(QLatin1Char(' '));
+    const bool flagMode = commander && lastSpace >= 0 && left.mid(lastSpace + 1).startsWith(QLatin1Char('-'));
+    if (flagMode) {
+        completerFlagMode = true;
+        const QStringList flags = commander->GetFlagCompletions(left);
+        if (completerModel->stringList() != flags) {
+            completerModel->setStringList(flags);
+        }
+    } else if (completerFlagMode) {
+        completerFlagMode = false;
+        upgradeCompleter();
+    }
+
     CommandCompleter->setCompletionPrefix(left);
-    if (left.isEmpty() || CommandCompleter->completionCount() == 0) {
+    const int count = CommandCompleter->completionCount();
+    const QString cand = count > 0 ? CommandCompleter->currentCompletion() : QString();
+    const bool exactMatch = count == 1 && QString::compare(cand, left, Qt::CaseInsensitive) == 0;
+
+    QString ghost;
+    if (count > 0 && !exactMatch && pos == text.size() && cand.startsWith(left, Qt::CaseSensitive) && cand.size() > left.size()) {
+        ghost = cand.mid(left.size());
+    }
+    if (ghost.isEmpty() && pos == text.size() && left.endsWith(QLatin1Char(' ')) && commander) {
+        ghost = commander->GetArgUsageHint(left);
+    }
+    InputLineEdit->setGhostSuffix(ghost);
+
+    if (count == 0 || exactMatch || count == 1) {
         CommandCompleter->popup()->hide();
         return;
     }
     QRect cr = InputLineEdit->cursorRect();
     cr.moveTopLeft(InputLineEdit->viewport()->mapTo(InputLineEdit, cr.topLeft()));
-    cr.setWidth(qMax(180, CommandCompleter->popup()->sizeHintForColumn(0) + 24));
+    QAbstractItemView *popupView = CommandCompleter->popup();
+    cr.setWidth(qMax(180, popupView->sizeHintForColumn(0)+ popupView->verticalScrollBar()->sizeHint().width() + 2 * popupView->frameWidth() + 8));
     cr.translate(0, 4);
     CommandCompleter->complete(cr);
+    popupView->setCurrentIndex(CommandCompleter->completionModel()->index(0, 0));
 }
 
 void ConsoleWidget::LoadInitialPage() { loadInitialPage(); }
 
 void ConsoleWidget::AddToHistory(const QString &command) { kphInputLineEdit->AddToHistory(command); }
 
-void ConsoleWidget::SetInput(const QString &command)
+void ConsoleWidget::SeedHistory(const QString &command) { kphInputLineEdit->SeedHistory(command); }
+
+void ConsoleWidget::setInputText(const QString& text)
 {
     if (!InputLineEdit)
         return;
-    InputLineEdit->setPlainText(command);
+    InputLineEdit->setPlainText(text);
+    QTextCursor cursor = InputLineEdit->textCursor();
+    cursor.movePosition(QTextCursor::End);
+    InputLineEdit->setTextCursor(cursor);
     refitInputHeight();
+}
+
+void ConsoleWidget::SetInput(const QString &command)
+{
+    setInputText(command);
 }
 
 void ConsoleWidget::resetViewState()
@@ -1037,6 +1132,24 @@ bool ConsoleWidget::eventFilter(QObject* watched, QEvent* event)
         if (resizeEvent && resizeEvent->oldSize().width() != resizeEvent->size().width())
             refitInputHeight();
     }
+    if (watched == InputLineEdit && event->type() == QEvent::KeyPress) {
+        auto* keyEvent = static_cast<QKeyEvent*>(event);
+        if (keyEvent->key() == Qt::Key_Right && keyEvent->modifiers() == Qt::NoModifier) {
+            const QString ghost = InputLineEdit->ghostSuffix();
+            if (!ghost.isEmpty() && InputLineEdit->textCursor().position() == InputLineEdit->toPlainText().size()) {
+                QString accept = ghost;
+                if (ghost.startsWith('<') || ghost.startsWith('[')) {
+                    QString token = ghost.section(' ', 0, 0);
+                    token.remove('<').remove('>').remove('[').remove(']');
+                    accept = token.startsWith('-') ? token + ' ' : QString();
+                }
+                if (!accept.isEmpty()) {
+                    setInputText(InputLineEdit->toPlainText() + accept);
+                    return true;
+                }
+            }
+        }
+    }
     if (watched == inputFrame && event->type() == QEvent::MouseButtonPress && InputLineEdit)
         InputLineEdit->setFocus();
     if (watched == searchPanel && (event->type() == QEvent::Show || event->type() == QEvent::Hide || event->type() == QEvent::Resize)) {
@@ -1116,7 +1229,7 @@ void ConsoleWidget::applyConsolePacket(const QJsonObject& obj, bool seedHistory)
             ConsoleOutputPrompt(t, "", "", cmdline);
             ConsoleOutputMessage(t, "", CONSOLE_OUT_LOCAL_INFO, obj["a_message"].toString(), obj["a_text"].toString(), false);
             if (seedHistory && !cmdline.isEmpty())
-                AddToHistory(cmdline);
+                SeedHistory(cmdline);
             break;
         }
         case TYPE_AGENT_CONSOLE_ERROR: {
@@ -1125,7 +1238,7 @@ void ConsoleWidget::applyConsolePacket(const QJsonObject& obj, bool seedHistory)
             ConsoleOutputPrompt(t, "", "", cmdline);
             ConsoleOutputMessage(t, "", CONSOLE_OUT_LOCAL_ERROR, obj["a_message"].toString(), "", true);
             if (seedHistory && !cmdline.isEmpty())
-                AddToHistory(cmdline);
+                SeedHistory(cmdline);
             break;
         }
         case TYPE_AGENT_CONSOLE_TASK_SYNC: {
@@ -1138,7 +1251,7 @@ void ConsoleWidget::applyConsolePacket(const QJsonObject& obj, bool seedHistory)
             ConsoleOutputPrompt(startTime, taskIdStr, obj["a_client"].toString(), cmdline);
             ConsoleOutputMessage( completed ? finishTime : startTime, taskIdStr, obj["a_msg_type"].toInt(), obj["a_message"].toString(), obj["a_text"].toString(), completed );
             if (seedHistory && !cmdline.isEmpty())
-                AddToHistory(cmdline);
+                SeedHistory(cmdline);
             break;
         }
         case TYPE_AGENT_CONSOLE_TASK_UPD:
@@ -1435,6 +1548,42 @@ ConsoleThemeData ConsoleWidget::getActiveTheme() const
     return ConsoleThemeManager::instance().theme();
 }
 
+void ConsoleWidget::applyCompleterStyle()
+{
+    if (!CommandCompleter)
+        return;
+
+    auto* qs = qobject_cast<oclero::qlementine::QlementineStyle*>(qApp ? qApp->style() : nullptr);
+    const auto& t = qs ? qs->theme() : oclero::qlementine::Theme();
+
+    auto* popup = CommandCompleter->popup();
+    popup->setFont(FontManager::instance().getFont("Hack"));
+    popup->setStyleSheet(QStringLiteral(
+        "QAbstractItemView {"
+        "  background-color: %1;"
+        "  border: 1px solid %2;"
+        "  border-radius: 8px;"
+        "  padding: 4px 3px;"
+        "  color: %3;"
+        "  selection-background-color: %4;"
+        "  selection-color: #FFFFFF;"
+        "  outline: 0;"
+        "}"
+        "QAbstractItemView::item {"
+        "  padding: 2px 10px;"
+        "  margin: 1px 3px;"
+        "  border-radius: 5px;"
+        "}"
+        "QAbstractItemView::item:selected {"
+        "  background-color: %4;"
+        "  color: #FFFFFF;"
+        "}"
+    ).arg(t.backgroundColorMain3.name(),
+          t.borderColor.name(),
+          t.secondaryColor.name(),
+          t.primaryColor.name()));
+}
+
 void ConsoleWidget::applyTheme()
 {
     const auto theme = getActiveTheme();
@@ -1468,8 +1617,12 @@ void ConsoleWidget::applyTheme()
     }
     if (InputLineEdit) {
         InputLineEdit->setPromptColor(at.secondaryColor);
+        QColor ghostColor = at.secondaryColor;
+        ghostColor.setAlpha(140);
+        InputLineEdit->setGhostColor(ghostColor);
         InputLineEdit->setStyleSheet(QStringLiteral("QPlainTextEdit { background: transparent; color: %1; border: none; padding: 0px; }").arg(at.secondaryColor.name()));
     }
+    applyCompleterStyle();
 }
 
 
@@ -1716,11 +1869,6 @@ void ConsoleWidget::processInput()
 
     QString commandLine = TrimmedEnds(InputLineEdit->toPlainText());
 
-    if ( this->userSelectedCompletion ) {
-        this->userSelectedCompletion = false;
-            return;
-    }
-
     InputLineEdit->clear();
     refitInputHeight();
     if (commandLine.isEmpty())
@@ -1752,6 +1900,7 @@ void ConsoleWidget::handleShowHistory()
     historyList->setItemDelegate(new QStyledItemDelegate(historyList));
 
     QPushButton *closeButton = new QPushButton(tr("Close"), historyDialog);
+    closeButton->setAutoDefault(false);
 
     QVBoxLayout *layout = new QVBoxLayout(historyDialog);
     layout->addWidget(historyList);
@@ -1777,8 +1926,13 @@ void ConsoleWidget::handleShowHistory()
     connect(closeButton, &QPushButton::clicked, historyDialog, &QDialog::accept);
 
     connect(historyList, &QListWidget::itemDoubleClicked, this, [this, historyDialog](const QListWidgetItem *item) {
-        InputLineEdit->setPlainText(item->text());
-        refitInputHeight();
+        setInputText(item->text());
+        historyDialog->accept();
+        InputLineEdit->setFocus();
+    });
+
+    connect(historyList, &QListWidget::itemActivated, this, [this, historyDialog](QListWidgetItem *item) {
+        setInputText(item->text());
         historyDialog->accept();
         InputLineEdit->setFocus();
     });
@@ -1808,9 +1962,7 @@ void ConsoleWidget::handleShowHelp()
 
     helpDialog = new DialogConsoleHelp(commander, agentId, this);
     connect(helpDialog, &DialogConsoleHelp::insertCommand, this, [this](const QString& command) {
-        if (InputLineEdit)
-            InputLineEdit->setPlainText(command);
-            refitInputHeight();
+        setInputText(command);
         InputFocus();
     });
     helpDialog->setQuery(seed);

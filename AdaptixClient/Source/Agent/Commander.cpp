@@ -912,6 +912,129 @@ QStringList Commander::GetCommands()
     return commandList;
 }
 
+QStringList Commander::GetFlagCompletions(const QString& cmdline)
+{
+    QStringList result;
+    const QStringList words = cmdline.split(' ', Qt::SkipEmptyParts);
+    if (words.isEmpty())
+        return result;
+
+    Command found;
+    QString groupId;
+    bool enabled = true;
+    if (!findCommand(words.first(), &found, &groupId, &enabled) || !enabled)
+        return result;
+
+    const Command* cmd = &found;
+    if (!cmd->subcommands.isEmpty() && words.size() >= 2) {
+        for (const Command& sub : cmd->subcommands) {
+            if (sub.name == words.at(1)) {
+                cmd = &sub;
+                break;
+            }
+        }
+    }
+
+    const int lastSpace = cmdline.lastIndexOf(QLatin1Char(' '));
+    const QString head = lastSpace >= 0 ? cmdline.left(lastSpace + 1) : QString();
+
+    for (const Argument& arg : cmd->args) {
+        if (arg.mark.isEmpty() || !arg.mark.startsWith(QLatin1Char('-'))) {
+            continue;
+        }
+        if (words.contains(arg.mark)) {
+            continue;
+        }
+        result << head + arg.mark;
+    }
+    return result;
+}
+
+QString Commander::GetArgUsageHint(const QString& cmdline)
+{
+    const QStringList words = cmdline.split(' ', Qt::SkipEmptyParts);
+    if (words.isEmpty())
+        return QString();
+
+    Command found;
+    QString groupId;
+    bool enabled = true;
+    if (!findCommand(words.first(), &found, &groupId, &enabled) || !enabled)
+        return QString();
+
+    const Command* cmd = &found;
+    int cmdWords = 1;
+    if (!cmd->subcommands.isEmpty()) {
+        if (words.size() >= 2) {
+            for (const Command& sub : cmd->subcommands) {
+                if (sub.name == words.at(1)) {
+                    cmd = &sub;
+                    cmdWords = 2;
+                    break;
+                }
+            }
+        }
+        if (cmdWords == 1) {
+            return QString();
+        }
+    }
+
+    const QList<Argument>& args = cmd->args;
+
+    QSet<QString> usedMarks;
+    int positionalsTyped = 0;
+    for (int i = cmdWords; i < words.size(); ++i) {
+        const QString& w = words.at(i);
+        if (w.startsWith('-')) {
+            usedMarks.insert(w);
+            for (const Argument& a : args) {
+                if (a.mark == w && a.type != QStringLiteral("BOOL") && i + 1 < words.size()) {
+                    ++i;
+                    break;
+                }
+            }
+        } else {
+            ++positionalsTyped;
+        }
+    }
+
+    QString pendingValue;
+    const QString lastWord = words.last();
+    if (lastWord.startsWith('-')) {
+        for (const Argument& a : args) {
+            if (a.mark == lastWord && a.type != QStringLiteral("BOOL")) {
+                usedMarks.insert(a.mark);
+                pendingValue = ((a.required && !a.defaultUsed) ? "<" : "[") + a.name + ((a.required && !a.defaultUsed) ? ">" : "]");
+                break;
+            }
+        }
+    }
+
+    auto wrap = [](const Argument& a) {
+        return ((a.required && !a.defaultUsed) ? "<" : "[") + a.mark + (a.mark.isEmpty() || a.name.isEmpty() ? QString() : QStringLiteral(" ")) + a.name + ((a.required && !a.defaultUsed) ? ">" : "]");
+    };
+
+    QStringList parts;
+    if (!pendingValue.isEmpty()) {
+        parts << pendingValue;
+    }
+
+    int positionalSeen = 0;
+    for (const Argument& a : args) {
+        if (a.mark.startsWith('-')) {
+            if (!usedMarks.contains(a.mark)) {
+                parts << wrap(a);
+            }
+        } else if (a.mark.isEmpty()) {
+            if (positionalSeen >= positionalsTyped) {
+                parts << wrap(a);
+            }
+            ++positionalSeen;
+        }
+    }
+    return parts.join(QLatin1Char(' '));
+}
+
 QStringList Commander::GetHelpCatalog()
 {
     QStringList catalog;

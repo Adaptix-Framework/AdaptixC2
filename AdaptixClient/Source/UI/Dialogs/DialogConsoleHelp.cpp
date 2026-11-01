@@ -7,6 +7,7 @@
 #include <Client/AuthProfile.h>
 
 #include <QAbstractItemView>
+#include <QKeyEvent>
 #include <QLineEdit>
 #include <QMouseEvent>
 #include <QTextCursor>
@@ -47,6 +48,7 @@ void DialogConsoleHelp::createUI()
     helpView->setPlaceholderText(tr("Help text"));
 
     closeButton = new QPushButton(tr("Close"), this);
+    closeButton->setAutoDefault(false);
 
     auto* layout = new QVBoxLayout(this);
     layout->addWidget(commandCombo);
@@ -168,6 +170,33 @@ void DialogConsoleHelp::refreshHelp()
 
 bool DialogConsoleHelp::eventFilter(QObject* watched, QEvent* event)
 {
+    if (event->type() == QEvent::KeyPress) {
+        auto* keyEvent = static_cast<QKeyEvent*>(event);
+        if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
+            QString command;
+            QCompleter* comboCompleter = commandCombo->completer();
+            if (comboCompleter && comboCompleter->popup() && comboCompleter->popup()->isVisible()) {
+                const QModelIndex idx = comboCompleter->popup()->currentIndex();
+                if (idx.isValid()) {
+                    command = idx.data().toString();
+                }
+            } else if (commandCombo->view() && commandCombo->view()->isVisible()) {
+                const QModelIndex idx = commandCombo->view()->currentIndex();
+                if (idx.isValid()) {
+                    command = idx.data().toString();
+                }
+            }
+            if (command.isEmpty()) {
+                command = commandCombo->currentText().trimmed();
+            }
+            if (!command.isEmpty()) {
+                Q_EMIT insertCommand(command);
+                close();
+                return true;
+            }
+        }
+    }
+
     if (event->type() == QEvent::MouseButtonDblClick) {
         QString command;
         QAbstractItemView* view = nullptr;

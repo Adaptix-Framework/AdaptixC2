@@ -55,6 +55,8 @@ struct FeedPaintContext {
     int lineH2 = 16;
     int lineH1Compact = 15;
     int lineGap = 3;
+    int structUserColW = 0;
+    int structHostColW = 0;
     QFont primaryFont; // N+1 Bold
     QFont microFont;   // N-2
     QFont tagFont;     // N
@@ -96,6 +98,8 @@ Q_SIGNALS:
 class FeedBlock
 {
     bool m_stretch = true;
+    bool m_shrinkable = false;
+    int  m_shrinkFloor = 0;
 public:
     virtual ~FeedBlock() = default;
     virtual QString name() const = 0;
@@ -109,6 +113,10 @@ public:
 
     void setStretch(bool on) { m_stretch = on; }
     bool stretch() const { return m_stretch; }
+
+    void setShrinkable(bool on, int floor = 0) { m_shrinkable = on; m_shrinkFloor = floor; }
+    bool shrinkable() const { return m_shrinkable; }
+    int  shrinkFloor() const { return m_shrinkFloor; }
 
     virtual int hitTest(const QPoint& /*localPos*/, const QRect& /*blockRect*/, const QVariant& /*data*/) const { return -1; }
 
@@ -148,6 +156,7 @@ public:
 
 class MainBlock : public FeedBlock {
     qreal m_mainTextPointOffset = 0.0;
+    bool  m_structured = false;
     QFont mainTextFont(const QFont& smallFont, const QFont& primaryFont = {}) const;
 public:
     QString name() const override { return "main"; }
@@ -155,10 +164,14 @@ public:
     void setMainTextPointOffset(qreal offset) { m_mainTextPointOffset = offset; }
     qreal mainTextPointOffset() const { return m_mainTextPointOffset; }
 
+    void setStructured(bool on) { m_structured = on; }
+    bool structured() const { return m_structured; }
+    int structuredFieldWidth(int field, const QVariant& data, const QFont& smallFont, const QFont& primaryFont) const;
+
     int measureWidth(const QVariant& data, const QFont&, const QFont& smallFont, const QFont&) const override;
     void paint(QPainter* p, const QRect& rect, const QVariant& data, const QFont&, const QFont& smallFont, const QFont&, const QColor& colText, const QColor& colMuted, bool, bool, const FeedPaintContext& = {}) const override;
 
-    int compactDivisions() const override { return 3; }
+    int compactDivisions() const override { return m_structured ? 4 : 3; }
     int measureCompactDivision(int division, const QVariant& data, const QFont&, const QFont& smallFont, const QFont&) const override;
     void paintCompactDivision(QPainter* p, const QRect& subRect, int division, const QVariant& data, const QFont&, const QFont& smallFont, const QFont&, const QColor& colText, const QColor& colMuted, bool selected, bool dead, const FeedPaintContext& ctx) const override;
 };
@@ -188,10 +201,16 @@ public:
 
 
 class TagsBlock : public FeedBlock {
+    bool m_twoLine = false;
+    QPair<QStringList, QStringList> splitTwoLine(const QStringList& tags) const;
 public:
     QString name() const override { return "tags"; }
     Policy policy() const override { return RightAlign; }
-    int measureWidth(const QVariant& data, const QFont&, const QFont&, const QFont& tinyFont) const override;
+
+    void setTwoLine(bool on) { m_twoLine = on; }
+    bool twoLine() const { return m_twoLine; }
+
+    int measureWidth(const QVariant& data, const QFont&, const QFont& smallFont, const QFont& tinyFont) const override;
     void paint(QPainter* p, const QRect& rect, const QVariant& data, const QFont&, const QFont&, const QFont& tinyFont, const QColor&, const QColor& colMuted, bool selected, bool, const FeedPaintContext& = {}) const override;
 };
 
@@ -416,6 +435,8 @@ protected:
     mutable int m_cachedMaxRightW = 130;
     mutable int m_cachedMaxTextW = 0;
     mutable int m_cachedMaxStatusW = 0;
+    mutable int m_cachedStructUserW = 0;
+    mutable int m_cachedStructHostW = 0;
     mutable bool m_widthsDirty = true;
 
     bool m_compact = false;

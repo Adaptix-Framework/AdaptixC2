@@ -142,6 +142,8 @@ public:
     QString GetError();
     QStringList GetCommands();
     QStringList GetHelpCatalog();
+    QStringList GetFlagCompletions(const QString& cmdline);
+    QString GetArgUsageHint(const QString& cmdline);
     CommanderResult ProcessInput(qint64 agentId, QString cmdline);
 
 Q_SIGNALS:

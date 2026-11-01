@@ -6,6 +6,7 @@
 #include <UI/MainUI.h>
 #include <Client/AuthProfile.h>
 #include <QAbstractItemView>
+#include <QApplication>
 #include <QPlainTextEdit>
 #include <QTextCursor>
 
@@ -37,6 +38,15 @@ protected:
 
 
 
+inline int kphCommonPrefixLength(const QString& a, const QString& b)
+{
+    const int n = qMin(a.size(), b.size());
+    int i = 0;
+    while (i < n && a.at(i) == b.at(i))
+        ++i;
+    return i;
+}
+
 class KPH_ConsoleInput : public QObject
 {
 Q_OBJECT
@@ -48,6 +58,7 @@ Q_OBJECT
     QString    tmpCommandLine;
 
     QStringList history;
+    QStringList working;
     int historyIndex;
 
     QStringList completions;
@@ -89,42 +100,156 @@ public:
     }
 
     void AddToHistory(const QString &command) {
+        removeHistoryEntry(command);
         history.prepend(command);
+        working.prepend(command);
         historyIndex = -1;
         tmpCommandLine = "";
     }
-    
+
+    void SeedHistory(const QString &command) {
+        const QString anchor = (historyIndex >= 0 && historyIndex < history.size()) ? history.at(historyIndex) : QString();
+        const QString anchorWorking = (historyIndex >= 0 && historyIndex < working.size()) ? working.at(historyIndex) : QString();
+
+        removeHistoryEntry(command);
+        history.prepend(command);
+        working.prepend(command);
+
+        if (!anchor.isEmpty()) {
+            const int ni = history.indexOf(anchor);
+            historyIndex = ni;
+            if (ni >= 0 && !anchorWorking.isEmpty()) {
+                working[ni] = anchorWorking;
+            }
+        }
+    }
+
     const QStringList& getHistory() const { return history; }
+
+private:
+    void removeHistoryEntry(const QString &command)
+    {
+        for (int i = history.size() - 1; i >= 0; --i) {
+            if (history.at(i) == command) {
+                history.removeAt(i);
+                working.removeAt(i);
+            }
+        }
+    }
 
 Q_SIGNALS:
     void showHistory();
     void showHelp();
     void toggleExpand();
     void submitInput();
+    void textChangedProgrammatic();
+
+private:
+    void recallHistory(bool older)
+    {
+        if (history.isEmpty()) {
+            return;
+        }
+        completionIndex = -1;
+
+        const int cur = historyIndex;
+        if (cur == -1) {
+            tmpCommandLine = editText();
+        }
+        else {
+            working[cur] = editText();
+        }
+
+        int next = older ? (cur + 1) : (cur - 1);
+        if (next > history.size() - 1) {
+            next = history.size() - 1;
+        }
+        if (next < -1) {
+            next = -1;
+        }
+
+        historyIndex = next;
+        setEditText(next == -1 ? tmpCommandLine : working[next]);
+        setEditCursor(editText().size());
+    }
+
+    void acceptPopupSelection()
+    {
+        if (!completer || !completer->popup())
+            return;
+        QModelIndex idx = completer->popup()->currentIndex();
+        if (idx.isValid()) {
+            inputLineEdit->blockSignals(true);
+            setEditText(idx.data().toString());
+            setEditCursor(editText().size());
+            inputLineEdit->blockSignals(false);
+            Q_EMIT textChangedProgrammatic();
+        }
+        completer->popup()->hide();
+        completionIndex = -1;
+    }
 
 protected:
-    bool eventFilter(QObject *watched, QEvent *event) override {
-        // Intercept Tab on QCompleter popup (Tab events go to popup, not InputLineEdit)
-        if (watched != inputLineEdit && event->type() == QEvent::KeyPress) {
-            QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
-            if (keyEvent->key() == Qt::Key_Tab || keyEvent->key() == Qt::Key_Backtab) {
-                if (completer && completer->popup() && completer->popup()->isVisible()) {
-                    QModelIndex idx = completer->popup()->currentIndex();
-                    if (idx.isValid()) {
-                        inputLineEdit->blockSignals(true);
-                        setEditText(idx.data().toString());
-                        setEditCursor(editText().size());
-                        inputLineEdit->blockSignals(false);
-                    }
+        bool eventFilter(QObject *watched, QEvent *event) override {
+            if (completer && watched == completer->popup() && event->type() == QEvent::KeyPress) {
+                QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
+                const int key = keyEvent->key();
+                const Qt::KeyboardModifiers mods = keyEvent->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier);
+                const bool noMods = mods == Qt::NoModifier;
+
+                if (!completer->popup()->isVisible()) {
+                    return QObject::eventFilter(watched, event);
+                }
+
+                if (noMods && (key == Qt::Key_Return || key == Qt::Key_Enter)) {
                     completer->popup()->hide();
                     completionIndex = -1;
                     inputLineEdit->setFocus();
+                    Q_EMIT submitInput();
                     return true;
                 }
-            }
-        }
 
-        if (watched == inputLineEdit && (event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride)) {
+                if (key == Qt::Key_Escape) {
+                    completer->popup()->hide();
+                    inputLineEdit->setFocus();
+                    return true;
+                }
+
+                const bool ctrlHistory = (key == Qt::Key_Up || key == Qt::Key_Down) ? (mods & Qt::ControlModifier) : ((key == Qt::Key_P || key == Qt::Key_N) && mods == Qt::ControlModifier);
+                if (ctrlHistory) {
+                    completer->popup()->hide();
+                    inputLineEdit->setFocus();
+                    recallHistory(key == Qt::Key_Up || key == Qt::Key_P);
+                    return true;
+                }
+
+                if (key == Qt::Key_Right && mods == Qt::NoModifier
+                    && editCursor() >= editText().size()) {
+                    acceptPopupSelection();
+                    inputLineEdit->setFocus();
+                    return true;
+                }
+
+                if (key == Qt::Key_Tab && noMods) {
+                    const QModelIndex idx = completer->popup()->currentIndex();
+                    if (idx.isValid() && idx.row() != 0) {
+                        acceptPopupSelection();
+                        inputLineEdit->setFocus();
+                    } else {
+                        QApplication::sendEvent(inputLineEdit, keyEvent);
+                    }
+                    return true;
+                }
+
+                if (key == Qt::Key_Backtab) {
+                    QApplication::sendEvent(inputLineEdit, keyEvent);
+                    return true;
+                }
+
+                return QObject::eventFilter(watched, event);
+            }
+
+            if (watched == inputLineEdit && (event->type() == QEvent::KeyPress || event->type() == QEvent::ShortcutOverride)) {
             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
 
             const Qt::KeyboardModifiers mods = keyEvent->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier);
@@ -144,55 +269,57 @@ protected:
         if (watched == inputLineEdit && event->type() == QEvent::KeyPress) {
             QKeyEvent *keyEvent = static_cast<QKeyEvent *>(event);
             const Qt::KeyboardModifiers mods = keyEvent->modifiers() & (Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier | Qt::MetaModifier);
+            const int key = keyEvent->key();
+            QAbstractItemView *popup = (completer && completer->popup()) ? completer->popup() : nullptr;
+            const bool popupVisible = popup && popup->isVisible();
+            const bool noMods = mods == Qt::NoModifier;
 
-            if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter) {
-                if (completer && completer->popup() && completer->popup()->isVisible()) {
-                    QModelIndex idx = completer->popup()->currentIndex();
-                    if (idx.isValid()) {
-                        inputLineEdit->blockSignals(true);
-                        setEditText(idx.data().toString());
-                        setEditCursor(editText().size());
-                        inputLineEdit->blockSignals(false);
-                    }
-                    completer->popup()->hide();
+            if (noMods && (key == Qt::Key_Return || key == Qt::Key_Enter)) {
+                if (popupVisible) {
+                    popup->hide();
                     completionIndex = -1;
-                    return true;
                 }
                 Q_EMIT submitInput();
                 return true;
             }
 
-            if (keyEvent->key() == Qt::Key_Up) {
-                if ( history.size() == 0 )
-                    return true;
-
-                if (historyIndex < history.size() - 1) {
-                    if (historyIndex == -1)
-                        tmpCommandLine = editText();
-                    historyIndex++;
-                    setEditText(history[historyIndex]);
-                } else {
-                    historyIndex = history.size() - 1;
-                    setEditText(history[history.size() - 1]);
-                }
+            if (popupVisible && key == Qt::Key_Escape) {
+                popup->hide();
                 return true;
             }
 
-            if (keyEvent->key() == Qt::Key_Down) {
-                if ( history.size() == 0 )
-                    return true;
-                if (historyIndex > 0) {
-                    historyIndex--;
-                    setEditText(history[historyIndex]);
-                } else {
-                    historyIndex = -1;
-                    setEditText(tmpCommandLine);
-                }
+            if (popupVisible && noMods && key == Qt::Key_Right
+                && editCursor() >= editText().size()) {
+                acceptPopupSelection();
                 return true;
             }
 
-            if (keyEvent->key() == Qt::Key_Tab) {
-                if (keyEvent->modifiers() & Qt::ControlModifier) {
+            const bool ctrlHistory = (key == Qt::Key_Up || key == Qt::Key_Down) ? (mods & Qt::ControlModifier) : ((key == Qt::Key_P || key == Qt::Key_N) && mods == Qt::ControlModifier);
+            if (ctrlHistory) {
+                if (popupVisible) {
+                    popup->hide();
+                }
+                recallHistory(key == Qt::Key_Up || key == Qt::Key_P);
+                return true;
+            }
+
+            if (popupVisible && noMods && (key == Qt::Key_Up || key == Qt::Key_Down || key == Qt::Key_PageUp || key == Qt::Key_PageDown)) {
+                QApplication::sendEvent(popup, keyEvent);
+                return true;
+            }
+
+            if (noMods && key == Qt::Key_Up) {
+                recallHistory(true);
+                return true;
+            }
+
+            if (noMods && key == Qt::Key_Down) {
+                recallHistory(false);
+                return true;
+            }
+
+            if (key == Qt::Key_Tab) {
+                if (mods & Qt::ControlModifier) {
                     QString baseDir;
                     if (GlobalClient && GlobalClient->mainUI) {
                         if (auto profile = GlobalClient->mainUI->GetCurrentProfile())
@@ -204,20 +331,26 @@ protected:
                         QString text = editText();
                         text.insert(cursorPos, "\"" + filePath + "\"");
                         setEditText(text);
-                        setEditCursor(cursorPos + filePath.length());
+                        setEditCursor(cursorPos + filePath.length() + 2);
                     }
                     return true;
                 }
-                else {
+                else if (mods == Qt::NoModifier) {
                     QString text = editText();
                     int cursorPos = editCursor();
-                    QString leftOfCursor = text.left(cursorPos).trimmed();
-                    bool isFirstWord = !leftOfCursor.contains(' ');
+                    const QString rawLeft = text.left(cursorPos);
+                    int leading = 0;
+                    while (leading < rawLeft.size() && rawLeft.at(leading).isSpace()) {
+                        ++leading;
+                    }
+                    const QString wordPart = rawLeft.mid(leading);
+                    bool isFirstWord = !wordPart.contains(' ');
 
                     if (isFirstWord && commandModel) {
                         // Command name completion
                         if (completionIndex < 0) {
-                            completionBase = leftOfCursor;
+                            completionPrefix = rawLeft.left(leading);
+                            completionBase = wordPart;
                             completionSuffix = text.mid(cursorPos);
                             if (completionBase.isEmpty()) {
                                 completionIndex = -1;
@@ -236,14 +369,15 @@ protected:
 
                         if (!completions.isEmpty()) {
                             QString chosen = completions[completionIndex];
-                            QString newText = chosen + completionSuffix;
+                            QString newText = completionPrefix + chosen + completionSuffix;
 
                             inputLineEdit->blockSignals(true);
                             setEditText(newText);
-                            int selStart = completionBase.length();
-                            int selLen = chosen.length() - selStart;
+                            int selStart = completionPrefix.length() + completionBase.length();
+                            int selLen = chosen.length() - completionBase.length();
                             setEditSelection(selStart, selLen);
                             inputLineEdit->blockSignals(false);
+                            Q_EMIT textChangedProgrammatic();
 
                             completionIndex = (completionIndex + 1) % completions.size();
                         }
@@ -308,14 +442,15 @@ protected:
                         QString chosen = completions[completionIndex];
                         QString newText = completionPrefix + chosen + completionSuffix;
 
+                        const int overlap = chosen.startsWith(QLatin1Char('"')) ? 1 + kphCommonPrefixLength(completionBase, chosen.mid(1)) : kphCommonPrefixLength(completionBase, chosen);
+
                         inputLineEdit->blockSignals(true);
                         setEditText(newText);
-                        int selBaseOffset = completionPrefix.length();
-                        int selOffset = completionBase.length();
-                        int selStart = selBaseOffset + selOffset;
-                        int selLen = chosen.length() - selOffset;
+                        int selStart = completionPrefix.length() + overlap;
+                        int selLen = chosen.length() - overlap;
                         setEditSelection(selStart, selLen);
                         inputLineEdit->blockSignals(false);
+                        Q_EMIT textChangedProgrammatic();
 
                         completionIndex = (completionIndex + 1) % completions.size();
                     }
