@@ -13,6 +13,7 @@ AdaptixClient/AdaptixClient_autogen/
 AdaptixClient/CMakeCache.txt
 AdaptixClient/*.log
 AdaptixClient/cmake_*
+AdaptixClient/cmake
 AdaptixClient/Makefile
 AdaptixServer/build_error.log
 
@@ -23,6 +24,9 @@ AdaptixClient/Libs/kddockwidgets/cmake_install.cmake
 AdaptixClient/Libs/kddockwidgets/*_autogen/
 AdaptixClient/Libs/kddockwidgets/*.a
 AdaptixClient/Libs/kddockwidgets/*_export.h
+
+# CMake generated files in quazip build
+AdaptixClient/_deps/
 
 # CMake generated files in qlementine
 AdaptixClient/Libs/qlementine/CMakeFiles/

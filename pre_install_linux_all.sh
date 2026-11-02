@@ -25,6 +25,7 @@ go_arch_from_uname() {
 ERROR_FILE="$(date "+%d.%m.%Y_%H-%M-%S")-error.log"
 
 SERVER_DEPENDENCIES=(
+    wget
     git
     mingw-w64
     make
@@ -34,6 +35,7 @@ SERVER_DEPENDENCIES=(
 )
 
 CLIENT_DEPENDENCIES=(
+    wget
     git
     gcc
     g++

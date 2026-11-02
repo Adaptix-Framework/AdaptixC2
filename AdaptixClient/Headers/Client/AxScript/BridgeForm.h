@@ -60,6 +60,7 @@ public Q_SLOTS:
     QObject* create_dialog(const QString &title) const;
 
     QObject* create_selector_file();
+    QObject* create_selector_folder();
     QObject* create_selector_credentials(const QJSValue &headers = QJSValue()) const;
     QObject* create_selector_agents(const QJSValue &headers = QJSValue()) const;
     QObject* create_selector_listeners(const QJSValue &headers = QJSValue()) const;
